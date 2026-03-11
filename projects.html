@@ -360,6 +360,7 @@
       font-size: 0.8rem;
       color: var(--muted);
       letter-spacing: 0.15em;
+      display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
     }
 
     .footer-links { display: flex; gap: 2rem; }
@@ -384,7 +385,12 @@
       .grid { grid-template-columns: 1fr; }
       .stats { flex-direction: column; }
       .stat { border-right: none; border-bottom: 1px solid var(--border); }
-      footer { flex-direction: column; align-items: flex-start; }
+      footer { flex-direction: column; align-items: center; }
+      .footer-brand { text-align: center; }
+      nav { flex-direction: column; align-items: center; gap: 0.4rem; }
+      .nav-status { order: 1; }
+      .nav-logo { order: 2; margin-top: 0.6rem; }
+      .nav-credit { order: 3; margin-left: 0; }
     }
   </style>
 </head>
@@ -521,7 +527,10 @@
 <!-- FOOTER -->
 <div class="wrapper">
   <footer>
-    <div class="footer-brand">AXELNOVA.TECH © 2025</div>
+    <div class="footer-brand">
+      <span>AXELNOVA.TECH © 2026</span>
+      <span>by <a href="https://portfoliobaihaqie.axelnova.tech/" target="_blank" rel="noopener">Baihaqie Yusri</a></span>
+    </div>
     <div class="footer-links">
       <a href="https://portfoliobaihaqie.axelnova.tech" target="_blank">My Portfolio</a>
       <a href="https://github.com/byhaqie31" target="_blank">GitHub</a>

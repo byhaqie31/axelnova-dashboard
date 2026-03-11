@@ -85,8 +85,8 @@
       font-size: 0.65rem;
       color: var(--muted);
       text-decoration: none;
-      margin-left: 0.8rem;
-      align-self: center;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.65s forwards;
     }
     .nav-credit:hover { color: var(--accent); }
 
@@ -431,6 +431,12 @@
       20%  { opacity: 1; }
       100% { opacity: 0; transform: translateX(-50%) scaleX(2); }
     }
+
+    @media (max-width: 640px) {
+      nav { flex-direction: column; align-items: center; gap: 0.4rem; }
+      .nav-logo { display: none; }
+      .nav-status { order: 1; }
+    }
   </style>
 </head>
 <body>
@@ -478,7 +484,6 @@
 <!-- NAV -->
 <nav>
   <a href="/" class="nav-logo">AXEL<span>NOVA</span></a>
-  <a href="https://portfoliobaihaqie.axelnova.tech/" class="nav-credit" target="_blank" rel="noopener">by&nbsp;Baihaqie&nbsp;Yusri</a>
   <div class="nav-status">
     <div class="pulse-dot"></div>
     ALL SYSTEMS OPERATIONAL
@@ -502,6 +507,7 @@
     <span class="line1">AXEL</span>
     <span class="line2">NOVA</span>
   </h1>
+  <a href="https://portfoliobaihaqie.axelnova.tech/" class="nav-credit" target="_blank" rel="noopener">by&nbsp;Baihaqie&nbsp;Yusri</a>
   <div class="hero-divider"></div>
   <p class="hero-sub">Full-Stack Engineer & Systems Architect.<br>Building high-performance applications at scale.</p>
   <p class="terminal">&gt; Navigating to project hub...<span class="cursor"></span></p>
