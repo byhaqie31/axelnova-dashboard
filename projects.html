@@ -328,6 +328,46 @@
     .tag.aws     { border-color: rgba(255,150,30,0.3); color: #ff9f43; }
     .tag.redis   { border-color: rgba(220,50,50,0.3);  color: #e84040; }
     .tag.mysql   { border-color: rgba(0,160,200,0.3);  color: #00a0c8; }
+    .tag.bootstrap { border-color: rgba(120,60,180,0.3); color: #a566e8; }
+    .tag.js      { border-color: rgba(240,220,60,0.3);  color: #f0db4f; }
+    .tag.figma   { border-color: rgba(200,80,120,0.3);  color: #e06090; }
+    .tag.couchdb { border-color: rgba(200,60,50,0.3);   color: #e84040; }
+
+    .tag.tailwind { border-color: rgba(56,189,248,0.3); color: #38bdf8; }
+    .tag.restapi  { border-color: rgba(100,200,255,0.3); color: #64c8ff; }
+    .tag.pwa      { border-color: rgba(180,120,255,0.3); color: #b478ff; }
+
+    .card-label.rose    { color: #ff6b8a; }
+    .card-label.cyan    { color: #00c8ff; }
+    .card-label.emerald { color: #39ff7a; }
+    .card-label.amber   { color: #ffb830; }
+    .card-label.violet  { color: #b07aff; }
+    .card-label.orange  { color: #ff8c42; }
+    .card-label.lime    { color: #a3e635; }
+    .card-label.teal    { color: #2dd4a8; }
+    .card-label.red     { color: #ff5c5c; }
+    .card-label.sky     { color: #38bdf8; }
+
+    .card.coming-soon {
+      opacity: 0.55;
+      pointer-events: auto;
+    }
+    .card.coming-soon:hover {
+      transform: none;
+      border-color: var(--border);
+      box-shadow: none;
+    }
+
+    .badge-coming-soon {
+      display: block;
+      text-align: right;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      color: var(--accent3);
+      text-transform: uppercase;
+      margin-top: 1.2rem;
+    }
 
     .card-arrow {
       position: absolute; bottom: 1.8rem; right: 2rem;
@@ -339,12 +379,17 @@
     }
     .card:hover .card-arrow { color: var(--accent); transform: translateX(4px); }
 
-    .card:nth-child(1) { animation-delay: 0.55s; }
-    .card:nth-child(2) { animation-delay: 0.65s; }
-    .card:nth-child(3) { animation-delay: 0.75s; }
-    .card:nth-child(4) { animation-delay: 0.85s; }
-    .card:nth-child(5) { animation-delay: 0.95s; }
-    .card:nth-child(6) { animation-delay: 1.05s; }
+    .card:nth-child(1)  { animation-delay: 0.55s; }
+    .card:nth-child(2)  { animation-delay: 0.65s; }
+    .card:nth-child(3)  { animation-delay: 0.75s; }
+    .card:nth-child(4)  { animation-delay: 0.85s; }
+    .card:nth-child(5)  { animation-delay: 0.95s; }
+    .card:nth-child(6)  { animation-delay: 1.05s; }
+    .card:nth-child(7)  { animation-delay: 1.15s; }
+    .card:nth-child(8)  { animation-delay: 1.25s; }
+    .card:nth-child(9)  { animation-delay: 1.35s; }
+    .card:nth-child(10) { animation-delay: 1.45s; }
+    .card:nth-child(11) { animation-delay: 1.55s; }
 
     /* FOOTER */
     footer {
@@ -417,7 +462,7 @@
   <!-- STATS -->
   <div class="stats">
     <div class="stat">
-      <div class="stat-num" data-count="10">0</div>
+      <div class="stat-num" data-count="3">0</div>
       <div class="stat-label">Years Experience</div>
     </div>
     <div class="stat">
@@ -443,82 +488,161 @@
 
     <div class="grid">
 
-      <a href="https://portfolio.axelnova.tech" class="card">
+      <a href="https://github.com/byhaqie31/HouseOfParfum" target="_blank" rel="noopener" class="card">
         <div class="card-corner"></div>
-        <span class="card-icon">👤</span>
-        <div class="card-label">Personal</div>
-        <div class="card-title">PORTFOLIO</div>
-        <p class="card-desc">Interactive portfolio showcasing experience, skills, and selected work across full-stack engineering.</p>
+        <span class="card-icon">🧴</span>
+        <div class="card-label rose">E-Commerce</div>
+        <div class="card-title">HOUSE OF PARFUM</div>
+        <p class="card-desc">Full-stack e-commerce web application for a perfume boutique with product catalog, cart management, user authentication, and checkout flow.</p>
         <div class="card-tags">
-          <span class="tag nuxt">Nuxt</span>
-          <span class="tag">Tailwind</span>
-          <span class="tag aws">AWS</span>
+          <span class="tag php">PHP</span>
+          <span class="tag bootstrap">Bootstrap</span>
+          <span class="tag js">JavaScript</span>
+          <span class="tag mysql">MySQL</span>
+          <span class="tag figma">Figma</span>
         </div>
-        <div class="card-arrow">VISIT →</div>
+        <div class="card-arrow">VIEW SOURCE →</div>
       </a>
 
-      <a href="#" class="card">
+      <div class="card coming-soon">
         <div class="card-corner"></div>
-        <span class="card-icon">🚀</span>
-        <div class="card-label">SaaS</div>
-        <div class="card-title">PROJECT ALPHA</div>
-        <p class="card-desc">High-throughput API platform built for scale. Handles millions of events/day via async queue processing.</p>
+        <span class="card-icon">🎨</span>
+        <div class="card-label cyan">SaaS</div>
+        <div class="card-title">PORTFOLIO MAKER</div>
+        <p class="card-desc">Drag-and-drop portfolio builder that lets users create, customize, and publish personal sites with custom domains and themes.</p>
         <div class="card-tags">
+          <span class="tag nuxt">Nuxt</span>
+          <span class="tag laravel">Laravel</span>
+          <span class="tag mysql">MySQL</span>
+          <span class="tag aws">AWS</span>
+        </div>
+        <span class="badge-coming-soon">Coming Soon</span>
+      </div>
+
+      <div class="card coming-soon">
+        <div class="card-corner"></div>
+        <span class="card-icon">✈️</span>
+        <div class="card-label emerald">Full Stack</div>
+        <div class="card-title">TRAVEL PLANNER</div>
+        <p class="card-desc">Collaborative trip planning tool with itinerary builder, budget tracker, map integration, and offline-first sync. Let's fly high!</p>
+        <div class="card-tags">
+          <span class="tag nuxt">Nuxt</span>
+          <span class="tag laravel">Laravel</span>
+          <span class="tag couchdb">CouchDB</span>
+          <span class="tag docker">Docker</span>
+        </div>
+        <span class="badge-coming-soon">Coming Soon</span>
+      </div>
+
+      <div class="card coming-soon">
+        <div class="card-corner"></div>
+        <span class="card-icon">🚗</span>
+        <div class="card-label amber">Marketplace</div>
+        <div class="card-title">AUTO HUB</div>
+        <p class="card-desc">Peer-to-peer car listing platform with vehicle search filters, price comparison, seller verification, and inquiry chat.</p>
+        <div class="card-tags">
+          <span class="tag nuxt">Nuxt</span>
+          <span class="tag laravel">Laravel</span>
+          <span class="tag mysql">MySQL</span>
+          <span class="tag redis">Redis</span>
+        </div>
+        <span class="badge-coming-soon">Coming Soon</span>
+      </div>
+
+      <div class="card coming-soon">
+        <div class="card-corner"></div>
+        <span class="card-icon">📅</span>
+        <div class="card-label violet">Productivity</div>
+        <div class="card-title">MY TIMETABLE</div>
+        <p class="card-desc">Weekly schedule planner with drag-and-drop time blocks, recurring events, conflict detection, and exportable calendar view.</p>
+        <div class="card-tags">
+          <span class="tag nuxt">Nuxt</span>
+          <span class="tag tailwind">Tailwind</span>
+          <span class="tag laravel">Laravel</span>
+          <span class="tag mysql">MySQL</span>
+        </div>
+        <span class="badge-coming-soon">Coming Soon</span>
+      </div>
+
+      <div class="card coming-soon">
+        <div class="card-corner"></div>
+        <span class="card-icon">📊</span>
+        <div class="card-label orange">Project Tool</div>
+        <div class="card-title">TASK TRACKER</div>
+        <p class="card-desc">Kanban-style task board with progress bars, deadline alerts, team assignment, and real-time status updates via websockets.</p>
+        <div class="card-tags">
+          <span class="tag nuxt">Nuxt</span>
           <span class="tag laravel">Laravel</span>
           <span class="tag redis">Redis</span>
           <span class="tag docker">Docker</span>
-          <span class="tag aws">AWS</span>
         </div>
-        <div class="card-arrow">VISIT →</div>
-      </a>
+        <span class="badge-coming-soon">Coming Soon</span>
+      </div>
 
-      <a href="#" class="card">
+      <div class="card coming-soon">
         <div class="card-corner"></div>
-        <span class="card-icon">🛡️</span>
-        <div class="card-label">Internal Tool</div>
-        <div class="card-title">SECURE DASH</div>
-        <p class="card-desc">PCI-DSS compliant internal dashboard for monitoring transactions and flagging anomalies in real-time.</p>
+        <span class="card-icon" style="font-family:'DM Mono',monospace;font-size:1.8rem;color:var(--muted);">{ }</span>
+        <div class="card-label lime">Dev Tool</div>
+        <div class="card-title">JSON BEAUTIFIER</div>
+        <p class="card-desc">Browser-based JSON formatter, validator, and diff viewer with syntax highlighting, minify/prettify toggle, and schema validation.</p>
         <div class="card-tags">
-          <span class="tag php">PHP</span>
-          <span class="tag mysql">MySQL</span>
+          <span class="tag nuxt">Nuxt</span>
+          <span class="tag tailwind">Tailwind</span>
+          <span class="tag js">JavaScript</span>
+        </div>
+        <span class="badge-coming-soon">Coming Soon</span>
+      </div>
+
+      <div class="card coming-soon">
+        <div class="card-corner"></div>
+        <span class="card-icon">💰</span>
+        <div class="card-label teal">Fintech</div>
+        <div class="card-title">EXPENSE SPLIT</div>
+        <p class="card-desc">Group expense tracker that splits bills, tracks who owes whom, settles debts with minimal transactions, and exports summaries.</p>
+        <div class="card-tags">
           <span class="tag laravel">Laravel</span>
-        </div>
-        <div class="card-arrow">VISIT →</div>
-      </a>
-
-      <a href="#" class="card">
-        <div class="card-corner"></div>
-        <span class="card-icon">⚡</span>
-        <div class="card-label">Microservice</div>
-        <div class="card-title">QUEUE ENGINE</div>
-        <p class="card-desc">Distributed job processing system using RabbitMQ and Gearman, with dead-letter retry logic and observability.</p>
-        <div class="card-tags">
-          <span class="tag php">PHP</span>
-          <span class="tag">RabbitMQ</span>
+          <span class="tag mysql">MySQL</span>
+          <span class="tag nuxt">Nuxt</span>
           <span class="tag docker">Docker</span>
         </div>
-        <div class="card-arrow">VISIT →</div>
-      </a>
+        <span class="badge-coming-soon">Coming Soon</span>
+      </div>
 
-      <a href="#" class="card">
+      <div class="card coming-soon">
         <div class="card-corner"></div>
-        <span class="card-icon">🗄️</span>
-        <div class="card-label">Data Layer</div>
-        <div class="card-title">COUCH SYNC</div>
-        <p class="card-desc">Offline-first data sync service between CouchDB and MySQL with conflict resolution and audit logging.</p>
+        <span class="card-icon">🔐</span>
+        <div class="card-label red">Internal Tool</div>
+        <div class="card-title">API VAULT</div>
+        <p class="card-desc">Personal API collection manager to store, organize, and test API endpoints with auth headers, environment variables, and response logging.</p>
         <div class="card-tags">
-          <span class="tag">CouchDB</span>
-          <span class="tag mysql">MySQL</span>
+          <span class="tag nuxt">Nuxt</span>
+          <span class="tag couchdb">CouchDB</span>
           <span class="tag laravel">Laravel</span>
+          <span class="tag docker">Docker</span>
         </div>
-        <div class="card-arrow">VISIT →</div>
-      </a>
+        <span class="badge-coming-soon">Coming Soon</span>
+      </div>
 
-      <a href="mailto:hello@axelnova.tech" class="card" style="border-style:dashed;opacity:0.5;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:220px;">
+      <div class="card coming-soon">
+        <div class="card-corner"></div>
+        <span class="card-icon">🕌</span>
+        <div class="card-label sky">Utility</div>
+        <div class="card-title">PRAYER TIME</div>
+        <p class="card-desc">Location-based Islamic prayer time display with Azan notifications, Qibla compass, and monthly timetable export.</p>
+        <div class="card-tags">
+          <span class="tag nuxt">Nuxt</span>
+          <span class="tag tailwind">Tailwind</span>
+          <span class="tag restapi">REST API</span>
+          <span class="tag pwa">PWA</span>
+        </div>
+        <span class="badge-coming-soon">Coming Soon</span>
+      </div>
+
+      <div class="card" style="border-style:dashed;opacity:0.5;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:220px;">
         <span style="font-size:2rem;">＋</span>
-        <div class="card-title" style="margin-top:1rem;font-size:0.9rem;">MORE COMING</div>
-        <p class="card-desc" style="margin-bottom:0;font-size:0.78rem;">New projects in active development.</p>
-      </a>
+        <div class="card-title" style="margin-top:1rem;font-size:0.9rem;">AND MANY MORE</div>
+        <p class="card-desc" style="margin-bottom:0;font-size:0.78rem;">New projects in active development. Stay tuned.</p>
+      </div>
 
     </div>
   </section>
@@ -529,10 +653,10 @@
   <footer>
     <div class="footer-brand">
       <span>AXELNOVA.TECH © 2026</span>
-      <span>by <a href="https://portfoliobaihaqie.axelnova.tech/" target="_blank" rel="noopener">Baihaqie Yusri</a></span>
+      <span>by <a href="https://portfoliobaihaqie.axelnova.tech/" target="_blank" rel="noopener" style="color:#5bc0f8;">Baihaqie Yusri</a></span>
     </div>
     <div class="footer-links">
-      <a href="https://portfoliobaihaqie.axelnova.tech" target="_blank">My Portfolio</a>
+      <a href="https://portfoliobaihaqie.axelnova.tech" target="_blank">Portfolio</a>
       <a href="https://github.com/byhaqie31" target="_blank">GitHub</a>
       <a href="https://www.linkedin.com/in/byhaqieyusri/" target="_blank">LinkedIn</a>
       <a href="mailto:byhaqie1455@gmail.com">Contact</a>
