@@ -1,13 +1,10 @@
 services:
   axelnova-dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: axelnova-dashboard:latest
+    image: ghcr.io/byhaqie31/axelnova-dashboard:latest
     container_name: axelnova-dashboard
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3003:3000"
+      - "127.0.0.1:3001:3000"
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
