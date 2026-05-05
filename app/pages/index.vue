@@ -107,7 +107,7 @@ useScrollReveal('.reveal')
 
       <p
         ref="heroSub"
-        class="mt-7 max-w-xl text-[19px] leading-[1.5]"
+        class="mt-7 max-w-xl text-[19px] leading-normal"
         style="color: var(--color-text-secondary);"
       >
         UI/UX engineer with 7 years of building — fintech, SaaS, and products that need real craft.

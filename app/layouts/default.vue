@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { onClickOutside } from '@vueuse/core'
+
 const route = useRoute()
 const colorMode = useColorMode()
 const mobileOpen = ref(false)
 const scrolled = ref(false)
+const headerRef = ref<HTMLElement | null>(null)
 
 const links = [
   { label: 'Home',     to: '/' },
@@ -16,8 +19,11 @@ const isActive = (to: string) => to === '/' ? route.path === '/' : route.path.st
 const toggleDark = () => {
   colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
 }
+const setMode = (m: 'light' | 'dark') => { colorMode.preference = m }
 
 watch(() => route.fullPath, () => { mobileOpen.value = false })
+
+onClickOutside(headerRef, () => { mobileOpen.value = false })
 
 onMounted(() => {
   const onScroll = () => { scrolled.value = window.scrollY > 8 }
@@ -30,7 +36,7 @@ onMounted(() => {
 <template>
   <div class="min-h-screen flex flex-col" style="background: var(--color-bg); color: var(--color-text);">
     <!-- NAV -->
-    <header class="sticky top-0 z-50">
+    <header ref="headerRef" class="sticky top-0 z-50">
       <!-- Iridescent gradient hairline (always visible on refresh) -->
       <div class="aurora-line" />
 
@@ -68,7 +74,7 @@ onMounted(() => {
 
           <div class="flex items-center gap-1.5">
             <button
-              class="hidden md:inline-flex items-center justify-center size-8 rounded-full transition-colors hover:bg-[var(--color-bg-secondary)]"
+              class="hidden md:inline-flex items-center justify-center size-8 rounded-full transition-colors hover:bg-(--color-bg-secondary)"
               :style="{ color: 'var(--color-text-secondary)' }"
               aria-label="Toggle dark mode"
               @click="toggleDark"
@@ -96,6 +102,7 @@ onMounted(() => {
               class="md:hidden inline-flex items-center justify-center size-8 rounded-full"
               :style="{ color: 'var(--color-text)' }"
               aria-label="Toggle menu"
+              :aria-expanded="mobileOpen"
               @click="mobileOpen = !mobileOpen"
             >
               <UIcon :name="mobileOpen ? 'i-fluent-dismiss-24-regular' : 'i-fluent-line-horizontal-3-24-regular'" class="size-4" />
@@ -106,26 +113,79 @@ onMounted(() => {
         <Transition name="page">
           <div
             v-if="mobileOpen"
-            class="md:hidden border-t px-6 py-5 flex flex-col gap-4"
+            class="md:hidden border-t"
             :style="{
               borderColor: 'var(--color-border)',
               background: 'var(--nav-mobile-bg)'
             }"
           >
-            <NuxtLink
-              v-for="l in links" :key="l.to"
-              :to="l.to"
-              class="text-[15px]"
-              :style="{
-                color: isActive(l.to) ? 'var(--color-text)' : 'var(--color-text-secondary)',
-                fontWeight: isActive(l.to) ? 500 : 400
-              }"
+            <!-- Top row: Appearance segmented control on the right -->
+            <div
+              class="px-6 pt-4 pb-3 flex items-center justify-between gap-3"
             >
-              {{ l.label }}
-            </NuxtLink>
-            <button class="text-[15px] text-left" @click="toggleDark">
-              {{ colorMode.value === 'dark' ? 'Light mode' : 'Dark mode' }}
-            </button>
+              <p class="text-[11px] font-medium uppercase tracking-wide" style="color: var(--color-text-tertiary);">
+                Appearance
+              </p>
+
+              <div
+                class="inline-flex p-0.5 rounded-full"
+                :style="{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }"
+              >
+                <ClientOnly>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center gap-1.5 h-7 px-3 rounded-full text-[12px] font-medium transition-all"
+                    :style="{
+                      background: colorMode.value !== 'dark' ? 'var(--color-bg)' : 'transparent',
+                      color: colorMode.value !== 'dark' ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                      boxShadow: colorMode.value !== 'dark' ? 'var(--shadow-xs)' : 'none'
+                    }"
+                    :aria-pressed="colorMode.value !== 'dark'"
+                    aria-label="Light mode"
+                    @click="setMode('light')"
+                  >
+                    <UIcon name="i-fluent-weather-sunny-24-regular" class="size-3.5" />
+                    Light
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center gap-1.5 h-7 px-3 rounded-full text-[12px] font-medium transition-all"
+                    :style="{
+                      background: colorMode.value === 'dark' ? 'var(--color-bg)' : 'transparent',
+                      color: colorMode.value === 'dark' ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                      boxShadow: colorMode.value === 'dark' ? 'var(--shadow-xs)' : 'none'
+                    }"
+                    :aria-pressed="colorMode.value === 'dark'"
+                    aria-label="Dark mode"
+                    @click="setMode('dark')"
+                  >
+                    <UIcon name="i-fluent-weather-moon-24-regular" class="size-3.5" />
+                    Dark
+                  </button>
+                  <template #fallback>
+                    <span class="inline-block h-7 w-35" />
+                  </template>
+                </ClientOnly>
+              </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t" :style="{ borderColor: 'var(--color-border)' }" />
+
+            <!-- Page links -->
+            <nav class="px-6 py-3 flex flex-col">
+              <NuxtLink
+                v-for="l in links" :key="l.to"
+                :to="l.to"
+                class="text-[16px] py-2.5 transition-colors"
+                :style="{
+                  color: isActive(l.to) ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                  fontWeight: isActive(l.to) ? 500 : 400
+                }"
+              >
+                {{ l.label }}
+              </NuxtLink>
+            </nav>
           </div>
         </Transition>
       </div>
