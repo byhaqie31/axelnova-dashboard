@@ -48,8 +48,11 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
+            set -e
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u byhaqie31 --password-stdin
             cd ~/axelnova-dashboard
+            git fetch origin main
+            git reset --hard origin/main
             docker compose pull
-            docker compose up -d
+            docker compose up -d --remove-orphans
             docker image prune -f
