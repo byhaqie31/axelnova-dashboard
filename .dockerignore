@@ -1,0 +1,44 @@
+# Build artifacts
+.nuxt
+.output
+.nitro
+.cache
+.data
+dist
+
+# Dependencies
+node_modules
+npm-debug.log
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea
+.fleet
+.vscode
+*.swp
+
+# VCS
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Docs / Claude
+.claude
+README.md
+UI-Standard.md
+*.md
+!nuxt.config.ts
+
+# Logs
+logs
+*.log
