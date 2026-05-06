@@ -53,75 +53,83 @@ const skills = [
   },
 ]
 
-const education = [
+const beliefs = [
+  'Design is thinking made visible.',
+  'Good products respect the people who use them.',
+  'The best engineers understand people, not just systems.',
+  'Curiosity is the only sustainable competitive advantage.',
+]
+
+const timeline = [
   {
-    period: 'In Progress',
-    badge: 'In Progress',
-    badgeTone: 'progress',
-    title: 'Master of Science in Human Resource Development',
-    institution: 'Universiti Putra Malaysia (UPM)',
-    location: 'Serdang, Selangor',
-    detail: 'Postgraduate research on AI adoption, digital transformation, and intergenerational dynamics in technology-driven organisations.',
+    year: '2019',
+    chapter: 'The Beginning',
+    title: 'Foundation at Universiti Malaya',
+    description: 'Chose an unconventional path — Islamic Studies and Information Technology. Not despite the breadth, but because of it. Faith and technology were never opposites in my mind.',
+    isCurrent: false,
   },
   {
-    period: 'Oct 2023',
-    badge: 'CGPA 3.77 / 4.00',
-    badgeTone: 'success',
-    title: 'Bachelor of Islamic Studies and Information Technology (First Class Honours)',
-    institution: 'Universiti Malaya (UM)',
-    location: 'Kuala Lumpur, W.P',
-    detail: 'Bridged software engineering fundamentals with Islamic studies — graduated with First Class Honours.',
+    year: '2020',
+    chapter: 'First Real Work',
+    title: 'Designing for Real People',
+    description: 'Started at a print shop in Johor — designing brochures and fixing computers for ordinary people with real problems. Learned that the gap between a design and the person it serves is the most important gap to close.',
+    isCurrent: false,
   },
   {
-    period: 'May 2019',
-    badge: 'CGPA 3.44 / 4.00',
-    badgeTone: 'neutral',
-    title: 'Foundation of Islamic Studies and Science',
-    institution: 'Universiti Malaya (UM)',
-    location: 'Kuala Lumpur, W.P',
-    detail: 'Pre-university foundation programme covering core sciences alongside Islamic studies.',
+    year: '2023',
+    chapter: 'Graduating',
+    title: 'First Class. Two Worlds.',
+    description: 'Graduated with First Class Honours. The degree wasn\'t just a credential — it was proof that bridging two disciplines creates something neither alone can.',
+    isCurrent: false,
+  },
+  {
+    year: '2023',
+    chapter: 'Into Fintech',
+    title: 'Building Systems That Can\'t Fail',
+    description: 'Joined Fiuu — payments infrastructure moving real money for real merchants. Learned what it means to build UI where errors carry real consequences. Every pixel has weight.',
+    isCurrent: false,
+  },
+  {
+    year: 'Now',
+    chapter: 'In Progress',
+    title: 'Researching. Building. Becoming.',
+    description: 'Postgraduate research on AI and people at UPM. Building axelnova as a space to explore what I actually believe about technology. Still asking more questions than I can answer.',
+    isCurrent: true,
   },
 ]
 
-const experience = [
+const dreams = [
   {
-    period: 'Dec 2023 — Present',
-    badge: 'Current',
-    badgeTone: 'success',
-    role: 'Software Engineer — UI/UX',
-    company: 'Fiuu (formerly Razer Merchant Services)',
-    location: 'Shah Alam, Selangor',
-    bullets: [
-      'Designed and developed high-quality UIs using Vue.js, Tailwind CSS, and modern front-end architectures across the Merchant Portal, Admin Portal, and multiple fintech payment modules.',
-      'Collaborated with product owners, backend developers, QA testers, and business teams to identify pain points, refine requirements, and deploy incremental improvements.',
-      'Enhanced merchant experience by streamlining UI flows, refining error messages, improving form validations, and optimising data-driven interfaces.',
-    ],
-    stack: ['Vue.js', 'Tailwind CSS', 'JavaScript', 'REST API', 'Figma', 'GitLab'],
+    icon: 'i-lucide-globe',
+    title: 'A product that outlasts me',
+    description: 'Build something people rely on — not because they have to, but because it genuinely improves how they live or work. A product with a soul.',
   },
   {
-    period: 'Jul 2020 — Oct 2020',
-    badge: null,
-    badgeTone: 'neutral',
-    role: 'Graphic Designer & Technician',
-    company: 'Faztech Services',
-    location: 'Tangkak, Johor',
-    bullets: [
-      'Designed professional artworks across 6 Adobe applications (Illustrator, After Effects) — brochures, business cards, and flyers — meeting full client briefs.',
-      'Collaborated with a team of 8 technicians on program installation and OS maintenance, with 0% callback from upper management.',
-      'Resolved recurring client issues (anti-virus, OS installation) — 8 of 10 cases per week closed within standard BAU protocols.',
-    ],
-    stack: ['Adobe Illustrator', 'After Effects', 'Photoshop'],
+    icon: 'i-lucide-plane',
+    title: 'See the world with intention',
+    description: '50 countries before I turn 40. Not tourism — immersion. Every place I visit reshapes how I think and what I build.',
+  },
+  {
+    icon: 'i-lucide-book-open',
+    title: 'Write something worth keeping',
+    description: 'A book. A body of essays. Thinking that survives the screen and lasts beyond the moment it was written.',
+  },
+  {
+    icon: 'i-lucide-users',
+    title: 'Lead a team worth following',
+    description: 'Build an organisation where craft is valued, people grow, and the work actually matters. Culture is a product too.',
+  },
+  {
+    icon: 'i-lucide-brain',
+    title: 'Understand AI before it defines us',
+    description: 'I want to understand what happens to human identity when machines become collaborators — and help shape that answer before someone else does.',
+  },
+  {
+    icon: 'i-lucide-star',
+    title: 'A life built on intention',
+    description: 'Not defined by titles or metrics — by the quality of the work, the depth of the relationships, and the spaces I choose to inhabit.',
   },
 ]
-
-const badgeStyle = (tone: string) => {
-  switch (tone) {
-    case 'success':  return { color: 'var(--color-success)', background: 'rgba(48,209,88,0.14)' }
-    case 'progress': return { color: 'var(--color-warning)', background: 'rgba(255,159,10,0.14)' }
-    case 'neutral':
-    default:         return { color: 'var(--color-text-secondary)', background: 'var(--color-bg-secondary)' }
-  }
-}
 
 useScrollReveal('.reveal')
 </script>
@@ -137,37 +145,30 @@ useScrollReveal('.reveal')
     <section class="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-16 mb-32 reveal">
       <div class="space-y-5 text-[17px] leading-[1.65]" style="color: var(--color-text);">
         <p>
-          I'm <strong>Qie</strong>, a UI/UX-focused software engineer who builds products where
+          I'm <strong>Qie</strong>, a UI/UX-focused software engineer building products where
           design clarity meets real-world functionality.
         </p>
         <p style="color: var(--color-text-secondary);">
-          I specialise in turning complex systems into simple, intuitive experiences, especially
-          in high-stakes environments like fintech platforms, admin tools, and scalable web
-          applications. My strength sits at the intersection of interface design, frontend
-          engineering, and system thinking, allowing me to bridge user needs with technical
-          execution in a way that feels natural and seamless.
+          I specialise in transforming complex systems into intuitive digital experiences, especially
+          within fintech platforms, admin systems, and scalable web applications. My work sits between
+          interface design, frontend engineering, and system thinking, allowing me to bridge user needs
+          with technical execution in a seamless and thoughtful way.
         </p>
         <p style="color: var(--color-text-secondary);">
-          I care deeply about how things feel in use. Every flow, every interaction, every edge
-          case matters. To me, a product is not just something that works. It should feel
-          effortless, almost invisible, like it was always meant to be that way.
+          I care deeply about how things feel in use. Every interaction, every flow, and every detail
+          matters. To me, great products should feel effortless, almost invisible.
         </p>
         <p style="color: var(--color-text-secondary);">
-          I'm constantly evolving my thinking around AI, human-centered technology, and digital
-          systems. I'm drawn to the idea of building things that matter, not just functionally,
-          but emotionally and experientially.
+          I'm constantly exploring the relationship between AI, human-centered technology, and digital
+          experiences.
           <span style="color: var(--color-text);" class="font-medium">axelnova</span>
-          is where I explore that vision and slowly shape it into something real.
+          is where I shape those ideas into something meaningful, both functionally and emotionally.
         </p>
         <p style="color: var(--color-text-secondary);">
-          Outside of work, I'm building a life centered around growth, exploration, and intention.
-          I find meaning in travelling, in stepping into unfamiliar places, in seeing the world
-          from perspectives that challenge and reshape my own.
-        </p>
-        <p style="color: var(--color-text-secondary);">
-          I'm driven by a quiet refusal to live an average life. I want to create work that feels
-          meaningful, to experience life fully, and to keep evolving into someone better than I
-          was yesterday, both in what I build and in who I become.
+          Outside of work, I'm drawn to growth, travel, and experiences that challenge perspective.
+          I'm driven by the belief that life shouldn't be lived on autopilot. I want to build meaningful
+          things, experience the world fully, and continuously evolve into a better version of myself
+          through both the work I create and the life I choose to live.
         </p>
 
         <div class="pt-3 flex flex-wrap items-center gap-3">
@@ -288,110 +289,138 @@ useScrollReveal('.reveal')
       </div>
     </section>
 
-    <!-- Academic -->
+    <!-- My Story -->
     <section class="mb-32 reveal">
       <div class="mb-10">
-        <p class="eyebrow mb-2">Academic</p>
-        <h3 class="text-3xl font-semibold tracking-tight">Where I study.</h3>
+        <p class="eyebrow mb-2">My Story</p>
+        <h3 class="text-3xl font-semibold tracking-tight">How I got here.</h3>
+      </div>
+      <div class="grid lg:grid-cols-[1fr_320px] gap-10 lg:gap-16">
+        <div class="space-y-5 text-[17px] leading-[1.65]" style="color: var(--color-text-secondary);">
+          <p>
+            I grew up with a quiet obsession — how do things work, and how could they work better?
+            That curiosity led me to an unconventional degree:
+            <span style="color: var(--color-text);" class="font-medium">Islamic Studies and Information Technology</span>
+            at Universiti Malaya. Not the obvious path for a software engineer. The best decision I ever made.
+          </p>
+          <p>
+            That combination gave me something most engineers don't have — a framework for thinking about the
+            human side of technology. Jurisprudence taught me to reason carefully under uncertainty.
+            Islamic philosophy taught me that knowledge is service. Those ideas still show up in how I build today.
+          </p>
+          <p>
+            My first real job wasn't at a tech company. It was a print shop in Johor — designing brochures
+            and fixing computers for people with real, ordinary problems. I learned there that the gap between
+            a design and the person it serves is the most important gap to close.
+          </p>
+          <p style="color: var(--color-text);" class="font-medium">
+            Everything since has been about closing that gap. Building things that don't just work,
+            but feel like they were made for the person using them.
+          </p>
+        </div>
+
+        <!-- Beliefs sidebar -->
+        <div>
+          <p
+            class="text-[11px] font-medium uppercase tracking-widest mb-5"
+            style="color: var(--color-text-tertiary);"
+          >
+            Things I believe
+          </p>
+          <div class="space-y-2.5">
+            <div
+              v-for="belief in beliefs" :key="belief"
+              class="rounded-xl border px-4 py-3.5"
+              :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
+            >
+              <p class="text-[14px] leading-relaxed" style="color: var(--color-text);">{{ belief }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Timeline -->
+    <section class="mb-32 reveal">
+      <div class="mb-10">
+        <p class="eyebrow mb-2">Life in chapters</p>
+        <h3 class="text-3xl font-semibold tracking-tight">How it unfolded.</h3>
       </div>
 
-      <div class="space-y-4">
+      <div class="max-w-2xl">
         <div
-          v-for="e in education" :key="e.title"
-          class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 md:gap-10 rounded-2xl border p-7 transition-colors"
-          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
+          v-for="(item, idx) in timeline"
+          :key="item.year + item.title"
+          class="relative pl-8"
+          :class="idx < timeline.length - 1 ? 'pb-10' : ''"
         >
-          <div>
-            <p class="text-[13px] font-medium" style="color: var(--color-text-secondary);">
-              {{ e.period }}
-            </p>
-            <p class="text-[12px] mt-1" style="color: var(--color-text-tertiary);">
-              {{ e.location }}
-            </p>
-          </div>
+          <!-- Connecting line to next item -->
+          <div
+            v-if="idx < timeline.length - 1"
+            class="absolute left-[5px] top-5 bottom-0 w-px"
+            :style="{ background: 'var(--color-border)' }"
+          />
 
+          <!-- Dot -->
+          <div
+            class="absolute left-0 top-1.5 w-3 h-3 rounded-full"
+            :class="item.isCurrent ? 'timeline-dot-current' : 'timeline-dot'"
+          />
+
+          <!-- Content -->
           <div>
-            <div class="flex items-start justify-between gap-3 mb-2 flex-wrap">
-              <p class="text-[18px] font-semibold tracking-tight" style="color: var(--color-text);">
-                {{ e.title }}
+            <div class="flex items-center gap-2.5 mb-1">
+              <p class="text-[12px] font-medium" style="color: var(--color-text-tertiary);">
+                {{ item.year }}
               </p>
               <span
-                class="text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap"
-                :style="badgeStyle(e.badgeTone)"
+                v-if="item.isCurrent"
+                class="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                style="color: var(--color-warning); background: rgba(255,159,10,0.14);"
               >
-                {{ e.badge }}
+                In progress
               </span>
             </div>
-            <p class="text-[14px] mb-3" style="color: var(--color-text-secondary);">
-              {{ e.institution }}
+            <p class="text-[11px] font-medium uppercase tracking-wider mb-1.5" style="color: var(--color-accent);">
+              {{ item.chapter }}
+            </p>
+            <p class="text-[18px] font-semibold tracking-tight mb-2" style="color: var(--color-text);">
+              {{ item.title }}
             </p>
             <p class="text-[14px] leading-relaxed" style="color: var(--color-text-secondary);">
-              {{ e.detail }}
+              {{ item.description }}
             </p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Experience -->
+    <!-- Dreams & Ambitions -->
     <section class="mb-32 reveal">
       <div class="mb-10">
-        <p class="eyebrow mb-2">Experience</p>
-        <h3 class="text-3xl font-semibold tracking-tight">Where I've worked.</h3>
+        <p class="eyebrow mb-2">Ambitions</p>
+        <h3 class="text-3xl font-semibold tracking-tight">What I'm after.</h3>
       </div>
 
-      <div class="space-y-4">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         <div
-          v-for="job in experience" :key="job.role + job.company"
-          class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 md:gap-10 rounded-2xl border p-7 transition-colors"
+          v-for="dream in dreams"
+          :key="dream.title"
+          class="rounded-2xl border p-6 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
         >
-          <div>
-            <p class="text-[13px] font-medium" style="color: var(--color-text-secondary);">
-              {{ job.period }}
-            </p>
-            <p class="text-[12px] mt-1" style="color: var(--color-text-tertiary);">
-              {{ job.location }}
-            </p>
+          <div
+            class="w-9 h-9 rounded-xl flex items-center justify-center"
+            style="background: var(--color-accent-soft);"
+          >
+            <UIcon :name="dream.icon" class="size-[18px]" style="color: var(--color-accent);" />
           </div>
-
-          <div>
-            <div class="flex items-start justify-between gap-3 mb-2 flex-wrap">
-              <p class="text-[18px] font-semibold tracking-tight" style="color: var(--color-text);">
-                {{ job.role }}
-              </p>
-              <span
-                v-if="job.badge"
-                class="text-[11px] font-medium px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 whitespace-nowrap"
-                :style="badgeStyle(job.badgeTone)"
-              >
-                <span class="size-1.5 rounded-full" :style="{ background: badgeStyle(job.badgeTone).color }" />
-                {{ job.badge }}
-              </span>
-            </div>
-            <p class="text-[14px] mb-4" style="color: var(--color-text-secondary);">
-              {{ job.company }}
-            </p>
-
-            <ul class="space-y-2 mb-5">
-              <li
-                v-for="b in job.bullets" :key="b"
-                class="flex gap-2.5 text-[14px] leading-relaxed"
-                style="color: var(--color-text-secondary);"
-              >
-                <span aria-hidden class="mt-2 size-1 shrink-0 rounded-full" :style="{ background: 'var(--color-text-tertiary)' }" />
-                <span>{{ b }}</span>
-              </li>
-            </ul>
-
-            <div class="flex flex-wrap gap-1.5">
-              <span
-                v-for="s in job.stack" :key="s"
-                class="text-[11px] px-2 py-0.5 rounded-md border"
-                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
-              >{{ s }}</span>
-            </div>
-          </div>
+          <p class="text-[16px] font-semibold tracking-tight" style="color: var(--color-text);">
+            {{ dream.title }}
+          </p>
+          <p class="text-[14px] leading-relaxed" style="color: var(--color-text-secondary);">
+            {{ dream.description }}
+          </p>
         </div>
       </div>
     </section>
@@ -450,5 +479,26 @@ useScrollReveal('.reveal')
 .dot-active {
   width: 18px;
   background: rgba(255, 255, 255, 0.95);
+}
+
+.timeline-dot {
+  background: var(--color-border-strong);
+}
+
+.timeline-dot-current {
+  background: var(--color-warning);
+  box-shadow: 0 0 0 4px rgba(255, 159, 10, 0.18);
+  animation: pulse-dot 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(255, 159, 10, 0.18); }
+  50% { box-shadow: 0 0 0 8px rgba(255, 159, 10, 0.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-dot-current {
+    animation: none;
+  }
 }
 </style>

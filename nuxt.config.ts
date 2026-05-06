@@ -21,10 +21,10 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'axelnova.tech | Qie',
+      title: 'Axel Nova Ventures',
       meta: [
         { name: 'description', content: 'UI/UX engineer with 7 years of building — fintech, SaaS, and products that need real craft.' },
-        { property: 'og:title', content: 'Ahmad Baihaqie — axelnova.tech' },
+        { property: 'og:title', content: 'Axel Nova Ventures' },
         { property: 'og:description', content: 'UI/UX-focused software engineer. Vue · Nuxt · Laravel · Docker · AWS.' },
       ],
       link: [{ rel: 'icon', type: 'image/svg+xml', href: '/axelnovaicon.svg' }],

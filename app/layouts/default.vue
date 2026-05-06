@@ -10,6 +10,7 @@ const headerRef = ref<HTMLElement | null>(null)
 const links = [
   { label: 'Home',     to: '/' },
   { label: 'About',    to: '/about' },
+  { label: 'Company',  to: '/company' },
   { label: 'Projects', to: '/projects' },
   { label: 'Services', to: '/services' },
 ]
@@ -198,7 +199,7 @@ onMounted(() => {
     <footer class="mt-32 relative">
       <div class="aurora-line opacity-60" />
       <div class="border-t" :style="{ borderColor: 'var(--color-border)' }">
-        <div class="max-w-7xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-3">
           <p class="text-[12px]" style="color: var(--color-text-secondary);">
             Ahmad Baihaqie · axelnova.tech © 2026
           </p>
