@@ -27,6 +27,27 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
+# First-boot bootstrap: copy .env, install vendor, ensure Laravel runtime dirs, generate APP_KEY.
+# Runs every container start but is idempotent — fast no-op once the host bind mount is populated.
+COPY <<'EOF' /usr/local/bin/dev-entrypoint.sh
+#!/bin/sh
+set -e
+cd /app
+[ ! -f .env ] && [ -f .env.example ] && cp .env.example .env
+mkdir -p bootstrap/cache \
+         storage/app/public \
+         storage/framework/cache/data \
+         storage/framework/sessions \
+         storage/framework/testing \
+         storage/framework/views \
+         storage/logs
+[ ! -f vendor/autoload.php ] && composer install --no-interaction --prefer-dist
+grep -q '^APP_KEY=base64:' .env || php artisan key:generate --force
+exec "$@"
+EOF
+RUN chmod +x /usr/local/bin/dev-entrypoint.sh
+
 EXPOSE 8003
 
+ENTRYPOINT ["/usr/local/bin/dev-entrypoint.sh"]
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8003"]

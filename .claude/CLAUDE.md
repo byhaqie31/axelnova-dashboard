@@ -1,88 +1,83 @@
-# axelnova-dashboard — Claude Project Guide
+# CLAUDE.md
 
-Senior-engineer portfolio for Ahmad Baihaqie (Qie). Hosted at axelnova.tech.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Tech stack
+Portfolio + client platform for Ahmad Baihaqie / Axel Nova Ventures. Production: https://axelnova.tech.
 
-- **Nuxt 4** (`^4.4.4`) with `app/` source layout
-- **Vue 3** (`^3.5.x`) + **TypeScript**
-- **@nuxt/ui v4** (Tailwind CSS v4 under the hood)
-- **GSAP** + **ScrollTrigger** (client-only plugin)
-- **@nuxtjs/google-fonts** — Inter
-- **@vueuse/nuxt** for composables
-- Color-mode support via `useColorMode()` (provided by `@nuxt/ui`)
+## Authoritative docs — read these before assuming
 
-## Project layout
+This repo is documentation-rich. Don't duplicate what's already written:
 
+- [README.md](../README.md) — repo layout, full local-dev orchestration, common gotchas
+- [ARCHITECTURE.md](../ARCHITECTURE.md) — DB tables, API routes, frontend routes, queued job flow, key services
+- [DEPLOY.md](../DEPLOY.md) — VPS topology, CI deploy flow, rollback, ops cheatsheet
+- [QUOTE_BUILDER.md](../QUOTE_BUILDER.md) — pricing formula, calculation order, how to update prices/packages/add-ons
+- [frontend/UI-Standards.md](../frontend/UI-Standards.md) — design tokens, color, typography, motion (single source of truth for UI decisions)
+
+## Big picture
+
+Monorepo, two apps deployed independently:
+
+- `backend/` — **Laravel 11** API (PHP 8.4). Public quote builder + Sanctum-protected `/admin/leads` portal. Database queue, Mailtrap (dev) / SMTP (prod). Port `8003`.
+- `frontend/` — **Nuxt 4** SSR (Vue 3 + TypeScript + @nuxt/ui v4 / Tailwind v4). Portfolio + `/quote` builder + `/admin` SPA. Port `3003`.
+- **MySQL 8** is shared via the sibling [axelnova-infra](../../axelnova-infra/) repo — both apps join its external `axelnova-shared` Docker network and reach MySQL via hostname `mysql`.
+
+The pricing engine has two implementations that **must stay in sync**:
+- [backend/app/Services/Quoting/PricingEngine.php](../backend/app/Services/Quoting/PricingEngine.php) — server-side, source of truth, drives final stored quote
+- [frontend/app/composables/usePricingEngine.ts](../frontend/app/composables/usePricingEngine.ts) — TS port for live client-side estimates on `/quote`
+
+Both read the same JSON config from `pricing_configs` (active row) via `GET /api/v1/quote-builder/config` (cached 1h). Pricing changes are **data, not code** — see [QUOTE_BUILDER.md](../QUOTE_BUILDER.md).
+
+## Common commands
+
+Local dev runs entirely in Docker. The shared infra stack must be up first (`cd ../axelnova-infra && docker compose up -d`).
+
+```bash
+# Boot both apps (from repo root)
+docker compose -f docker-compose.dev.yml up -d --build
+
+# Logs
+docker compose -f docker-compose.dev.yml logs -f backend frontend
+
+# Artisan / composer / npm — must run inside containers (DB_HOST=mysql only resolves on docker net)
+docker compose -f docker-compose.dev.yml exec backend  php artisan migrate
+docker compose -f docker-compose.dev.yml exec backend  php artisan tinker
+docker compose -f docker-compose.dev.yml exec backend  php artisan queue:work    # required when testing quote submissions
+docker compose -f docker-compose.dev.yml exec frontend npm install <pkg>
+
+# Stop
+docker compose -f docker-compose.dev.yml down            # or `down -v` to wipe volumes
 ```
-app/
-  app.vue                Root entry (UApp + NuxtLayout + NuxtPage)
-  layouts/default.vue    Sticky nav + footer with iridescent gradient hairline
-  pages/                 index, projects, services, about, projects/[id], proposals/[slug]
-  components/shared/     ProjectCard, SectionHeader
-  composables/           useScrollReveal (GSAP + ScrollTrigger wrapper)
-  plugins/gsap.client.ts Registers gsap + ScrollTrigger
-  data/projects.ts       Project list source
-  assets/css/main.css    Design tokens + utility classes
-public/                  Static assets (cv.pdf, axelnovaicon.svg, etc.)
-```
 
-## Design system
+Endpoints: backend `http://127.0.0.1:8003`, frontend `http://127.0.0.1:3003`.
 
-Single source of truth: **[UI-Standards.md](../UI-Standards.md)** at the repo root. All color, typography, spacing, motion, and component decisions live there. Do not invent new tokens — extend `app/assets/css/main.css` and update `UI-Standards.md` together.
+Production deploys via GitHub Actions on merge to `main` — see [DEPLOY.md](../DEPLOY.md). Don't SSH for routine deploys.
 
-Key principles:
-- Apple-inspired premium minimalism (graphite + Apple Blue + iridescent accents)
-- All theming via CSS variables — never hardcode hex in components
-- Both light and dark mode are first-class
-- Animations are subtle (150–300ms micro, ≤700ms reveal), respect `prefers-reduced-motion`
+## Non-obvious rules
 
-## Color-mode FOUC rule (important)
+These are easy to get wrong; they exist for reasons:
 
-Never bind layout backgrounds to `colorMode.value` in templates — `colorMode` resolves to a default during SSR and flips after hydration, causing a gray flash on refresh. Use CSS variables (`--nav-bg-top`, `--nav-bg-scrolled`, etc.) and let `:root` / `.dark` rules handle the swap. `@nuxt/ui` injects the `.dark` class before paint, so vars resolve correctly from the first frame.
+**FOUC rule (frontend).** Never bind layout backgrounds to `colorMode.value` in templates — `colorMode` resolves to a default during SSR and flips after hydration, causing a gray flash on refresh. Use CSS variables (`--nav-bg-top`, `--nav-bg-scrolled`, etc.) and let `:root` / `.dark` rules handle the swap. `@nuxt/ui` injects the `.dark` class before paint.
 
-## Scroll-reveal rule
+**Scroll-reveal rule (frontend).** `useScrollReveal('.reveal')` is the only API for fade-in-on-scroll. Do not add static `opacity-0` Tailwind classes to elements that depend on JS to reveal — if GSAP fails, content must still be visible. Set initial hidden state via `gsap.set()` inside `onMounted`, not Tailwind.
 
-`useScrollReveal('.reveal')` is the only API for fade-in-on-scroll. Do not add static `opacity-0` Tailwind classes to elements that depend on JS to reveal — if GSAP fails, content must still be visible. Use `gsap.set()` inside `onMounted` to set the initial hidden state instead.
+**Design tokens (frontend).** All theming via CSS variables in [frontend/app/assets/css/main.css](../frontend/app/assets/css/main.css). Never hardcode hex in components. New patterns extend `main.css` AND update [UI-Standards.md](../frontend/UI-Standards.md) together. Both light and dark mode are first-class — verify in both.
+
+**Queue worker is required for quote submissions.** `POST /v1/quote-requests` dispatches `SendClientQuoteEmail` and `NotifyAdminJob`. If `queue:work` isn't running, submissions silently queue and emails never send. The customer estimate is rendered **inline** in the email — no PDF, no attachments.
+
+**Sanctum is route-scoped.** Stateful CSRF middleware only applies to `/v1/admin/*` ([backend/routes/api.php](../backend/routes/api.php)). Public POSTs (the quote form) are pure stateless. Don't set `SANCTUM_STATEFUL_DOMAINS` globally.
+
+**Turnstile auto-bypass.** Empty `NUXT_PUBLIC_TURNSTILE_SITE_KEY` skips the widget AND the verification call entirely (frontend sends `dev-bypass`, backend accepts when `TURNSTILE_SECRET` is empty). This is intentional for dev — don't add code that breaks the bypass.
+
+**Quote throttle is env-aware.** 3/hour/IP in production, 1000/min otherwise. Test freely in dev.
+
+**Reference codes are atomic.** `AXN-YYYY-NNNN` codes are generated via DB transaction with `lockForUpdate()` in [backend/app/Support/ReferenceCodeGenerator.php](../backend/app/Support/ReferenceCodeGenerator.php). Counter resets each year. Don't reimplement counter logic elsewhere.
 
 ## Conventions
 
-- Inline `:style` is fine for one-off CSS-var lookups (e.g. `style="color: var(--color-text-secondary)"`). Anything reusable goes in `main.css`.
-- Use `<UIcon name="i-lucide-…">` from Iconify for icons. Never emojis.
-- Prefer `tracking-tighter` / `tracking-tight` over arbitrary `tracking-[…]` values.
-- Pages should `useScrollReveal('.reveal')` once at script-setup and add `class="reveal"` to sections.
-- Hero animations are page-specific — set initial state via `gsap.set()` in `onMounted`, not via Tailwind.
-
-## Commands
-
-```bash
-# Local dev (host node)
-npm install
-npm run dev               # http://localhost:3000
-
-# Production build & preview locally
-npm run build
-npm run preview
-
-# Docker — local dev (hot reload, volume-mounted)
-docker compose -f docker-compose.dev.yml up --build
-
-# Docker — production image
-docker compose up -d --build
-docker compose logs -f axelnova-dashboard
-```
-
-Production runs at `127.0.0.1:3003` (reverse-proxied to `axelnova.tech`).
-
-## Deployment
-
-Container only listens on localhost — a host-level reverse proxy (Caddy/Nginx/Traefik) terminates TLS and forwards to `127.0.0.1:3003`. Match this convention when adding new services.
-
-## When making UI changes
-
-1. Read `UI-Standards.md` first to see existing tokens.
-2. If a new pattern is needed, extend `main.css` (semantic tokens, not raw hex).
-3. Update `UI-Standards.md` so the next session inherits the decision.
-4. Verify in **both** light and dark mode.
-5. Test on mobile (375px) and respect `prefers-reduced-motion`.
-6. Do not break the FOUC rule — no `colorMode.value` in template `:style` for layout surfaces.
+- Inline `:style` is fine for one-off CSS-var lookups; reusable styles go in `main.css`.
+- Icons: `<UIcon name="i-lucide-…">` from Iconify. Never emojis.
+- Prefer `tracking-tighter` / `tracking-tight` over arbitrary `tracking-[…]`.
+- Pages call `useScrollReveal('.reveal')` once at script-setup; sections add `class="reveal"`.
+- Hero animations are page-specific — set initial state via `gsap.set()` in `onMounted`.
+- Branch protection on `main` — every change goes through a PR. CI runs build-check on PRs and deploys on merge.
