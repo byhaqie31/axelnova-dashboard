@@ -57,6 +57,10 @@ services:
       - --sleep=3
       - --max-time=3600
       - --max-jobs=1000
+    # Disable inherited HEALTHCHECK from the backend image — queue worker
+    # has no HTTP server, so probing :8003/up always fails. Cosmetic-only.
+    healthcheck:
+      disable: true
     env_file:
       - ./backend/.env.production
     environment:

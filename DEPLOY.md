@@ -1,291 +1,56 @@
-# Production deploy — axelnova-dashboard monorepo
+# Deploy & Ops — axelnova-dashboard
 
-One-time runbook for cutting over from the legacy `~/axelnova-dashboard/` standalone Nuxt site (port 3001) to the Phase 3 monorepo (backend + frontend + queue).
+Production runs at **https://axelnova.tech**. Stack lives on a Hostinger VPS (`vps` SSH alias) — backend, frontend, and queue worker in Docker via [docker-compose.prod.yml](./docker-compose.prod.yml); fronted by system **nginx** which terminates TLS and routes traffic.
 
-> **Heads-up:** the dashboard's GitHub Actions deploy workflow is still wired up for the legacy single-image build. Do NOT `git push origin main` of the monorepo branch until the workflow is updated, or CI will run and fail/overwrite. This runbook deploys directly from the VPS via `docker compose --build` — no CI involved.
+## Daily flow
 
----
+```bash
+git checkout -b some-fix
+# ... commit changes ...
+git push -u origin some-fix
+# Open PR on GitHub → merge to main → CI auto-deploys
+```
 
-## 0. Before you start — gather these secrets
+That's it. No SSH needed for deploys. Watch runs at: https://github.com/byhaqie31/axelnova-dashboard/actions
 
-| Secret | Where it goes | How to get it |
+The PR triggers a build-check workflow first (builds both images to catch Dockerfile/source breakage). Merge to `main` triggers the deploy workflow which SSHes the VPS and rolls out.
+
+## What the deploy workflow does
+
+[.github/workflows/deploy.yml](./.github/workflows/deploy.yml) on every push to `main`:
+
+1. SSH into VPS using `VPS_HOST` / `VPS_USER` / `VPS_SSH_KEY` repo secrets
+2. `git reset --hard origin/main`
+3. `docker compose -f docker-compose.prod.yml up -d --build` (incremental, layer-cached)
+4. Wait for entrypoint config:cache
+5. `php artisan migrate --force`
+6. `php artisan queue:restart` (reloads job code in worker)
+7. Health-check `/up`
+8. Prune dangling images
+
+Total: ~30s when only source changes; ~2 min for a full rebuild (PHP extension recompile or `npm ci` invalidation).
+
+## Architecture
+
+| Component | Where | Purpose |
 |---|---|---|
-| New DB password for `axelnova_dashboard_user` | `backend/.env.production` + MySQL `ALTER USER` | Generate fresh: `openssl rand -base64 24` |
-| Hostinger mailbox password (`no-reply@axelnova.tech`) | `backend/.env.production` `MAIL_PASSWORD` | Hostinger panel → Emails → mailbox settings |
-| Cloudflare Turnstile site key + secret (production) | Both env files | Cloudflare dashboard → Turnstile → Add widget for `dashboard.axelnova.tech` |
-| MySQL root password | One-time, for the `ALTER USER` step | Already on VPS in `~/infra/.env` (`MYSQL_ROOT_PASSWORD`) |
-
-Have these in a password manager / scratchpad **before** SSH-ing in.
-
----
-
-## 1. Pre-flight on VPS
-
-```bash
-ssh vps
-
-# Shared infra up?
-docker ps --format '{{.Names}}\t{{.Status}}' | grep -E 'mysql|phpmyadmin'
-
-# Shared network exists?
-docker network inspect axelnova-shared > /dev/null && echo OK || echo "MISSING — bring up ~/infra first"
-
-# Legacy site running? (sanity check before we replace it)
-docker ps --filter name=axelnova-dashboard --format '{{.Names}}\t{{.Status}}'
-```
-
----
-
-## 2. Park the legacy site
-
-```bash
-cd ~/axelnova-dashboard
-docker compose down
-cd ~
-mv axelnova-dashboard axelnova-dashboard-legacy
-```
-
-Caddy is still proxying to port 3001 → site now returns 502. **Downtime starts here** until step 10 (Caddy reload).
-
----
-
-## 3. Get the new monorepo onto the VPS
-
-Two options — pick one:
-
-**A. Clone from GitHub (if the monorepo branch is pushed):**
-```bash
-cd ~
-git clone -b <branch-name> git@github.com:byhaqie31/axelnova-dashboard.git
-```
-
-**B. rsync from your laptop (if not pushed yet):**
-```bash
-# on laptop:
-rsync -av --delete \
-    --exclude='node_modules' --exclude='vendor' --exclude='.env' --exclude='.env.production' \
-    --exclude='backend/storage/logs/*' --exclude='backend/storage/framework' \
-    --exclude='frontend/.nuxt' --exclude='frontend/.output' \
-    /Users/BHQIMBP14/Developer/axelnova-dashboard/ vps:~/axelnova-dashboard/
-```
-
-Then on VPS:
-```bash
-cd ~/axelnova-dashboard
-ls docker-compose.prod.yml backend/Dockerfile frontend/Dockerfile  # all three should exist
-```
-
----
-
-## 4. Create the host storage dir
-
-```bash
-mkdir -p ~/data/axelnova-dashboard/storage
-```
-
-The compose file bind-mounts this into both `backend` and `queue` containers at `/app/storage`.
-
----
-
-## 5. Rotate the dashboard DB user password
-
-```bash
-NEW_DB_PW=$(openssl rand -base64 24)
-echo "Save this in your password manager: $NEW_DB_PW"
-
-MYSQL_ROOT_PW=$(grep MYSQL_ROOT_PASSWORD ~/infra/.env | cut -d= -f2-)
-MYSQL_CT=$(docker ps --filter name=mysql --format '{{.Names}}' | head -1)
-
-docker exec "$MYSQL_CT" mysql -uroot -p"$MYSQL_ROOT_PW" -e "
-    ALTER USER 'axelnova_dashboard_user'@'%' IDENTIFIED BY '$NEW_DB_PW';
-    FLUSH PRIVILEGES;"
-
-# Update VPS-side init-databases.sql so a future volume re-init keeps the same password.
-# (The committed repo keeps the placeholder — only the VPS copy holds the real value.)
-sed -i.bak "s/axelnova_dashboard_local_pw/$NEW_DB_PW/" ~/infra/scripts/init-databases.sql
-grep axelnova_dashboard_user ~/infra/scripts/init-databases.sql   # confirm the sub took
-```
-
----
-
-## 6. Fill in the env files
-
-```bash
-cd ~/axelnova-dashboard
-
-# Backend
-cp backend/.env.production.example backend/.env.production
-
-# Generate APP_KEY using a one-shot container
-docker build -t axelnova-backend:latest ./backend
-APP_KEY=$(docker run --rm axelnova-backend:latest php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;")
-echo "APP_KEY=$APP_KEY"
-
-# Edit backend/.env.production and replace each <FILL_IN>:
-#   APP_KEY            → value just generated
-#   DB_PASSWORD        → $NEW_DB_PW from step 5
-#   MAIL_PASSWORD      → Hostinger mailbox password
-#   TURNSTILE_SECRET   → Cloudflare Turnstile secret
-#   TURNSTILE_SITE_KEY → Cloudflare Turnstile site key
-nano backend/.env.production
-
-# Frontend
-cp frontend/.env.production.example frontend/.env.production
-
-# Edit frontend/.env.production:
-#   NUXT_PUBLIC_TURNSTILE_SITE_KEY → same value as TURNSTILE_SITE_KEY above
-nano frontend/.env.production
-```
-
-Sanity check that no `<FILL_IN>` markers remain:
-```bash
-grep -n FILL_IN backend/.env.production frontend/.env.production && echo "STILL HAS PLACEHOLDERS — fix before continuing" || echo "OK"
-```
-
----
-
-## 7. Build and start the stack
-
-```bash
-cd ~/axelnova-dashboard
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-First boot: ~3 min (compiles PHP extensions, builds Nuxt SSR bundle). Subsequent rebuilds ~30s thanks to layer cache.
-
-Watch it come up:
-```bash
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs --tail 50
-```
-
-All three (`axelnova-backend`, `axelnova-queue`, `axelnova-frontend`) should be `Up (healthy)` within ~30s of the build finishing.
-
----
-
-## 8. Run migrations (and seed pricing config — first deploy only)
-
-```bash
-docker compose -f docker-compose.prod.yml exec backend php artisan migrate --force
-
-# First deploy only — populates active pricing config row:
-docker compose -f docker-compose.prod.yml exec backend php artisan db:seed --force --class=PricingConfigSeeder
-```
-
-Confirm:
-```bash
-docker compose -f docker-compose.prod.yml exec backend php artisan tinker --execute="echo \App\Models\PricingConfig::active()?->version;"
-# Expected: 2026.05.01
-```
-
----
-
-## 9. Internal health check (still on VPS, pre-Caddy)
-
-```bash
-curl -fsS http://127.0.0.1:8003/up
-# {"status":"ok","timestamp":"..."}
-
-curl -fsSI http://127.0.0.1:3003/ | head -1
-# HTTP/1.1 200 OK
-```
-
-If either fails: `docker compose -f docker-compose.prod.yml logs --tail 200 backend frontend queue`. Don't proceed to Caddy until both pass.
-
----
-
-## 10. Update the Caddy reverse proxy
-
-Edit `/etc/caddy/Caddyfile` — replace the existing `dashboard.axelnova.tech` block with:
-
-```caddy
-dashboard.axelnova.tech {
-    encode gzip
-
-    # Laravel API — no path strip (routes/api.php is already mounted under /api/*)
-    @api path /api/*
-    handle @api {
-        reverse_proxy 127.0.0.1:8003
-    }
-
-    # Everything else → Nuxt SSR frontend
-    handle {
-        reverse_proxy 127.0.0.1:3003
-    }
-}
-```
-
-Validate + reload:
-```bash
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
-```
-
-**Downtime ends here.**
-
----
-
-## 11. External smoke test (from your laptop)
-
-```bash
-curl -fsSI https://dashboard.axelnova.tech/ | head -3
-# HTTP/2 200 — served by Nuxt
-
-curl -fsS https://dashboard.axelnova.tech/api/services
-# JSON response from Laravel (real endpoints from routes/api.php)
-```
-
-Then in a browser: open `https://dashboard.axelnova.tech/quote`, submit a real quote. Verify:
-
-```bash
-# On VPS — confirm the quote landed
-docker compose -f docker-compose.prod.yml exec backend php artisan tinker --execute="echo \App\Models\QuoteRequest::latest()->first()?->reference_code;"
-
-# Confirm queue processed the email job
-docker compose -f docker-compose.prod.yml logs --tail 50 queue | grep -i 'processed\|fail'
-```
-
-Email should arrive at `baihaqie@axelnova.tech` (admin) and the customer email submitted in the form.
-
----
-
-## 12. Decommission the legacy site
-
-After **24–48h with no issues**, fully retire the old setup:
-
-```bash
-cd ~/axelnova-dashboard-legacy
-docker compose down --rmi all
-cd ~
-rm -rf axelnova-dashboard-legacy
-```
-
-Optionally also delete the now-unused legacy image from GHCR (Cloudflare dashboard → Container registry → `axelnova-dashboard:latest`).
-
----
-
-## Subsequent deploys
-
-```bash
-ssh vps
-cd ~/axelnova-dashboard
-git pull   # or rsync from laptop
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml exec backend php artisan migrate --force
-docker compose -f docker-compose.prod.yml exec backend php artisan queue:restart
-```
-
-The `queue:restart` is required after any code change touching jobs — the worker container caches code in memory between jobs.
-
----
+| nginx (system) | `/etc/nginx/sites-available/axelnova.tech` | TLS terminator + reverse proxy. Routes `/api/*` → `127.0.0.1:8003`, everything else → `127.0.0.1:3003` |
+| Frontend (Nuxt 4 SSR) | `axelnova-frontend` container | Built from [frontend/Dockerfile](./frontend/Dockerfile), port 3000 → host 3003 |
+| Backend (Laravel 11) | `axelnova-backend` container | nginx + php-fpm via supervisord, built from [backend/Dockerfile](./backend/Dockerfile), port 8003 |
+| Queue worker | `axelnova-queue` container | Same image as backend; runs `php artisan queue:work`. Healthcheck disabled (no HTTP server) |
+| MySQL | `axelnova-mysql` (shared infra at `~/infra/`) | Shared with portfolio-v2; reachable as `mysql:3306` from app containers via `axelnova-shared` Docker network |
+| TLS cert | `/etc/letsencrypt/live/axelnova.tech/` | Let's Encrypt, auto-renewed via certbot timer |
 
 ## Common ops
 
 ```bash
-# Live Laravel log
+ssh vps
+cd ~/axelnova-dashboard
+
+# Tail Laravel log (host file — bind-mounted from container)
 tail -f ~/data/axelnova-dashboard/storage/logs/laravel.log
 
-# Container logs (all services)
+# All container logs
 docker compose -f docker-compose.prod.yml logs -f
 
 # One service
@@ -300,19 +65,86 @@ docker compose -f docker-compose.prod.yml exec backend php artisan queue:restart
 # Failed jobs
 docker compose -f docker-compose.prod.yml exec backend php artisan queue:failed
 docker compose -f docker-compose.prod.yml exec backend php artisan queue:retry all
+
+# DB shell as the dashboard user (password from VPS-only env)
+DB_PW=$(grep ^DB_PASSWORD= backend/.env.production | cut -d= -f2-)
+docker exec -it axelnova-mysql mysql -uaxelnova_dashboard_user -p"$DB_PW" axelnova_dashboard_db
 ```
 
----
+## Environment variables
+
+`.env.production` files are gitignored (VPS-only). On a fresh VPS install or env change:
+
+```bash
+cp backend/.env.production.example backend/.env.production
+cp frontend/.env.production.example frontend/.env.production
+# edit each, replace <FILL_IN> values
+chmod 600 backend/.env.production frontend/.env.production
+docker compose -f docker-compose.prod.yml up -d --force-recreate
+```
+
+Required values to fill on first setup:
+- **Backend**: `APP_KEY` (`base64:` + base64-encoded 32 random bytes), `DB_PASSWORD`, `MAIL_PASSWORD`, optional `TURNSTILE_SECRET` + `TURNSTILE_SITE_KEY`
+- **Frontend**: optional `NUXT_PUBLIC_TURNSTILE_SITE_KEY` (must match backend's `TURNSTILE_SITE_KEY`)
+
+`SANCTUM_STATEFUL_DOMAINS` doesn't need to be set — the Sanctum stateful middleware is route-scoped to admin endpoints only ([backend/routes/api.php](./backend/routes/api.php)). Public POSTs (the quote form) don't trigger CSRF protection.
+
+## Manual deploy (CI fallback)
+
+If GitHub Actions is down or you need to push without going through CI:
+
+```bash
+ssh vps
+cd ~/axelnova-dashboard
+git pull origin main
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec backend php artisan migrate --force
+docker compose -f docker-compose.prod.yml exec backend php artisan queue:restart
+```
+
+This is exactly what the workflow script does — same commands.
 
 ## Rollback
 
-If a deploy breaks prod:
-
 ```bash
+ssh vps
 cd ~/axelnova-dashboard
-git log --oneline -5
-git checkout <last-good-sha>
+git log --oneline -5             # find last good commit
+git checkout <sha>               # detached HEAD on the prior commit
 docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec backend php artisan queue:restart
 ```
 
-DB migrations don't auto-rollback. If the bad change is a migration: pin to the prior SHA, then manually `php artisan migrate:rollback --step=N` to undo the offending migration(s).
+After rollback, the next merge to `main` will redeploy whatever's on `main` — including the bad commit if you haven't reverted it. To stay rolled back, open a PR that reverts the bad commit and merge that.
+
+DB migrations don't auto-rollback. If a bad migration is the cause:
+1. Pin to prior SHA (above)
+2. `php artisan migrate:rollback --step=N` to undo the offending migration(s)
+
+## Storage and backups
+
+`~/data/axelnova-dashboard/storage` on VPS — bind-mounted into backend + queue containers at `/app/storage`. Persists across deploys. Holds Laravel logs and any uploaded files.
+
+Backups are not yet automated. Manual backup:
+
+```bash
+# From your laptop
+rsync -av byhaqie31@187.77.151.66:~/data/axelnova-dashboard/storage/ ~/backups/axelnova-storage/
+```
+
+For database, use `axelnova-infra/scripts/` patterns or `mysqldump` directly via the shared MySQL container:
+
+```bash
+ssh vps
+DB_PW=$(grep ^DB_PASSWORD= ~/axelnova-dashboard/backend/.env.production | cut -d= -f2-)
+docker exec axelnova-mysql mysqldump -uaxelnova_dashboard_user -p"$DB_PW" axelnova_dashboard_db \
+    > ~/backups/axelnova_dashboard_db_$(date +%Y%m%d_%H%M%S).sql
+```
+
+## Things to know
+
+- `TrustProxies` is wired so Laravel respects `X-Forwarded-*` headers from nginx — correct client IP for per-IP rate limiting and HTTPS-aware redirect URLs
+- Quote-form throttle is env-aware: 3/hour in production (spam protection), 1000/min in non-production (dev/staging testing)
+- Sanctum stateful middleware only runs on admin routes; public endpoints are pure stateless POSTs
+- Turnstile widget is conditional — empty `NUXT_PUBLIC_TURNSTILE_SITE_KEY` skips the widget AND the verification call entirely (frontend sends `dev-bypass` token, backend accepts when `TURNSTILE_SECRET` is empty)
+- Branch protection on `main` means no direct pushes — every change goes through a PR
