@@ -25,8 +25,6 @@ class StoreQuoteRequestRequest extends FormRequest
             'email' => ['required', 'email:rfc', 'max:200'],
             'phone' => ['required', 'string', 'max:30'],
             'company' => ['nullable', 'string', 'max:200'],
-            'service_category_id' => ['nullable', 'integer'],
-            'service_package_id' => ['nullable', 'integer'],
             'package_key' => ['required', 'string', Rule::in($validPackageKeys)],
             'modifiers' => ['nullable', 'array'],
             'addon_keys' => ['nullable', 'array'],

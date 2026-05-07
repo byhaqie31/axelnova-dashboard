@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\QuoteRequest;
+use App\Models\Quotation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -13,7 +13,7 @@ class AdminNotificationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public readonly QuoteRequest $quote) {}
+    public function __construct(public readonly Quotation $quote) {}
 
     public function envelope(): Envelope
     {

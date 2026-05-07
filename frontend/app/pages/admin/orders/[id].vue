@@ -6,34 +6,35 @@ const { apiFetch } = useAdminAuth()
 
 interface Order {
   id: number
-  reference_code: string
-  name: string
-  email: string
-  phone: string
-  company: string | null
+  order_number: string
+  quotation_id: number
+  client_id: number
+  reference_code: string | null
   package_key: string | null
-  estimate_min_myr: string
-  estimate_max_myr: string
-  estimate_weeks: number
+  estimate_weeks: number | null
+  submitted_at: string | null
+  name: string | null
+  email: string | null
+  phone: string | null
+  company: string | null
+  value_min_myr: string
+  value_max_myr: string
   status: string
-  project_status: string | null
-  project_started_at: string | null
-  project_delivered_at: string | null
-  project_completed_at: string | null
-  submitted_at: string
-  viewed_at: string | null
-  form_payload: Record<string, unknown>
-  addons: { key: string; label: string; amount_myr: string }[]
+  started_at: string | null
+  delivered_at: string | null
+  completed_at: string | null
+  notes: string | null
+  created_at: string
 }
 
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref('')
-const projectStatusLoading = ref(false)
+const statusLoading = ref(false)
 const actionMessage = ref('')
 
 useHead(() => ({
-  title: order.value ? `${order.value.reference_code} — Order` : 'Order — Admin',
+  title: order.value ? `${order.value.order_number} — Order` : 'Order — Admin',
 }))
 
 async function fetchOrder() {
@@ -44,31 +45,30 @@ async function fetchOrder() {
     order.value = res.data
   }
   catch {
-    error.value = 'Failed to load order. It may not exist or hasn\'t been converted yet.'
+    error.value = 'Failed to load order.'
   }
   finally {
     loading.value = false
   }
 }
 
-async function setProjectStatus(next: string) {
+async function setStatus(next: string) {
   if (!order.value) return
-  projectStatusLoading.value = true
+  statusLoading.value = true
   try {
     const res = await apiFetch<{ message: string; order: { data: Order } | Order }>(
-      `/api/v1/admin/orders/${order.value.id}/project-status`,
-      { method: 'POST', body: { project_status: next } },
+      `/api/v1/admin/orders/${order.value.id}/status`,
+      { method: 'POST', body: { status: next } },
     )
-    // Controller wraps in QuotationResource which returns under .data when collection, but for single it's bare
     const updated = (res.order as any).data ?? res.order
     order.value = updated as Order
-    actionMessage.value = `Project status set to ${projectStatusLabels[next]}.`
+    actionMessage.value = `Order status set to ${statusLabels[next] ?? next}.`
   }
   catch {
-    actionMessage.value = 'Failed to update project status.'
+    actionMessage.value = 'Failed to update status.'
   }
   finally {
-    projectStatusLoading.value = false
+    statusLoading.value = false
   }
 }
 
@@ -84,13 +84,14 @@ function fmtDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-const projectStatusOptions = ['pending', 'in_progress', 'delivered', 'completed']
+const statusOptions = ['pending', 'in_progress', 'delivered', 'completed', 'cancelled']
 
-const projectStatusLabels: Record<string, string> = {
+const statusLabels: Record<string, string> = {
   pending: 'Pending',
   in_progress: 'In progress',
   delivered: 'Delivered',
   completed: 'Completed',
+  cancelled: 'Cancelled',
 }
 
 interface TimelineStep {
@@ -102,10 +103,10 @@ interface TimelineStep {
 const timeline = computed<TimelineStep[]>(() => {
   if (!order.value) return []
   return [
-    { key: 'pending', label: 'Order created', at: order.value.submitted_at },
-    { key: 'in_progress', label: 'Work started', at: order.value.project_started_at },
-    { key: 'delivered', label: 'Delivered to client', at: order.value.project_delivered_at },
-    { key: 'completed', label: 'Engagement closed', at: order.value.project_completed_at },
+    { key: 'pending', label: 'Order created', at: order.value.created_at },
+    { key: 'in_progress', label: 'Work started', at: order.value.started_at },
+    { key: 'delivered', label: 'Delivered to client', at: order.value.delivered_at },
+    { key: 'completed', label: 'Engagement closed', at: order.value.completed_at },
   ]
 })
 </script>
@@ -129,25 +130,27 @@ const timeline = computed<TimelineStep[]>(() => {
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
             <div>
-              <p class="font-mono text-[20px] font-bold mb-1" style="color: var(--color-accent);">{{ order.reference_code }}</p>
-              <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ order.name }}</p>
+              <p class="font-mono text-[20px] font-bold mb-1" style="color: var(--color-accent);">{{ order.order_number }}</p>
+              <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ order.name ?? '—' }}</p>
               <p v-if="order.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ order.company }}</p>
             </div>
-            <AdminStatusPill :status="order.project_status" size="md" />
+            <AdminStatusPill :status="order.status" size="md" />
           </div>
           <div class="grid sm:grid-cols-3 gap-4 pt-4 border-t" style="border-color: var(--color-border);">
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Email</p>
-              <a :href="`mailto:${order.email}`" class="text-[13px] font-medium" style="color: var(--color-accent);">{{ order.email }}</a>
+              <a v-if="order.email" :href="`mailto:${order.email}`" class="text-[13px] font-medium" style="color: var(--color-accent);">{{ order.email }}</a>
+              <span v-else class="text-[13px]" :style="{ color: 'var(--color-text-tertiary)' }">—</span>
             </div>
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Phone</p>
-              <a :href="`tel:${order.phone}`" class="text-[13px] font-medium" style="color: var(--color-text);">{{ order.phone }}</a>
+              <a v-if="order.phone" :href="`tel:${order.phone}`" class="text-[13px] font-medium" style="color: var(--color-text);">{{ order.phone }}</a>
+              <span v-else class="text-[13px]" :style="{ color: 'var(--color-text-tertiary)' }">—</span>
             </div>
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Order value</p>
               <p class="text-[13px] font-semibold" style="color: var(--color-text);">
-                {{ fmtMyr(order.estimate_min_myr) }} – {{ fmtMyr(order.estimate_max_myr) }}
+                {{ fmtMyr(order.value_min_myr) }} – {{ fmtMyr(order.value_max_myr) }}
               </p>
             </div>
           </div>
@@ -179,17 +182,18 @@ const timeline = computed<TimelineStep[]>(() => {
           </ol>
         </div>
 
-        <!-- Estimate context -->
+        <!-- Source quotation -->
         <div class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Scope snapshot</p>
           <p class="text-[13px]" style="color: var(--color-text-secondary);">
-            {{ order.estimate_weeks }} week{{ order.estimate_weeks !== 1 ? 's' : '' }} ·
+            <span v-if="order.estimate_weeks">{{ order.estimate_weeks }} week{{ order.estimate_weeks !== 1 ? 's' : '' }} · </span>
             Package: <code class="font-mono" style="color: var(--color-text);">{{ order.package_key ?? '—' }}</code>
           </p>
           <p class="text-[12px] mt-2" style="color: var(--color-text-tertiary);">
-            Original quotation submitted {{ fmtDate(order.submitted_at) }} —
-            <NuxtLink :to="`/admin/quotations/${order.id}`" class="underline" :style="{ color: 'var(--color-accent)' }">view source quotation</NuxtLink>
+            Source quotation
+            <NuxtLink :to="`/admin/quotations/${order.quotation_id}`" class="underline ml-1" :style="{ color: 'var(--color-accent)' }">{{ order.reference_code ?? `#${order.quotation_id}` }}</NuxtLink>
+            <span v-if="order.submitted_at"> · submitted {{ fmtDate(order.submitted_at) }}</span>
           </p>
         </div>
 
@@ -199,16 +203,16 @@ const timeline = computed<TimelineStep[]>(() => {
 
         <div class="rounded-2xl border p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Project status</p>
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Order status</p>
           <div class="flex flex-wrap gap-2">
-            <button v-for="s in projectStatusOptions" :key="s" type="button"
+            <button v-for="s in statusOptions" :key="s" type="button"
               class="status-pill status-pill-button"
-              :class="{ 'opacity-50': projectStatusLoading }"
-              :data-status="order.project_status === s ? s : ''"
-              :data-active="order.project_status === s"
-              :disabled="projectStatusLoading || order.project_status === s"
-              @click="setProjectStatus(s)">
-              {{ projectStatusLabels[s] }}
+              :class="{ 'opacity-50': statusLoading }"
+              :data-status="order.status === s ? s : ''"
+              :data-active="order.status === s"
+              :disabled="statusLoading || order.status === s"
+              @click="setStatus(s)">
+              {{ statusLabels[s] }}
             </button>
           </div>
         </div>
@@ -217,12 +221,12 @@ const timeline = computed<TimelineStep[]>(() => {
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Contact</p>
 
-          <a :href="`mailto:${order.email}?subject=Re: ${order.reference_code}`"
+          <a v-if="order.email" :href="`mailto:${order.email}?subject=Re: ${order.order_number}`"
             class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
             Email client
           </a>
 
-          <a :href="`https://wa.me/${order.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(order.name)}%2C%20update%20on%20${order.reference_code}.`"
+          <a v-if="order.phone" :href="`https://wa.me/${order.phone.replace(/\\D/g, '')}?text=Hi%20${encodeURIComponent(order.name ?? '')}%2C%20update%20on%20${order.order_number}.`"
             target="_blank" rel="noopener"
             class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
             WhatsApp

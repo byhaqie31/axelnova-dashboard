@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\QuotationResource;
-use App\Models\QuoteRequest;
+use App\Http\Resources\OrderResource;
+use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -13,62 +13,62 @@ class OrdersController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = QuoteRequest::with('addons')
-            ->where('status', 'converted')
-            ->latest('submitted_at');
+        $query = Order::with(['client', 'quotation'])->latest('created_at');
 
-        if ($request->filled('project_status')) {
-            $query->where('project_status', $request->project_status);
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
         }
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('reference_code', 'like', "%{$search}%");
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhereHas('client', function ($c) use ($search) {
+                      $c->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('quotation', function ($c) use ($search) {
+                      $c->where('reference_code', 'like', "%{$search}%");
+                  });
             });
         }
 
-        return QuotationResource::collection($query->paginate(20));
+        return OrderResource::collection($query->paginate(20));
     }
 
-    public function show(QuoteRequest $order): QuotationResource
+    public function show(Order $order): OrderResource
     {
-        abort_if($order->status !== 'converted', 404);
+        $order->load(['client', 'quotation.addons']);
 
-        $order->load('addons');
-
-        return new QuotationResource($order);
+        return new OrderResource($order);
     }
 
-    public function updateProjectStatus(Request $request, QuoteRequest $order): JsonResponse
+    public function updateStatus(Request $request, Order $order): JsonResponse
     {
-        abort_if($order->status !== 'converted', 404);
-
         $request->validate([
-            'project_status' => ['required', 'in:pending,in_progress,delivered,completed'],
+            'status' => ['required', 'in:pending,in_progress,delivered,completed,cancelled'],
         ]);
 
-        $next = $request->project_status;
-        $updates = ['project_status' => $next];
+        $next = $request->status;
+        $updates = ['status' => $next];
 
         // Stamp the relevant timestamp on first transition into each phase.
-        if ($next === 'in_progress' && !$order->project_started_at) {
-            $updates['project_started_at'] = now();
+        if ($next === 'in_progress' && !$order->started_at) {
+            $updates['started_at'] = now();
         }
-        if ($next === 'delivered' && !$order->project_delivered_at) {
-            $updates['project_delivered_at'] = now();
+        if ($next === 'delivered' && !$order->delivered_at) {
+            $updates['delivered_at'] = now();
         }
-        if ($next === 'completed' && !$order->project_completed_at) {
-            $updates['project_completed_at'] = now();
+        if ($next === 'completed' && !$order->completed_at) {
+            $updates['completed_at'] = now();
         }
 
         $order->update($updates);
+        $order->load(['client', 'quotation']);
 
         return response()->json([
-            'message' => 'Project status updated.',
-            'order' => new QuotationResource($order),
+            'message' => 'Order status updated.',
+            'order' => new OrderResource($order),
         ]);
     }
 }

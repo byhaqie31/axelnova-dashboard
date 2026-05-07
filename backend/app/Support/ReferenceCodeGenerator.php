@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\QuoteRequest;
+use App\Models\Quotation;
 use Illuminate\Support\Facades\DB;
 
 class ReferenceCodeGenerator
@@ -12,7 +12,7 @@ class ReferenceCodeGenerator
         return DB::transaction(function () {
             $year = now()->year;
 
-            $last = QuoteRequest::withTrashed()
+            $last = Quotation::withTrashed()
                 ->where('reference_code', 'like', "AXN-{$year}-%")
                 ->lockForUpdate()
                 ->orderByDesc('reference_code')

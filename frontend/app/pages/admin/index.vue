@@ -28,7 +28,7 @@ async function load() {
   error.value = ''
   try {
     const [recentRes, newRes, ordersRes] = await Promise.all([
-      apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?include_converted=1&page=1'),
+      apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?include_accepted=1&page=1'),
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?status=new&page=1'),
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/orders?page=1'),
     ])
@@ -179,7 +179,7 @@ const tiles = computed<StatTile[]>(() => [
             :key="q.id"
             class="border-b cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
             style="border-color: var(--color-border);"
-            @click="navigateTo(q.status === 'converted' ? `/admin/orders/${q.id}` : `/admin/quotations/${q.id}`)"
+            @click="navigateTo(`/admin/quotations/${q.id}`)"
           >
             <td class="px-4 py-3.5">
               <span class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ q.reference_code }}</span>

@@ -26,7 +26,7 @@ const quotation = ref<Quotation | null>(null)
 const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
-const convertLoading = ref(false)
+const acceptLoading = ref(false)
 const actionMessage = ref('')
 
 useHead(() => ({
@@ -67,21 +67,22 @@ async function updateStatus(status: string) {
   }
 }
 
-async function convertToOrder() {
+async function acceptQuotation() {
   if (!quotation.value) return
-  convertLoading.value = true
+  acceptLoading.value = true
   try {
-    await apiFetch(`/api/v1/admin/quotations/${quotation.value.id}/convert`, {
-      method: 'POST',
-    })
-    actionMessage.value = 'Converted to an order. Redirecting…'
-    setTimeout(() => navigateTo(`/admin/orders/${quotation.value!.id}`), 600)
+    const res = await apiFetch<{ message: string; order_id: number; order_number: string }>(
+      `/api/v1/admin/quotations/${quotation.value.id}/accept`,
+      { method: 'POST' },
+    )
+    actionMessage.value = `${res.message} Redirecting to ${res.order_number}…`
+    setTimeout(() => navigateTo(`/admin/orders/${res.order_id}`), 600)
   }
   catch {
-    actionMessage.value = 'Failed to convert.'
+    actionMessage.value = 'Failed to accept quotation.'
   }
   finally {
-    convertLoading.value = false
+    acceptLoading.value = false
   }
 }
 
@@ -230,10 +231,10 @@ const scopeFields = computed(() => {
             WhatsApp
           </a>
 
-          <button class="btn-pill btn-pill-accent w-full justify-center text-[13px]"
-            :disabled="convertLoading"
-            @click="convertToOrder">
-            {{ convertLoading ? 'Converting…' : 'Convert to order' }}
+          <button v-if="quotation.status !== 'accepted'" class="btn-pill btn-pill-accent w-full justify-center text-[13px]"
+            :disabled="acceptLoading"
+            @click="acceptQuotation">
+            {{ acceptLoading ? 'Accepting…' : 'Accept & create order' }}
           </button>
         </div>
 

@@ -4,14 +4,15 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreQuoteRequestRequest;
-use App\Http\Resources\QuoteRequestResource;
 use App\Jobs\NotifyAdminJob;
 use App\Jobs\SendClientQuoteEmail;
-use App\Models\QuoteRequest;
+use App\Models\Client;
+use App\Models\Quotation;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
 use App\Support\ReferenceCodeGenerator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class QuoteRequestController extends Controller
 {
@@ -33,47 +34,61 @@ class QuoteRequestController extends Controller
         $estimate = $engine->calculate($input);
         $refCode = ReferenceCodeGenerator::generate();
 
-        $quoteRequest = QuoteRequest::create([
-            'reference_code' => $refCode,
-            'name' => $input->name,
-            'email' => $input->email,
-            'phone' => $input->phone,
-            'company' => $input->company,
-            'service_category_id' => $request->input('service_category_id'),
-            'service_package_id' => $request->input('service_package_id'),
-            'pricing_config_id' => $engine->getConfig()->id,
-            'form_payload' => array_merge($request->input('form_payload', []), [
+        $quotation = DB::transaction(function () use ($request, $input, $engine, $estimate, $refCode) {
+            // Upsert Client by email so repeat customers stay deduplicated.
+            $client = Client::firstOrCreate(
+                ['email' => $input->email],
+                [
+                    'name' => $input->name,
+                    'phone' => $input->phone,
+                    'company' => $input->company,
+                ],
+            );
+
+            $quotation = Quotation::create([
+                'reference_code' => $refCode,
+                'client_id' => $client->id,
+                'name' => $input->name,
+                'email' => $input->email,
+                'phone' => $input->phone,
+                'company' => $input->company,
                 'package_key' => $input->packageKey,
-                'modifiers' => $input->modifiers,
-                'addon_keys' => $input->addonKeys,
-                'rush' => $input->rush,
-                'breakdown' => $estimate->breakdown,
-            ]),
-            'estimate_min_myr' => $estimate->minMyr,
-            'estimate_max_myr' => $estimate->maxMyr,
-            'estimate_weeks' => $estimate->weeks,
-            'status' => 'new',
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'submitted_at' => now(),
-        ]);
+                'pricing_config_id' => $engine->getConfig()->id,
+                'form_payload' => array_merge($request->input('form_payload', []), [
+                    'package_key' => $input->packageKey,
+                    'modifiers' => $input->modifiers,
+                    'addon_keys' => $input->addonKeys,
+                    'rush' => $input->rush,
+                    'breakdown' => $estimate->breakdown,
+                ]),
+                'estimate_min_myr' => $estimate->minMyr,
+                'estimate_max_myr' => $estimate->maxMyr,
+                'estimate_weeks' => $estimate->weeks,
+                'status' => 'new',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'submitted_at' => now(),
+            ]);
 
-        $addonDefs = $engine->getConfig()->config['addons'] ?? [];
-        foreach ($input->addonKeys as $key) {
-            if (isset($addonDefs[$key])) {
-                $quoteRequest->addons()->create([
-                    'addon_key' => $key,
-                    'addon_label' => $addonDefs[$key]['label'],
-                    'amount_myr' => $addonDefs[$key]['amount'],
-                ]);
+            $addonDefs = $engine->getConfig()->config['addons'] ?? [];
+            foreach ($input->addonKeys as $key) {
+                if (isset($addonDefs[$key])) {
+                    $quotation->addons()->create([
+                        'addon_key' => $key,
+                        'addon_label' => $addonDefs[$key]['label'],
+                        'amount_myr' => $addonDefs[$key]['amount'],
+                    ]);
+                }
             }
-        }
 
-        SendClientQuoteEmail::dispatch($quoteRequest->id);
+            return $quotation;
+        });
+
+        SendClientQuoteEmail::dispatch($quotation->id);
         // Mailtrap free caps at 1 email/sec, and the customer email itself takes ~4s
         // to send. Delay the admin email enough that the customer one has fully finished
         // by the time the worker picks this up. Cheap to wait — admin doesn't care.
-        NotifyAdminJob::dispatch($quoteRequest->id)->delay(now()->addSeconds(10));
+        NotifyAdminJob::dispatch($quotation->id)->delay(now()->addSeconds(10));
 
         $validUntil = now()
             ->addDays($engine->getConfig()->config['valid_for_days'] ?? 30)

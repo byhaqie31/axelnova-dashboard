@@ -1,7 +1,7 @@
 <script setup lang="ts">
 type StatusKey =
-  | 'new' | 'viewed' | 'contacted' | 'converted' | 'rejected' | 'spam'
-  | 'pending' | 'in_progress' | 'delivered' | 'completed'
+  | 'new' | 'viewed' | 'contacted' | 'accepted' | 'rejected' | 'spam'
+  | 'pending' | 'in_progress' | 'delivered' | 'completed' | 'cancelled'
 
 const props = withDefaults(defineProps<{
   status: string | null | undefined
@@ -17,13 +17,14 @@ const statusLabels: Record<StatusKey, string> = {
   new: 'New',
   viewed: 'Viewed',
   contacted: 'Contacted',
-  converted: 'Converted',
+  accepted: 'Accepted',
   rejected: 'Rejected',
   spam: 'Spam',
   pending: 'Pending',
   in_progress: 'In progress',
   delivered: 'Delivered',
   completed: 'Completed',
+  cancelled: 'Cancelled',
 }
 
 const resolved = computed<StatusKey>(() => {

@@ -47,11 +47,17 @@ php artisan queue:work     # process queued jobs (PDF, email)
 | Method | Endpoint | Auth | Rate limit | Description |
 |--------|----------|------|-----------|-------------|
 | GET | `/api/v1/quote-builder/config` | Public | — | Active pricing config (cached 1h) |
-| POST | `/api/v1/quote-requests` | Public | 3/hr/IP | Submit quote request |
-| GET | `/api/v1/admin/leads` | Sanctum + admin | — | List leads with filters |
-| GET | `/api/v1/admin/leads/{id}` | Sanctum + admin | — | Lead detail + marks viewed |
-| POST | `/api/v1/admin/leads/{id}/status` | Sanctum + admin | — | Update status |
-| POST | `/api/v1/admin/leads/{id}/convert` | Sanctum + admin | — | Mark as converted (Phase 4 builds on this) |
+| POST | `/api/v1/quote-requests` | Public | 3/hr/IP | Submit quote request — creates Client + Quotation |
+| POST | `/api/v1/admin/login` | Public | 10/min | Issue Sanctum token |
+| POST | `/api/v1/admin/logout` | Sanctum + admin | — | Revoke current token |
+| GET | `/api/v1/admin/me` | Sanctum + admin | — | Current admin user |
+| GET | `/api/v1/admin/quotations` | Sanctum + admin | — | List quotations (excludes accepted by default) |
+| GET | `/api/v1/admin/quotations/{id}` | Sanctum + admin | — | Quotation detail + marks viewed |
+| POST | `/api/v1/admin/quotations/{id}/status` | Sanctum + admin | — | Update non-terminal status |
+| POST | `/api/v1/admin/quotations/{id}/accept` | Sanctum + admin | — | Accept → create matching Order |
+| GET | `/api/v1/admin/orders` | Sanctum + admin | — | List orders |
+| GET | `/api/v1/admin/orders/{id}` | Sanctum + admin | — | Order detail |
+| POST | `/api/v1/admin/orders/{id}/status` | Sanctum + admin | — | Update project lifecycle status |
 
 ---
 
@@ -80,8 +86,8 @@ curl -X POST http://localhost:8000/api/v1/quote-requests \
   -H "Content-Type: application/json" \
   -d '{"name": "A", "email": "not-an-email", "package_key": "invalid"}'
 
-# Admin leads (replace TOKEN with a Sanctum token)
-curl http://localhost:8000/api/v1/admin/leads \
+# Admin quotations (replace TOKEN with a Sanctum token)
+curl http://localhost:8000/api/v1/admin/quotations \
   -H "Authorization: Bearer TOKEN"
 ```
 

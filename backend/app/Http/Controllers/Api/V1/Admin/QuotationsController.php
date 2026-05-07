@@ -4,20 +4,23 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\QuotationResource;
-use App\Models\QuoteRequest;
+use App\Models\Order;
+use App\Models\Quotation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 class QuotationsController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = QuoteRequest::with('addons')->latest('submitted_at');
+        $query = Quotation::with('addons')->latest('submitted_at');
 
-        // Quotations view excludes converted by default — converted rows live on Orders.
-        if (!$request->boolean('include_converted') && !$request->filled('status')) {
-            $query->where('status', '!=', 'converted');
+        // Quotations view excludes 'accepted' by default — accepted ones produced an order
+        // and live on the Orders page. Caller can pass ?include_accepted=1 or ?status=accepted.
+        if (!$request->boolean('include_accepted') && !$request->filled('status')) {
+            $query->where('status', '!=', 'accepted');
         }
 
         if ($request->filled('status')) {
@@ -44,9 +47,9 @@ class QuotationsController extends Controller
         return QuotationResource::collection($query->paginate(20));
     }
 
-    public function show(QuoteRequest $quotation): QuotationResource
+    public function show(Quotation $quotation): QuotationResource
     {
-        $quotation->load('addons');
+        $quotation->load('addons', 'order');
 
         if (!$quotation->viewed_at) {
             $quotation->update([
@@ -58,7 +61,7 @@ class QuotationsController extends Controller
         return new QuotationResource($quotation);
     }
 
-    public function updateStatus(Request $request, QuoteRequest $quotation): JsonResponse
+    public function updateStatus(Request $request, Quotation $quotation): JsonResponse
     {
         $request->validate([
             'status' => ['required', 'in:new,viewed,contacted,rejected,spam'],
@@ -69,20 +72,48 @@ class QuotationsController extends Controller
         return response()->json(['message' => 'Status updated.', 'status' => $quotation->status]);
     }
 
-    public function convert(Request $request, QuoteRequest $quotation): JsonResponse
+    public function accept(Request $request, Quotation $quotation): JsonResponse
     {
-        if ($quotation->status === 'converted') {
-            return response()->json(['message' => 'Already converted.'], 422);
+        if ($quotation->status === 'accepted') {
+            return response()->json(['message' => 'Already accepted.', 'order_id' => $quotation->order?->id], 422);
         }
 
-        $quotation->update([
-            'status' => 'converted',
-            'project_status' => 'pending',
-        ]);
+        if (!$quotation->client_id) {
+            return response()->json(['message' => 'Quotation has no client linked.'], 422);
+        }
+
+        $order = DB::transaction(function () use ($quotation) {
+            $quotation->update(['status' => 'accepted']);
+
+            return Order::create([
+                'order_number' => $this->generateOrderNumber(),
+                'quotation_id' => $quotation->id,
+                'client_id' => $quotation->client_id,
+                'value_min_myr' => $quotation->estimate_min_myr,
+                'value_max_myr' => $quotation->estimate_max_myr,
+                'status' => 'pending',
+            ]);
+        });
 
         return response()->json([
-            'message' => 'Quotation converted to order.',
-            'quotation' => new QuotationResource($quotation),
+            'message' => 'Quotation accepted. Order created.',
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
         ]);
+    }
+
+    private function generateOrderNumber(): string
+    {
+        return DB::transaction(function () {
+            $year = date('Y');
+            $latest = Order::where('order_number', 'like', "ORD-{$year}-%")
+                ->lockForUpdate()
+                ->orderByDesc('id')
+                ->value('order_number');
+
+            $next = $latest ? ((int) substr($latest, -4)) + 1 : 1;
+
+            return sprintf('ORD-%s-%04d', $year, $next);
+        });
     }
 }

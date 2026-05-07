@@ -6,19 +6,19 @@ const { apiFetch } = useAdminAuth()
 
 interface Order {
   id: number
-  reference_code: string
-  name: string
-  email: string
+  order_number: string
+  quotation_id: number
+  reference_code: string | null
   package_key: string | null
-  estimate_min_myr: string
-  estimate_max_myr: string
-  estimate_weeks: number
+  name: string | null
+  email: string | null
+  value_min_myr: string
+  value_max_myr: string
   status: string
-  project_status: string | null
-  project_started_at: string | null
-  project_delivered_at: string | null
-  project_completed_at: string | null
-  submitted_at: string
+  started_at: string | null
+  delivered_at: string | null
+  completed_at: string | null
+  created_at: string
 }
 
 const orders = ref<Order[]>([])
@@ -28,16 +28,17 @@ const error = ref('')
 
 const filters = reactive({
   search: '',
-  project_status: '',
+  status: '',
   page: 1,
 })
 
-const projectStatusOptions = [
+const statusOptions = [
   { value: '', label: 'All' },
   { value: 'pending', label: 'Pending' },
   { value: 'in_progress', label: 'In progress' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
 ]
 
 async function fetchOrders() {
@@ -46,7 +47,7 @@ async function fetchOrders() {
   try {
     const params = new URLSearchParams()
     if (filters.search) params.set('search', filters.search)
-    if (filters.project_status) params.set('project_status', filters.project_status)
+    if (filters.status) params.set('status', filters.status)
     params.set('page', String(filters.page))
 
     const res = await apiFetch<{ data: Order[]; meta: any }>(`/api/v1/admin/orders?${params}`)
@@ -69,9 +70,10 @@ watch(() => filters.search, () => {
   searchTimer = setTimeout(() => { filters.page = 1; fetchOrders() }, 400)
 })
 
-watch(() => [filters.project_status, filters.page], () => fetchOrders())
+watch(() => [filters.status, filters.page], () => fetchOrders())
 
-function fmtDate(iso: string) {
+function fmtDate(iso: string | null) {
+  if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
@@ -89,7 +91,7 @@ function fmtMyr(amount: string | number) {
       <div>
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Orders</h1>
-        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Quotations that have been converted into active engagements.</p>
+        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Accepted quotations turned into active engagements.</p>
       </div>
       <div class="flex items-center gap-3">
         <span v-if="meta" class="text-[13px]" style="color: var(--color-text-secondary);">{{ meta.total }} total</span>
@@ -97,19 +99,19 @@ function fmtMyr(amount: string | number) {
     </div>
 
     <div class="flex flex-wrap gap-3 mb-6">
-      <input v-model="filters.search" type="search" placeholder="Search by name, email, reference…"
-        class="contact-input" style="max-width: 300px;"
+      <input v-model="filters.search" type="search" placeholder="Search by name, email, order or reference…"
+        class="contact-input" style="max-width: 320px;"
         :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
 
       <div class="flex flex-wrap gap-2">
-        <button v-for="opt in projectStatusOptions" :key="opt.value" type="button"
+        <button v-for="opt in statusOptions" :key="opt.value" type="button"
           class="text-[12px] px-3.5 py-1.5 rounded-full border transition-all"
           :style="{
-            borderColor: filters.project_status === opt.value ? 'var(--color-accent)' : 'var(--color-border)',
-            background: filters.project_status === opt.value ? 'var(--color-accent-soft)' : 'transparent',
-            color: filters.project_status === opt.value ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+            borderColor: filters.status === opt.value ? 'var(--color-accent)' : 'var(--color-border)',
+            background: filters.status === opt.value ? 'var(--color-accent-soft)' : 'transparent',
+            color: filters.status === opt.value ? 'var(--color-accent)' : 'var(--color-text-secondary)',
           }"
-          @click="filters.project_status = opt.value; filters.page = 1">
+          @click="filters.status = opt.value; filters.page = 1">
           {{ opt.label }}
         </button>
       </div>
@@ -124,7 +126,7 @@ function fmtMyr(amount: string | number) {
       <UIcon name="i-lucide-package" class="size-8 mb-3 mx-auto" :style="{ color: 'var(--color-text-tertiary)' }" />
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">No orders yet</p>
       <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
-        Convert a quotation from the <NuxtLink to="/admin/quotations" class="underline" :style="{ color: 'var(--color-accent)' }">Quotations</NuxtLink> page to start tracking it here.
+        Accept a quotation from the <NuxtLink to="/admin/quotations" class="underline" :style="{ color: 'var(--color-accent)' }">Quotations</NuxtLink> page to start tracking it here.
       </p>
     </div>
 
@@ -133,7 +135,7 @@ function fmtMyr(amount: string | number) {
       <table class="w-full text-left">
         <thead>
           <tr style="border-bottom: 1px solid var(--color-border); background: var(--color-bg-secondary);">
-            <th v-for="h in ['Reference', 'Client', 'Value', 'Project', 'Started', 'Converted']" :key="h"
+            <th v-for="h in ['Order', 'Client', 'Value', 'Status', 'Started', 'Created']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
@@ -145,26 +147,27 @@ function fmtMyr(amount: string | number) {
             style="border-color: var(--color-border);"
             @click="navigateTo(`/admin/orders/${o.id}`)">
             <td class="px-4 py-3.5">
-              <span class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ o.reference_code }}</span>
+              <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ o.order_number }}</p>
+              <p v-if="o.reference_code" class="font-mono text-[10px]" :style="{ color: 'var(--color-text-tertiary)' }">from {{ o.reference_code }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <p class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">{{ o.name }}</p>
-              <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.email }}</p>
+              <p class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">{{ o.name ?? '—' }}</p>
+              <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.email ?? '' }}</p>
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
-                {{ fmtMyr(o.estimate_min_myr) }} – {{ fmtMyr(o.estimate_max_myr) }}
+                {{ fmtMyr(o.value_min_myr) }} – {{ fmtMyr(o.value_max_myr) }}
               </p>
               <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.package_key ?? '—' }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <AdminStatusPill :status="o.project_status" />
+              <AdminStatusPill :status="o.status" />
             </td>
             <td class="px-4 py-3.5 text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
-              {{ o.project_started_at ? fmtDate(o.project_started_at) : '—' }}
+              {{ fmtDate(o.started_at) }}
             </td>
             <td class="px-4 py-3.5 text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
-              {{ fmtDate(o.submitted_at) }}
+              {{ fmtDate(o.created_at) }}
             </td>
           </tr>
         </tbody>
