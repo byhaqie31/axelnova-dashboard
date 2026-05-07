@@ -131,3 +131,39 @@ Production backend deploy isn't wired yet. Plan: PHP-FPM + Nginx, port 8003, que
 - **`DB_HOST` in `backend/.env` is `mysql`**, not `127.0.0.1`. That hostname only resolves on the `axelnova-shared` docker network, so `php artisan ...` from the Mac host won't connect. Always use `docker compose -f docker-compose.dev.yml exec backend php artisan ...` instead.
 - **MySQL only honors `MYSQL_ROOT_PASSWORD` on first volume boot.** If you change it in `axelnova-infra/.env` later, you must `docker compose down -v` (in the infra repo) to nuke the volume — otherwise auth will fail.
 - **The frontend prod compose binds port 3001**, which collides with `hop-frontend-dev` per [axelnova-infra/docs/port-allocation.md](../axelnova-infra/docs/port-allocation.md). Resolve before running both in production on the same host.
+
+---
+
+## Troubleshooting
+
+### Queue worker
+
+- **Worker runs old code after editing a Job/Mail class.** `php artisan queue:work` is a long-lived daemon — it loads code into memory at boot and never reloads. After editing anything under [backend/app/Jobs/](./backend/app/Jobs/) or [backend/app/Mail/](./backend/app/Mail/), restart the worker:
+  ```bash
+  docker compose -f docker-compose.dev.yml restart worker
+  ```
+
+- **Worker container shows empty logs.** `queue:work` is silent when idle (it polls the `jobs` DB table once a second but only logs at boot or when a job runs). Submit a quote to trigger output, or verify the process is alive:
+  ```bash
+  docker compose -f docker-compose.dev.yml exec worker ps aux
+  ```
+
+- **Jobs queued but never processed.** Means no worker is running. Confirm queue depth, then start the worker:
+  ```bash
+  docker compose -f docker-compose.dev.yml exec backend \
+    php artisan tinker --execute="echo DB::table('jobs')->count() . ' queued, ' . DB::table('failed_jobs')->count() . ' failed';"
+  docker compose -f docker-compose.dev.yml up -d worker
+  ```
+
+- **Inspect a failed job's exception.** `queue:failed` only shows a one-line summary — pull the full stack trace from the DB:
+  ```bash
+  docker compose -f docker-compose.dev.yml exec backend \
+    php artisan tinker --execute="echo DB::table('failed_jobs')->latest('id')->value('exception');"
+  docker compose -f docker-compose.dev.yml exec backend php artisan queue:flush   # clear all
+  ```
+
+### Mailtrap
+
+- **`550 5.7.0 Too many emails per second`.** Mailtrap free caps at 1 email/sec, and a quote submission fires two emails (customer + admin). The admin email is intentionally delayed by 10s in [QuoteRequestController.php](./backend/app/Http/Controllers/Api/V1/QuoteRequestController.php) to dodge this. When you swap to a real provider (Mailgun/Postmark/SES), shrink or remove that delay — they handle hundreds of emails/sec.
+
+- **Email body never lands but worker shows DONE.** Check `MAIL_USERNAME` / `MAIL_PASSWORD` in [backend/.env](./backend/.env) are filled in. With empty creds, Mailtrap silently swallows the message. Fastest sanity check is to switch `MAIL_MAILER=log` temporarily and tail `backend/storage/logs/laravel.log` — the rendered email body dumps there.

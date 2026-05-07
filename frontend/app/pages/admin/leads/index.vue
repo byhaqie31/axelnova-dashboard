@@ -2,7 +2,7 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 useHead({ title: 'Leads — Admin' })
 
-const { apiFetch, logout } = useAdminAuth()
+const { apiFetch } = useAdminAuth()
 
 interface Lead {
   id: number
@@ -91,17 +91,17 @@ function fmtMyr(amount: string | number) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 pt-24 pb-32">
+  <div class="max-w-7xl mx-auto px-6 pt-10 pb-32">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Leads</h1>
+        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Orders</h1>
+        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Quote requests submitted from the public site.</p>
       </div>
       <div class="flex items-center gap-3">
         <span v-if="meta" class="text-[13px]" style="color: var(--color-text-secondary);">{{ meta.total }} total</span>
-        <button class="btn-pill btn-pill-ghost text-[12px]" @click="logout">Sign out</button>
       </div>
     </div>
 
