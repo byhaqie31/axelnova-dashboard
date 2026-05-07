@@ -20,7 +20,6 @@ interface Lead {
   viewed_at: string | null
   form_payload: Record<string, unknown>
   addons: { key: string; label: string; amount_myr: string }[]
-  pdf_url: string | null
 }
 
 const lead = ref<Lead | null>(null)
@@ -203,13 +202,6 @@ const scopeFields = computed(() => {
           </div>
         </div>
 
-        <!-- PDF preview -->
-        <div v-if="lead.pdf_url" class="rounded-2xl border overflow-hidden"
-          :style="{ borderColor: 'var(--color-border)' }">
-          <p class="text-[11px] font-semibold uppercase tracking-widest px-5 py-3 border-b"
-            style="color: var(--color-text-tertiary); border-color: var(--color-border);">PDF Quote</p>
-          <iframe :src="lead.pdf_url" class="w-full" style="height: 500px; border: 0;" />
-        </div>
       </div>
 
       <!-- Sidebar actions -->

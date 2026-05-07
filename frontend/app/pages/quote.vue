@@ -251,7 +251,7 @@ function toggleAddon(key: string) {
         Build something great.
       </h1>
       <p class="text-[16px] leading-relaxed max-w-xl" style="color: var(--color-text-secondary);">
-        Fill in the details below and I'll send you a personalised PDF quote within minutes.
+        Fill in the details below and I'll email you a personalised quote within minutes.
         No commitment required.
       </p>
     </div>
@@ -689,7 +689,7 @@ function toggleAddon(key: string) {
           <button type="submit" class="btn-pill btn-pill-accent w-full justify-center"
             :disabled="loading || !canSubmit"
             :style="{ opacity: loading || !canSubmit ? '0.6' : '1', cursor: loading || !canSubmit ? 'not-allowed' : 'pointer' }">
-            {{ loading ? 'Sending your quote…' : 'Get my quote (PDF) →' }}
+            {{ loading ? 'Sending your quote…' : 'Get my quote →' }}
           </button>
         </div>
       </form>

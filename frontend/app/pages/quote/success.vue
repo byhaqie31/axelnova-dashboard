@@ -31,7 +31,7 @@ async function copyRef() {
       Your quote is on the way.
     </h1>
     <p class="text-[16px] leading-relaxed mb-8" style="color: var(--color-text-secondary);">
-      Check your inbox in 2–5 minutes for your personalised PDF quote.
+      Check your inbox in 2–5 minutes for your personalised quote.
       If it doesn't arrive, check your spam folder.
     </p>
 
@@ -59,7 +59,7 @@ async function copyRef() {
       <p class="text-[12px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">What happens next</p>
       <div class="space-y-3">
         <div v-for="(step, i) in [
-          'You receive a PDF quote with full scope, timeline, and pricing.',
+          'You receive a quote with full scope, timeline, and pricing.',
           'Review it at your own pace — no pressure, valid for 30 days.',
           'If you\'re happy, we schedule a 30-minute discovery call to finalise scope.',
           'On signed agreement + 50% upfront, we start building.',
