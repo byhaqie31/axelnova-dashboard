@@ -3,17 +3,22 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\LeadResource;
+use App\Http\Resources\QuotationResource;
 use App\Models\QuoteRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-class LeadsController extends Controller
+class QuotationsController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = QuoteRequest::with('addons')->latest('submitted_at');
+
+        // Quotations view excludes converted by default — converted rows live on Orders.
+        if (!$request->boolean('include_converted') && !$request->filled('status')) {
+            $query->where('status', '!=', 'converted');
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -36,46 +41,48 @@ class LeadsController extends Controller
             $query->whereDate('submitted_at', '<=', $request->date_to);
         }
 
-        return LeadResource::collection($query->paginate(20));
+        return QuotationResource::collection($query->paginate(20));
     }
 
-    public function show(QuoteRequest $lead): LeadResource
+    public function show(QuoteRequest $quotation): QuotationResource
     {
-        $lead->load('addons');
+        $quotation->load('addons');
 
-        if (!$lead->viewed_at) {
-            $lead->update([
+        if (!$quotation->viewed_at) {
+            $quotation->update([
                 'viewed_at' => now(),
-                'status' => $lead->status === 'new' ? 'viewed' : $lead->status,
+                'status' => $quotation->status === 'new' ? 'viewed' : $quotation->status,
             ]);
         }
 
-        return new LeadResource($lead);
+        return new QuotationResource($quotation);
     }
 
-    public function updateStatus(Request $request, QuoteRequest $lead): JsonResponse
+    public function updateStatus(Request $request, QuoteRequest $quotation): JsonResponse
     {
         $request->validate([
-            'status' => ['required', 'in:new,viewed,contacted,converted,rejected,spam'],
+            'status' => ['required', 'in:new,viewed,contacted,rejected,spam'],
         ]);
 
-        $lead->update(['status' => $request->status]);
+        $quotation->update(['status' => $request->status]);
 
-        return response()->json(['message' => 'Status updated.', 'status' => $lead->status]);
+        return response()->json(['message' => 'Status updated.', 'status' => $quotation->status]);
     }
 
-    public function convert(Request $request, QuoteRequest $lead): JsonResponse
+    public function convert(Request $request, QuoteRequest $quotation): JsonResponse
     {
-        if ($lead->status === 'converted') {
+        if ($quotation->status === 'converted') {
             return response()->json(['message' => 'Already converted.'], 422);
         }
 
-        // Phase 3: mark as converted — full Client + Quotation creation is Phase 4
-        $lead->update(['status' => 'converted']);
+        $quotation->update([
+            'status' => 'converted',
+            'project_status' => 'pending',
+        ]);
 
         return response()->json([
-            'message' => 'Lead marked as converted. Full client + quotation creation is Phase 4.',
-            'lead' => new LeadResource($lead),
+            'message' => 'Quotation converted to order.',
+            'quotation' => new QuotationResource($quotation),
         ]);
     }
 }

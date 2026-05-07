@@ -31,7 +31,7 @@ class AdminNotificationMail extends Mailable
             markdown: 'mail.admin-notification',
             with: [
                 'quote' => $this->quote,
-                'adminUrl' => rtrim(config('app.url'), '/').'/admin/leads/'.$this->quote->id,
+                'adminUrl' => rtrim(config('app.url'), '/').'/admin/quotations/'.$this->quote->id,
             ],
         );
     }

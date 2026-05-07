@@ -4,7 +4,7 @@ useHead({ title: 'Dashboard — Admin' })
 
 const { apiFetch } = useAdminAuth()
 
-interface Lead {
+interface Quotation {
   id: number
   reference_code: string
   name: string
@@ -16,9 +16,10 @@ interface Lead {
   submitted_at: string
 }
 
-const recent = ref<Lead[]>([])
-const totalLeads = ref<number | null>(null)
-const newLeads = ref<number | null>(null)
+const recent = ref<Quotation[]>([])
+const totalQuotations = ref<number | null>(null)
+const newQuotations = ref<number | null>(null)
+const activeOrders = ref<number | null>(null)
 const loading = ref(true)
 const error = ref('')
 
@@ -26,13 +27,15 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [recentRes, newRes] = await Promise.all([
-      apiFetch<{ data: Lead[]; meta: { total: number } }>('/api/v1/admin/leads?page=1'),
-      apiFetch<{ data: Lead[]; meta: { total: number } }>('/api/v1/admin/leads?status=new&page=1'),
+    const [recentRes, newRes, ordersRes] = await Promise.all([
+      apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?include_converted=1&page=1'),
+      apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?status=new&page=1'),
+      apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/orders?page=1'),
     ])
     recent.value = recentRes.data.slice(0, 5)
-    totalLeads.value = recentRes.meta.total
-    newLeads.value = newRes.meta.total
+    totalQuotations.value = recentRes.meta.total
+    newQuotations.value = newRes.meta.total
+    activeOrders.value = ordersRes.meta.total
   }
   catch {
     error.value = 'Failed to load dashboard. Check your session.'
@@ -73,29 +76,28 @@ interface StatTile {
 
 const tiles = computed<StatTile[]>(() => [
   {
-    label: 'Total orders',
-    value: totalLeads.value === null ? '—' : String(totalLeads.value),
-    hint: 'All-time quote requests',
-    icon: 'i-lucide-receipt',
+    label: 'Total quotations',
+    value: totalQuotations.value === null ? '—' : String(totalQuotations.value),
+    hint: 'All-time inquiries',
+    icon: 'i-lucide-file-text',
   },
   {
     label: 'New (unactioned)',
-    value: newLeads.value === null ? '—' : String(newLeads.value),
+    value: newQuotations.value === null ? '—' : String(newQuotations.value),
     hint: 'Status = new',
     icon: 'i-lucide-inbox',
+  },
+  {
+    label: 'Active orders',
+    value: activeOrders.value === null ? '—' : String(activeOrders.value),
+    hint: 'Converted engagements',
+    icon: 'i-lucide-package-check',
   },
   {
     label: 'Page views (7d)',
     value: '—',
     hint: 'Wires up in Phase B',
     icon: 'i-lucide-eye',
-    pending: true,
-  },
-  {
-    label: 'Likes (7d)',
-    value: '—',
-    hint: 'Wires up in Phase B',
-    icon: 'i-lucide-heart',
     pending: true,
   },
 ])
@@ -106,7 +108,7 @@ const tiles = computed<StatTile[]>(() => [
     <div class="mb-8">
       <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Dashboard</h1>
-      <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Overview of orders, traffic, and content health.</p>
+      <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Overview of quotations, orders, and traffic.</p>
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
@@ -143,11 +145,11 @@ const tiles = computed<StatTile[]>(() => [
       </div>
     </div>
 
-    <!-- Recent orders -->
+    <!-- Recent quotations -->
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-[18px] font-semibold tracking-tight" style="color: var(--color-text);">Recent orders</h2>
+      <h2 class="text-[18px] font-semibold tracking-tight" style="color: var(--color-text);">Recent quotations</h2>
       <NuxtLink
-        to="/admin/leads"
+        to="/admin/quotations"
         class="text-[12px] font-medium inline-flex items-center gap-1 hover:underline"
         :style="{ color: 'var(--color-accent)' }"
       >
@@ -163,7 +165,7 @@ const tiles = computed<StatTile[]>(() => [
       class="rounded-2xl border p-10 text-center text-[13px]"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
     >
-      No orders yet.
+      No quotations yet.
     </div>
 
     <div
@@ -182,35 +184,35 @@ const tiles = computed<StatTile[]>(() => [
         </thead>
         <tbody>
           <tr
-            v-for="lead in recent"
-            :key="lead.id"
+            v-for="q in recent"
+            :key="q.id"
             class="border-b cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
             style="border-color: var(--color-border);"
-            @click="navigateTo(`/admin/leads/${lead.id}`)"
+            @click="navigateTo(q.status === 'converted' ? `/admin/orders/${q.id}` : `/admin/quotations/${q.id}`)"
           >
             <td class="px-4 py-3.5">
-              <span class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ lead.reference_code }}</span>
+              <span class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ q.reference_code }}</span>
             </td>
             <td class="px-4 py-3.5">
-              <p class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">{{ lead.name }}</p>
-              <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ lead.email }}</p>
+              <p class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">{{ q.name }}</p>
+              <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
-                {{ fmtMyr(lead.estimate_min_myr) }} – {{ fmtMyr(lead.estimate_max_myr) }}
+                {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
               </p>
             </td>
             <td class="px-4 py-3.5">
               <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                 :style="{
-                  color: statusColors[lead.status] ?? 'var(--color-text-secondary)',
-                  background: `${statusColors[lead.status] ?? 'var(--color-text-secondary)'}20`,
+                  color: statusColors[q.status] ?? 'var(--color-text-secondary)',
+                  background: `${statusColors[q.status] ?? 'var(--color-text-secondary)'}20`,
                 }">
-                {{ lead.status }}
+                {{ q.status }}
               </span>
             </td>
             <td class="px-4 py-3.5 text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
-              {{ fmtDate(lead.submitted_at) }}
+              {{ fmtDate(q.submitted_at) }}
             </td>
           </tr>
         </tbody>

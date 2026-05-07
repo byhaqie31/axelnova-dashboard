@@ -1,10 +1,10 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
-useHead({ title: 'Leads — Admin' })
+useHead({ title: 'Quotations — Admin' })
 
 const { apiFetch } = useAdminAuth()
 
-interface Lead {
+interface Quotation {
   id: number
   reference_code: string
   name: string
@@ -18,7 +18,7 @@ interface Lead {
   submitted_at: string
 }
 
-const leads = ref<Lead[]>([])
+const quotations = ref<Quotation[]>([])
 const meta = ref<{ current_page: number; last_page: number; total: number } | null>(null)
 const loading = ref(true)
 const error = ref('')
@@ -29,12 +29,12 @@ const filters = reactive({
   page: 1,
 })
 
+// 'converted' is intentionally absent — converted quotations live on the Orders page.
 const statusOptions = [
-  { value: '', label: 'All statuses' },
+  { value: '', label: 'Active' },
   { value: 'new', label: 'New' },
   { value: 'viewed', label: 'Viewed' },
   { value: 'contacted', label: 'Contacted' },
-  { value: 'converted', label: 'Converted' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'spam', label: 'Spam' },
 ]
@@ -43,12 +43,11 @@ const statusColors: Record<string, string> = {
   new: 'var(--color-accent)',
   viewed: '#A855F7',
   contacted: 'var(--color-success)',
-  converted: '#22c55e',
   rejected: 'var(--color-danger)',
   spam: 'var(--color-text-tertiary)',
 }
 
-async function fetchLeads() {
+async function fetchQuotations() {
   loading.value = true
   error.value = ''
   try {
@@ -57,27 +56,27 @@ async function fetchLeads() {
     if (filters.status) params.set('status', filters.status)
     params.set('page', String(filters.page))
 
-    const res = await apiFetch<{ data: Lead[]; meta: any }>(`/api/v1/admin/leads?${params}`)
-    leads.value = res.data
+    const res = await apiFetch<{ data: Quotation[]; meta: any }>(`/api/v1/admin/quotations?${params}`)
+    quotations.value = res.data
     meta.value = res.meta
   }
   catch {
-    error.value = 'Failed to load leads. Check your session.'
+    error.value = 'Failed to load quotations. Check your session.'
   }
   finally {
     loading.value = false
   }
 }
 
-onMounted(fetchLeads)
+onMounted(fetchQuotations)
 
 let searchTimer: ReturnType<typeof setTimeout>
 watch(() => filters.search, () => {
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => { filters.page = 1; fetchLeads() }, 400)
+  searchTimer = setTimeout(() => { filters.page = 1; fetchQuotations() }, 400)
 })
 
-watch(() => [filters.status, filters.page], () => fetchLeads())
+watch(() => [filters.status, filters.page], () => fetchQuotations())
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -97,8 +96,8 @@ function fmtMyr(amount: string | number) {
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Orders</h1>
-        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Quote requests submitted from the public site.</p>
+        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Quotations</h1>
+        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Quote requests submitted from the public site. Converted quotations move to <NuxtLink to="/admin/orders" class="underline" :style="{ color: 'var(--color-accent)' }">Orders</NuxtLink>.</p>
       </div>
       <div class="flex items-center gap-3">
         <span v-if="meta" class="text-[13px]" style="color: var(--color-text-secondary);">{{ meta.total }} total</span>
@@ -125,18 +124,14 @@ function fmtMyr(amount: string | number) {
       </div>
     </div>
 
-    <!-- Error -->
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
-    <!-- Loading -->
-    <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading leads…</div>
+    <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading quotations…</div>
 
-    <!-- Empty -->
-    <div v-else-if="!leads.length" class="text-center py-16" style="color: var(--color-text-secondary);">
-      No leads found.
+    <div v-else-if="!quotations.length" class="text-center py-16" style="color: var(--color-text-secondary);">
+      No quotations found.
     </div>
 
-    <!-- Table -->
     <div v-else class="rounded-2xl border overflow-hidden"
       :style="{ borderColor: 'var(--color-border)' }">
       <table class="w-full text-left">
@@ -149,43 +144,42 @@ function fmtMyr(amount: string | number) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="lead in leads" :key="lead.id"
+          <tr v-for="q in quotations" :key="q.id"
             class="border-b cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
             style="border-color: var(--color-border);"
-            @click="navigateTo(`/admin/leads/${lead.id}`)">
+            @click="navigateTo(`/admin/quotations/${q.id}`)">
             <td class="px-4 py-3.5">
-              <span class="font-mono text-[12px] font-medium" style="color: var(--color-accent);">{{ lead.reference_code }}</span>
+              <span class="font-mono text-[12px] font-medium" style="color: var(--color-accent);">{{ q.reference_code }}</span>
             </td>
             <td class="px-4 py-3.5">
-              <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ lead.name }}</p>
-              <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ lead.email }}</p>
+              <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ q.name }}</p>
+              <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ q.email }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <span class="text-[12px] font-mono" style="color: var(--color-text-secondary);">{{ lead.package_key ?? '—' }}</span>
+              <span class="text-[12px] font-mono" style="color: var(--color-text-secondary);">{{ q.package_key ?? '—' }}</span>
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-semibold" style="color: var(--color-text);">
-                {{ fmtMyr(lead.estimate_min_myr) }} – {{ fmtMyr(lead.estimate_max_myr) }}
+                {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
               </p>
             </td>
             <td class="px-4 py-3.5">
               <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full"
                 :style="{
-                  color: statusColors[lead.status] ?? 'var(--color-text-secondary)',
-                  background: `${statusColors[lead.status] ?? 'var(--color-text-secondary)'}20`,
+                  color: statusColors[q.status] ?? 'var(--color-text-secondary)',
+                  background: `${statusColors[q.status] ?? 'var(--color-text-secondary)'}20`,
                 }">
-                {{ lead.status }}
+                {{ q.status }}
               </span>
             </td>
             <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">
-              {{ fmtDate(lead.submitted_at) }}
+              {{ fmtDate(q.submitted_at) }}
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Pagination -->
     <div v-if="meta && meta.last_page > 1" class="flex items-center justify-center gap-2 mt-6">
       <button :disabled="filters.page <= 1" class="btn-pill btn-pill-ghost text-[12px]" @click="filters.page--">← Prev</button>
       <span class="text-[13px]" style="color: var(--color-text-secondary);">{{ filters.page }} / {{ meta.last_page }}</span>

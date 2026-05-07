@@ -2,7 +2,6 @@
 import BrandMark from '~/components/shared/BrandMark.vue'
 import { adminNav, isAdminNavActive } from '~/data/adminNav'
 
-const sidebarCollapsed = ref(false)
 const mobileNavOpen = ref(false)
 
 const route = useRoute()
@@ -51,41 +50,26 @@ watch(() => route.fullPath, () => { mobileNavOpen.value = false })
     <div class="flex-1 flex">
       <!-- Sidebar (desktop) -->
       <aside
-        class="hidden md:flex flex-col border-r transition-[width] duration-200"
+        class="hidden md:flex flex-col border-r"
         :style="{
-          width: sidebarCollapsed ? '64px' : '240px',
+          width: '240px',
           background: 'var(--color-bg)',
           borderColor: 'var(--color-border)',
         }"
       >
-        <div class="p-3">
-          <button
-            class="w-full inline-flex items-center justify-center h-8 rounded-md transition-colors hover:bg-(--color-bg-secondary)"
-            :style="{ color: 'var(--color-text-secondary)' }"
-            :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-            @click="sidebarCollapsed = !sidebarCollapsed"
-          >
-            <UIcon
-              :name="sidebarCollapsed ? 'i-fluent-panel-left-expand-24-regular' : 'i-fluent-panel-left-contract-24-regular'"
-              class="size-4"
-            />
-          </button>
-        </div>
-        <nav class="px-3 pb-4 flex flex-col gap-1">
+        <nav class="p-3 flex flex-col gap-1">
           <NuxtLink
             v-for="item in adminNav"
             :key="item.to"
             :to="item.to"
-            class="group inline-flex items-center gap-3 h-9 rounded-md px-2.5 transition-colors"
-            :class="sidebarCollapsed ? 'justify-center' : ''"
+            class="inline-flex items-center gap-3 h-9 rounded-md px-2.5 transition-colors"
             :style="{
               background: isAdminNavActive(item, route.path) ? 'var(--color-accent-soft)' : 'transparent',
               color: isAdminNavActive(item, route.path) ? 'var(--color-accent)' : 'var(--color-text-secondary)',
             }"
-            :title="sidebarCollapsed ? item.label : undefined"
           >
             <UIcon :name="item.icon" class="size-4 shrink-0" />
-            <span v-if="!sidebarCollapsed" class="text-[13px] font-medium tracking-tight">{{ item.label }}</span>
+            <span class="text-[13px] font-medium tracking-tight">{{ item.label }}</span>
           </NuxtLink>
         </nav>
       </aside>

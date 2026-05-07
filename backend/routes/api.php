@@ -1,7 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\AuthController;
-use App\Http\Controllers\Api\V1\Admin\LeadsController;
+use App\Http\Controllers\Api\V1\Admin\OrdersController;
+use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
 use App\Http\Controllers\Api\V1\QuoteRequestController;
 use Illuminate\Support\Facades\Route;
@@ -36,8 +37,12 @@ Route::middleware([
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/me', [AuthController::class, 'me'])->name('me');
 
-        Route::get('/leads', [LeadsController::class, 'index'])->name('leads.index');
-        Route::get('/leads/{lead}', [LeadsController::class, 'show'])->name('leads.show');
-        Route::post('/leads/{lead}/status', [LeadsController::class, 'updateStatus'])->name('leads.status');
-        Route::post('/leads/{lead}/convert', [LeadsController::class, 'convert'])->name('leads.convert');
+        Route::get('/quotations', [QuotationsController::class, 'index'])->name('quotations.index');
+        Route::get('/quotations/{quotation}', [QuotationsController::class, 'show'])->name('quotations.show');
+        Route::post('/quotations/{quotation}/status', [QuotationsController::class, 'updateStatus'])->name('quotations.status');
+        Route::post('/quotations/{quotation}/convert', [QuotationsController::class, 'convert'])->name('quotations.convert');
+
+        Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [OrdersController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/project-status', [OrdersController::class, 'updateProjectStatus'])->name('orders.project-status');
     });

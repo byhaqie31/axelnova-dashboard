@@ -25,6 +25,10 @@ class QuoteRequest extends Model
         'estimate_max_myr',
         'estimate_weeks',
         'status',
+        'project_status',
+        'project_started_at',
+        'project_delivered_at',
+        'project_completed_at',
         'client_id',
         'quotation_id',
         'ip_address',
@@ -41,6 +45,9 @@ class QuoteRequest extends Model
             'estimate_max_myr' => 'decimal:2',
             'submitted_at' => 'datetime',
             'viewed_at' => 'datetime',
+            'project_started_at' => 'datetime',
+            'project_delivered_at' => 'datetime',
+            'project_completed_at' => 'datetime',
         ];
     }
 

@@ -18,7 +18,7 @@ async function handleLogin() {
       body: { email: email.value, password: password.value },
     })
     setToken(res.token)
-    await navigateTo('/admin/leads')
+    await navigateTo('/admin')
   }
   catch {
     error.value = 'Invalid credentials. Please try again.'

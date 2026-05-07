@@ -7,8 +7,9 @@ export interface AdminNavItem {
 
 export const adminNav: AdminNavItem[] = [
   { to: '/admin', label: 'Dashboard', icon: 'i-lucide-layout-dashboard' },
-  { to: '/admin/leads', label: 'Orders', icon: 'i-lucide-receipt', matchPrefix: '/admin/leads' },
-  { to: '/admin/services', label: 'Services', icon: 'i-lucide-package', matchPrefix: '/admin/services' },
+  { to: '/admin/quotations', label: 'Quotations', icon: 'i-lucide-file-text', matchPrefix: '/admin/quotations' },
+  { to: '/admin/orders', label: 'Orders', icon: 'i-lucide-package-check', matchPrefix: '/admin/orders' },
+  { to: '/admin/services', label: 'Services', icon: 'i-lucide-briefcase-business', matchPrefix: '/admin/services' },
   { to: '/admin/projects', label: 'Projects', icon: 'i-lucide-folder-kanban', matchPrefix: '/admin/projects' },
   { to: '/admin/analytics', label: 'Analytics', icon: 'i-lucide-chart-line', matchPrefix: '/admin/analytics' },
 ]
