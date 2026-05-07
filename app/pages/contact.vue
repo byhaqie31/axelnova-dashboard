@@ -9,6 +9,8 @@ const form = reactive({
 })
 
 const submitted = ref(false)
+const loading = ref(false)
+const error = ref('')
 
 const subjects = [
   'Project inquiry',
@@ -51,10 +53,32 @@ const channels = [
   },
 ]
 
-const handleSubmit = () => {
-  const body = `Name: ${form.name}\nEmail: ${form.email}\nSubject: ${form.subject}\n\n${form.message}`
-  window.location.href = `mailto:baihaqie@axelnova.tech?subject=${encodeURIComponent(form.subject + ' — axelnova.tech')}&body=${encodeURIComponent(body)}`
-  submitted.value = true
+const handleSubmit = async () => {
+  loading.value = true
+  error.value = ''
+  try {
+    const res = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        access_key: 'a9100b0c-2c2b-4c5c-a381-543301ef9b17',
+        name: form.name,
+        email: form.email,
+        subject: `${form.subject} — axelnova.tech`,
+        message: form.message,
+      }),
+    })
+    const result = await res.json()
+    if (result.success) {
+      submitted.value = true
+    } else {
+      error.value = 'Something went wrong. Please try again or email me directly.'
+    }
+  } catch {
+    error.value = 'Network error. Please check your connection and try again.'
+  } finally {
+    loading.value = false
+  }
 }
 
 useScrollReveal('.reveal')
@@ -94,7 +118,7 @@ useScrollReveal('.reveal')
             </div>
             <button
               class="btn-pill btn-pill-ghost mt-2"
-              @click="submitted = false; form.name = ''; form.email = ''; form.message = ''"
+              @click="submitted = false; error = ''; form.name = ''; form.email = ''; form.message = ''"
             >
               Send another
             </button>
@@ -165,12 +189,17 @@ useScrollReveal('.reveal')
             />
           </div>
 
-          <button type="submit" class="btn-pill btn-pill-accent w-full justify-center">
-            Send message →
+          <button
+            type="submit"
+            class="btn-pill btn-pill-accent w-full justify-center"
+            :disabled="loading"
+            :style="{ opacity: loading ? '0.7' : '1', cursor: loading ? 'not-allowed' : 'pointer' }"
+          >
+            {{ loading ? 'Sending…' : 'Send message →' }}
           </button>
 
-          <p class="text-[11px] text-center" style="color: var(--color-text-tertiary);">
-            This will open your email client with the form details pre-filled.
+          <p v-if="error" class="text-[12px] text-center" style="color: var(--color-danger);">
+            {{ error }}
           </p>
         </form>
       </div>
@@ -206,10 +235,10 @@ useScrollReveal('.reveal')
             :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
           >
             <div
-              class="size-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              class="size-9 rounded-xl flex items-center justify-center shrink-0"
               :style="{ background: c.iconBg }"
             >
-              <UIcon :name="c.icon" class="size-[18px]" :style="{ color: c.iconColor }" />
+              <UIcon :name="c.icon" class="size-4.5" :style="{ color: c.iconColor }" />
             </div>
             <div class="min-w-0">
               <p class="text-[12px] font-medium mb-0.5" style="color: var(--color-text-tertiary);">{{ c.label }}</p>
@@ -217,7 +246,7 @@ useScrollReveal('.reveal')
             </div>
             <UIcon
               name="i-fluent-arrow-up-right-24-regular"
-              class="size-3.5 ml-auto flex-shrink-0 opacity-0 transition-opacity channel-arrow"
+              class="size-3.5 ml-auto shrink-0 opacity-0 transition-opacity channel-arrow"
               :style="{ color: 'var(--color-text-secondary)' }"
             />
           </a>
@@ -228,7 +257,7 @@ useScrollReveal('.reveal')
           class="rounded-xl border px-4 py-3.5 flex items-start gap-3"
           :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }"
         >
-          <UIcon name="i-fluent-info-24-regular" class="size-4 mt-0.5 flex-shrink-0" style="color: var(--color-text-tertiary);" />
+          <UIcon name="i-fluent-info-24-regular" class="size-4 mt-0.5 shrink-0" style="color: var(--color-text-tertiary);" />
           <p class="text-[12px] leading-relaxed" style="color: var(--color-text-secondary);">
             For project enquiries, sharing a brief or scope document helps us get started faster.
           </p>

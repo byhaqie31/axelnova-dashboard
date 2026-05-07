@@ -14,24 +14,31 @@ const currencyMeta: Record<CurrencyCode, { symbol: string; rate: number }> = {
 const currencyCodes: CurrencyCode[] = ['MYR', 'USD', 'GBP', 'SGD']
 const activeCurrency = ref<CurrencyCode>('MYR')
 
-function fmtAmt(myr: number): string {
-  const { symbol, rate } = currencyMeta[activeCurrency.value]
+function convertAmt(myr: number): string {
+  const { rate } = currencyMeta[activeCurrency.value]
   const isMYR = activeCurrency.value === 'MYR'
   const v = isMYR
     ? Math.round(myr / 100) * 100
     : Math.round(myr * rate / 50) * 50
-
   if (v >= 1000) {
     const k = v / 1000
-    const s = k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)
-    return isMYR ? `${symbol} ${s}k` : `${symbol}${s}k`
+    return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}k`
   }
-  return isMYR ? `${symbol} ${v.toLocaleString()}` : `${symbol}${v.toLocaleString()}`
+  return v.toLocaleString()
+}
+
+function fmtAmt(myr: number): string {
+  const { symbol } = currencyMeta[activeCurrency.value]
+  const isMYR = activeCurrency.value === 'MYR'
+  return isMYR ? `${symbol} ${convertAmt(myr)}` : `${symbol}${convertAmt(myr)}`
 }
 
 function fmtPrice(min: number, max: number | null): string {
-  if (!max) return `${fmtAmt(min)}+`
-  return `${fmtAmt(min)} – ${fmtAmt(max)}`
+  const { symbol } = currencyMeta[activeCurrency.value]
+  const isMYR = activeCurrency.value === 'MYR'
+  const prefix = isMYR ? `${symbol} ` : symbol
+  if (!max) return `${prefix}${convertAmt(min)}+`
+  return `${prefix}${convertAmt(min)} – ${convertAmt(max)}`
 }
 
 // ── Service tabs ──────────────────────────────────────────────────────────────
