@@ -99,9 +99,10 @@ function fmtDate(iso?: string | null) {
 
 // Manual status updates exclude 'converted' — that's a one-way trip via the Convert button.
 const statusOptions = ['new', 'viewed', 'contacted', 'rejected', 'spam']
-const statusColors: Record<string, string> = {
-  new: 'var(--color-accent)', viewed: '#A855F7', contacted: 'var(--color-success)',
-  converted: '#22c55e', rejected: 'var(--color-danger)', spam: 'var(--color-text-tertiary)',
+
+const statusLabels: Record<string, string> = {
+  new: 'New', viewed: 'Viewed', contacted: 'Contacted',
+  rejected: 'Rejected', spam: 'Spam',
 }
 
 const scopeFields = computed(() => {
@@ -140,10 +141,7 @@ const scopeFields = computed(() => {
               <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ quotation.name }}</p>
               <p v-if="quotation.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ quotation.company }}</p>
             </div>
-            <span class="text-[12px] font-semibold px-3 py-1.5 rounded-full"
-              :style="{ color: statusColors[quotation.status], background: `${statusColors[quotation.status]}20` }">
-              {{ quotation.status }}
-            </span>
+            <AdminStatusPill :status="quotation.status" size="md" />
           </div>
           <div class="grid sm:grid-cols-3 gap-4 pt-4 border-t" style="border-color: var(--color-border);">
             <div>
@@ -206,16 +204,13 @@ const scopeFields = computed(() => {
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Update status</p>
           <div class="flex flex-wrap gap-2">
             <button v-for="s in statusOptions" :key="s" type="button"
-              class="text-[11px] px-3 py-1.5 rounded-full border transition-all"
+              class="status-pill status-pill-button"
               :class="{ 'opacity-50': statusLoading }"
-              :style="{
-                borderColor: quotation.status === s ? statusColors[s] : 'var(--color-border)',
-                background: quotation.status === s ? `${statusColors[s]}20` : 'transparent',
-                color: quotation.status === s ? statusColors[s] : 'var(--color-text-secondary)',
-              }"
+              :data-status="quotation.status === s ? s : ''"
+              :data-active="quotation.status === s"
               :disabled="statusLoading || quotation.status === s"
               @click="updateStatus(s)">
-              {{ s }}
+              {{ statusLabels[s] }}
             </button>
           </div>
         </div>

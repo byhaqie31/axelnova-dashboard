@@ -57,15 +57,6 @@ function fmtMyr(amount: string | number) {
   return `RM ${n.toLocaleString()}`
 }
 
-const statusColors: Record<string, string> = {
-  new: 'var(--color-accent)',
-  viewed: '#A855F7',
-  contacted: 'var(--color-success)',
-  converted: '#22c55e',
-  rejected: 'var(--color-danger)',
-  spam: 'var(--color-text-tertiary)',
-}
-
 interface StatTile {
   label: string
   value: string
@@ -203,13 +194,7 @@ const tiles = computed<StatTile[]>(() => [
               </p>
             </td>
             <td class="px-4 py-3.5">
-              <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                :style="{
-                  color: statusColors[q.status] ?? 'var(--color-text-secondary)',
-                  background: `${statusColors[q.status] ?? 'var(--color-text-secondary)'}20`,
-                }">
-                {{ q.status }}
-              </span>
+              <AdminStatusPill :status="q.status" />
             </td>
             <td class="px-4 py-3.5 text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
               {{ fmtDate(q.submitted_at) }}

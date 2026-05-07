@@ -35,24 +35,10 @@ const filters = reactive({
 const projectStatusOptions = [
   { value: '', label: 'All' },
   { value: 'pending', label: 'Pending' },
-  { value: 'in_progress', label: 'In Progress' },
+  { value: 'in_progress', label: 'In progress' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'completed', label: 'Completed' },
 ]
-
-const projectStatusColors: Record<string, string> = {
-  pending: 'var(--color-text-tertiary)',
-  in_progress: 'var(--color-accent)',
-  delivered: '#A855F7',
-  completed: 'var(--color-success)',
-}
-
-const projectStatusLabels: Record<string, string> = {
-  pending: 'Pending',
-  in_progress: 'In Progress',
-  delivered: 'Delivered',
-  completed: 'Completed',
-}
 
 async function fetchOrders() {
   loading.value = true
@@ -172,13 +158,7 @@ function fmtMyr(amount: string | number) {
               <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.package_key ?? '—' }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                :style="{
-                  color: projectStatusColors[o.project_status ?? 'pending'],
-                  background: `${projectStatusColors[o.project_status ?? 'pending']}20`,
-                }">
-                {{ projectStatusLabels[o.project_status ?? 'pending'] }}
-              </span>
+              <AdminStatusPill :status="o.project_status" />
             </td>
             <td class="px-4 py-3.5 text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
               {{ o.project_started_at ? fmtDate(o.project_started_at) : '—' }}

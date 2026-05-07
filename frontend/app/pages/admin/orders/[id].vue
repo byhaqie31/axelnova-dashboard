@@ -62,7 +62,7 @@ async function setProjectStatus(next: string) {
     // Controller wraps in QuotationResource which returns under .data when collection, but for single it's bare
     const updated = (res.order as any).data ?? res.order
     order.value = updated as Order
-    actionMessage.value = `Project status set to "${projectStatusLabels[next]}".`
+    actionMessage.value = `Project status set to ${projectStatusLabels[next]}.`
   }
   catch {
     actionMessage.value = 'Failed to update project status.'
@@ -88,16 +88,9 @@ const projectStatusOptions = ['pending', 'in_progress', 'delivered', 'completed'
 
 const projectStatusLabels: Record<string, string> = {
   pending: 'Pending',
-  in_progress: 'In Progress',
+  in_progress: 'In progress',
   delivered: 'Delivered',
   completed: 'Completed',
-}
-
-const projectStatusColors: Record<string, string> = {
-  pending: 'var(--color-text-tertiary)',
-  in_progress: 'var(--color-accent)',
-  delivered: '#A855F7',
-  completed: 'var(--color-success)',
 }
 
 interface TimelineStep {
@@ -140,13 +133,7 @@ const timeline = computed<TimelineStep[]>(() => {
               <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ order.name }}</p>
               <p v-if="order.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ order.company }}</p>
             </div>
-            <span class="text-[12px] font-semibold px-3 py-1.5 rounded-full"
-              :style="{
-                color: projectStatusColors[order.project_status ?? 'pending'],
-                background: `${projectStatusColors[order.project_status ?? 'pending']}20`,
-              }">
-              {{ projectStatusLabels[order.project_status ?? 'pending'] }}
-            </span>
+            <AdminStatusPill :status="order.project_status" size="md" />
           </div>
           <div class="grid sm:grid-cols-3 gap-4 pt-4 border-t" style="border-color: var(--color-border);">
             <div>
@@ -174,9 +161,12 @@ const timeline = computed<TimelineStep[]>(() => {
             <li v-for="step in timeline" :key="step.key" class="flex items-start gap-3">
               <div
                 class="size-7 rounded-full inline-flex items-center justify-center shrink-0 mt-0.5"
-                :style="{
-                  background: step.at ? `${projectStatusColors[step.key]}20` : 'var(--color-bg-secondary)',
-                  color: step.at ? projectStatusColors[step.key] : 'var(--color-text-tertiary)',
+                :style="step.at ? {
+                  background: `var(--status-${step.key}-bg)`,
+                  color: `var(--status-${step.key}-fg)`,
+                } : {
+                  background: 'var(--color-bg-secondary)',
+                  color: 'var(--color-text-tertiary)',
                 }"
               >
                 <UIcon :name="step.at ? 'i-lucide-check' : 'i-lucide-circle'" class="size-3.5" />
@@ -210,18 +200,15 @@ const timeline = computed<TimelineStep[]>(() => {
         <div class="rounded-2xl border p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Project status</p>
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-wrap gap-2">
             <button v-for="s in projectStatusOptions" :key="s" type="button"
-              class="text-[12px] px-3 py-2 rounded-md border transition-all text-left"
+              class="status-pill status-pill-button"
               :class="{ 'opacity-50': projectStatusLoading }"
-              :style="{
-                borderColor: order.project_status === s ? projectStatusColors[s] : 'var(--color-border)',
-                background: order.project_status === s ? `${projectStatusColors[s]}20` : 'transparent',
-                color: order.project_status === s ? projectStatusColors[s] : 'var(--color-text-secondary)',
-              }"
+              :data-status="order.project_status === s ? s : ''"
+              :data-active="order.project_status === s"
               :disabled="projectStatusLoading || order.project_status === s"
               @click="setProjectStatus(s)">
-              <span class="font-medium">{{ projectStatusLabels[s] }}</span>
+              {{ projectStatusLabels[s] }}
             </button>
           </div>
         </div>
