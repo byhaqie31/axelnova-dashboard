@@ -8,11 +8,6 @@ return [
         'scheme' => 'https',
     ],
 
-    'turnstile' => [
-        'secret' => env('TURNSTILE_SECRET'),
-        'site_key' => env('TURNSTILE_SITE_KEY'),
-    ],
-
     'admin' => [
         'email' => env('ADMIN_NOTIFICATION_EMAIL', 'baihaqie@axelnova.tech'),
         'name' => env('ADMIN_NAME', 'Ahmad Baihaqie'),

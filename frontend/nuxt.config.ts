@@ -23,11 +23,10 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
-  // Overridden at runtime by NUXT_PUBLIC_API_BASE and NUXT_PUBLIC_TURNSTILE_SITE_KEY env vars
+  // Overridden at runtime by NUXT_PUBLIC_API_BASE
   runtimeConfig: {
     public: {
       apiBase: 'http://localhost:8000',
-      turnstileSiteKey: '',
     },
   },
 

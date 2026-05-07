@@ -28,11 +28,11 @@ async function copyRef() {
     </div>
 
     <h1 class="text-[32px] font-bold tracking-tight mb-3" style="color: var(--color-text);">
-      Your quote is on the way.
+      Thank you for your interest.
     </h1>
     <p class="text-[16px] leading-relaxed mb-8" style="color: var(--color-text-secondary);">
-      Check your inbox in 2–5 minutes for your personalised quote.
-      If it doesn't arrive, check your spam folder.
+      Our team will contact you as soon as possible to discuss the next steps.
+      A copy of your quote is also on its way to your inbox — check spam if it doesn't arrive within a few minutes.
     </p>
 
     <!-- Reference code -->

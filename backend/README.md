@@ -19,7 +19,6 @@ php artisan key:generate
 Edit `.env` with your credentials:
 - `DB_*` — MySQL credentials
 - `AWS_*` — Cloudflare R2 credentials (endpoint format: `https://<account-id>.r2.cloudflarestorage.com`)
-- `TURNSTILE_SECRET` — from Cloudflare Turnstile dashboard
 - `MAIL_*` — SMTP provider (Mailgun, Postmark, etc.)
 - `ADMIN_NOTIFICATION_EMAIL` — your email for lead notifications
 - `ADMIN_CALENDLY_URL` — your Calendly link (included in PDFs)
@@ -48,7 +47,7 @@ php artisan queue:work     # process queued jobs (PDF, email)
 | Method | Endpoint | Auth | Rate limit | Description |
 |--------|----------|------|-----------|-------------|
 | GET | `/api/v1/quote-builder/config` | Public | — | Active pricing config (cached 1h) |
-| POST | `/api/v1/quote-requests` | Public + Turnstile | 3/hr/IP | Submit quote request |
+| POST | `/api/v1/quote-requests` | Public | 3/hr/IP | Submit quote request |
 | GET | `/api/v1/admin/leads` | Sanctum + admin | — | List leads with filters |
 | GET | `/api/v1/admin/leads/{id}` | Sanctum + admin | — | Lead detail + marks viewed |
 | POST | `/api/v1/admin/leads/{id}/status` | Sanctum + admin | — | Update status |
@@ -62,7 +61,7 @@ php artisan queue:work     # process queued jobs (PDF, email)
 # Get pricing config
 curl http://localhost:8000/api/v1/quote-builder/config
 
-# Submit a quote (Turnstile disabled when TURNSTILE_SECRET is empty)
+# Submit a quote
 curl -X POST http://localhost:8000/api/v1/quote-requests \
   -H "Content-Type: application/json" \
   -d '{
@@ -73,8 +72,7 @@ curl -X POST http://localhost:8000/api/v1/quote-requests \
     "modifiers": { "cms": true, "extra_page": 7 },
     "addon_keys": ["seo", "analytics"],
     "rush": false,
-    "form_payload": { "source": "Google", "notes": "Test submission." },
-    "cf_turnstile_response": "test-token"
+    "form_payload": { "source": "Google", "notes": "Test submission." }
   }'
 
 # Validation failure

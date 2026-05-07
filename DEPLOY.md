@@ -84,8 +84,7 @@ docker compose -f docker-compose.prod.yml up -d --force-recreate
 ```
 
 Required values to fill on first setup:
-- **Backend**: `APP_KEY` (`base64:` + base64-encoded 32 random bytes), `DB_PASSWORD`, `MAIL_PASSWORD`, optional `TURNSTILE_SECRET` + `TURNSTILE_SITE_KEY`
-- **Frontend**: optional `NUXT_PUBLIC_TURNSTILE_SITE_KEY` (must match backend's `TURNSTILE_SITE_KEY`)
+- **Backend**: `APP_KEY` (`base64:` + base64-encoded 32 random bytes), `DB_PASSWORD`, `MAIL_PASSWORD`
 
 `SANCTUM_STATEFUL_DOMAINS` doesn't need to be set — the Sanctum stateful middleware is route-scoped to admin endpoints only ([backend/routes/api.php](./backend/routes/api.php)). Public POSTs (the quote form) don't trigger CSRF protection.
 
@@ -146,5 +145,4 @@ docker exec axelnova-mysql mysqldump -uaxelnova_dashboard_user -p"$DB_PW" axelno
 - `TrustProxies` is wired so Laravel respects `X-Forwarded-*` headers from nginx — correct client IP for per-IP rate limiting and HTTPS-aware redirect URLs
 - Quote-form throttle is env-aware: 3/hour in production (spam protection), 1000/min in non-production (dev/staging testing)
 - Sanctum stateful middleware only runs on admin routes; public endpoints are pure stateless POSTs
-- Turnstile widget is conditional — empty `NUXT_PUBLIC_TURNSTILE_SITE_KEY` skips the widget AND the verification call entirely (frontend sends `dev-bypass` token, backend accepts when `TURNSTILE_SECRET` is empty)
 - Branch protection on `main` means no direct pushes — every change goes through a PR

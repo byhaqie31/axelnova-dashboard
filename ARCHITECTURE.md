@@ -20,7 +20,6 @@ axelnova-dashboard/
 | Queue | Laravel database queue |
 | Email | SMTP — Mailtrap in dev, Mailgun/Postmark/SES in prod |
 | Auth | Laravel Sanctum (token-based, admin only) |
-| Bot protection | Cloudflare Turnstile (auto-bypassed when env vars empty) |
 
 ## Database tables
 
@@ -49,7 +48,7 @@ All routes prefixed with `/api`:
 
 ```
 GET  /v1/quote-builder/config        Public, cached 1h
-POST /v1/quote-requests              Public, Turnstile, 3/hr/IP
+POST /v1/quote-requests              Public, 3/hr/IP
 GET  /v1/admin/leads                 Sanctum + admin role
 GET  /v1/admin/leads/{id}            Sanctum + admin role
 POST /v1/admin/leads/{id}/status     Sanctum + admin role
@@ -105,8 +104,6 @@ See `backend/.env.example` for the full list. Key variables:
 | Variable | Purpose |
 |----------|---------|
 | `NUXT_PUBLIC_API_BASE` | Backend base URL (set in `docker-compose.dev.yml` for dev) |
-| `NUXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile site key (frontend) — empty in dev, real key in prod |
-| `TURNSTILE_SECRET` | Turnstile secret (backend verification) — empty in dev, real key in prod |
 | `MAIL_*` | SMTP for outbound mail (Mailtrap in dev) |
 | `ADMIN_NOTIFICATION_EMAIL` | Where new lead notifications go |
 | `ADMIN_CALENDLY_URL` | Optional CTA URL in the customer email |

@@ -67,8 +67,6 @@ These are easy to get wrong; they exist for reasons:
 
 **Sanctum is route-scoped.** Stateful CSRF middleware only applies to `/v1/admin/*` ([backend/routes/api.php](../backend/routes/api.php)). Public POSTs (the quote form) are pure stateless. Don't set `SANCTUM_STATEFUL_DOMAINS` globally.
 
-**Turnstile auto-bypass.** Empty `NUXT_PUBLIC_TURNSTILE_SITE_KEY` skips the widget AND the verification call entirely (frontend sends `dev-bypass`, backend accepts when `TURNSTILE_SECRET` is empty). This is intentional for dev — don't add code that breaks the bypass.
-
 **Quote throttle is env-aware.** 3/hour/IP in production, 1000/min otherwise. Test freely in dev.
 
 **Reference codes are atomic.** `AXN-YYYY-NNNN` codes are generated via DB transaction with `lockForUpdate()` in [backend/app/Support/ReferenceCodeGenerator.php](../backend/app/Support/ReferenceCodeGenerator.php). Counter resets each year. Don't reimplement counter logic elsewhere.

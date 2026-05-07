@@ -1,66 +1,11 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
-const runtimeConfig = useRuntimeConfig()
-
-useHead({
-  title: 'Get a Quote — Axel Nova Ventures',
-  // Only load the Cloudflare script when a site key is configured — saves a
-  // network request in local dev where Turnstile is bypassed.
-  script: runtimeConfig.public.turnstileSiteKey
-    ? [{ src: 'https://challenges.cloudflare.com/turnstile/v0/api.js', defer: true, async: true }]
-    : [],
-})
+useHead({ title: 'Get a Quote — Axel Nova Ventures' })
 const { config, configLoading, configError, loadConfig, calculate, fmtMyr } = usePricingEngine()
 
-// ── Form state ───────────────────────────────────────────────────────────────
-const form = reactive({
-  // Section 1: About you
-  name: '',
-  company: '',
-  email: '',
-  phone: '',
-  source: '',
-
-  // Section 2: Project type
-  categoryKey: '' as string,
-  packageKey: '' as string,
-
-  // Section 3: Scope (conditional)
-  pages: 5,
-  languages: [] as string[],
-  cms: false,
-  bookingFlow: false,
-  modules: 5,
-  userRoles: 2,
-  realTime: false,
-  chartsComplexity: 'basic' as 'none' | 'basic' | 'advanced',
-  screensCount: 10,
-  designSystem: false,
-  prototype: false,
-  componentsCount: 10,
-  pagesCount: 5,
-  stateManagement: false,
-  testing: false,
-  coreFeatures: '',
-  authMethods: [] as string[],
-  paymentMethod: '' as string,
-  adminPortal: false,
-  notSureNotes: '',
-
-  // Section 4: Tech stack
-  frontendTech: '',
-  backendTech: '',
-  hostingPref: '',
-
-  // Section 5: Add-ons
-  addonKeys: [] as string[],
-
-  // Section 6: Timeline & budget
-  rush: false,
-  budgetRange: '',
-  notes: '',
-})
+// Form state lives in a shared composable so the preview/success pages can read it.
+const { form } = useQuoteForm()
 
 // ── Categories ───────────────────────────────────────────────────────────────
 const categories = [
@@ -127,113 +72,25 @@ const estimate = computed(() => {
   return calculate(form.packageKey, modifiers, form.addonKeys, form.rush)
 })
 
-// ── Turnstile ─────────────────────────────────────────────────────────────────
-// When NUXT_PUBLIC_TURNSTILE_SITE_KEY is unset (local dev), we send a sentinel
-// token. The backend mirrors this: if TURNSTILE_SECRET is empty in backend/.env,
-// verifyTurnstile() returns true unconditionally — so the sentinel slips through.
-// Set both env vars for prod to re-enable real bot protection.
-const cfToken = ref(runtimeConfig.public.turnstileSiteKey ? '' : 'dev-bypass')
-
 onMounted(() => {
   loadConfig()
-  if (!runtimeConfig.public.turnstileSiteKey) return
-  ;(window as any).__axnTurnstile = (token: string) => {
-    cfToken.value = token
-  }
 })
 
-// ── Submit ────────────────────────────────────────────────────────────────────
-const loading = ref(false)
-const error = ref('')
-const successRef = ref('')
+// ── Preview navigation ────────────────────────────────────────────────────────
+// This page only collects details — submission happens on `/quote/preview`
+// after the user reviews the quote.
 const breakdownOpen = ref(false)
 
-const canSubmit = computed(() =>
+const canPreview = computed(() =>
   form.name.trim().length >= 2
   && form.email.includes('@')
   && form.phone.trim().length >= 7
-  && form.packageKey
-  && cfToken.value,
+  && !!form.packageKey,
 )
 
-async function handleSubmit() {
-  if (!canSubmit.value) return
-  loading.value = true
-  error.value = ''
-  successRef.value = ''
-
-  try {
-    const payload: Record<string, unknown> = {
-      name: form.name,
-      email: form.email,
-      phone: form.phone,
-      company: form.company || undefined,
-      package_key: form.packageKey,
-      rush: form.rush,
-      addon_keys: form.addonKeys,
-      cf_turnstile_response: cfToken.value,
-      form_payload: {
-        source: form.source,
-        notes: form.notes,
-        budget_range: form.budgetRange,
-        frontend_tech: form.frontendTech,
-        backend_tech: form.backendTech,
-        hosting_pref: form.hostingPref,
-        // Scope details
-        pages: form.pages,
-        languages: form.languages,
-        cms: form.cms,
-        booking_flow: form.bookingFlow,
-        modules: form.modules,
-        user_roles: form.userRoles,
-        real_time: form.realTime,
-        charts_complexity: form.chartsComplexity,
-        screens_count: form.screensCount,
-        design_system: form.designSystem,
-        prototype: form.prototype,
-        components_count: form.componentsCount,
-        pages_count: form.pagesCount,
-        state_management: form.stateManagement,
-        testing: form.testing,
-        core_features: form.coreFeatures,
-        auth_methods: form.authMethods,
-        payment_method: form.paymentMethod,
-        admin_portal: form.adminPortal,
-        not_sure_notes: form.notSureNotes,
-      },
-      modifiers: {},
-    }
-
-    // Build modifiers for backend
-    if (form.categoryKey === 'web') {
-      if (form.pages > 5) (payload.modifiers as any).extra_page = form.pages
-      if (form.cms) (payload.modifiers as any).cms = true
-      if (form.bookingFlow) (payload.modifiers as any).booking_flow = true
-      if (form.languages.length > 1) (payload.modifiers as any).extra_language = form.languages.length - 1
-    }
-    else if (form.categoryKey === 'dashboard') {
-      if (form.modules > 5) (payload.modifiers as any).extra_module = form.modules
-      if (form.realTime) (payload.modifiers as any).real_time_features = true
-      if (form.chartsComplexity === 'advanced') (payload.modifiers as any).advanced_charts = true
-    }
-
-    const res = await $fetch<{ data: { reference_code: string; valid_until: string } }>(
-      `${runtimeConfig.public.apiBase}/api/v1/quote-requests`,
-      { method: 'POST', body: payload },
-    )
-
-    successRef.value = res.data.reference_code
-
-    await navigateTo(`/quote/success?ref=${res.data.reference_code}&until=${res.data.valid_until}`)
-  }
-  catch (e: any) {
-    console.error('[quote submit] failed:', e)
-    const errorList = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
-    error.value = errorList || e?.data?.message || 'Something went wrong. Please try again.'
-  }
-  finally {
-    loading.value = false
-  }
+async function goToPreview() {
+  if (!canPreview.value) return
+  await navigateTo('/quote/preview')
 }
 
 // ── Addons ────────────────────────────────────────────────────────────────────
@@ -270,7 +127,7 @@ function toggleAddon(key: string) {
     <div v-else class="grid lg:grid-cols-[1fr_380px] gap-10 lg:gap-14 items-start">
 
       <!-- ── Form ─────────────────────────────────────────────────────────── -->
-      <form class="space-y-10" @submit.prevent="handleSubmit">
+      <form class="space-y-10" @submit.prevent="goToPreview">
 
         <!-- SECTION 1: About you -->
         <section>
@@ -666,38 +523,19 @@ function toggleAddon(key: string) {
           </div>
         </section>
 
-        <!-- Turnstile + submit -->
-        <!-- v-show (not v-if) so Cloudflare's auto-scan finds the .cf-turnstile div on page load.
-             With v-if the widget div doesn't exist until packageKey is set, but Cloudflare only
-             scans once on script load — the widget would never initialise and the token would
-             never arrive. Keeping it in the DOM lets verification happen in the background. -->
+        <!-- Preview CTA — actual submission lives on /quote/preview. -->
         <div v-show="form.packageKey" class="space-y-4">
-          <!-- Cloudflare Turnstile widget — only renders when key is configured -->
-          <div
-            v-if="runtimeConfig.public.turnstileSiteKey"
-            class="cf-turnstile"
-            :data-sitekey="runtimeConfig.public.turnstileSiteKey"
-            data-callback="__axnTurnstile"
-            data-theme="auto"
-          ></div>
-
-          <p v-if="error" class="text-[12px]" style="color: var(--color-danger);">{{ error }}</p>
-
-          <!-- Inline success fallback — shows if submit succeeded but navigation didn't fire for any reason -->
-          <div v-if="successRef" class="rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"
-            :style="{ background: 'rgba(48,209,88,0.12)', color: 'var(--color-success)' }">
-            <UIcon name="i-fluent-checkmark-circle-24-regular" class="size-4 shrink-0" />
-            <span>Quote sent. Reference: <span class="font-mono font-semibold">{{ successRef }}</span>. Check your email.</span>
-          </div>
-
           <!-- Honeypot -->
           <input type="text" name="website_url" class="hidden" tabindex="-1" autocomplete="off" />
 
           <button type="submit" class="btn-pill btn-pill-accent w-full justify-center"
-            :disabled="loading || !canSubmit"
-            :style="{ opacity: loading || !canSubmit ? '0.6' : '1', cursor: loading || !canSubmit ? 'not-allowed' : 'pointer' }">
-            {{ loading ? 'Sending your quote…' : 'Get my quote →' }}
+            :disabled="!canPreview"
+            :style="{ opacity: !canPreview ? '0.6' : '1', cursor: !canPreview ? 'not-allowed' : 'pointer' }">
+            Preview my quote →
           </button>
+          <p class="text-[11px] text-center" style="color: var(--color-text-tertiary);">
+            You'll review your quote before anything is sent.
+          </p>
         </div>
       </form>
 
