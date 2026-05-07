@@ -33,19 +33,33 @@ useScrollReveal('.reveal')
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-32">
 
     <!-- Hero -->
-    <section class="min-h-[58vh] flex flex-col justify-center mb-32">
-      <p class="eyebrow mb-6">Axel Nova Ventures</p>
-      <h1
-        class="text-[clamp(34px,5vw,68px)] font-semibold tracking-tighter leading-[1.06] mb-8 max-w-4xl"
-        style="color: var(--color-text);"
-      >
-        Technology should not only<br class="hidden sm:block" />
-        function well —<span class="text-gradient"> it should feel meaningful.</span>
-      </h1>
-      <p class="text-[17px] leading-relaxed max-w-lg" style="color: var(--color-text-secondary);">
-        Built in Malaysia. Designed for the world. A company shaped by design, systems thinking,
-        and a quiet refusal to build anything ordinary.
-      </p>
+    <section class="min-h-[58vh] grid lg:grid-cols-[minmax(0,1fr)_auto] gap-12 lg:gap-20 items-center mb-32">
+      <div class="order-2 lg:order-1">
+        <p class="eyebrow mb-6">Axel Nova Ventures</p>
+        <h1
+          class="text-[clamp(34px,5vw,68px)] font-semibold tracking-tighter leading-[1.06] mb-8 max-w-4xl"
+          style="color: var(--color-text);"
+        >
+          Technology should not only<br class="hidden sm:block" />
+          function well —<span class="text-gradient"> it should feel meaningful.</span>
+        </h1>
+        <p class="text-[17px] leading-relaxed max-w-lg" style="color: var(--color-text-secondary);">
+          Built in Malaysia. Designed for the world. A company shaped by design, systems thinking,
+          and a quiet refusal to build anything ordinary.
+        </p>
+      </div>
+
+      <!-- Logo presentation -->
+      <div class="order-1 lg:order-2 relative flex items-center justify-center mx-auto lg:mx-0">
+        <span aria-hidden class="hero-logo-aurora" />
+        <span aria-hidden class="hero-logo-orbit" />
+        <img
+          src="/axel_nova_favicon.png"
+          alt=""
+          aria-hidden="true"
+          class="relative size-52 sm:size-64 lg:size-72 object-contain hero-logo-mark"
+        />
+      </div>
     </section>
 
     <!-- Origin -->
@@ -267,3 +281,56 @@ useScrollReveal('.reveal')
 
   </div>
 </template>
+
+<style scoped>
+.hero-logo-mark {
+  filter:
+    drop-shadow(0 6px 14px rgba(0, 113, 227, 0.28))
+    drop-shadow(0 0 28px rgba(0, 113, 227, 0.4))
+    drop-shadow(0 0 64px rgba(159, 113, 255, 0.22));
+}
+
+.hero-logo-aurora {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: clamp(280px, 32vw, 460px);
+  height: clamp(280px, 32vw, 460px);
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background:
+    radial-gradient(closest-side, rgba(0, 113, 227, 0.55), rgba(0, 113, 227, 0) 70%),
+    conic-gradient(
+      from 0deg,
+      rgba(0, 113, 227, 0.65),
+      rgba(159, 113, 255, 0.55),
+      rgba(255, 127, 191, 0.45),
+      rgba(0, 113, 227, 0.65)
+    );
+  filter: blur(60px);
+  opacity: 0.55;
+  animation: hero-aurora-spin 24s linear infinite;
+  pointer-events: none;
+}
+
+.hero-logo-orbit {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: clamp(220px, 24vw, 340px);
+  height: clamp(220px, 24vw, 340px);
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  background:
+    radial-gradient(closest-side, transparent 60%, var(--color-bg-elevated) 80%, transparent 100%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@keyframes hero-aurora-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-logo-aurora { animation: none; }
+}
+</style>
