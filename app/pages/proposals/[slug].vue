@@ -121,7 +121,7 @@ useHead({ title: () => proposal.value ? `Proposal — ${proposal.value.client}` 
         <footer class="border-t pt-8" :style="{ borderColor: 'var(--color-border)' }">
           <p class="text-[13px]" style="color: var(--color-text-secondary);">
             Prepared by Ahmad Baihaqie · axelnova.tech ·
-            <a href="mailto:byhaqie1455@gmail.com" style="color: var(--color-accent);">byhaqie1455@gmail.com</a>
+            <a href="mailto:baihaqie@axelnova.tech" style="color: var(--color-accent);">baihaqie@axelnova.tech</a>
           </p>
         </footer>
       </div>

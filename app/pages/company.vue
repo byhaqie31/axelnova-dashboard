@@ -1,6 +1,9 @@
 <script setup lang="ts">
 const stats = [
-  { label: 'Origin', value: 'Malaysia' },
+  { label: 'Registered Name', value: 'Axel Nova Ventures' },
+  { label: 'Registration No.', value: '202603119899 (CA0420977-U)' },
+  { label: 'Established', value: '2026' },
+  { label: 'Headquarters', value: 'Kuala Lumpur, Malaysia' },
   { label: 'Focus', value: 'Design & Technology' },
   { label: 'Stage', value: 'Early — building boldly' },
 ]
@@ -179,7 +182,7 @@ useScrollReveal('.reveal')
             class="w-9 h-9 rounded-xl flex items-center justify-center"
             style="background: var(--color-accent-soft);"
           >
-            <UIcon :name="pillar.icon" class="size-[18px]" style="color: var(--color-accent);" />
+            <UIcon :name="pillar.icon" class="size-4.5" style="color: var(--color-accent);" />
           </div>
           <p class="text-[16px] font-semibold tracking-tight" style="color: var(--color-text);">
             {{ pillar.title }}

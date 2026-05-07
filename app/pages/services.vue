@@ -81,9 +81,9 @@ const contactChannels = [
   {
     id: 'email',
     label: 'Email',
-    value: 'byhaqie1455@gmail.com',
+    value: 'baihaqie@axelnova.tech',
     helper: 'Best for briefs, scope docs, and longer conversations.',
-    href: 'mailto:byhaqie1455@gmail.com?subject=Project%20enquiry%20—%20axelnova.tech',
+    href: 'mailto:baihaqie@axelnova.tech?subject=Project%20enquiry%20—%20axelnova.tech',
     target: '_self',
     icon: 'i-fluent-mail-24-regular',
     iconColor: 'var(--color-accent)',
@@ -160,7 +160,7 @@ useScrollReveal('.reveal')
         </ul>
 
         <a
-          href="mailto:byhaqie1455@gmail.com"
+          href="mailto:baihaqie@axelnova.tech"
           class="btn-pill"
           :class="tier.featured ? 'btn-pill-accent' : 'btn-pill-primary'"
         >

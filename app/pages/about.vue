@@ -181,7 +181,7 @@ useScrollReveal('.reveal')
             See full portfolio →
           </a>
           <a
-            href="mailto:byhaqie1455@gmail.com?subject=Hello%20Qie"
+            href="mailto:baihaqie@axelnova.tech?subject=Hello%20Qie"
             class="text-[13px] font-medium"
             style="color: var(--color-accent);"
           >
@@ -357,7 +357,7 @@ useScrollReveal('.reveal')
           <!-- Connecting line to next item -->
           <div
             v-if="idx < timeline.length - 1"
-            class="absolute left-[5px] top-5 bottom-0 w-px"
+            class="absolute left-1.25 top-5 bottom-0 w-px"
             :style="{ background: 'var(--color-border)' }"
           />
 
@@ -413,7 +413,7 @@ useScrollReveal('.reveal')
             class="w-9 h-9 rounded-xl flex items-center justify-center"
             style="background: var(--color-accent-soft);"
           >
-            <UIcon :name="dream.icon" class="size-[18px]" style="color: var(--color-accent);" />
+            <UIcon :name="dream.icon" class="size-4.5" style="color: var(--color-accent);" />
           </div>
           <p class="text-[16px] font-semibold tracking-tight" style="color: var(--color-text);">
             {{ dream.title }}
