@@ -21,7 +21,13 @@ RUN composer install \
 
 COPY . .
 
-RUN mkdir -p bootstrap/cache \
+RUN mkdir -p \
+        bootstrap/cache \
+        storage/app/public \
+        storage/framework/cache \
+        storage/framework/sessions \
+        storage/framework/views \
+        storage/logs \
     && composer dump-autoload --optimize --classmap-authoritative \
     && php artisan package:discover --ansi
 
