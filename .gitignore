@@ -1,27 +1,31 @@
-# Nuxt dev/build outputs
-.output
-.data
-.nuxt
-.nitro
-.cache
-dist
+# ── Frontend (Nuxt) ──────────────────────────────────────────
+frontend/.output
+frontend/.data
+frontend/.nuxt
+frontend/.nitro
+frontend/.cache
+frontend/dist
+frontend/node_modules
 
-# Node dependencies
-node_modules
+# ── Backend (Laravel) ────────────────────────────────────────
+backend/vendor
+backend/storage/app/public
+backend/storage/framework/cache
+backend/storage/framework/sessions
+backend/storage/framework/views
+backend/bootstrap/cache
+backend/.env
+backend/.env.*
+!backend/.env.example
 
-# Logs
+# ── Logs ─────────────────────────────────────────────────────
 logs
 *.log
 
-# Misc
+# ── Misc ─────────────────────────────────────────────────────
 .DS_Store
 .fleet
 .idea
 
-# Local env files
-.env
-.env.*
-!.env.example
-
-# Claude Code local overrides (project shared settings stay tracked)
+# ── Claude Code ──────────────────────────────────────────────
 .claude/settings.local.json
