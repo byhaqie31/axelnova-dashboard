@@ -16,6 +16,23 @@ services:
     networks:
       - axelnova-shared
 
+  # Queue worker — separate container so its logs are isolated and it can
+  # restart independently of the API. Reuses the same image + bind mount as
+  # backend, just runs a different command.
+  worker:
+    image: axelnova-backend:dev
+    container_name: axelnova-worker-dev
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - ./backend:/app
+    environment:
+      DB_HOST: mysql
+    command: php artisan queue:work --tries=3 --backoff=10 --verbose
+    networks:
+      - axelnova-shared
+
   frontend:
     build:
       context: ./frontend

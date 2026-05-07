@@ -70,7 +70,10 @@ class QuoteRequestController extends Controller
         }
 
         SendClientQuoteEmail::dispatch($quoteRequest->id);
-        NotifyAdminJob::dispatch($quoteRequest->id);
+        // Mailtrap free caps at 1 email/sec, and the customer email itself takes ~4s
+        // to send. Delay the admin email enough that the customer one has fully finished
+        // by the time the worker picks this up. Cheap to wait — admin doesn't care.
+        NotifyAdminJob::dispatch($quoteRequest->id)->delay(now()->addSeconds(10));
 
         $validUntil = now()
             ->addDays($engine->getConfig()->config['valid_for_days'] ?? 30)
