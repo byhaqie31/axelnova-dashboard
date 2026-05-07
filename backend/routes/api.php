@@ -15,8 +15,12 @@ Route::middleware('throttle:3,60')->group(function () {
         ->name('quote-requests.store');
 });
 
-// Admin — Sanctum + role:admin
-Route::middleware(['auth:sanctum', 'role:admin'])
+// Admin — Sanctum SPA (stateful via cookie + CSRF) + role:admin
+Route::middleware([
+        \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        'auth:sanctum',
+        'role:admin',
+    ])
     ->prefix('v1/admin')
     ->name('admin.')
     ->group(function () {
