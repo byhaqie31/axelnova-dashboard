@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'public' })
+
 const cookieTypes = [
   {
     name: 'Essential Cookies',
@@ -83,7 +85,7 @@ useScrollReveal('.reveal')
             <div class="flex items-center justify-between gap-4 mb-2.5">
               <p class="text-[15px] font-semibold" style="color: var(--color-text);">{{ cookie.name }}</p>
               <span
-                class="text-[11px] font-medium px-2.5 py-1 rounded-full flex-shrink-0"
+                class="text-[11px] font-medium px-2.5 py-1 rounded-full shrink-0"
                 :style="cookie.canDisable
                   ? { color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }
                   : { color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }
@@ -111,14 +113,14 @@ useScrollReveal('.reveal')
             :class="i < thirdParty.length - 1 ? 'border-b' : ''"
             :style="{ borderColor: 'var(--color-border)', background: i % 2 === 0 ? 'var(--color-bg-elevated)' : 'var(--color-bg-secondary)' }"
           >
-            <p class="text-[14px] font-semibold w-36 flex-shrink-0" style="color: var(--color-text);">{{ service.provider }}</p>
+            <p class="text-[14px] font-semibold w-36 shrink-0" style="color: var(--color-text);">{{ service.provider }}</p>
             <p class="text-[14px] flex-1" style="color: var(--color-text-secondary);">{{ service.purpose }}</p>
             <a
               v-if="service.optOut"
               :href="service.optOut"
               target="_blank"
               rel="noopener"
-              class="text-[13px] flex-shrink-0"
+              class="text-[13px] shrink-0"
               style="color: var(--color-accent);"
             >
               Opt out →

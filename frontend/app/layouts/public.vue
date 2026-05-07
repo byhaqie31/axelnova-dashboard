@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onClickOutside } from '@vueuse/core'
+import BrandMark from '~/components/shared/BrandMark.vue'
 
 const route = useRoute()
 const colorMode = useColorMode()
@@ -57,15 +58,7 @@ onMounted(() => {
         }"
       >
         <nav class="max-w-7xl mx-auto h-12 px-6 flex items-center justify-between">
-          <NuxtLink to="/" class="text-[15px] font-semibold tracking-tight inline-flex items-center gap-2">
-            <img
-              src="/axel_nova_favicon.png"
-              alt=""
-              aria-hidden="true"
-              class="size-7.5 object-contain brand-logo-glow"
-            />
-            <span class="text-gradient">Axel Nova Ventures</span>
-          </NuxtLink>
+          <BrandMark />
 
           <ul class="hidden md:flex items-center gap-8">
             <li v-for="l in links" :key="l.to">
@@ -215,15 +208,7 @@ onMounted(() => {
 
             <!-- Brand: full width on mobile, first col on desktop -->
             <div class="col-span-2 lg:col-span-1">
-              <NuxtLink to="/" class="text-[15px] font-semibold tracking-tight inline-flex items-center gap-2 mb-4">
-                <img
-                  src="/axel_nova_favicon.png"
-                  alt=""
-                  aria-hidden="true"
-                  class="size-7.5 object-contain brand-logo-glow"
-                />
-                <span class="text-gradient">Axel Nova Ventures</span>
-              </NuxtLink>
+              <BrandMark class="mb-4" />
               <p class="text-[13px] leading-relaxed mb-5 max-w-xs" style="color: var(--color-text-secondary);">
                 Building thoughtful digital experiences through design, systems, and technology.
               </p>
@@ -337,19 +322,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.brand-logo-glow {
-  filter:
-    drop-shadow(0 1px 2px rgba(0, 113, 227, 0.25))
-    drop-shadow(0 0 10px rgba(0, 113, 227, 0.35));
-  transition: filter 0.25s ease;
-}
-
-.brand-logo-glow:hover {
-  filter:
-    drop-shadow(0 1px 3px rgba(0, 113, 227, 0.35))
-    drop-shadow(0 0 14px rgba(0, 113, 227, 0.5));
-}
-
 .footer-avail-dot {
   width: 7px;
   height: 7px;

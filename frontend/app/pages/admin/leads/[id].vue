@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'default', middleware: 'admin-auth' })
+definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const { apiFetch } = useAdminAuth()

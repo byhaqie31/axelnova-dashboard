@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'default', middleware: 'admin-auth' })
+definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 useHead({ title: 'Leads — Admin' })
 
 const { apiFetch, logout } = useAdminAuth()
@@ -150,7 +150,7 @@ function fmtMyr(amount: string | number) {
         </thead>
         <tbody>
           <tr v-for="lead in leads" :key="lead.id"
-            class="border-b cursor-pointer transition-colors hover:bg-[var(--color-bg-secondary)]"
+            class="border-b cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
             style="border-color: var(--color-border);"
             @click="navigateTo(`/admin/leads/${lead.id}`)">
             <td class="px-4 py-3.5">

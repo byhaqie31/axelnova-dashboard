@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'public' })
+
 import { projects } from '~/data/projects'
 import ProjectCard from '~/components/shared/ProjectCard.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'

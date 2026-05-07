@@ -1,4 +1,16 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import type { NuxtPage } from 'nuxt/schema'
+
+// Strip "/public" from URLs of pages under pages/public/. Lets us mirror
+// the admin/portal folder structure without changing public-facing URLs.
+function stripPublicPrefix(list: NuxtPage[]): void {
+  for (const r of list) {
+    if (r.path === '/public') r.path = '/'
+    else if (r.path.startsWith('/public/')) r.path = r.path.slice(7)
+    if (r.children && r.children.length) stripPublicPrefix(r.children)
+  }
+}
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
@@ -25,6 +37,10 @@ export default defineNuxtConfig({
     },
     display: 'swap',
     download: true,
+  },
+
+  hooks: {
+    'pages:extend': stripPublicPrefix,
   },
 
   app: {

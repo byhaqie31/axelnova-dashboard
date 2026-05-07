@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'public' })
+
 const collectItems = [
   'Name and email address',
   'Message content submitted via the contact form',
@@ -92,7 +94,7 @@ useScrollReveal('.reveal')
             class="flex items-start gap-3 text-[15px] leading-relaxed"
             style="color: var(--color-text-secondary);"
           >
-            <span class="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style="background: var(--color-accent);" />
+            <span class="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style="background: var(--color-accent);" />
             {{ item }}
           </li>
         </ul>
@@ -106,7 +108,7 @@ useScrollReveal('.reveal')
             class="flex items-start gap-3 text-[15px] leading-relaxed"
             style="color: var(--color-text-secondary);"
           >
-            <span class="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style="background: var(--color-accent);" />
+            <span class="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style="background: var(--color-accent);" />
             {{ item }}
           </li>
         </ul>
@@ -124,7 +126,7 @@ useScrollReveal('.reveal')
             class="flex items-start gap-3 text-[15px] leading-relaxed"
             style="color: var(--color-text-secondary);"
           >
-            <span class="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style="background: var(--color-accent);" />
+            <span class="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style="background: var(--color-accent);" />
             {{ item }}
           </li>
         </ul>
@@ -185,7 +187,7 @@ useScrollReveal('.reveal')
             class="flex items-start gap-3 text-[15px] leading-relaxed"
             style="color: var(--color-text-secondary);"
           >
-            <span class="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style="background: var(--color-accent);" />
+            <span class="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style="background: var(--color-accent);" />
             {{ right }}
           </li>
         </ul>

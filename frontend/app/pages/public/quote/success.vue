@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: 'public' })
 
 useHead({ title: 'Quote Sent — Axel Nova Ventures' })
 

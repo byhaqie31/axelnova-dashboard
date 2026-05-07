@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'public' })
+
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 const form = reactive({

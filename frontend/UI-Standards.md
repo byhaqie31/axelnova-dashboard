@@ -157,7 +157,54 @@ All buttons are 44pt tall (Apple HIG touch target), pill-shaped (`border-radius:
 
 ## 7. Components
 
-Reusable components live in `app/components/shared/`.
+Components organize by **scope**, not by atomic level.
+
+### Folder structure
+
+- `components/shared/` — used in 2+ portals (e.g. `BrandMark`, `ProjectCard`, `SectionHeader`)
+- `components/shared/primitives/` — domain primitives (`PriceTag`, `StatusPill`, `ReferenceCode`, `DateRange`)
+- `components/public/` — public landing site only
+- `components/admin/` — admin portal only
+- `components/portal/` — client portal only
+
+### Rules
+
+- We don't wrap `@nuxt/ui` components as atoms — the library is our primitive layer
+- Genuine domain primitives (MYR formatting, status colors, reference codes) live in `shared/primitives/`
+- Extract a shared component when used in 3+ places (rule of three)
+- A component used in only 1 portal stays in that portal's folder, even if it could theoretically be reused
+
+### Why not atomic design (atoms/molecules/organisms)?
+
+`@nuxt/ui v4` already provides our atom layer. Tailwind v4 + CSS vars in `main.css` provide our styling primitives. Adding folder hierarchy for atomic levels would duplicate what the libraries already give us, while creating categorization overhead. We organize by **where a component is used** because that's the question we actually ask when adding new files. If this product ever splits into a sister product that should share components, extract into a real package (`@axelnova/ui`) at that point.
+
+### Layouts
+
+Three layouts, one per scope:
+
+- `layouts/public.vue` — marketing site (header + footer + iridescent hairline)
+- `layouts/admin.vue` — admin shell (topbar + collapsible sidebar; nav populated in Phase 3)
+- `layouts/portal.vue` — client portal (calmer header, max-w-5xl content, minimal footer)
+
+There is **no `default.vue`**. Every page must declare `definePageMeta({ layout: 'public' | 'admin' | 'portal' })` (or `layout: false` for fully standalone surfaces like `/admin/login` and `/proposals/[slug]`).
+
+### Page folders mirror layout scopes
+
+```
+pages/
+├── public/    → URLs DO NOT include "/public" (stripped by pages:extend hook)
+├── admin/     → /admin/*
+└── portal/    → /portal/*
+```
+
+`pages/public/about.vue` → `/about`. `pages/public/legal/terms.vue` → `/legal/terms`. The stripping is handled by a `pages:extend` hook in `nuxt.config.ts` (function `stripPublicPrefix`). Do not delete or rename it without auditing every public URL.
+
+When Nuxt fixes the `(group)` route-group syntax in a future release, this hook can be removed in favor of `pages/(public)/...`. Probe it on each Nuxt upgrade with a test page; until then, the hook stays.
+
+### `BrandMark`
+- Variants: `default` (icon + wordmark), `compact` (smaller, used in admin topbar), `mark-only` (icon only)
+- Wraps the canonical `.brand-logo-glow` drop-shadow — never reimplement the gradient/glow inline
+- Used in `public.vue` header AND footer, `admin.vue` topbar, `portal.vue` header
 
 ### `SectionHeader`
 - `eyebrow` (uppercase gradient)
@@ -170,6 +217,13 @@ Reusable components live in `app/components/shared/`.
 - 40×40 accent-tinted icon tile (top-left).
 - Status pill with colored dot (Live / Soon / In progress).
 - Hover: `translateY(-4px)` + `card-glow` radial wash + arrow CTA fades in.
+
+### Domain primitives
+
+- **`PriceTag`** — MYR-formatted (Intl `ms-MY`). Props: `min`, `max?`, `prefix?`, `compact?`. Renders ranges with en-dash, prefixed values with em-dash separator.
+- **`StatusPill`** — status badge with semantic tone mapping. Props: `status`, `type` (`lead` | `quotation` | `project` | `invoice` | `milestone`). Reads existing CSS tokens (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`); no new color tokens introduced.
+- **`ReferenceCode`** — monospace `AXN-YYYY-NNNN` display with click-to-copy via `useClipboard`. Falls back to plain span when `copyable={false}`.
+- **`DateRange`** — Intl `en-MY` formatted dates. Formats: `short`, `long`, `relative`. Accepts optional `prefix` ("Valid until", "Issued").
 
 ### Filter pills
 - 28px tall, 16px horizontal padding, hairline border.
@@ -222,9 +276,9 @@ Reusable components live in `app/components/shared/`.
 
 ## 11. Adding a new page — checklist
 
-- [ ] Use `<NuxtLayout>` default (gives navbar + footer).
-- [ ] Top section either centered hero or full-bleed with section padding `py-32`.
-- [ ] Call `useScrollReveal('.reveal')` once in `<script setup>`.
+- [ ] Declare `definePageMeta({ layout: 'public' | 'admin' | 'portal' })` (or `layout: false` for standalone surfaces).
+- [ ] Top section either centered hero or full-bleed with section padding `py-32` (public only).
+- [ ] Call `useScrollReveal('.reveal')` once in `<script setup>` (public only — admin/portal don't use scroll reveal).
 - [ ] All surfaces use `var(--color-bg-*)` / borders use `var(--color-border)`.
 - [ ] Buttons use `.btn-pill-*` classes.
 - [ ] Verified light + dark, mobile (375px) + desktop (1440px).

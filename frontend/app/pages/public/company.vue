@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'public' })
+
 const stats = [
   { label: 'Registered Name', value: 'Axel Nova Ventures' },
   { label: 'Registration No.', value: '202603119899 (CA0420977-U)' },

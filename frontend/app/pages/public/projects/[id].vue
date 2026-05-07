@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'public' })
+
 import { projects } from '~/data/projects'
 
 const route = useRoute()

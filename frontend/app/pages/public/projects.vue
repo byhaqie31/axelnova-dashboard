@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'public' })
+
 import { onClickOutside } from '@vueuse/core'
 import { projects, stackFilters, statusFilters } from '~/data/projects'
 import ProjectCard from '~/components/shared/ProjectCard.vue'
