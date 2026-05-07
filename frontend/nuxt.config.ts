@@ -23,8 +23,11 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
-  // Overridden at runtime by NUXT_PUBLIC_API_BASE
+  // Server-side fetches (SSR) hit the backend via the docker-network hostname.
+  // Browser fetches (CSR) hit the host loopback. Override at runtime via
+  // NUXT_API_BASE (private) and NUXT_PUBLIC_API_BASE (public).
   runtimeConfig: {
+    apiBase: 'http://backend:8003',
     public: {
       apiBase: 'http://localhost:8000',
     },

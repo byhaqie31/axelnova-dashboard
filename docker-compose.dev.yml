@@ -50,6 +50,8 @@ services:
       NUXT_TELEMETRY_DISABLED: "1"
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "400"
+      # SSR (inside this container) reaches the backend via the docker-network hostname.
+      NUXT_API_BASE: http://backend:8003
       # Browser hits the backend via the Mac host loopback (container hostnames don't resolve on the host).
       NUXT_PUBLIC_API_BASE: http://127.0.0.1:8003
     volumes:

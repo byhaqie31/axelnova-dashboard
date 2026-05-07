@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
+use App\Http\Controllers\Api\V1\PublicProjectsController;
+use App\Http\Controllers\Api\V1\PublicServicesController;
 use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
 use App\Http\Controllers\Api\V1\QuoteRequestController;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +15,11 @@ use Illuminate\Support\Facades\Route;
 // Public — pricing config (cached 1 hour)
 Route::get('/v1/quote-builder/config', [QuoteBuilderConfigController::class, 'show'])
     ->name('quote-builder.config');
+
+// Public — service catalogue + portfolio projects (CMS-managed, served read-only).
+Route::get('/v1/services', [PublicServicesController::class, 'index'])->name('services.index');
+Route::get('/v1/projects', [PublicProjectsController::class, 'index'])->name('projects.index');
+Route::get('/v1/projects/{slug}', [PublicProjectsController::class, 'show'])->name('projects.show');
 
 // Public — submit quote
 // Production: 3/hour per IP (spam protection). Non-prod: very high so dev/staging can test freely.

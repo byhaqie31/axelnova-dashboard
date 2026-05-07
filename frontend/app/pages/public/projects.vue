@@ -2,15 +2,53 @@
 definePageMeta({ layout: 'public' })
 
 import { onClickOutside } from '@vueuse/core'
-import { projects, stackFilters, statusFilters } from '~/data/projects'
+import type { Project } from '~/data/projects'
 import ProjectCard from '~/components/shared/ProjectCard.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
+
+interface ApiProject {
+  slug: string
+  name: string
+  description: string
+  long_description: string
+  status: 'live' | 'soon' | 'wip' | 'planning'
+  url: string | null
+  repo: string | null
+  tags: string[]
+  stack: string[]
+  featured: boolean
+}
+
+const { data: apiResponse } = await useFetch<{ data: ApiProject[] }>(
+  `${useApiBase()}/api/v1/projects`,
+  { key: 'public-projects' },
+)
+
+const projects = computed<Project[]>(() => {
+  return (apiResponse.value?.data ?? []).map(p => ({
+    id: p.slug,
+    name: p.name,
+    description: p.description,
+    longDescription: p.long_description,
+    status: p.status,
+    url: p.url ?? undefined,
+    repo: p.repo ?? undefined,
+    tags: p.tags ?? [],
+    stack: p.stack ?? [],
+    featured: p.featured,
+  }))
+})
+
+// Filter labels — kept here as UI strings rather than derived from data so the
+// chip set stays stable as projects come and go.
+const stackFilters = ['All', 'Laravel', 'Nuxt', 'Docker', 'Redis', 'MySQL', 'FastAPI']
+const statusFilters = ['All', 'Live', 'In progress', 'Planning']
 
 const activeStack = ref<string>('All')
 const activeStatus = ref<string>('All')
 
 const filteredProjects = computed(() => {
-  return projects.filter((p) => {
+  return projects.value.filter((p) => {
     const stackOk = activeStack.value === 'All' || p.stack.includes(activeStack.value)
     const statusOk = activeStatus.value === 'All'
       || (activeStatus.value === 'Live'        && p.status === 'live')

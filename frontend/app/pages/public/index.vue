@@ -1,11 +1,45 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
-import { projects } from '~/data/projects'
+import type { Project } from '~/data/projects'
 import ProjectCard from '~/components/shared/ProjectCard.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
-const featuredProjects = computed(() => projects.filter(p => p.featured))
+interface ApiProject {
+  slug: string
+  name: string
+  description: string
+  long_description: string
+  status: 'live' | 'soon' | 'wip' | 'planning'
+  url: string | null
+  repo: string | null
+  tags: string[]
+  stack: string[]
+  featured: boolean
+}
+
+const runtimeConfig = useRuntimeConfig()
+const { data: apiResponse } = await useFetch<{ data: ApiProject[] }>(
+  `${runtimeConfig.public.apiBase}/api/v1/projects`,
+  { key: 'public-projects-home' },
+)
+
+const projects = computed<Project[]>(() => {
+  return (apiResponse.value?.data ?? []).map(p => ({
+    id: p.slug,
+    name: p.name,
+    description: p.description,
+    longDescription: p.long_description,
+    status: p.status,
+    url: p.url ?? undefined,
+    repo: p.repo ?? undefined,
+    tags: p.tags ?? [],
+    stack: p.stack ?? [],
+    featured: p.featured,
+  }))
+})
+
+const featuredProjects = computed(() => projects.value.filter(p => p.featured))
 
 const homeFilters = ['All', 'Laravel', 'Nuxt', 'Fintech', 'Live']
 const activeFilter = ref('All')

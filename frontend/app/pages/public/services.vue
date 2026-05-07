@@ -1,8 +1,62 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
-import { serviceCategories } from '~/data/services'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
+
+interface ApiPackage {
+  id: number
+  slug: string
+  name: string
+  tagline: string
+  price_min_myr: string | number
+  price_max_myr: string | number | null
+  unit: string
+  duration_text: string
+  revisions: string | null
+  featured: boolean
+  features: string[]
+  cta: string | null
+  quote_key: { category: string, package: string } | null
+}
+
+interface ApiCategory {
+  id: number
+  slug: string
+  name: string
+  icon: string
+  description: string
+  packages: ApiPackage[]
+}
+
+const { data: apiResponse } = await useFetch<{ data: ApiCategory[] }>(
+  `${useApiBase()}/api/v1/services`,
+  { key: 'public-services' },
+)
+
+// Reshape the API response into the camelCase shape the template was originally written against.
+const serviceCategories = computed(() => {
+  const rows = apiResponse.value?.data ?? []
+  return rows.map(c => ({
+    id: c.slug,
+    label: c.name,
+    icon: c.icon,
+    description: c.description,
+    packages: c.packages.map(p => ({
+      id: p.slug,
+      name: p.name,
+      tagline: p.tagline,
+      priceMin: Number(p.price_min_myr),
+      priceMax: p.price_max_myr === null ? null : Number(p.price_max_myr),
+      unit: p.unit,
+      duration: p.duration_text,
+      revisions: p.revisions ?? '—',
+      featured: p.featured,
+      features: p.features,
+      cta: p.cta ?? 'Get a quote',
+      quoteKey: p.quote_key ?? undefined,
+    })),
+  }))
+})
 
 // ── Currency ──────────────────────────────────────────────────────────────────
 type CurrencyCode = 'MYR' | 'USD' | 'GBP' | 'SGD'
@@ -45,8 +99,18 @@ function fmtPrice(min: number, max: number | null): string {
 
 // ── Service tabs ──────────────────────────────────────────────────────────────
 const activeCat = ref('web')
+
+// Default to the first category whatever its slug, so the page works even if
+// the legacy 'web' slug ever gets renamed in the CMS.
+watchEffect(() => {
+  const first = serviceCategories.value[0]
+  if (first && !serviceCategories.value.find(c => c.id === activeCat.value)) {
+    activeCat.value = first.id
+  }
+})
+
 const currentCategory = computed(
-  () => serviceCategories.find(c => c.id === activeCat.value)!
+  () => serviceCategories.value.find(c => c.id === activeCat.value),
 )
 
 // ── Estimator ─────────────────────────────────────────────────────────────────
@@ -204,7 +268,7 @@ useScrollReveal('.reveal')
 
     <!-- Animated tab content -->
     <Transition name="tab" mode="out-in">
-      <div :key="activeCat" class="mb-32">
+      <div v-if="currentCategory" :key="activeCat" class="mb-32">
 
         <!-- Category description -->
         <p class="text-[15px] leading-relaxed mb-8 max-w-2xl" style="color: var(--color-text-secondary);">

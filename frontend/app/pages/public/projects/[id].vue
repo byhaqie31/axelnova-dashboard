@@ -1,11 +1,29 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
-import { projects } from '~/data/projects'
+interface ApiProject {
+  slug: string
+  name: string
+  description: string
+  long_description: string
+  status: 'live' | 'soon' | 'wip' | 'planning'
+  url: string | null
+  repo: string | null
+  tags: string[]
+  stack: string[]
+}
 
 const route = useRoute()
-const id = computed(() => route.params.id as string)
-const project = computed(() => projects.find(p => p.id === id.value))
+const slug = computed(() => route.params.id as string)
+const apiBase = useApiBase()
+
+const { data: apiResponse, error } = await useFetch<{ data: ApiProject }>(
+  () => `${apiBase}/api/v1/projects/${slug.value}`,
+  { key: () => `public-project-${slug.value}` },
+)
+
+const project = computed(() => apiResponse.value?.data)
+const notFound = computed(() => Boolean(error.value) || (!project.value && !apiResponse.value))
 </script>
 
 <template>
@@ -21,7 +39,7 @@ const project = computed(() => projects.find(p => p.id === id.value))
     <div v-if="project">
       <h1 class="text-5xl md:text-6xl font-semibold tracking-tight mb-5">{{ project.name }}</h1>
       <p class="text-[17px] leading-[1.6] mb-8" style="color: var(--color-text-secondary);">
-        {{ project.longDescription }}
+        {{ project.long_description }}
       </p>
 
       <div class="flex flex-wrap gap-1.5 mb-10">
@@ -46,7 +64,7 @@ const project = computed(() => projects.find(p => p.id === id.value))
       </div>
     </div>
 
-    <div v-else class="text-center py-20">
+    <div v-else-if="notFound" class="text-center py-20">
       <p class="text-3xl font-semibold tracking-tight mb-3">Project not found.</p>
       <NuxtLink to="/projects" class="text-[14px]" style="color: var(--color-accent);">
         Back to registry →
