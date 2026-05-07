@@ -21,7 +21,8 @@ RUN composer install \
 
 COPY . .
 
-RUN composer dump-autoload --optimize --classmap-authoritative \
+RUN mkdir -p bootstrap/cache \
+    && composer dump-autoload --optimize --classmap-authoritative \
     && php artisan package:discover --ansi
 
 # ---------- runtime stage ----------
