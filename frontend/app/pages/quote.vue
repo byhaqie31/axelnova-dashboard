@@ -145,6 +145,7 @@ onMounted(() => {
 // ── Submit ────────────────────────────────────────────────────────────────────
 const loading = ref(false)
 const error = ref('')
+const successRef = ref('')
 const breakdownOpen = ref(false)
 
 const canSubmit = computed(() =>
@@ -159,6 +160,7 @@ async function handleSubmit() {
   if (!canSubmit.value) return
   loading.value = true
   error.value = ''
+  successRef.value = ''
 
   try {
     const payload: Record<string, unknown> = {
@@ -220,13 +222,14 @@ async function handleSubmit() {
       { method: 'POST', body: payload },
     )
 
+    successRef.value = res.data.reference_code
+
     await navigateTo(`/quote/success?ref=${res.data.reference_code}&until=${res.data.valid_until}`)
   }
   catch (e: any) {
-    const msg = e?.data?.message || e?.data?.errors
-      ? Object.values(e.data.errors ?? {}).flat().join(' ')
-      : 'Something went wrong. Please try again.'
-    error.value = String(msg)
+    console.error('[quote submit] failed:', e)
+    const errorList = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
+    error.value = errorList || e?.data?.message || 'Something went wrong. Please try again.'
   }
   finally {
     loading.value = false
@@ -352,7 +355,7 @@ function toggleAddon(key: string) {
                 </p>
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ pkg.tagline }}</p>
                 <p v-if="config && pkg.key !== 'not_sure' && config.base_packages[pkg.key]" class="text-[11px] mt-2 font-medium" style="color: var(--color-text-secondary);">
-                  from {{ fmtMyr(config.base_packages[pkg.key].min) }}
+                  from {{ fmtMyr(config.base_packages[pkg.key]?.min ?? 0) }}
                 </p>
               </button>
             </div>
@@ -669,7 +672,7 @@ function toggleAddon(key: string) {
              scans once on script load — the widget would never initialise and the token would
              never arrive. Keeping it in the DOM lets verification happen in the background. -->
         <div v-show="form.packageKey" class="space-y-4">
-          <!-- Cloudflare Turnstile widget -->
+          <!-- Cloudflare Turnstile widget — only renders when key is configured -->
           <div
             v-if="runtimeConfig.public.turnstileSiteKey"
             class="cf-turnstile"
@@ -677,11 +680,15 @@ function toggleAddon(key: string) {
             data-callback="__axnTurnstile"
             data-theme="auto"
           ></div>
-          <p v-else class="text-[11px]" style="color: var(--color-text-tertiary);">
-            Bot verification: bypassed (local dev mode).
-          </p>
 
           <p v-if="error" class="text-[12px]" style="color: var(--color-danger);">{{ error }}</p>
+
+          <!-- Inline success fallback — shows if submit succeeded but navigation didn't fire for any reason -->
+          <div v-if="successRef" class="rounded-xl px-4 py-3 text-[13px] flex items-center gap-2"
+            :style="{ background: 'rgba(48,209,88,0.12)', color: 'var(--color-success)' }">
+            <UIcon name="i-fluent-checkmark-circle-24-regular" class="size-4 shrink-0" />
+            <span>Quote sent. Reference: <span class="font-mono font-semibold">{{ successRef }}</span>. Check your email.</span>
+          </div>
 
           <!-- Honeypot -->
           <input type="text" name="website_url" class="hidden" tabindex="-1" autocomplete="off" />
@@ -778,6 +785,7 @@ function toggleAddon(key: string) {
 
 .quote-range {
   -webkit-appearance: none;
+  appearance: none;
   height: 4px;
   border-radius: 999px;
   background: var(--color-border-strong);

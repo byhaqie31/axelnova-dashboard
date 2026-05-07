@@ -9,8 +9,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/v1/quote-builder/config', [QuoteBuilderConfigController::class, 'show'])
     ->name('quote-builder.config');
 
-// Public — submit quote (3 per IP per hour)
-Route::middleware('throttle:3,60')->group(function () {
+// Public — submit quote
+// Production: 3/hour per IP (spam protection). Non-prod: very high so dev/staging can test freely.
+$quoteThrottle = app()->environment('production') ? 'throttle:3,60' : 'throttle:1000,1';
+Route::middleware($quoteThrottle)->group(function () {
     Route::post('/v1/quote-requests', [QuoteRequestController::class, 'store'])
         ->name('quote-requests.store');
 });
