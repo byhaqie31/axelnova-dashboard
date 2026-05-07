@@ -1,9 +1,46 @@
 <script setup lang="ts">
-import { services } from '~/data/services'
+import { serviceCategories } from '~/data/services'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
-const fmtRM = (n: number) => `RM ${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k`
+// ── Currency ──────────────────────────────────────────────────────────────────
+type CurrencyCode = 'MYR' | 'USD' | 'GBP' | 'SGD'
 
+const currencyMeta: Record<CurrencyCode, { symbol: string; rate: number }> = {
+  MYR: { symbol: 'RM',  rate: 1      },
+  USD: { symbol: '$',   rate: 0.225  },
+  GBP: { symbol: '£',   rate: 0.178  },
+  SGD: { symbol: 'S$',  rate: 0.303  },
+}
+const currencyCodes: CurrencyCode[] = ['MYR', 'USD', 'GBP', 'SGD']
+const activeCurrency = ref<CurrencyCode>('MYR')
+
+function fmtAmt(myr: number): string {
+  const { symbol, rate } = currencyMeta[activeCurrency.value]
+  const isMYR = activeCurrency.value === 'MYR'
+  const v = isMYR
+    ? Math.round(myr / 100) * 100
+    : Math.round(myr * rate / 50) * 50
+
+  if (v >= 1000) {
+    const k = v / 1000
+    const s = k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)
+    return isMYR ? `${symbol} ${s}k` : `${symbol}${s}k`
+  }
+  return isMYR ? `${symbol} ${v.toLocaleString()}` : `${symbol}${v.toLocaleString()}`
+}
+
+function fmtPrice(min: number, max: number | null): string {
+  if (!max) return `${fmtAmt(min)}+`
+  return `${fmtAmt(min)} – ${fmtAmt(max)}`
+}
+
+// ── Service tabs ──────────────────────────────────────────────────────────────
+const activeCat = ref('web')
+const currentCategory = computed(
+  () => serviceCategories.find(c => c.id === activeCat.value)!
+)
+
+// ── Estimator ─────────────────────────────────────────────────────────────────
 type ProjectType = 'landing' | 'dashboard' | 'ecommerce' | 'custom'
 type Urgency = 'relaxed' | 'standard' | 'rush'
 
@@ -18,7 +55,6 @@ const baseByType: Record<ProjectType, number> = {
   ecommerce: 6500,
   custom: 8000,
 }
-
 const weeksByType: Record<ProjectType, number> = {
   landing: 1,
   dashboard: 3,
@@ -39,10 +75,7 @@ const estimate = computed(() => {
     weeks = weeks + 1
   }
 
-  return {
-    price: Math.round(price / 100) * 100,
-    weeks,
-  }
+  return { price: Math.round(price / 100) * 100, weeks }
 })
 
 const projectTypeOptions = [
@@ -51,13 +84,13 @@ const projectTypeOptions = [
   { value: 'ecommerce', label: 'E-commerce' },
   { value: 'custom',    label: 'Custom build' },
 ]
-
 const urgencyOptions = [
   { value: 'relaxed',  label: 'Relaxed' },
   { value: 'standard', label: 'Standard' },
   { value: 'rush',     label: 'Rush (+20%)' },
 ]
 
+// ── Process + contact ─────────────────────────────────────────────────────────
 const processSteps = [
   { n: 1, title: 'Discovery', desc: 'Scope, goals, success metrics.' },
   { n: 2, title: 'Design',    desc: 'Figma flows + component system.' },
@@ -109,67 +142,155 @@ useScrollReveal('.reveal')
 
 <template>
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-32">
-    <!-- Pricing -->
+
+    <!-- ── Pricing ───────────────────────────────────────────────────────────── -->
     <SectionHeader
       eyebrow="Services"
-      title="Simple, transparent pricing."
-      subtitle="No surprises. Pick a tier or let's build a custom scope together."
+      title="Choose your engagement."
+      subtitle="Five service tracks — from a landing page to a full product build. Priced transparently, delivered precisely."
     />
 
-    <div class="grid gap-5 md:grid-cols-3 mb-32">
-      <div
-        v-for="tier in services" :key="tier.id"
-        class="reveal relative rounded-2xl border p-8 flex flex-col"
-        :style="{
-          background: 'var(--color-bg-secondary)',
-          borderColor: tier.featured ? 'var(--color-accent)' : 'var(--color-border)',
-          borderWidth: tier.featured ? '2px' : '1px'
-        }"
-      >
-        <span
-          v-if="tier.featured"
-          class="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-medium px-3 py-1 rounded-full"
-          style="background: var(--color-accent); color: white;"
+    <!-- Tab + currency row -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+
+      <!-- Category tabs -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button
+          v-for="cat in serviceCategories"
+          :key="cat.id"
+          class="inline-flex items-center gap-1.5 text-[13px] px-4 py-1.5 rounded-full border transition-all duration-200"
+          :style="{
+            borderColor: activeCat === cat.id ? 'transparent' : 'var(--color-border-strong)',
+            background: activeCat === cat.id ? 'var(--color-text)' : 'transparent',
+            color: activeCat === cat.id ? 'var(--color-bg)' : 'var(--color-text-secondary)',
+            fontWeight: activeCat === cat.id ? '500' : '400',
+            boxShadow: activeCat === cat.id ? 'var(--shadow-sm)' : 'none',
+          }"
+          @click="activeCat = cat.id"
         >
-          Most popular
-        </span>
+          <UIcon :name="cat.icon" class="size-3.5" />
+          {{ cat.label }}
+        </button>
+      </div>
 
-        <h3 class="text-2xl font-semibold tracking-tight mb-2">{{ tier.name }}</h3>
-        <p class="text-[14px] leading-relaxed mb-6" style="color: var(--color-text-secondary);">
-          {{ tier.description }}
-        </p>
-
-        <div class="mb-1">
-          <span class="text-4xl font-semibold tracking-tight">{{ fmtRM(tier.priceMin) }}–{{ fmtRM(tier.priceMax) }}</span>
-        </div>
-        <p class="text-[12px] mb-7" style="color: var(--color-text-secondary);">
-          {{ tier.unit }}
-        </p>
-
-        <div class="border-t mb-6" :style="{ borderColor: 'var(--color-border)' }" />
-
-        <ul class="space-y-2.5 mb-8 flex-1">
-          <li
-            v-for="f in tier.features" :key="f"
-            class="flex items-start gap-2.5 text-[14px]"
-            :style="{ color: 'var(--color-text)' }"
-          >
-            <UIcon name="i-fluent-checkmark-24-regular" class="size-4 mt-0.5 shrink-0" :style="{ color: 'var(--color-accent)' }" />
-            <span>{{ f }}</span>
-          </li>
-        </ul>
-
-        <a
-          href="mailto:baihaqie@axelnova.tech"
-          class="btn-pill"
-          :class="tier.featured ? 'btn-pill-accent' : 'btn-pill-primary'"
+      <!-- Currency toggle -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span class="text-[11px] font-medium uppercase tracking-wide mr-1" style="color: var(--color-text-tertiary);">Currency</span>
+        <button
+          v-for="code in currencyCodes"
+          :key="code"
+          class="text-[12px] px-3 py-1 rounded-full border transition-all duration-200"
+          :style="{
+            borderColor: activeCurrency === code ? 'var(--color-accent)' : 'var(--color-border)',
+            background: activeCurrency === code ? 'var(--color-accent-soft)' : 'transparent',
+            color: activeCurrency === code ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
+            fontWeight: activeCurrency === code ? '500' : '400',
+          }"
+          @click="activeCurrency = code"
         >
-          {{ tier.cta }}
-        </a>
+          {{ code }}
+        </button>
       </div>
     </div>
 
-    <!-- Estimator -->
+    <!-- Animated tab content -->
+    <Transition name="tab" mode="out-in">
+      <div :key="activeCat" class="mb-32">
+
+        <!-- Category description -->
+        <p class="text-[15px] leading-relaxed mb-8 max-w-2xl" style="color: var(--color-text-secondary);">
+          {{ currentCategory.description }}
+        </p>
+
+        <!-- Package cards -->
+        <div class="grid gap-5 md:grid-cols-3">
+          <div
+            v-for="pkg in currentCategory.packages"
+            :key="pkg.id"
+            class="relative rounded-2xl border p-8 flex flex-col"
+            :style="{
+              background: 'var(--color-bg-secondary)',
+              borderColor: pkg.featured ? 'var(--color-accent)' : 'var(--color-border)',
+              borderWidth: pkg.featured ? '2px' : '1px',
+            }"
+          >
+            <!-- Popular badge -->
+            <span
+              v-if="pkg.featured"
+              class="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-medium px-3 py-1 rounded-full"
+              style="background: var(--color-accent); color: white;"
+            >
+              Most popular
+            </span>
+
+            <!-- Name + tagline -->
+            <h3 class="text-[20px] font-semibold tracking-tight mb-1" style="color: var(--color-text);">
+              {{ pkg.name }}
+            </h3>
+            <p class="text-[13px] mb-6" style="color: var(--color-text-secondary);">
+              {{ pkg.tagline }}
+            </p>
+
+            <!-- Price -->
+            <div class="mb-1 tabular-nums">
+              <span class="text-[34px] font-semibold tracking-tight">
+                {{ fmtPrice(pkg.priceMin, pkg.priceMax) }}
+              </span>
+            </div>
+            <p class="text-[12px] mb-6" style="color: var(--color-text-secondary);">
+              {{ pkg.unit }}
+            </p>
+
+            <!-- Meta row -->
+            <div
+              class="flex items-center gap-4 pb-6 mb-6 border-b"
+              :style="{ borderColor: 'var(--color-border)' }"
+            >
+              <span class="inline-flex items-center gap-1.5 text-[12px]" style="color: var(--color-text-secondary);">
+                <UIcon name="i-lucide-clock" class="size-3.5 shrink-0" />
+                {{ pkg.duration }}
+              </span>
+              <span
+                v-if="pkg.revisions !== '—'"
+                class="inline-flex items-center gap-1.5 text-[12px]"
+                style="color: var(--color-text-secondary);"
+              >
+                <UIcon name="i-lucide-rotate-ccw" class="size-3.5 shrink-0" />
+                {{ pkg.revisions }}
+              </span>
+            </div>
+
+            <!-- Features -->
+            <ul class="space-y-2.5 mb-8 flex-1">
+              <li
+                v-for="f in pkg.features"
+                :key="f"
+                class="flex items-start gap-2.5 text-[14px]"
+                style="color: var(--color-text);"
+              >
+                <UIcon
+                  name="i-fluent-checkmark-24-regular"
+                  class="size-4 mt-0.5 shrink-0"
+                  style="color: var(--color-accent);"
+                />
+                <span>{{ f }}</span>
+              </li>
+            </ul>
+
+            <!-- CTA -->
+            <a
+              href="mailto:baihaqie@axelnova.tech"
+              class="btn-pill text-center"
+              :class="pkg.featured ? 'btn-pill-accent' : 'btn-pill-primary'"
+            >
+              {{ pkg.cta }}
+            </a>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ── Estimator ─────────────────────────────────────────────────────────── -->
     <section class="reveal mb-32">
       <SectionHeader
         eyebrow="Estimator"
@@ -178,28 +299,34 @@ useScrollReveal('.reveal')
       />
 
       <div class="grid lg:grid-cols-2 gap-6">
-        <div class="rounded-2xl border p-8 space-y-7" :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
+        <div
+          class="rounded-2xl border p-8 space-y-7"
+          :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }"
+        >
           <div>
             <label class="text-[12px] font-medium block mb-3" style="color: var(--color-text-secondary);">Project type</label>
             <div class="grid grid-cols-2 gap-2">
               <button
-                v-for="o in projectTypeOptions" :key="o.value"
+                v-for="o in projectTypeOptions"
+                :key="o.value"
                 class="text-[13px] py-2.5 rounded-lg border transition-colors"
                 :style="{
                   borderColor: 'var(--color-border)',
                   background: projectType === o.value ? 'var(--color-text)' : 'transparent',
                   color: projectType === o.value ? 'var(--color-bg)' : 'var(--color-text)',
-                  fontWeight: projectType === o.value ? 500 : 400
+                  fontWeight: projectType === o.value ? '500' : '400',
                 }"
                 @click="projectType = o.value as ProjectType"
-              >{{ o.label }}</button>
+              >
+                {{ o.label }}
+              </button>
             </div>
           </div>
 
           <div>
             <label class="text-[12px] font-medium flex items-center justify-between mb-3" style="color: var(--color-text-secondary);">
               <span>Pages / modules</span>
-              <span class="text-[15px] font-semibold" style="color: var(--color-text);">{{ moduleCount }}</span>
+              <span class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">{{ moduleCount }}</span>
             </label>
             <input
               v-model.number="moduleCount"
@@ -216,7 +343,7 @@ useScrollReveal('.reveal')
               class="relative w-11 h-6 rounded-full border transition-colors"
               :style="{
                 borderColor: 'var(--color-border)',
-                background: apiIntegration ? 'var(--color-accent)' : 'var(--color-bg)'
+                background: apiIntegration ? 'var(--color-accent)' : 'var(--color-bg)',
               }"
               @click="apiIntegration = !apiIntegration"
             >
@@ -231,28 +358,37 @@ useScrollReveal('.reveal')
             <label class="text-[12px] font-medium block mb-3" style="color: var(--color-text-secondary);">Timeline</label>
             <div class="grid grid-cols-3 gap-2">
               <button
-                v-for="o in urgencyOptions" :key="o.value"
+                v-for="o in urgencyOptions"
+                :key="o.value"
                 class="text-[13px] py-2.5 rounded-lg border transition-colors"
                 :style="{
                   borderColor: 'var(--color-border)',
                   background: urgency === o.value ? 'var(--color-text)' : 'transparent',
                   color: urgency === o.value ? 'var(--color-bg)' : 'var(--color-text)',
-                  fontWeight: urgency === o.value ? 500 : 400
+                  fontWeight: urgency === o.value ? '500' : '400',
                 }"
                 @click="urgency = o.value as Urgency"
-              >{{ o.label }}</button>
+              >
+                {{ o.label }}
+              </button>
             </div>
           </div>
         </div>
 
         <div class="grid grid-rows-2 gap-5">
-          <div class="rounded-2xl border p-8 flex flex-col justify-center" :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
+          <div
+            class="rounded-2xl border p-8 flex flex-col justify-center"
+            :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }"
+          >
             <p class="text-[12px] font-medium mb-2" style="color: var(--color-text-secondary);">Estimated cost</p>
-            <p class="text-5xl font-semibold tracking-tight">RM {{ estimate.price.toLocaleString() }}</p>
+            <p class="text-5xl font-semibold tracking-tight tabular-nums">{{ fmtAmt(estimate.price) }}</p>
           </div>
-          <div class="rounded-2xl border p-8 flex flex-col justify-center" :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
+          <div
+            class="rounded-2xl border p-8 flex flex-col justify-center"
+            :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }"
+          >
             <p class="text-[12px] font-medium mb-2" style="color: var(--color-text-secondary);">Estimated timeline</p>
-            <p class="text-5xl font-semibold tracking-tight">{{ estimate.weeks }} {{ estimate.weeks === 1 ? 'week' : 'weeks' }}</p>
+            <p class="text-5xl font-semibold tracking-tight tabular-nums">{{ estimate.weeks }} {{ estimate.weeks === 1 ? 'week' : 'weeks' }}</p>
           </div>
         </div>
       </div>
@@ -262,7 +398,7 @@ useScrollReveal('.reveal')
       </p>
     </section>
 
-    <!-- Process -->
+    <!-- ── Process ───────────────────────────────────────────────────────────── -->
     <section class="reveal mb-32">
       <SectionHeader
         eyebrow="Process"
@@ -271,7 +407,8 @@ useScrollReveal('.reveal')
 
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
         <div
-          v-for="(step, i) in processSteps" :key="step.n"
+          v-for="(step, i) in processSteps"
+          :key="step.n"
           class="relative"
         >
           <div
@@ -286,14 +423,12 @@ useScrollReveal('.reveal')
             {{ step.n }}
           </div>
           <h4 class="text-xl font-semibold tracking-tight mb-2">{{ step.title }}</h4>
-          <p class="text-[14px] leading-relaxed" style="color: var(--color-text-secondary);">
-            {{ step.desc }}
-          </p>
+          <p class="text-[14px] leading-relaxed" style="color: var(--color-text-secondary);">{{ step.desc }}</p>
         </div>
       </div>
     </section>
 
-    <!-- Contact -->
+    <!-- ── Contact ───────────────────────────────────────────────────────────── -->
     <section class="reveal">
       <SectionHeader
         eyebrow="Contact"
@@ -303,7 +438,8 @@ useScrollReveal('.reveal')
 
       <div class="grid gap-5 md:grid-cols-3">
         <a
-          v-for="c in contactChannels" :key="c.id"
+          v-for="c in contactChannels"
+          :key="c.id"
           :href="c.href"
           :target="c.target"
           :rel="c.target === '_blank' ? 'noopener' : undefined"
@@ -326,19 +462,13 @@ useScrollReveal('.reveal')
             <UIcon
               name="i-fluent-arrow-up-right-24-regular"
               class="size-4 opacity-0 group-hover:opacity-100 transition-all duration-300"
-              :style="{ color: 'var(--color-text-secondary)' }"
+              style="color: var(--color-text-secondary);"
             />
           </div>
 
-          <p class="relative text-[12px] font-medium mb-1.5" style="color: var(--color-text-secondary);">
-            {{ c.label }}
-          </p>
-          <p class="relative text-[18px] font-semibold tracking-tight mb-2" style="color: var(--color-text);">
-            {{ c.value }}
-          </p>
-          <p class="relative text-[13px] leading-relaxed" style="color: var(--color-text-secondary);">
-            {{ c.helper }}
-          </p>
+          <p class="relative text-[12px] font-medium mb-1.5" style="color: var(--color-text-secondary);">{{ c.label }}</p>
+          <p class="relative text-[18px] font-semibold tracking-tight mb-2" style="color: var(--color-text);">{{ c.value }}</p>
+          <p class="relative text-[13px] leading-relaxed" style="color: var(--color-text-secondary);">{{ c.helper }}</p>
         </a>
       </div>
     </section>
@@ -353,5 +483,16 @@ useScrollReveal('.reveal')
 }
 .contact-card:hover .contact-glow {
   opacity: 1;
+}
+
+/* Tab switch animation */
+.tab-enter-active,
+.tab-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.tab-enter-from,
+.tab-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 </style>

@@ -63,7 +63,7 @@ onMounted(() => {
               class="size-2 rounded-full"
               style="background: var(--grad-iridescent); box-shadow: 0 0 12px rgba(0,113,227,0.45);"
             />
-            <span class="text-gradient">axelnova</span>
+            <span class="text-gradient">Axel Nova Ventures</span>
           </NuxtLink>
 
           <ul class="hidden md:flex items-center gap-8">
@@ -220,7 +220,7 @@ onMounted(() => {
                   class="size-2 rounded-full"
                   style="background: var(--grad-iridescent); box-shadow: 0 0 12px rgba(0,113,227,0.45);"
                 />
-                <span class="text-gradient">axelnova</span>
+                <span class="text-gradient">Axel Nova Ventures</span>
               </NuxtLink>
               <p class="text-[13px] leading-relaxed mb-5 max-w-xs" style="color: var(--color-text-secondary);">
                 Building thoughtful digital experiences through design, systems, and technology.
@@ -264,7 +264,6 @@ onMounted(() => {
                 >
                   {{ l.label }}
                 </NuxtLink>
-                <NuxtLink to="/contact" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Contact</NuxtLink>
               </div>
             </div>
 
