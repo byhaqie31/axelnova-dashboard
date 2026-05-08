@@ -8,6 +8,7 @@ use App\Models\ServiceCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ServiceCategoriesController extends Controller
@@ -32,14 +33,27 @@ class ServiceCategoriesController extends Controller
     {
         $data = $request->validate($this->rules());
 
-        return new ServiceCategoryResource(ServiceCategory::create($data));
+        $category = DB::transaction(function () use ($data) {
+            $category = ServiceCategory::create($data);
+            if ($category->is_default) {
+                ServiceCategory::where('id', '!=', $category->id)->update(['is_default' => false]);
+            }
+            return $category;
+        });
+
+        return new ServiceCategoryResource($category);
     }
 
     public function update(Request $request, ServiceCategory $serviceCategory): ServiceCategoryResource
     {
         $data = $request->validate($this->rules($serviceCategory->id));
 
-        $serviceCategory->update($data);
+        DB::transaction(function () use ($serviceCategory, $data) {
+            $serviceCategory->update($data);
+            if ($serviceCategory->is_default) {
+                ServiceCategory::where('id', '!=', $serviceCategory->id)->update(['is_default' => false]);
+            }
+        });
 
         return new ServiceCategoryResource($serviceCategory);
     }
@@ -60,6 +74,7 @@ class ServiceCategoriesController extends Controller
             'description' => ['required', 'string'],
             'sort_order' => ['integer', 'min:0'],
             'active' => ['boolean'],
+            'is_default' => ['boolean'],
         ];
     }
 }

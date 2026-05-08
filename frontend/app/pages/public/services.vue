@@ -25,6 +25,7 @@ interface ApiCategory {
   name: string
   icon: string
   description: string
+  is_default: boolean
   packages: ApiPackage[]
 }
 
@@ -41,6 +42,7 @@ const serviceCategories = computed(() => {
     label: c.name,
     icon: c.icon,
     description: c.description,
+    isDefault: c.is_default,
     packages: c.packages.map(p => ({
       id: p.slug,
       name: p.name,
@@ -70,6 +72,15 @@ const currencyMeta: Record<CurrencyCode, { symbol: string; rate: number }> = {
 const currencyCodes: CurrencyCode[] = ['MYR', 'USD', 'GBP', 'SGD']
 const activeCurrency = ref<CurrencyCode>('MYR')
 
+const currencyOpen = ref(false)
+const currencyMenuRef = ref<HTMLElement | null>(null)
+onClickOutside(currencyMenuRef, () => { currencyOpen.value = false })
+
+function pickCurrency(code: CurrencyCode) {
+  activeCurrency.value = code
+  currencyOpen.value = false
+}
+
 function convertAmt(myr: number): string {
   const { rate } = currencyMeta[activeCurrency.value]
   const isMYR = activeCurrency.value === 'MYR'
@@ -98,16 +109,33 @@ function fmtPrice(min: number, max: number | null): string {
 }
 
 // ── Service tabs ──────────────────────────────────────────────────────────────
-const activeCat = ref('web')
+const route = useRoute()
+const router = useRouter()
+const activeCat = ref('')
 
-// Default to the first category whatever its slug, so the page works even if
-// the legacy 'web' slug ever gets renamed in the CMS.
+// Hydrate the active tab from ?service=<slug> when present, falling back to
+// the admin-flagged default category and then to the first by sort order.
+// Re-runs when categories load or when the user uses back/forward.
 watchEffect(() => {
-  const first = serviceCategories.value[0]
-  if (first && !serviceCategories.value.find(c => c.id === activeCat.value)) {
-    activeCat.value = first.id
+  const cats = serviceCategories.value
+  const first = cats[0]
+  if (!first) return
+
+  const querySlug = String(route.query.service ?? '')
+  if (querySlug && cats.find(c => c.id === querySlug)) {
+    activeCat.value = querySlug
+    return
   }
+
+  if (cats.find(c => c.id === activeCat.value)) return
+  activeCat.value = (cats.find(c => c.isDefault) ?? first).id
 })
+
+function selectCat(slug: string) {
+  if (activeCat.value === slug) return
+  activeCat.value = slug
+  router.replace({ query: { ...route.query, service: slug } })
+}
 
 const currentCategory = computed(
   () => serviceCategories.value.find(c => c.id === activeCat.value),
@@ -239,30 +267,71 @@ useScrollReveal('.reveal')
             fontWeight: activeCat === cat.id ? '500' : '400',
             boxShadow: activeCat === cat.id ? 'var(--shadow-sm)' : 'none',
           }"
-          @click="activeCat = cat.id"
+          @click="selectCat(cat.id)"
         >
           <UIcon :name="cat.icon" class="size-3.5" />
           {{ cat.label }}
         </button>
       </div>
 
-      <!-- Currency toggle -->
-      <div class="flex items-center gap-1.5 shrink-0">
-        <span class="text-[11px] font-medium uppercase tracking-wide mr-1" style="color: var(--color-text-tertiary);">Currency</span>
+      <!-- Currency dropdown -->
+      <div ref="currencyMenuRef" class="flex items-center gap-2 shrink-0 relative">
+        <span class="text-[11px] font-medium uppercase tracking-wide" style="color: var(--color-text-tertiary);">Currency</span>
         <button
-          v-for="code in currencyCodes"
-          :key="code"
-          class="text-[12px] px-3 py-1 rounded-full border transition-all duration-200"
+          type="button"
+          :aria-expanded="currencyOpen"
+          aria-haspopup="listbox"
+          class="inline-flex items-center gap-2 text-[12px] px-3 py-1.5 rounded-full border transition-all duration-200"
           :style="{
-            borderColor: activeCurrency === code ? 'var(--color-accent)' : 'var(--color-border)',
-            background: activeCurrency === code ? 'var(--color-accent-soft)' : 'transparent',
-            color: activeCurrency === code ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
-            fontWeight: activeCurrency === code ? '500' : '400',
+            borderColor: currencyOpen ? 'var(--color-accent)' : 'var(--color-border-strong)',
+            background: currencyOpen ? 'var(--color-accent-soft)' : 'transparent',
+            color: currencyOpen ? 'var(--color-accent)' : 'var(--color-text)',
+            fontWeight: '500',
           }"
-          @click="activeCurrency = code"
+          @click="currencyOpen = !currencyOpen"
         >
-          {{ code }}
+          <span class="tabular-nums">{{ activeCurrency }}</span>
+          <UIcon
+            name="i-lucide-chevron-down"
+            class="size-3.5 transition-transform duration-200"
+            :style="{ transform: currencyOpen ? 'rotate(180deg)' : 'rotate(0)' }"
+          />
         </button>
+
+        <Transition name="menu">
+          <ul
+            v-if="currencyOpen"
+            role="listbox"
+            class="absolute right-0 top-full mt-1.5 min-w-30 rounded-xl border p-1 z-20"
+            :style="{
+              background: 'var(--color-bg-elevated)',
+              borderColor: 'var(--color-border)',
+              boxShadow: 'var(--shadow-card-hover)',
+            }"
+          >
+            <li v-for="code in currencyCodes" :key="code">
+              <button
+                type="button"
+                role="option"
+                :aria-selected="activeCurrency === code"
+                class="w-full flex items-center justify-between gap-3 text-[12px] px-2.5 py-1.5 rounded-md transition-colors"
+                :style="{
+                  background: activeCurrency === code ? 'var(--color-accent-soft)' : 'transparent',
+                  color: activeCurrency === code ? 'var(--color-accent)' : 'var(--color-text)',
+                  fontWeight: activeCurrency === code ? '500' : '400',
+                }"
+                @click="pickCurrency(code)"
+              >
+                <span class="tabular-nums">{{ code }}</span>
+                <UIcon
+                  v-if="activeCurrency === code"
+                  name="i-fluent-checkmark-24-regular"
+                  class="size-3.5"
+                />
+              </button>
+            </li>
+          </ul>
+        </Transition>
       </div>
     </div>
 
@@ -576,5 +645,16 @@ useScrollReveal('.reveal')
 .tab-leave-to {
   opacity: 0;
   transform: translateY(6px);
+}
+
+/* Currency menu animation */
+.menu-enter-active,
+.menu-leave-active {
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.menu-enter-from,
+.menu-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 </style>

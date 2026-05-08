@@ -26,6 +26,7 @@ interface Category {
   description: string
   sort_order: number
   active: boolean
+  is_default: boolean
   packages: Pkg[]
 }
 
@@ -125,6 +126,11 @@ function fmtPrice(min: string | number, max: string | number | null) {
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <p class="text-[14px] font-semibold tracking-tight" :style="{ color: 'var(--color-text)' }">{{ cat.name }}</p>
+              <span v-if="cat.is_default" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">
+                <UIcon name="i-lucide-star" class="size-3" />
+                Default tab
+              </span>
               <span v-if="!cat.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                 :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg)' }">Inactive</span>
             </div>
