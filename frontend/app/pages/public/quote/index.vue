@@ -2,54 +2,32 @@
 definePageMeta({ layout: 'public' })
 
 useHead({ title: 'Get a Quote — Axel Nova Ventures' })
-const { config, configLoading, configError, loadConfig, calculate, fmtMyr } = usePricingEngine()
+const { config, configLoading, configError, loadConfig, calculate, fmtMyr, formatEta } = usePricingEngine()
 
 // Form state lives in a shared composable so the preview/success pages can read it.
 const { form } = useQuoteForm()
 
 // ── Categories ───────────────────────────────────────────────────────────────
-const categories = [
-  { key: 'web', label: 'Web Presence', icon: 'i-lucide-globe', packages: [
-    { key: 'web_essential', name: 'Essential', tagline: 'Get online fast' },
-    { key: 'web_business',  name: 'Business',  tagline: 'A proper web presence' },
-    { key: 'web_premium',   name: 'Premium',   tagline: 'Built to impress internationally' },
-  ]},
-  { key: 'dashboard', label: 'Dashboard & Portal', icon: 'i-lucide-layout-dashboard', packages: [
-    { key: 'dash_starter',    name: 'Starter',    tagline: 'Core UI, shipped clean' },
-    { key: 'dash_business',   name: 'Business',   tagline: 'Role-based, data-rich' },
-    { key: 'dash_enterprise', name: 'Enterprise', tagline: 'Multi-role. Mission-critical.' },
-  ]},
-  { key: 'design', label: 'UI/UX Design', icon: 'i-lucide-pen-tool', packages: [
-    { key: 'design_audit', name: 'UX Audit', tagline: 'Find what\'s broken, fix it fast' },
-    { key: 'design_figma', name: 'Figma Design', tagline: 'Full design before code' },
-    { key: 'design_full',  name: 'Full Design System', tagline: 'Scale without losing consistency' },
-  ]},
-  { key: 'frontend', label: 'Frontend Engineering', icon: 'i-lucide-code-2', packages: [
-    { key: 'frontend_components', name: 'Components', tagline: 'Build your UI library' },
-    { key: 'frontend_pages',      name: 'Pages',      tagline: 'Full page implementation' },
-    { key: 'frontend_full',       name: 'Full Build',  tagline: 'End-to-end frontend' },
-  ]},
-  { key: 'saas', label: 'SaaS & Product', icon: 'i-lucide-rocket', packages: [
-    { key: 'saas_mvp_sprint', name: 'MVP Sprint', tagline: 'Validate in weeks, not months' },
-    { key: 'saas_full_mvp',   name: 'Full MVP',   tagline: 'Launch-ready. Investor-ready.' },
-    { key: 'not_sure',        name: 'Not sure yet', tagline: 'Tell me what you\'re building' },
-  ]},
-]
+// Loaded from the backend so admin-managed service_packages flow through.
+const categories = computed(() => config.value?.categories ?? [])
 
 const currentCategory = computed(() =>
-  categories.find(c => c.key === form.categoryKey),
+  categories.value.find(c => c.key === form.categoryKey),
 )
 
 // Pre-fill from /services deep links: /quote?category=web&package=web_business
+// Runs once categories arrive from the API.
 const route = useRoute()
 const queryCategory = typeof route.query.category === 'string' ? route.query.category : ''
 const queryPackage = typeof route.query.package === 'string' ? route.query.package : ''
-const matchedCategory = categories.find(c => c.key === queryCategory)
-if (matchedCategory) {
+watch(categories, (cats) => {
+  if (form.categoryKey || !cats.length) return
+  const matchedCategory = cats.find(c => c.key === queryCategory)
+  if (!matchedCategory) return
   form.categoryKey = matchedCategory.key
   const matchedPackage = matchedCategory.packages.find(p => p.key === queryPackage)
   if (matchedPackage) form.packageKey = matchedPackage.key
-}
+}, { immediate: true })
 
 // ── Live estimate ─────────────────────────────────────────────────────────────
 const estimate = computed(() => {
@@ -553,7 +531,7 @@ function toggleAddon(key: string) {
               {{ fmtMyr(estimate.maxMyr) }}
             </p>
             <p class="text-[13px]" style="color: var(--color-text-secondary);">
-              Estimated timeline: <span class="font-medium" style="color: var(--color-text);">{{ estimate.weeks }} week{{ estimate.weeks > 1 ? 's' : '' }}</span>
+              Estimated timeline: <span class="font-medium" style="color: var(--color-text);">{{ formatEta(estimate.etaValue, estimate.etaUnit) }}</span>
             </p>
           </div>
           <div v-else class="py-2">

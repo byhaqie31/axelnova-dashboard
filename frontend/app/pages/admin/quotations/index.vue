@@ -13,7 +13,8 @@ interface Quotation {
   package_key: string | null
   estimate_min_myr: string
   estimate_max_myr: string
-  estimate_weeks: number
+  estimate_eta_value: number
+  estimate_eta_unit: 'hour' | 'day' | 'week' | 'month'
   status: string
   submitted_at: string
 }

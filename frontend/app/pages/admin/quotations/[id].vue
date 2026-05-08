@@ -14,7 +14,8 @@ interface Quotation {
   package_key: string | null
   estimate_min_myr: string
   estimate_max_myr: string
-  estimate_weeks: number
+  estimate_eta_value: number
+  estimate_eta_unit: 'hour' | 'day' | 'week' | 'month'
   status: string
   submitted_at: string
   viewed_at: string | null
@@ -167,7 +168,7 @@ const scopeFields = computed(() => {
             {{ fmtMyr(quotation.estimate_min_myr) }} – {{ fmtMyr(quotation.estimate_max_myr) }}
           </p>
           <p class="text-[13px]" style="color: var(--color-text-secondary);">
-            {{ quotation.estimate_weeks }} week{{ quotation.estimate_weeks !== 1 ? 's' : '' }} ·
+            {{ formatEta(quotation.estimate_eta_value, quotation.estimate_eta_unit) }} ·
             Package: <code class="font-mono" style="color: var(--color-text);">{{ quotation.package_key ?? '—' }}</code>
           </p>
         </div>

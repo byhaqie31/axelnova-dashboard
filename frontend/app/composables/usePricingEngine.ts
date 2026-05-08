@@ -1,6 +1,16 @@
+export type EtaUnit = 'hour' | 'day' | 'week' | 'month'
+
+export interface QuoteCategory {
+  key: string
+  label: string
+  icon: string
+  packages: { key: string; name: string; tagline: string }[]
+}
+
 export interface PricingConfig {
   version: string
-  base_packages: Record<string, { min: number; max: number; weeks: number }>
+  base_packages: Record<string, { min: number; max: number; eta_value: number; eta_unit: EtaUnit }>
+  categories: QuoteCategory[]
   modifiers: Record<string, {
     amount: number
     applies_after?: number
@@ -8,6 +18,7 @@ export interface PricingConfig {
   }>
   addons: Record<string, { amount: number; label: string }>
   rush_multiplier: number
+  rush_units: EtaUnit[]
   currency: string
   valid_for_days: number
 }
@@ -15,8 +26,13 @@ export interface PricingConfig {
 export interface EstimateResult {
   minMyr: number
   maxMyr: number
-  weeks: number
+  etaValue: number
+  etaUnit: EtaUnit
   breakdown: [string, number, number][]
+}
+
+export function formatEta(value: number, unit: EtaUnit): string {
+  return `${value} ${value === 1 ? unit : `${unit}s`}`
 }
 
 export function usePricingEngine() {
@@ -57,7 +73,8 @@ export function usePricingEngine() {
 
     let min = base.min
     let max = base.max
-    let weeks = base.weeks
+    let etaValue = base.eta_value
+    const etaUnit = base.eta_unit
     const breakdown: [string, number, number][] = [[`Base: ${packageKey}`, min, max]]
 
     for (const [key, value] of Object.entries(modifiers)) {
@@ -94,14 +111,17 @@ export function usePricingEngine() {
     if (rush) {
       min *= cfg.rush_multiplier
       max *= cfg.rush_multiplier
-      weeks = Math.max(1, Math.floor(weeks * 0.7))
+      // Rush time-reduction only meaningful for week/month projects.
+      if (cfg.rush_units.includes(etaUnit)) {
+        etaValue = Math.max(1, Math.floor(etaValue * 0.7))
+      }
       breakdown.push([`Rush delivery (×${cfg.rush_multiplier})`, 0, 0])
     }
 
     min = Math.round(min / 50) * 50
     max = Math.round(max / 50) * 50
 
-    return { minMyr: min, maxMyr: max, weeks, breakdown }
+    return { minMyr: min, maxMyr: max, etaValue, etaUnit, breakdown }
   }
 
   function fmtMyr(amount: number): string {
@@ -109,5 +129,5 @@ export function usePricingEngine() {
     return `RM ${amount.toLocaleString()}`
   }
 
-  return { config, configLoading, configError, loadConfig, calculate, fmtMyr }
+  return { config, configLoading, configError, loadConfig, calculate, fmtMyr, formatEta }
 }

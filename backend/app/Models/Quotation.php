@@ -25,7 +25,8 @@ class Quotation extends Model
         'form_payload',
         'estimate_min_myr',
         'estimate_max_myr',
-        'estimate_weeks',
+        'estimate_eta_value',
+        'estimate_eta_unit',
         'status',
         'ip_address',
         'user_agent',
@@ -39,6 +40,7 @@ class Quotation extends Model
             'form_payload' => 'array',
             'estimate_min_myr' => 'decimal:2',
             'estimate_max_myr' => 'decimal:2',
+            'estimate_eta_value' => 'integer',
             'submitted_at' => 'datetime',
             'viewed_at' => 'datetime',
         ];
@@ -67,5 +69,17 @@ class Quotation extends Model
     public function order(): HasOne
     {
         return $this->hasOne(Order::class);
+    }
+
+    /**
+     * Human-friendly ETA — e.g. "5 days", "2 weeks", "1 month".
+     */
+    public function getEtaLabelAttribute(): string
+    {
+        $value = (int) ($this->estimate_eta_value ?? 0);
+        $unit = (string) ($this->estimate_eta_unit ?? 'week');
+        $plural = $value === 1 ? $unit : "{$unit}s";
+
+        return "{$value} {$plural}";
     }
 }

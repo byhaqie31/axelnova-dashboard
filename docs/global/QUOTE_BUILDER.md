@@ -1,69 +1,140 @@
-# Quote Builder — Pricing Formula Guide
+# Quote Builder — Pricing & Catalog Guide
 
-This document explains how the pricing engine works, how to update prices, and how to add new packages or add-ons — without touching application code.
+This document explains how the public `/quote` builder is wired together: where data lives, how prices are calculated, and how to add or change packages.
 
 ---
 
-## How the pricing formula works
+## Two-layer architecture (hybrid)
 
-All pricing is driven by a single JSON config stored in the `pricing_configs` table. Only one row has `active = true` at any time.
+There are two sources of truth, by design:
 
-### Calculation order (exact, don't reorder)
+| Layer | Storage | Owns | Managed by |
+|---|---|---|---|
+| **Catalog** (admin-managed) | `service_categories` + `service_packages` tables | Categories, package names, taglines, prices, ETA, features, CTA, deep-link `quote_key` | Admin UI under `/admin/services` |
+| **Pricing rules** (engineered config) | `pricing_configs.config` JSON (one active row) | `modifiers` (extra page, CMS, …), `addons` (SEO, logo, …), `rush_multiplier`, `currency`, `valid_for_days`, plus a fallback `base_packages` map for any legacy keys | SQL insert + auto cache-clear |
 
-1. **Load base package** — look up `base_packages[package_key]` → get `min`, `max`, `weeks`
+The `PricingEngine` merges these at request time:
+
+1. Start with `pricing_configs.active.config.base_packages` (legacy / fallback entries).
+2. Layer admin-managed `service_packages` on top, keyed by `quote_key.package`. DB rows override any matching JSON entry.
+3. Modifiers / addons / rush stay in `pricing_configs.config` (no admin UI yet).
+
+A `service_packages` row counts as "quotable" only if it has both a non-null `quote_key` **and** a non-null `price_max_myr`. Custom-quote and retainer rows (null `quote_key`) appear on the public services page but never in the quote builder.
+
+---
+
+## How `/api/v1/quote-builder/config` responds
+
+```jsonc
+{
+  "version": "2026.05.01",
+  "categories": [                              // ← built from service_categories + service_packages
+    {
+      "key": "web",                            // service_categories.slug
+      "label": "Web Presence",
+      "icon": "i-lucide-globe",
+      "packages": [
+        { "key": "web_business", "name": "Business", "tagline": "..." }
+      ]
+    }
+  ],
+  "base_packages": {                           // ← merged: pricing_configs JSON + service_packages
+    "web_business": { "min": 3500, "max": 5500, "eta_value": 2, "eta_unit": "week" }
+  },
+  "modifiers": { ... },                        // pricing_configs.config.modifiers
+  "addons": { ... },                           // pricing_configs.config.addons
+  "rush_multiplier": 1.20,
+  "rush_units": ["week", "month"],             // ETAs that get the time-reduction; others only get the price multiplier
+  "currency": "MYR",
+  "valid_for_days": 30
+}
+```
+
+The endpoint is cached for 1 hour. Cache is **automatically invalidated** when:
+- A `pricing_configs` row is saved or deleted
+- A `service_category` is saved or deleted
+- A `service_package` is saved or deleted
+
+(See `App\Observers\*Observer`.) You should not need to run `php artisan cache:clear` for routine pricing edits.
+
+---
+
+## ETA model
+
+Every quotable package has two columns:
+- `eta_value` — positive integer (1–999)
+- `eta_unit` — one of `hour`, `day`, `week`, `month`
+
+`duration_text` is a separate human-readable label (e.g. "5–6 weeks", "Up to 8 hrs / mo") shown on services-page cards. Keep both: the structured pair drives the engine, the string drives the marketing copy.
+
+**Rush rule.** Rush always applies the price multiplier (`rush_multiplier`, default 1.20). Rush only reduces ETA for packages where `eta_unit ∈ rush_units` (currently `[week, month]`). For hour/day projects, the time-reduction is skipped silently — the rush price still applies.
+
+---
+
+## Calculation order (exact, don't reorder)
+
+1. **Resolve base** — look up the merged `base_packages[packageKey]` → get `min`, `max`, `eta_value`, `eta_unit`.
 2. **Apply modifiers** — for each modifier in the input:
-   - Check `applies_to` — if it's an array and doesn't include the chosen package, skip silently
-   - **Numeric modifier** (has `applies_after`): if input value > `applies_after`, add `(value - applies_after) × amount` to both min and max
-   - **Toggle modifier** (no `applies_after`): if value is true, add `amount` to both min and max
-3. **Sum add-ons** — add-ons are fixed-price (no min/max range), add to both
-4. **Apply rush** — if `rush=true`, multiply both min and max by `rush_multiplier`, reduce weeks by 30% (floor, min 1)
-5. **Round** — round both min and max to the nearest 50 MYR (so estimates feel clean)
-6. **Build breakdown** — an auditable array of `[label, min_contribution, max_contribution]` tuples
+   - Check `applies_to`; skip silently if it's an array and doesn't include the chosen package.
+   - **Numeric modifier** (has `applies_after`): if input value > `applies_after`, add `(value - applies_after) × amount` to both min and max.
+   - **Toggle modifier** (no `applies_after`): if value is true, add `amount` to both.
+3. **Sum add-ons** — fixed-price, added to both min and max.
+4. **Apply rush** — if `rush=true`, multiply both min/max by `rush_multiplier`. If `eta_unit` is in `rush_units`, also reduce `eta_value` by 30% (floor, min 1).
+5. **Round** — round min/max to nearest 50 MYR.
+6. **Build breakdown** — auditable `[label, min_contribution, max_contribution]` tuples.
 
 ### Example
 
-Package: `web_business` (min: 3000, max: 5000, weeks: 2)
-Modifiers: `extra_page = 7` (threshold is 5, so +2 × RM300 = +RM600), `cms = true` (+RM1,200)
+Package `web_business` (min: 3500, max: 5500, eta_value: 2, eta_unit: week)
+Modifiers: `extra_page = 7` (threshold 5, +2 × RM300 = +RM600), `cms = true` (+RM1,200)
 Add-ons: `seo` (+RM600)
 Rush: false
 
-Result:
-- min = 3000 + 600 + 1200 + 600 = **5,400** → rounds to **RM 5,400**
-- max = 5000 + 600 + 1200 + 600 = **7,400** → rounds to **RM 7,400**
-- weeks = 2
+- min = 3500 + 600 + 1200 + 600 = **5,300** → rounds to **RM 5,300**
+- max = 5500 + 600 + 1200 + 600 = **7,300** → rounds to **RM 7,300**
+- eta = **2 weeks**
 
 ---
 
-## How to update pricing (no code changes)
+## How to add a new offering (end-to-end)
 
-1. **Insert a new config row** in `pricing_configs`:
-   ```sql
-   INSERT INTO pricing_configs (version, config, active, notes, created_at, updated_at)
-   VALUES ('2026.06.01', '<new config JSON>', 1, 'Price increase June 2026', NOW(), NOW());
-   ```
-   The `PricingConfigObserver` will automatically set `active=false` on all other rows.
+The fastest path uses the admin UI — no code or SQL.
 
-2. **Clear the cache** so the API picks it up immediately:
-   ```bash
-   php artisan cache:clear
-   ```
+1. Open `/admin/services/categories/new` if you need a new category, otherwise pick an existing one.
+2. Open `/admin/services/packages/new`.
+3. Fill in name, tagline, prices, **ETA value + unit**, features, CTA.
+4. Tick **"Wire CTA to the quote builder"** and set:
+   - `quote category key` — usually matches `service_categories.slug`
+   - `quote package key` — a new stable key like `web_landing` (no spaces, snake_case)
+5. Save. The quote builder picks it up immediately (cache auto-clears).
 
-3. The frontend will load the new config within 1 hour (or on next full page reload after cache clears).
+If your new package needs **custom modifier inputs** in the quote builder (e.g. a checkbox specific to this package), that still requires editing `pricing_configs` JSON and `frontend/app/pages/public/quote/index.vue` — modifiers are engineered config, not yet admin-managed.
 
 ---
 
-## Config structure reference
+## How to update pricing rules (modifiers / addons / rush)
+
+These live in `pricing_configs.config` JSON. Insert a new active row:
+
+```sql
+INSERT INTO pricing_configs (version, config, active, notes, created_at, updated_at)
+VALUES ('2026.06.01', '<new config JSON>', 1, 'Price rules update', NOW(), NOW());
+```
+
+The `PricingConfigObserver` deactivates older rows and clears cache.
+
+### Config structure (JSON)
 
 ```json
 {
   "base_packages": {
-    "<package_key>": { "min": 3000, "max": 5000, "weeks": 2 }
+    "<package_key>": { "min": 3000, "max": 5000, "eta_value": 2, "eta_unit": "week" }
   },
   "modifiers": {
     "<modifier_key>": {
       "amount": 300,
-      "applies_after": 5,          // optional — makes it a numeric modifier
-      "applies_to": ["web_business"] // or "all"
+      "applies_after": 5,
+      "applies_to": ["web_business"]
     }
   },
   "addons": {
@@ -75,50 +146,55 @@ Result:
 }
 ```
 
----
+> Legacy entries written before the ETA refactor have `weeks` instead of `eta_value`/`eta_unit`. The engine reads `weeks` as `eta_value` with `eta_unit='week'` for backward compatibility — but write all new entries in the new shape.
 
-## How to add a new package
-
-1. Add an entry to `base_packages` in a new `pricing_configs` row:
-   ```json
-   "web_enterprise": { "min": 12000, "max": 20000, "weeks": 6 }
-   ```
-
-2. If the package should be selectable in the frontend quote form, add it to the relevant category in `frontend/app/pages/quote.vue` under the `categories` array.
-
-3. If the package should appear in the services page pricing grid, add it to `frontend/app/data/services.ts`.
+`base_packages` in JSON is a **fallback** for keys that don't have a matching admin-managed `service_packages` row. The DB row always wins where both exist.
 
 ---
 
-## How to add a new add-on
+## Adding a modifier or add-on
 
-Add an entry to `addons` in a new `pricing_configs` row:
-```json
-"video": { "amount": 2500, "label": "Product demo video" }
-```
-
-The frontend `/quote` page reads add-ons dynamically from the config API — no frontend changes needed.
-
----
-
-## How to add a new modifier
-
-Add an entry to `modifiers` in a new `pricing_configs` row. Choose the type:
+These need both a JSON edit and (for category-specific modifiers) a frontend form input edit.
 
 **Toggle modifier** (on/off checkbox):
 ```json
 "multilingual_cms": { "amount": 1800, "applies_to": ["web_business", "web_premium"] }
 ```
 
-**Numeric modifier** (slider/stepper — adds cost per unit above threshold):
+**Numeric modifier** (slider/stepper):
 ```json
 "extra_integration": { "amount": 500, "applies_after": 2, "applies_to": "all" }
 ```
 
-Then add the corresponding form field to the right category section in `frontend/app/pages/quote.vue` and wire it into the `modifiers` object passed to `calculate()` and the POST payload.
+**Add-on** (the `/quote` page reads add-ons dynamically from the config API, no frontend changes needed):
+```json
+"video": { "amount": 2500, "label": "Product demo video" }
+```
+
+For category-specific modifiers, also add the form field to the right scope section in `frontend/app/pages/public/quote/index.vue` and wire it into the `modifiers` object passed to `calculate()`.
 
 ---
 
-## Valid_for_days
+## Known data-drift to clean up
 
-Controls how long the quote estimate is valid. Shown in the client confirmation email. Default: 30 days. Update in the config JSON.
+These are pre-existing inconsistencies, not regressions from the hybrid wiring:
+
+- The seeder uses category slug `design-frontend` (combined), but the quote page has hardcoded modifier UI for separate `design` and `frontend` slugs. Categories with non-matching slugs render in the quote builder *without* scope-input UI. Fix by either splitting the seeded category or adding a `design-frontend` scope block.
+- `frontend_components`, `frontend_pages`, `frontend_full` exist only in `pricing_configs` JSON, not in `service_packages`. They still work via the JSON fallback, but admin can't edit them yet.
+- The "Not sure yet" UX option in the saas category is no longer present — categories now load from DB and there's no `not_sure` row. Visitors who don't know what they want can use the contact form instead.
+
+---
+
+## File map
+
+- Backend
+  - `app/Services/Quoting/PricingEngine.php` — merge logic, calculation
+  - `app/Services/Quoting/EstimateResult.php` — DTO (`etaValue`, `etaUnit`)
+  - `app/Models/ServicePackage.php` — eta columns, observer wired
+  - `app/Models/Quotation.php` — stores `estimate_eta_value`, `estimate_eta_unit`; has `eta_label` accessor for emails
+  - `app/Observers/{Pricing,ServicePackage,ServiceCategory}Observer.php` — cache invalidation
+  - `app/Http/Controllers/Api/V1/QuoteBuilderConfigController.php` — cached endpoint
+- Frontend
+  - `app/composables/usePricingEngine.ts` — TS port of PricingEngine + `formatEta` helper
+  - `app/pages/public/quote/index.vue` — categories now from `config.categories`
+  - `app/pages/admin/services/packages/[id].vue` — admin form with eta value + unit inputs

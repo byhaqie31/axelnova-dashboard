@@ -5,7 +5,7 @@ const runtimeConfig = useRuntimeConfig()
 
 useHead({ title: 'Review your quote — Axel Nova Ventures' })
 
-const { config, configLoading, configError, loadConfig, calculate, fmtMyr } = usePricingEngine()
+const { config, configLoading, configError, loadConfig, calculate, fmtMyr, formatEta } = usePricingEngine()
 const { form, resetForm, hasMinimumData } = useQuoteForm()
 
 // ── Guard: bounce empty visitors back to the form ────────────────────────────
@@ -365,7 +365,7 @@ function startAgain() {
             <div>
               <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Estimated total</p>
               <p class="text-[12px]" style="color: var(--color-text-secondary);">
-                Timeline: <span class="font-medium" style="color: var(--color-text);">{{ estimate.weeks }} week{{ estimate.weeks > 1 ? 's' : '' }}</span>
+                Timeline: <span class="font-medium" style="color: var(--color-text);">{{ formatEta(estimate.etaValue, estimate.etaUnit) }}</span>
               </p>
             </div>
             <div class="text-right">

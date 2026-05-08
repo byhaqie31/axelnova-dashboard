@@ -9,7 +9,8 @@ class EstimateResult extends Data
     public function __construct(
         public readonly int $minMyr,
         public readonly int $maxMyr,
-        public readonly int $weeks,
+        public readonly int $etaValue,
+        public readonly string $etaUnit,
         public readonly array $breakdown,
     ) {}
 }

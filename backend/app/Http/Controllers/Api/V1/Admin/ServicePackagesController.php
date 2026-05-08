@@ -74,6 +74,8 @@ class ServicePackagesController extends Controller
             'price_max_myr' => ['nullable', 'numeric', 'min:0'],
             'unit' => ['required', 'string', 'max:50'],
             'duration_text' => ['required', 'string', 'max:50'],
+            'eta_value' => ['required', 'integer', 'min:1', 'max:999'],
+            'eta_unit' => ['required', 'string', 'in:hour,day,week,month'],
             'revisions' => ['nullable', 'string', 'max:50'],
             'featured' => ['boolean'],
             'features' => ['required', 'array'],

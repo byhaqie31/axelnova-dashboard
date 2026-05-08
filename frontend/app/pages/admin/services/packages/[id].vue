@@ -22,6 +22,8 @@ const form = reactive({
   price_max_myr: null as number | null,
   unit: 'per project',
   duration_text: '',
+  eta_value: 4,
+  eta_unit: 'week' as 'hour' | 'day' | 'week' | 'month',
   revisions: '',
   featured: false,
   features: [] as string[],
@@ -190,16 +192,38 @@ onMounted(async () => {
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
-          <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Duration *</label>
+          <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Duration label *</label>
           <input v-model="form.duration_text" type="text" required placeholder="e.g. 2 weeks"
             class="contact-input w-full"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <p class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Human-readable, shown on cards (e.g. "5–6 weeks").</p>
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Revisions</label>
           <input v-model="form.revisions" type="text" placeholder="e.g. 2 rounds"
             class="contact-input w-full"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">ETA value *</label>
+          <input v-model.number="form.eta_value" type="number" required min="1" max="999"
+            class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <p v-if="errors.eta_value?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.eta_value[0] }}</p>
+        </div>
+        <div>
+          <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">ETA unit *</label>
+          <select v-model="form.eta_unit" required class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }">
+            <option value="hour">hour(s)</option>
+            <option value="day">day(s)</option>
+            <option value="week">week(s)</option>
+            <option value="month">month(s)</option>
+          </select>
+          <p class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Used by the quote builder for math + rush logic.</p>
         </div>
       </div>
 
