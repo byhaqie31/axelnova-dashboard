@@ -53,7 +53,14 @@ export default defineNuxtConfig({
         { property: 'og:title', content: 'Axel Nova Ventures' },
         { property: 'og:description', content: 'UI/UX-focused software engineer. Vue · Nuxt · Laravel · Docker · AWS.' },
       ],
-      link: [{ rel: 'icon', type: 'image/png', href: '/axel_nova_favicon.png' }],
+      link: [
+        // Modern browsers — sharpest at any size.
+        { rel: 'icon', type: 'image/svg+xml', href: '/axelnovaicon.svg' },
+        // Fallback for browsers that don't render SVG favicons.
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        // iOS home-screen icon.
+        { rel: 'apple-touch-icon', href: '/axel_nova_favicon.png' },
+      ],
     },
     pageTransition: { name: 'page', mode: 'out-in' },
   },

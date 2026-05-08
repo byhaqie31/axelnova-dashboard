@@ -455,11 +455,14 @@ Adding a new icon is a one-line addition to the allowlist. Do not let admins typ
 The `admin.vue` layout is the only place these patterns live; no need to duplicate them per page.
 
 **Header brand marker.**
-- Custom inline (not the shared `BrandMark` — admin gets its own brand identity).
-- Aurora orb: `size-7` rounded-full circle, favicon at `size-6.5` (almost filling), inner background `color-mix(in srgb, var(--color-accent-soft) 45%, var(--color-bg-elevated))` (pastel), iridescent halo via `::before` pseudo with `--grad-iridescent` and `blur(6px)`, gently pulsing 4.5s loop.
-- Wordmark: "Admin Portal" rendered with the global `.text-gradient` utility (matches the public `BrandMark` colour treatment).
-- Links to `/admin`, not `/`.
-- Animation respects `prefers-reduced-motion`.
+- Uses the shared `<BrandMark to="/admin" wordmark="Admin Portal" />` (default variant — same `size-7.5` icon + `text-[15px]` wordmark as the public navbar) so the favicon + drop-shadow glow + gradient text treatment stay visually identical to public.
+- The `wordmark` prop is the only override; defaults to "Axel Nova Ventures" for public layouts, set explicitly per layout when it differs.
+- `to` points at `/admin`, not `/`, so clicking the brand returns to the admin dashboard.
+- Do not reintroduce a custom orb/aurora wrapper around the favicon — the brand-logo-glow drop-shadow on `BrandMark` is the canonical treatment everywhere it appears.
+
+**Browser tab title.**
+- The admin layout sets `useHead({ title: 'Admin Portal' })` once. **Per-page admin files do not set their own `title`** — relying on the layout keeps the tab title stable as the user moves between admin sections (Dashboard, Quotations, Orders, …). If you genuinely need a per-page title for SEO or external linking, that's a sign the page isn't really admin-internal — reconsider whether it should live under the admin layout.
+- Login (`/admin/login`) is the exception — it uses a different layout (pre-auth) and keeps its own title.
 
 **Mobile floating drawer** (`< md` breakpoint).
 - Detached from edges: `left-3 / top-17 / bottom-3`, `rounded-2xl`, `shadow-2xl`, internal `overflow-y-auto`.

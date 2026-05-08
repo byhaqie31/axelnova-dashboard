@@ -8,7 +8,6 @@ const { apiFetch } = useAdminAuth()
 
 const isNew = computed(() => route.params.id === 'new')
 
-useHead(() => ({ title: isNew.value ? 'New category — Admin' : 'Edit category — Admin' }))
 
 const form = reactive({
   slug: '',

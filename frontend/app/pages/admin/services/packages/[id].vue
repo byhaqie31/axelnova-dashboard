@@ -6,7 +6,6 @@ const { apiFetch } = useAdminAuth()
 
 const isNew = computed(() => route.params.id === 'new')
 
-useHead(() => ({ title: isNew.value ? 'New package — Admin' : 'Edit package — Admin' }))
 
 interface CategoryOption {
   id: number

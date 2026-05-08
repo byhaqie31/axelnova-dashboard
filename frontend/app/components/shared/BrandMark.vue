@@ -5,9 +5,11 @@ const props = withDefaults(defineProps<{
   variant?: Variant
   to?: string
   class?: string
+  wordmark?: string
 }>(), {
   variant: 'default',
   to: '/',
+  wordmark: 'Axel Nova Ventures',
 })
 
 const iconSize = computed(() => props.variant === 'compact' ? 'size-6' : 'size-7.5')
@@ -25,7 +27,7 @@ const wordmarkSize = computed(() => props.variant === 'compact' ? 'text-[13px]' 
       aria-hidden="true"
       :class="[iconSize, 'object-contain brand-logo-glow']"
     />
-    <span v-if="variant !== 'mark-only'" class="text-gradient">Axel Nova Ventures</span>
+    <span v-if="variant !== 'mark-only'" class="text-gradient">{{ wordmark }}</span>
   </NuxtLink>
 </template>
 

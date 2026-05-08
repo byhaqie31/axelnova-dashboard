@@ -1,6 +1,5 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
-useHead({ title: 'Dashboard — Admin' })
 
 const { apiFetch } = useAdminAuth()
 

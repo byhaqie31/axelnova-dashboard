@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandMark from '~/components/shared/BrandMark.vue'
 import { adminNav, isAdminNavActive } from '~/data/adminNav'
 
 const mobileNavOpen = ref(false)
@@ -7,6 +8,10 @@ const route = useRoute()
 const { logout } = useAdminAuth()
 
 watch(() => route.fullPath, () => { mobileNavOpen.value = false })
+
+// One title for every page rendered under this layout.
+// Per-page useHead calls deliberately don't set `title` so this stays.
+useHead({ title: 'Admin Portal' })
 </script>
 
 <template>
@@ -29,17 +34,7 @@ watch(() => route.fullPath, () => { mobileNavOpen.value = false })
           >
             <UIcon :name="mobileNavOpen ? 'i-fluent-dismiss-24-regular' : 'i-fluent-line-horizontal-3-24-regular'" class="size-5" />
           </button>
-          <NuxtLink to="/admin" class="inline-flex items-center gap-2 font-semibold tracking-tight text-[13px]">
-            <span class="aurora-orb size-7 rounded-full inline-flex items-center justify-center shrink-0">
-              <img
-                src="/axel_nova_favicon.png"
-                alt=""
-                aria-hidden="true"
-                class="size-6.5 object-contain relative z-10"
-              />
-            </span>
-            <span class="text-gradient">Admin Portal</span>
-          </NuxtLink>
+          <BrandMark to="/admin" wordmark="Admin Portal" />
         </div>
 
         <div class="flex items-center gap-2">
@@ -138,36 +133,6 @@ watch(() => route.fullPath, () => { mobileNavOpen.value = false })
 </template>
 
 <style scoped>
-.aurora-orb {
-  position: relative;
-  background: color-mix(in srgb, var(--color-accent-soft) 45%, var(--color-bg-elevated));
-  isolation: isolate;
-}
-.aurora-orb::before {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  background: var(--grad-iridescent);
-  filter: blur(6px);
-  opacity: 0.55;
-  z-index: 0;
-  animation: aurora-orb-pulse 4.5s ease-in-out infinite;
-}
-.aurora-orb::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: color-mix(in srgb, var(--color-accent-soft) 45%, var(--color-bg-elevated));
-  z-index: 0;
-}
-
-@keyframes aurora-orb-pulse {
-  0%, 100% { opacity: 0.45; transform: scale(1); }
-  50%      { opacity: 0.65; transform: scale(1.06); }
-}
-
 /* Mobile floating drawer */
 .drawer-backdrop-enter-active,
 .drawer-backdrop-leave-active {
@@ -187,7 +152,6 @@ watch(() => route.fullPath, () => { mobileNavOpen.value = false })
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora-orb::before { animation: none; opacity: 0.5; }
   .drawer-backdrop-enter-active,
   .drawer-backdrop-leave-active,
   .drawer-panel-enter-active,

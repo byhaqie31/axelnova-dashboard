@@ -1,6 +1,5 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
-useHead({ title: 'Analytics — Admin' })
 
 interface PlannedMetric {
   label: string
