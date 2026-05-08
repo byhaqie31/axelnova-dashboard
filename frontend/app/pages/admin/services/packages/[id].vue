@@ -44,6 +44,31 @@ const saving = ref(false)
 const errors = ref<Record<string, string[]>>({})
 const message = ref('')
 
+interface SiblingPackage { id: number, name: string, sort_order: number }
+const siblings = ref<SiblingPackage[]>([])
+
+// Positions occupied in the current category — used to render the sort-order pills.
+// Includes self when editing (so the user sees their own pill highlighted).
+const occupiedSortOrders = computed(() => {
+  const positions = new Set<number>(siblings.value.map(s => s.sort_order))
+  return Array.from(positions).sort((a, b) => a - b)
+})
+
+// What "auto-append" resolves to. Excludes self when editing so moving-to-end doesn't
+// over-shoot.
+const nextAvailableSort = computed(() => {
+  const others = siblings.value
+    .filter(s => isNew.value || s.id !== Number(route.params.id))
+    .map(s => s.sort_order)
+  return (others.length ? Math.max(...others) : -1) + 1
+})
+
+function setSort(n: number) { form.sort_order = n }
+function nudgeSort(delta: number) {
+  const next = Math.min(nextAvailableSort.value, Math.max(0, (form.sort_order ?? 0) + delta))
+  form.sort_order = next
+}
+
 async function loadCategories() {
   try {
     const res = await apiFetch<{ data: CategoryOption[] }>('/api/v1/admin/service-categories')
@@ -53,6 +78,23 @@ async function loadCategories() {
     // Non-fatal — handled by the form-level error path.
   }
 }
+
+async function loadSiblings(categoryId: number) {
+  if (!categoryId) { siblings.value = []; return }
+  try {
+    const res = await apiFetch<{ data: SiblingPackage[] }>(`/api/v1/admin/service-packages?service_category_id=${categoryId}`)
+    siblings.value = res.data
+    // For a new package, default the position to "auto-append" once we know what that is.
+    if (isNew.value) form.sort_order = nextAvailableSort.value
+  }
+  catch {
+    siblings.value = []
+  }
+}
+
+watch(() => form.service_category_id, (id) => {
+  if (id) loadSiblings(id)
+}, { immediate: false })
 
 async function fetchPackage() {
   if (isNew.value) {
@@ -116,6 +158,7 @@ async function save() {
 onMounted(async () => {
   await loadCategories()
   await fetchPackage()
+  if (form.service_category_id) await loadSiblings(form.service_category_id)
 })
 </script>
 
@@ -128,7 +171,6 @@ onMounted(async () => {
     </NuxtLink>
 
     <div class="mb-6">
-      <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin · CMS</p>
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
         {{ isNew ? 'New package' : 'Edit package' }}
       </h1>
@@ -260,20 +302,98 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="grid sm:grid-cols-3 gap-4">
-        <div>
-          <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Sort order</label>
-          <input v-model.number="form.sort_order" type="number" min="0" class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+      <div>
+        <label class="text-[12px] font-medium block mb-2" :style="{ color: 'var(--color-text-secondary)' }">Sort order</label>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button type="button" :disabled="(form.sort_order ?? 0) <= 0" @click="nudgeSort(-1)"
+            class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
+            :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }"
+            aria-label="Move position left">
+            <UIcon name="i-lucide-chevron-left" class="size-4" />
+          </button>
+
+          <button v-for="n in occupiedSortOrders" :key="n" type="button" @click="setSort(n)"
+            class="size-9 rounded-lg border flex items-center justify-center text-[13px] font-medium tabular-nums transition-colors"
+            :style="form.sort_order === n
+              ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)' }
+              : { borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text)' }"
+            :aria-label="`Set position ${n}`">
+            {{ n }}
+          </button>
+
+          <button type="button" @click="setSort(nextAvailableSort)"
+            class="size-9 rounded-lg flex items-center justify-center transition-colors"
+            :style="form.sort_order === nextAvailableSort
+              ? { border: '1px solid var(--color-accent)', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)' }
+              : { border: '1px dashed var(--color-border)', color: 'var(--color-text-tertiary)' }"
+            aria-label="Auto-append at end">
+            <UIcon name="i-lucide-plus" class="size-4" />
+          </button>
+
+          <button type="button" :disabled="(form.sort_order ?? 0) >= nextAvailableSort" @click="nudgeSort(1)"
+            class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
+            :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }"
+            aria-label="Move position right">
+            <UIcon name="i-lucide-chevron-right" class="size-4" />
+          </button>
         </div>
-        <label class="flex items-center gap-2 self-end pb-2 cursor-pointer">
-          <input v-model="form.featured" type="checkbox" class="size-4" />
-          <span class="text-[13px]" :style="{ color: 'var(--color-text)' }">Featured</span>
-        </label>
-        <label class="flex items-center gap-2 self-end pb-2 cursor-pointer">
-          <input v-model="form.active" type="checkbox" class="size-4" />
-          <span class="text-[13px]" :style="{ color: 'var(--color-text)' }">Active</span>
-        </label>
+        <p class="mt-2 text-[11px] leading-tight" :style="{ color: 'var(--color-text-tertiary)' }">
+          <code>+</code> auto-appends at position <code>{{ nextAvailableSort }}</code>. Click an existing number to insert there — the colliding row shifts down.
+        </p>
+      </div>
+
+      <div class="space-y-2 pt-1">
+        <button type="button" @click="form.featured = !form.featured"
+          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+          :style="form.featured
+            ? { borderColor: 'var(--color-accent)', background: 'var(--color-bg-elevated)' }
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            :style="form.featured
+              ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+              : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
+            <UIcon name="i-lucide-crown" class="size-4" />
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-[13px] font-medium" :style="{ color: form.featured ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Featured</span>
+            <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Highlighted on the public services page</span>
+          </span>
+          <span class="relative inline-block rounded-full transition-colors shrink-0"
+            :style="{
+              background: form.featured ? 'var(--color-accent)' : '#d1d5db',
+              height: '1.25rem',
+              width: '2.25rem',
+            }">
+            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.featured ? '1.125rem' : '0.125rem' }"></span>
+          </span>
+        </button>
+
+        <button type="button" @click="form.active = !form.active"
+          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+          :style="form.active
+            ? { borderColor: '#10b981', background: 'var(--color-bg-elevated)' }
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            :style="form.active
+              ? { background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }
+              : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
+            <UIcon name="i-lucide-power" class="size-4" />
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-[13px] font-medium" :style="{ color: form.active ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Active</span>
+            <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Visible on the public services page</span>
+          </span>
+          <span class="relative inline-block rounded-full transition-colors shrink-0"
+            :style="{
+              background: form.active ? '#10b981' : '#d1d5db',
+              height: '1.25rem',
+              width: '2.25rem',
+            }">
+            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.active ? '1.125rem' : '0.125rem' }"></span>
+          </span>
+        </button>
       </div>
 
       <div class="flex items-center gap-3 pt-2">

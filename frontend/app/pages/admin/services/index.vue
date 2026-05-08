@@ -88,7 +88,6 @@ function fmtPrice(min: string | number, max: string | number | null) {
   <div class="max-w-7xl mx-auto px-6 pt-10 pb-32">
     <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
       <div>
-        <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin · CMS</p>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Services</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           {{ categories.length }} categories · {{ totalPackages }} packages · {{ featuredPackages }} featured
@@ -118,37 +117,37 @@ function fmtPrice(min: string | number, max: string | number | null) {
         class="rounded-2xl border overflow-hidden"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <header class="flex items-center gap-3 px-5 py-4 border-b"
-          :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)' }">
+          :style="{ borderColor: 'var(--color-border)', background: 'var(--color-accent-soft)' }">
           <div class="size-9 rounded-xl inline-flex items-center justify-center"
-            :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">
+            :style="{ background: 'rgba(255, 255, 255, 0.6)', color: 'var(--color-accent)' }">
             <UIcon :name="cat.icon" class="size-4" />
           </div>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <p class="text-[14px] font-semibold tracking-tight" :style="{ color: 'var(--color-text)' }">{{ cat.name }}</p>
               <span v-if="cat.is_default" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1"
-                :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">
+                :style="{ color: 'var(--color-accent)', background: 'rgba(255, 255, 255, 0.7)' }">
                 <UIcon name="i-lucide-star" class="size-3" />
                 Default tab
               </span>
               <span v-if="!cat.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg)' }">Inactive</span>
+                :style="{ color: 'var(--color-text-tertiary)', background: 'rgba(255, 255, 255, 0.7)' }">Inactive</span>
             </div>
             <p class="text-[12px] truncate" :style="{ color: 'var(--color-text-secondary)' }">{{ cat.description }}</p>
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <NuxtLink :to="`/admin/services/packages/new?category=${cat.id}`"
-              class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg)"
-              :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
+              class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-white/40"
+              :style="{ borderColor: 'var(--color-border)', background: 'rgba(255, 255, 255, 0.5)', color: 'var(--color-text-secondary)' }">
               + Package
             </NuxtLink>
             <NuxtLink :to="`/admin/services/categories/${cat.id}`"
-              class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg)"
-              :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
+              class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-white/40"
+              :style="{ borderColor: 'var(--color-border)', background: 'rgba(255, 255, 255, 0.5)', color: 'var(--color-text-secondary)' }">
               Edit
             </NuxtLink>
-            <button class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg)"
-              :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
+            <button class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-white/40"
+              :style="{ borderColor: 'var(--color-border)', background: 'rgba(255, 255, 255, 0.5)', color: 'var(--color-danger)' }"
               @click="deleteCategory(cat)">
               Delete
             </button>

@@ -96,7 +96,6 @@ const liveCount = computed(() => projects.value.filter(p => p.status === 'live')
   <div class="max-w-7xl mx-auto px-6 pt-10 pb-32">
     <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
       <div>
-        <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin · CMS</p>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Projects</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           {{ projects.length }} total · {{ featuredCount }} featured · {{ liveCount }} live

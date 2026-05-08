@@ -100,7 +100,6 @@ onMounted(fetchProject)
     </NuxtLink>
 
     <div class="mb-6">
-      <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin · CMS</p>
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
         {{ isNew ? 'New project' : 'Edit project' }}
       </h1>
