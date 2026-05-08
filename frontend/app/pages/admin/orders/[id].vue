@@ -11,7 +11,8 @@ interface Order {
   client_id: number
   reference_code: string | null
   package_key: string | null
-  estimate_weeks: number | null
+  estimate_eta_value: number | null
+  estimate_eta_unit: 'hour' | 'day' | 'week' | 'month' | null
   submitted_at: string | null
   name: string | null
   email: string | null
@@ -187,7 +188,7 @@ const timeline = computed<TimelineStep[]>(() => {
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Scope snapshot</p>
           <p class="text-[13px]" style="color: var(--color-text-secondary);">
-            <span v-if="order.estimate_weeks">{{ order.estimate_weeks }} week{{ order.estimate_weeks !== 1 ? 's' : '' }} · </span>
+            <span v-if="order.estimate_eta_value && order.estimate_eta_unit">{{ formatEta(order.estimate_eta_value, order.estimate_eta_unit) }} · </span>
             Package: <code class="font-mono" style="color: var(--color-text);">{{ order.package_key ?? '—' }}</code>
           </p>
           <p class="text-[12px] mt-2" style="color: var(--color-text-tertiary);">

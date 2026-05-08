@@ -113,10 +113,21 @@ onMounted(() => {
           </div>
         </nav>
 
-        <Transition name="page">
-          <div
+        <!-- Mobile floating drawer + backdrop -->
+        <Transition name="drawer-backdrop">
+          <button
             v-if="mobileOpen"
-            class="md:hidden border-t"
+            type="button"
+            class="md:hidden fixed inset-0 top-14 z-30 cursor-default"
+            style="background: rgba(0, 0, 0, 0.32); backdrop-filter: blur(2px);"
+            aria-label="Close menu"
+            @click="mobileOpen = false"
+          />
+        </Transition>
+        <Transition name="drawer-panel">
+          <aside
+            v-if="mobileOpen"
+            class="md:hidden fixed left-3 right-3 top-17 z-40 rounded-2xl border shadow-2xl overflow-hidden"
             :style="{
               borderColor: 'var(--color-border)',
               background: 'var(--nav-mobile-bg)'
@@ -124,7 +135,7 @@ onMounted(() => {
           >
             <!-- Top row: Appearance segmented control on the right -->
             <div
-              class="px-6 pt-4 pb-3 flex items-center justify-between gap-3"
+              class="px-5 pt-4 pb-3 flex items-center justify-between gap-3"
             >
               <p class="text-[11px] font-medium uppercase tracking-wide" style="color: var(--color-text-tertiary);">
                 Appearance
@@ -176,7 +187,7 @@ onMounted(() => {
             <div class="border-t" :style="{ borderColor: 'var(--color-border)' }" />
 
             <!-- Page links -->
-            <nav class="px-6 py-3 flex flex-col">
+            <nav class="px-5 py-3 flex flex-col max-h-[60vh] overflow-y-auto">
               <NuxtLink
                 v-for="l in links" :key="l.to"
                 :to="l.to"
@@ -189,7 +200,7 @@ onMounted(() => {
                 {{ l.label }}
               </NuxtLink>
             </nav>
-          </div>
+          </aside>
         </Transition>
       </div>
     </header>
@@ -207,15 +218,17 @@ onMounted(() => {
           <div class="grid grid-cols-2 lg:grid-cols-[1.8fr_1fr_1fr_1fr_1fr] gap-x-8 gap-y-10 mb-10">
 
             <!-- Brand: full width on mobile, first col on desktop -->
-            <div class="col-span-2 lg:col-span-1">
-              <BrandMark class="mb-4" />
-              <p class="text-[13px] leading-relaxed mb-5 max-w-xs" style="color: var(--color-text-secondary);">
+            <div class="col-span-2 lg:col-span-1 text-center lg:text-left">
+              <div class="flex justify-center lg:justify-start mb-4">
+                <BrandMark />
+              </div>
+              <p class="text-[13px] leading-relaxed mb-5 max-w-xs mx-auto lg:mx-0" style="color: var(--color-text-secondary);">
                 Building thoughtful digital experiences through design, systems, and technology.
               </p>
 
               <!-- SSM card -->
               <div
-                class="inline-block rounded-xl border px-4 py-3 mb-5"
+                class="inline-block text-left rounded-xl border px-4 py-3 mb-5"
                 :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)' }"
               >
                 <p class="text-[12px] font-semibold tracking-tight mb-0.5" style="color: var(--color-text);">
@@ -230,7 +243,7 @@ onMounted(() => {
               </div>
 
               <!-- Availability badge -->
-              <div class="flex items-center gap-2">
+              <div class="flex items-center justify-center lg:justify-start gap-2">
                 <span class="footer-avail-dot" aria-hidden />
                 <span class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
                   Available for selected collaborations
@@ -239,9 +252,9 @@ onMounted(() => {
             </div>
 
             <!-- Explore -->
-            <div>
+            <div class="text-center lg:text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Explore</p>
-              <div class="flex flex-col gap-2.5">
+              <div class="flex flex-col items-center lg:items-start gap-2.5">
                 <NuxtLink
                   v-for="l in links"
                   :key="l.to"
@@ -255,9 +268,9 @@ onMounted(() => {
             </div>
 
             <!-- Services -->
-            <div>
+            <div class="text-center lg:text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Services</p>
-              <div class="flex flex-col gap-2.5">
+              <div class="flex flex-col items-center lg:items-start gap-2.5">
                 <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">UI/UX Design</NuxtLink>
                 <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Frontend Engineering</NuxtLink>
                 <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Product Design</NuxtLink>
@@ -267,9 +280,9 @@ onMounted(() => {
             </div>
 
             <!-- Support -->
-            <div>
+            <div class="text-center lg:text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Support</p>
-              <div class="flex flex-col gap-2.5">
+              <div class="flex flex-col items-center lg:items-start gap-2.5">
                 <NuxtLink to="/contact" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Contact Us</NuxtLink>
                 <a href="https://ko-fi.com/axelnova" target="_blank" rel="noopener" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Support Our Work</a>
                 <a href="mailto:baihaqie@axelnova.tech?subject=Feedback%20—%20axelnova.tech" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Give Feedback</a>
@@ -278,9 +291,9 @@ onMounted(() => {
             </div>
 
             <!-- Legal -->
-            <div>
+            <div class="text-center lg:text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Legal</p>
-              <div class="flex flex-col gap-2.5">
+              <div class="flex flex-col items-center lg:items-start gap-2.5">
                 <NuxtLink to="/legal/privacy-policy" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Privacy Policy</NuxtLink>
                 <NuxtLink to="/legal/terms" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Terms & Conditions</NuxtLink>
                 <NuxtLink to="/legal/cookies" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Cookie Policy</NuxtLink>
@@ -292,14 +305,11 @@ onMounted(() => {
 
           <!-- Bottom bar -->
           <div class="border-t pt-6" :style="{ borderColor: 'var(--color-border)' }">
-            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-              <p class="text-[12px]" style="color: var(--color-text-secondary);">
+            <div class="flex flex-col items-center gap-3 text-center lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-4 lg:text-left">
+              <p class="text-[12px] order-1 lg:order-0" style="color: var(--color-text-secondary);">
                 © 2026 Axel Nova Ventures. All rights reserved.
               </p>
-              <p class="text-[11px] text-center" style="color: var(--color-text-tertiary);">
-                Designed & built by Qie · Nuxt · Tailwind CSS · TypeScript
-              </p>
-              <div class="flex items-center gap-1 justify-end">
+              <div class="flex items-center gap-1 order-2 lg:order-0 lg:col-start-3 lg:justify-end">
                 <a
                   v-for="social in socials"
                   :key="social.label"
@@ -313,6 +323,9 @@ onMounted(() => {
                   <UIcon :name="social.icon" class="size-4" />
                 </a>
               </div>
+              <p class="text-[11px] order-3 lg:order-0 lg:col-start-2 lg:text-center" style="color: var(--color-text-tertiary);">
+                Designed & built by Qie · Nuxt · Tailwind CSS · TypeScript
+              </p>
             </div>
           </div>
         </div>
@@ -352,7 +365,29 @@ onMounted(() => {
   color: var(--color-text) !important;
 }
 
+/* Mobile floating drawer */
+.drawer-backdrop-enter-active,
+.drawer-backdrop-leave-active {
+  transition: opacity 0.2s ease;
+}
+.drawer-backdrop-enter-from,
+.drawer-backdrop-leave-to { opacity: 0; }
+
+.drawer-panel-enter-active,
+.drawer-panel-leave-active {
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease;
+}
+.drawer-panel-enter-from,
+.drawer-panel-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .footer-avail-dot { animation: none; }
+  .drawer-backdrop-enter-active,
+  .drawer-backdrop-leave-active,
+  .drawer-panel-enter-active,
+  .drawer-panel-leave-active { transition: none; }
 }
 </style>

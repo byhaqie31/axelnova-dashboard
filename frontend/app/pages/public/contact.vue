@@ -91,7 +91,7 @@ useScrollReveal('.reveal')
     <SectionHeader
       eyebrow="Contact"
       title="Let's connect."
-      subtitle="Whether you have a project in mind, a question, or just want to say hello — I'm happy to hear from you."
+      subtitle="Whether you have a project in mind, a question, or just want to say hello, I'm happy to hear from you."
     />
 
     <!-- Main grid -->

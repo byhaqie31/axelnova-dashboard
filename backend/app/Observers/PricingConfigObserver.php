@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\PricingConfig;
+use Illuminate\Support\Facades\Cache;
 
 class PricingConfigObserver
 {
@@ -13,5 +14,15 @@ class PricingConfigObserver
                 ->where('active', true)
                 ->update(['active' => false]);
         }
+    }
+
+    public function saved(PricingConfig $config): void
+    {
+        Cache::forget('quote_builder_config_v1');
+    }
+
+    public function deleted(PricingConfig $config): void
+    {
+        Cache::forget('quote_builder_config_v1');
     }
 }

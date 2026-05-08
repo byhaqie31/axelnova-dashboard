@@ -19,6 +19,8 @@ class ServicePackageResource extends JsonResource
             'price_max_myr' => $this->price_max_myr,
             'unit' => $this->unit,
             'duration_text' => $this->duration_text,
+            'eta_value' => $this->eta_value,
+            'eta_unit' => $this->eta_unit,
             'revisions' => $this->revisions,
             'featured' => $this->featured,
             'features' => $this->features,

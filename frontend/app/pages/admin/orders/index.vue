@@ -1,6 +1,5 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
-useHead({ title: 'Orders — Admin' })
 
 const { apiFetch } = useAdminAuth()
 
@@ -89,11 +88,10 @@ function fmtMyr(amount: string | number) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
-        <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Orders</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Accepted quotations turned into active engagements.</p>
       </div>
@@ -102,11 +100,8 @@ function fmtMyr(amount: string | number) {
       </div>
     </div>
 
-    <div class="flex flex-wrap gap-3 mb-6">
-      <input v-model="filters.search" type="search" placeholder="Search by name, email, order or reference…"
-        class="contact-input" style="max-width: 320px;"
-        :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
-
+    <div class="flex flex-wrap items-center gap-3 mb-6">
+      <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, order or reference…" />
       <AdminStatusFilter v-model="filters.status" :options="statusOptions" class="ml-auto" />
     </div>
 
@@ -123,8 +118,9 @@ function fmtMyr(amount: string | number) {
       </p>
     </div>
 
-    <div v-else class="rounded-2xl border overflow-hidden"
+    <div v-else class="hidden md:block rounded-2xl border overflow-hidden"
       :style="{ borderColor: 'var(--color-border)' }">
+      <div class="overflow-x-auto">
       <table class="w-full text-left">
         <thead>
           <tr style="border-bottom: 1px solid var(--color-border); background: var(--color-bg-secondary);">
@@ -165,6 +161,41 @@ function fmtMyr(amount: string | number) {
           </tr>
         </tbody>
       </table>
+      </div>
+    </div>
+
+    <!-- Mobile: cards -->
+    <div v-if="orders.length" class="md:hidden space-y-2.5">
+      <button
+        v-for="o in orders"
+        :key="o.id"
+        type="button"
+        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+        @click="navigateTo(`/admin/orders/${o.id}`)"
+      >
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div class="min-w-0">
+            <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ o.order_number }}</p>
+            <p v-if="o.reference_code" class="font-mono text-[10px]" :style="{ color: 'var(--color-text-tertiary)' }">from {{ o.reference_code }}</p>
+          </div>
+          <AdminStatusPill :status="o.status" />
+        </div>
+        <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ o.name ?? '—' }}</p>
+        <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.email ?? '' }}</p>
+        <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
+              {{ fmtMyr(o.value_min_myr) }} – {{ fmtMyr(o.value_max_myr) }}
+            </p>
+            <p class="text-[11px] font-mono" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.package_key ?? '—' }}</p>
+          </div>
+          <div class="flex items-center justify-between gap-3 text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">
+            <span>Started {{ fmtDate(o.started_at) }}</span>
+            <span>Created {{ fmtDate(o.created_at) }}</span>
+          </div>
+        </div>
+      </button>
     </div>
 
     <div v-if="meta && meta.last_page > 1" class="flex items-center justify-center gap-2 mt-6">

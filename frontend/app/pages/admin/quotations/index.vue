@@ -1,6 +1,5 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
-useHead({ title: 'Quotations — Admin' })
 
 const { apiFetch } = useAdminAuth()
 
@@ -13,7 +12,8 @@ interface Quotation {
   package_key: string | null
   estimate_min_myr: string
   estimate_max_myr: string
-  estimate_weeks: number
+  estimate_eta_value: number
+  estimate_eta_unit: 'hour' | 'day' | 'week' | 'month'
   status: string
   submitted_at: string
 }
@@ -86,12 +86,11 @@ function fmtMyr(amount: string | number) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
-        <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Quotations</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Quote requests submitted from the public site. Converted quotations move to <NuxtLink to="/admin/orders" class="underline" :style="{ color: 'var(--color-accent)' }">Orders</NuxtLink>.</p>
       </div>
@@ -101,11 +100,8 @@ function fmtMyr(amount: string | number) {
     </div>
 
     <!-- Filters -->
-    <div class="flex flex-wrap gap-3 mb-6">
-      <input v-model="filters.search" type="search" placeholder="Search by name, email, reference…"
-        class="contact-input" style="max-width: 300px;"
-        :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
-
+    <div class="flex flex-wrap items-center gap-3 mb-6">
+      <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, reference…" />
       <AdminStatusFilter v-model="filters.status" :options="statusOptions" class="ml-auto" />
     </div>
 
@@ -117,8 +113,9 @@ function fmtMyr(amount: string | number) {
       No quotations found.
     </div>
 
-    <div v-else class="rounded-2xl border overflow-hidden"
+    <div v-else class="hidden md:block rounded-2xl border overflow-hidden"
       :style="{ borderColor: 'var(--color-border)' }">
+      <div class="overflow-x-auto">
       <table class="w-full text-left">
         <thead>
           <tr style="border-bottom: 1px solid var(--color-border); background: var(--color-bg-secondary);">
@@ -157,6 +154,35 @@ function fmtMyr(amount: string | number) {
           </tr>
         </tbody>
       </table>
+      </div>
+    </div>
+
+    <!-- Mobile: cards -->
+    <div v-if="quotations.length" class="md:hidden space-y-2.5">
+      <button
+        v-for="q in quotations"
+        :key="q.id"
+        type="button"
+        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+        @click="navigateTo(`/admin/quotations/${q.id}`)"
+      >
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <span class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ q.reference_code }}</span>
+          <AdminStatusPill :status="q.status" />
+        </div>
+        <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ q.name }}</p>
+        <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
+        <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
+              {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
+            </p>
+            <p class="text-[11px] font-mono" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.package_key ?? '—' }}</p>
+          </div>
+          <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">Submitted {{ fmtDate(q.submitted_at) }}</p>
+        </div>
+      </button>
     </div>
 
     <div v-if="meta && meta.last_page > 1" class="flex items-center justify-center gap-2 mt-6">

@@ -81,7 +81,7 @@ useScrollReveal('.reveal')
 
     <div class="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row mb-12">
       <!-- LEFT: stack pills -->
-      <div class="flex items-center gap-2 flex-wrap">
+      <div class="hidden md:flex items-center gap-2 flex-wrap">
         <button
           v-for="s in stackFilters" :key="s"
           class="text-[13px] px-4 py-1.5 rounded-full border transition-all duration-200"

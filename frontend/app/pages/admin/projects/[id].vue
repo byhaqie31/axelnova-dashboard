@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { projectStatuses } from '~/data/projectStatuses'
+
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -6,7 +8,6 @@ const { apiFetch } = useAdminAuth()
 
 const isNew = computed(() => route.params.id === 'new')
 
-useHead(() => ({ title: isNew.value ? 'New project — Admin' : 'Edit project — Admin' }))
 
 const form = reactive({
   slug: '',
@@ -92,7 +93,7 @@ onMounted(fetchProject)
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-6 pt-10 pb-32">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
     <NuxtLink to="/admin/projects" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
@@ -100,7 +101,6 @@ onMounted(fetchProject)
     </NuxtLink>
 
     <div class="mb-6">
-      <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin · CMS</p>
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
         {{ isNew ? 'New project' : 'Edit project' }}
       </h1>
@@ -141,13 +141,16 @@ onMounted(fetchProject)
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Status *</label>
-          <select v-model="form.status" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }">
-            <option value="planning">Planning</option>
-            <option value="wip">In progress</option>
-            <option value="soon">Soon</option>
-            <option value="live">Live</option>
-          </select>
+          <div class="flex flex-wrap gap-1.5">
+            <button v-for="s in projectStatuses" :key="s.value" type="button"
+              @click="form.status = s.value"
+              class="standard-pill"
+              :style="form.status === s.value
+                ? { borderColor: s.color, background: s.bg, color: s.color }
+                : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
+              {{ s.label }}
+            </button>
+          </div>
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Sort order</label>
@@ -190,15 +193,58 @@ onMounted(fetchProject)
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-6 pt-2">
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input v-model="form.featured" type="checkbox" class="size-4" />
-          <span class="text-[13px]" :style="{ color: 'var(--color-text)' }">Featured</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input v-model="form.active" type="checkbox" class="size-4" />
-          <span class="text-[13px]" :style="{ color: 'var(--color-text)' }">Active (visible on public site)</span>
-        </label>
+      <div class="space-y-2 pt-1">
+        <button type="button" @click="form.featured = !form.featured"
+          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+          :style="form.featured
+            ? { borderColor: 'var(--color-accent)', background: 'var(--color-bg-elevated)' }
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            :style="form.featured
+              ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+              : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
+            <UIcon name="i-lucide-crown" class="size-4" />
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-[13px] font-medium" :style="{ color: form.featured ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Featured</span>
+            <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Highlighted on the public projects page</span>
+          </span>
+          <span class="relative inline-block rounded-full transition-colors shrink-0"
+            :style="{
+              background: form.featured ? 'var(--color-accent)' : '#d1d5db',
+              height: '1.25rem',
+              width: '2.25rem',
+            }">
+            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.featured ? '1.125rem' : '0.125rem' }"></span>
+          </span>
+        </button>
+
+        <button type="button" @click="form.active = !form.active"
+          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+          :style="form.active
+            ? { borderColor: 'var(--color-success)', background: 'var(--color-bg-elevated)' }
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            :style="form.active
+              ? { background: 'var(--color-success-soft)', color: 'var(--color-success)' }
+              : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
+            <UIcon name="i-lucide-power" class="size-4" />
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-[13px] font-medium" :style="{ color: form.active ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Active</span>
+            <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Visible on the public site</span>
+          </span>
+          <span class="relative inline-block rounded-full transition-colors shrink-0"
+            :style="{
+              background: form.active ? 'var(--color-success)' : '#d1d5db',
+              height: '1.25rem',
+              width: '2.25rem',
+            }">
+            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.active ? '1.125rem' : '0.125rem' }"></span>
+          </span>
+        </button>
       </div>
 
       <div class="flex items-center gap-3 pt-2">

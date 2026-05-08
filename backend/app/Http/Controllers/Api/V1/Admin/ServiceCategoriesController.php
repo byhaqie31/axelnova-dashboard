@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ServiceCategoryResource;
 use App\Models\ServiceCategory;
+use App\Support\SortOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -34,6 +35,7 @@ class ServiceCategoriesController extends Controller
         $data = $request->validate($this->rules());
 
         $category = DB::transaction(function () use ($data) {
+            $data['sort_order'] = SortOrder::placeNew(ServiceCategory::class, [], (int) ($data['sort_order'] ?? 0));
             $category = ServiceCategory::create($data);
             if ($category->is_default) {
                 ServiceCategory::where('id', '!=', $category->id)->update(['is_default' => false]);
@@ -49,6 +51,9 @@ class ServiceCategoriesController extends Controller
         $data = $request->validate($this->rules($serviceCategory->id));
 
         DB::transaction(function () use ($serviceCategory, $data) {
+            if (isset($data['sort_order']) && (int) $data['sort_order'] !== (int) $serviceCategory->sort_order) {
+                $data['sort_order'] = SortOrder::move($serviceCategory, (int) $data['sort_order'], []);
+            }
             $serviceCategory->update($data);
             if ($serviceCategory->is_default) {
                 ServiceCategory::where('id', '!=', $serviceCategory->id)->update(['is_default' => false]);
@@ -60,7 +65,11 @@ class ServiceCategoriesController extends Controller
 
     public function destroy(ServiceCategory $serviceCategory): JsonResponse
     {
-        $serviceCategory->delete();
+        DB::transaction(function () use ($serviceCategory) {
+            $oldOrder = (int) $serviceCategory->sort_order;
+            $serviceCategory->delete();
+            SortOrder::removeFromScope(ServiceCategory::class, [], $oldOrder);
+        });
 
         return response()->json(['message' => 'Category deleted.']);
     }

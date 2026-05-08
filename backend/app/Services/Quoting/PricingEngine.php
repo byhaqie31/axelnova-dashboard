@@ -3,10 +3,17 @@
 namespace App\Services\Quoting;
 
 use App\Models\PricingConfig;
+use App\Models\ServiceCategory;
+use App\Models\ServicePackage;
 use InvalidArgumentException;
 
 final class PricingEngine
 {
+    private const ETA_UNITS = ['hour', 'day', 'week', 'month'];
+
+    /** Rush time-reduction only makes sense for these units. */
+    private const RUSH_UNITS = ['week', 'month'];
+
     public function __construct(private readonly PricingConfig $config) {}
 
     public static function active(): self
@@ -22,7 +29,7 @@ final class PricingEngine
     public function calculate(QuoteRequestInput $input): EstimateResult
     {
         $cfg = $this->config->config;
-        $packages = $cfg['base_packages'] ?? [];
+        $packages = $this->buildBasePackages();
         $modifierDefs = $cfg['modifiers'] ?? [];
         $addonDefs = $cfg['addons'] ?? [];
         $rushMultiplier = (float) ($cfg['rush_multiplier'] ?? 1.20);
@@ -34,7 +41,8 @@ final class PricingEngine
         $base = $packages[$input->packageKey];
         $min = (float) $base['min'];
         $max = (float) $base['max'];
-        $weeks = (int) $base['weeks'];
+        $etaValue = (int) $base['eta_value'];
+        $etaUnit = (string) $base['eta_unit'];
         $breakdown = [["Base: {$input->packageKey}", $min, $max]];
 
         foreach ($input->modifiers as $key => $value) {
@@ -80,7 +88,11 @@ final class PricingEngine
         if ($input->rush) {
             $min *= $rushMultiplier;
             $max *= $rushMultiplier;
-            $weeks = max(1, (int) floor($weeks * 0.70));
+            // Only meaningful for week/month projects; skip silently otherwise so the
+            // price multiplier still applies but ETA stays put.
+            if (in_array($etaUnit, self::RUSH_UNITS, true)) {
+                $etaValue = max(1, (int) floor($etaValue * 0.70));
+            }
             $breakdown[] = ["Rush delivery (×{$rushMultiplier})", 0, 0];
         }
 
@@ -91,7 +103,8 @@ final class PricingEngine
         return new EstimateResult(
             minMyr: $min,
             maxMyr: $max,
-            weeks: $weeks,
+            etaValue: $etaValue,
+            etaUnit: $etaUnit,
             breakdown: $breakdown,
         );
     }
@@ -102,12 +115,84 @@ final class PricingEngine
 
         return [
             'version' => $this->config->version,
-            'base_packages' => $cfg['base_packages'] ?? [],
+            'base_packages' => $this->buildBasePackages(),
+            'categories' => $this->buildCategories(),
             'modifiers' => $cfg['modifiers'] ?? [],
             'addons' => $cfg['addons'] ?? [],
             'rush_multiplier' => $cfg['rush_multiplier'] ?? 1.20,
+            'rush_units' => self::RUSH_UNITS,
             'currency' => $cfg['currency'] ?? 'MYR',
             'valid_for_days' => $cfg['valid_for_days'] ?? 30,
         ];
+    }
+
+    /**
+     * Merge admin-managed service_packages on top of the pricing_configs JSON.
+     * DB rows win where present; legacy JSON-only keys still resolve.
+     *
+     * Each entry is normalised to: ['min' => float, 'max' => float, 'eta_value' => int, 'eta_unit' => string].
+     * Legacy JSON entries with `weeks` are translated to {eta_value: weeks, eta_unit: 'week'}.
+     */
+    private function buildBasePackages(): array
+    {
+        $merged = [];
+        foreach ($this->config->config['base_packages'] ?? [] as $key => $entry) {
+            $merged[$key] = [
+                'min' => (float) ($entry['min'] ?? 0),
+                'max' => (float) ($entry['max'] ?? 0),
+                'eta_value' => (int) ($entry['eta_value'] ?? $entry['weeks'] ?? 4),
+                'eta_unit' => (string) ($entry['eta_unit'] ?? 'week'),
+            ];
+        }
+
+        $packages = ServicePackage::where('active', true)
+            ->whereNotNull('quote_key')
+            ->whereNotNull('price_max_myr')
+            ->get();
+
+        foreach ($packages as $p) {
+            $key = $p->quote_key['package'] ?? null;
+            if (!$key) {
+                continue;
+            }
+            $merged[$key] = [
+                'min' => (float) $p->price_min_myr,
+                'max' => (float) $p->price_max_myr,
+                'eta_value' => (int) ($p->eta_value ?: 4),
+                'eta_unit' => in_array($p->eta_unit, self::ETA_UNITS, true) ? $p->eta_unit : 'week',
+            ];
+        }
+
+        return $merged;
+    }
+
+    /**
+     * Build the category tree for the public quote builder from active service_categories
+     * that have at least one quotable package (non-null quote_key + price_max_myr).
+     */
+    private function buildCategories(): array
+    {
+        $categories = ServiceCategory::where('active', true)
+            ->with(['packages' => fn ($q) => $q->where('active', true)
+                ->whereNotNull('quote_key')
+                ->whereNotNull('price_max_myr')
+                ->orderBy('sort_order')])
+            ->orderBy('sort_order')
+            ->get();
+
+        return $categories
+            ->filter(fn ($c) => $c->packages->isNotEmpty())
+            ->map(fn ($c) => [
+                'key' => $c->slug,
+                'label' => $c->name,
+                'icon' => $c->icon,
+                'packages' => $c->packages->map(fn ($p) => [
+                    'key' => $p->quote_key['package'],
+                    'name' => $p->name,
+                    'tagline' => $p->tagline,
+                ])->values()->all(),
+            ])
+            ->values()
+            ->all();
     }
 }
