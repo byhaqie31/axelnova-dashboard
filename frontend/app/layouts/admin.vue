@@ -3,11 +3,30 @@ import BrandMark from '~/components/shared/BrandMark.vue'
 import { adminNav, isAdminNavActive } from '~/data/adminNav'
 
 const mobileNavOpen = ref(false)
+const profileOpen = ref(false)
 
 const route = useRoute()
-const { logout } = useAdminAuth()
+const { logout, apiFetch } = useAdminAuth()
 
-watch(() => route.fullPath, () => { mobileNavOpen.value = false })
+interface Me { id: number, name: string, email: string }
+const me = ref<Me | null>(null)
+
+async function fetchMe() {
+  try {
+    me.value = await apiFetch<Me>('/api/v1/admin/me')
+  }
+  catch {
+    // Non-fatal — middleware will bounce to /admin/login on hard auth failures.
+  }
+}
+onMounted(fetchMe)
+
+watch(() => route.fullPath, () => {
+  mobileNavOpen.value = false
+  profileOpen.value = false
+})
+
+onKeyStroke('Escape', () => { if (profileOpen.value) profileOpen.value = false })
 
 // One title for every page rendered under this layout.
 // Per-page useHead calls deliberately don't set `title` so this stays.
@@ -37,16 +56,66 @@ useHead({ title: 'Admin Portal' })
           <BrandMark to="/admin" wordmark="Admin Portal" />
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="relative flex items-center">
           <button
-            class="hidden md:inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border transition-colors hover:bg-(--color-bg-secondary)"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
-            @click="logout"
+            type="button"
+            class="size-9 rounded-full inline-flex items-center justify-center border transition-colors hover:bg-(--color-bg-secondary)"
+            :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }"
+            :aria-expanded="profileOpen"
+            aria-label="Account menu"
+            @click="profileOpen = !profileOpen"
           >
-            <UIcon name="i-lucide-log-out" class="size-3.5" />
-            Sign out
+            <UIcon name="i-lucide-user" class="size-4" />
           </button>
-          <UAvatar size="sm" text="Q" />
+
+          <div v-if="profileOpen" class="fixed inset-0 z-40 cursor-default" @click="profileOpen = false" />
+
+          <Transition name="dropdown-panel">
+            <div
+              v-if="profileOpen"
+              class="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-1.5rem)] z-50 rounded-xl border overflow-hidden"
+              :style="{
+                borderColor: 'var(--color-border)',
+                background: 'var(--color-bg)',
+                boxShadow: 'var(--shadow-lg)',
+              }"
+              role="menu"
+            >
+              <div class="flex flex-col items-center text-center px-4 pt-5 pb-4">
+                <span
+                  class="size-14 rounded-full inline-flex items-center justify-center mb-3"
+                  :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }"
+                >
+                  <UIcon name="i-lucide-user" class="size-6" />
+                </span>
+                <p class="text-[14px] font-semibold tracking-tight" :style="{ color: 'var(--color-text)' }">
+                  {{ me?.name ?? '—' }}
+                </p>
+                <p class="text-[12px] mt-0.5 break-all" :style="{ color: 'var(--color-text-tertiary)' }">
+                  {{ me?.email ?? '' }}
+                </p>
+                <span
+                  class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded inline-flex items-center gap-1 mt-2"
+                  :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }"
+                >
+                  <UIcon name="i-lucide-star" class="size-3" />
+                  Founder
+                </span>
+              </div>
+
+              <div class="border-t" :style="{ borderColor: 'var(--color-border)' }">
+                <button
+                  type="button"
+                  class="w-full inline-flex items-center justify-center gap-2 py-3 text-[13px] font-medium transition-colors hover:bg-(--color-bg-secondary)"
+                  :style="{ color: 'var(--color-text-secondary)' }"
+                  @click="logout"
+                >
+                  <UIcon name="i-lucide-log-out" class="size-4" />
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </Transition>
         </div>
       </div>
     </header>
