@@ -93,7 +93,6 @@ function fmtMyr(amount: string | number) {
 
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
-        <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Orders</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Accepted quotations turned into active engagements.</p>
       </div>

@@ -97,7 +97,6 @@ const tiles = computed<StatTile[]>(() => [
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <div class="mb-8">
-      <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Dashboard</h1>
       <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Overview of quotations, orders, and traffic.</p>
     </div>

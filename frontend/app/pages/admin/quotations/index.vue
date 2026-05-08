@@ -92,7 +92,6 @@ function fmtMyr(amount: string | number) {
     <!-- Header -->
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
-        <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Quotations</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Quote requests submitted from the public site. Converted quotations move to <NuxtLink to="/admin/orders" class="underline" :style="{ color: 'var(--color-accent)' }">Orders</NuxtLink>.</p>
       </div>
