@@ -17,6 +17,7 @@ class ServiceCategoryResource extends JsonResource
             'description' => $this->description,
             'sort_order' => $this->sort_order,
             'active' => $this->active,
+            'is_default' => (bool) $this->is_default,
             'packages' => ServicePackageResource::collection($this->whenLoaded('packages')),
             'packages_count' => $this->whenCounted('packages'),
             'created_at' => $this->created_at?->toISOString(),

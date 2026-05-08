@@ -15,6 +15,7 @@ const form = reactive({
   description: '',
   sort_order: 0,
   active: true,
+  is_default: false,
 })
 
 const loading = ref(!isNew.value)
@@ -129,6 +130,15 @@ onMounted(fetchCategory)
           <span class="text-[13px]" :style="{ color: 'var(--color-text)' }">Active (visible on public site)</span>
         </label>
       </div>
+
+      <label class="flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer"
+        :style="{ borderColor: form.is_default ? 'var(--color-accent)' : 'var(--color-border)', background: form.is_default ? 'var(--color-accent-soft)' : 'var(--color-bg)' }">
+        <input v-model="form.is_default" type="checkbox" class="size-4 mt-0.5" />
+        <span>
+          <span class="block text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">Default tab on services page</span>
+          <span class="block text-[11px] mt-0.5" :style="{ color: 'var(--color-text-secondary)' }">When set, this category is highlighted on first visit. Setting this will unset it on any other category.</span>
+        </span>
+      </label>
 
       <div class="flex items-center gap-3 pt-2">
         <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
