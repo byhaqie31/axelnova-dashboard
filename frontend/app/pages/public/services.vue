@@ -228,7 +228,7 @@ const contactChannels = [
     id: 'call',
     label: 'Call',
     value: '+60 17-710 9486',
-    helper: 'For urgent or complex scope — book a quick voice call.',
+    helper: 'For urgent or complex scope, book a quick voice call.',
     href: 'tel:+60177109486',
     target: '_self',
     icon: 'i-fluent-call-24-regular',
@@ -248,7 +248,7 @@ useScrollReveal('.reveal')
     <SectionHeader
       eyebrow="Services"
       title="Choose your engagement."
-      subtitle="Five service tracks — from a landing page to a full product build. Priced transparently, delivered precisely."
+      subtitle="A range of service tracks, from a landing page to a full product build. Priced transparently, delivered precisely."
     />
 
     <!-- Tab + currency row -->
@@ -446,7 +446,7 @@ useScrollReveal('.reveal')
       <SectionHeader
         eyebrow="Estimator"
         title="Estimate your project."
-        subtitle="Adjust the inputs — see ballpark cost and timeline update live."
+        subtitle="Adjust the inputs and watch ballpark cost and timeline update live."
       />
 
       <div class="grid lg:grid-cols-2 gap-6">

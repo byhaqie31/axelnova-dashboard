@@ -516,7 +516,7 @@ function toggleAddon(key: string) {
             <div class="space-y-1.5">
               <label class="quote-label">Additional notes</label>
               <textarea v-model="form.notes" rows="4"
-                placeholder="Anything else I should know — deadlines, integrations, design references…"
+                placeholder="Anything else I should know? Deadlines, integrations, design references…"
                 class="contact-input resize-none w-4/5"
                 :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
             </div>

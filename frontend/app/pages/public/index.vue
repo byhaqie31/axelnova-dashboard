@@ -146,7 +146,7 @@ useScrollReveal('.reveal')
         class="mt-7 max-w-xl text-[19px] leading-normal"
         style="color: var(--color-text-secondary);"
       >
-        UI/UX engineer with 7 years of building — fintech, SaaS, and products that need real craft.
+        UI/UX engineer with 7 years across fintech, SaaS, and products that need real craft.
         Vue · Nuxt · Laravel · Docker.
       </p>
 
@@ -196,7 +196,7 @@ useScrollReveal('.reveal')
         :action="{ label: 'View all', to: '/projects' }"
       />
 
-      <div class="flex flex-wrap gap-2 mb-10">
+      <div class="hidden md:flex flex-wrap gap-2 mb-10">
         <button
           v-for="f in homeFilters" :key="f"
           class="text-[13px] px-4 py-1.5 rounded-full border transition-all duration-200"
@@ -250,7 +250,7 @@ useScrollReveal('.reveal')
             Have a project in mind?
           </p>
           <p class="mt-3 text-[17px] max-w-lg" style="color: var(--color-text-secondary);">
-            Let's design something premium together — fintech, SaaS, or a product that needs senior craft.
+            Let's design something premium together. Fintech, SaaS, or a product that needs senior craft.
           </p>
         </div>
         <NuxtLink to="/services" class="btn-pill btn-pill-accent shrink-0">

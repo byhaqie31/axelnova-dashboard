@@ -292,14 +292,11 @@ onMounted(() => {
 
           <!-- Bottom bar -->
           <div class="border-t pt-6" :style="{ borderColor: 'var(--color-border)' }">
-            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-              <p class="text-[12px]" style="color: var(--color-text-secondary);">
+            <div class="flex flex-col items-center gap-3 text-center lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-4 lg:text-left">
+              <p class="text-[12px] order-1 lg:order-0" style="color: var(--color-text-secondary);">
                 © 2026 Axel Nova Ventures. All rights reserved.
               </p>
-              <p class="text-[11px] text-center" style="color: var(--color-text-tertiary);">
-                Designed & built by Qie · Nuxt · Tailwind CSS · TypeScript
-              </p>
-              <div class="flex items-center gap-1 justify-end">
+              <div class="flex items-center gap-1 order-2 lg:order-0 lg:col-start-3 lg:justify-end">
                 <a
                   v-for="social in socials"
                   :key="social.label"
@@ -313,6 +310,9 @@ onMounted(() => {
                   <UIcon :name="social.icon" class="size-4" />
                 </a>
               </div>
+              <p class="text-[11px] order-3 lg:order-0 lg:col-start-2 lg:text-center" style="color: var(--color-text-tertiary);">
+                Designed & built by Qie · Nuxt · Tailwind CSS · TypeScript
+              </p>
             </div>
           </div>
         </div>

@@ -32,7 +32,7 @@ async function copyRef() {
     </h1>
     <p class="text-[16px] leading-relaxed mb-8" style="color: var(--color-text-secondary);">
       Our team will contact you as soon as possible to discuss the next steps.
-      A copy of your quote is also on its way to your inbox — check spam if it doesn't arrive within a few minutes.
+      A copy of your quote is also on its way to your inbox. Check your spam folder if it doesn't arrive within a few minutes.
     </p>
 
     <!-- Reference code -->
@@ -60,7 +60,7 @@ async function copyRef() {
       <div class="space-y-3">
         <div v-for="(step, i) in [
           'You receive a quote with full scope, timeline, and pricing.',
-          'Review it at your own pace — no pressure, valid for 30 days.',
+          'Review it at your own pace. No pressure, valid for 30 days.',
           'If you\'re happy, we schedule a 30-minute discovery call to finalise scope.',
           'On signed agreement + 50% upfront, we start building.',
         ]" :key="i" class="flex items-start gap-3">
