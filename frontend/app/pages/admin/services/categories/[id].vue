@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { serviceIcons } from '~/data/serviceIcons'
+
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -98,7 +100,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-6 pt-10 pb-32">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
     <NuxtLink to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
@@ -133,17 +135,23 @@ onMounted(async () => {
       </div>
 
       <div>
-        <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Icon (Iconify name) *</label>
-        <div class="flex items-center gap-2">
-          <input v-model="form.icon" type="text" required placeholder="i-lucide-globe"
-            class="contact-input w-full font-mono text-[13px]"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
-          <div class="size-10 shrink-0 rounded-md border inline-flex items-center justify-center"
-            :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-            <UIcon :name="form.icon" class="size-5" :style="{ color: 'var(--color-text-secondary)' }" />
-          </div>
+        <label class="text-[12px] font-medium block mb-2" :style="{ color: 'var(--color-text-secondary)' }">Icon *</label>
+        <div class="grid grid-cols-6 sm:grid-cols-9 gap-1.5">
+          <button v-for="ic in serviceIcons" :key="ic.name" type="button"
+            :title="ic.label" :aria-label="ic.label"
+            @click="form.icon = ic.name"
+            class="aspect-square rounded-lg border inline-flex items-center justify-center transition-colors"
+            :style="form.icon === ic.name
+              ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+              : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
+            <UIcon :name="ic.name" class="size-4" />
+          </button>
         </div>
-        <p class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Browse names at <a href="https://lucide.dev/icons" target="_blank" class="underline">lucide.dev/icons</a> — use <code>i-lucide-&lt;name&gt;</code>.</p>
+        <p v-if="errors.icon?.length" class="mt-1.5 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.icon[0] }}</p>
+        <p class="mt-1.5 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">
+          Selected: <code>{{ form.icon || '—' }}</code>{{ ' ' }}
+          <span v-if="serviceIcons.find(i => i.name === form.icon)">— {{ serviceIcons.find(i => i.name === form.icon)?.label }}</span>
+        </p>
       </div>
 
       <div>
@@ -196,11 +204,11 @@ onMounted(async () => {
         <button type="button" @click="form.active = !form.active"
           class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
           :style="form.active
-            ? { borderColor: '#10b981', background: 'var(--color-bg-elevated)' }
+            ? { borderColor: 'var(--color-success)', background: 'var(--color-bg-elevated)' }
             : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
           <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
             :style="form.active
-              ? { background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }
+              ? { background: 'var(--color-success-soft)', color: 'var(--color-success)' }
               : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
             <UIcon name="i-lucide-power" class="size-4" />
           </span>
@@ -210,7 +218,7 @@ onMounted(async () => {
           </span>
           <span class="relative inline-block rounded-full transition-colors shrink-0"
             :style="{
-              background: form.active ? '#10b981' : '#d1d5db',
+              background: form.active ? 'var(--color-success)' : '#d1d5db',
               height: '1.25rem',
               width: '2.25rem',
             }">

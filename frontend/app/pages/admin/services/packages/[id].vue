@@ -11,7 +11,21 @@ useHead(() => ({ title: isNew.value ? 'New package — Admin' : 'Edit package �
 interface CategoryOption {
   id: number
   name: string
+  icon?: string
 }
+
+const etaUnitOptions: { value: 'hour' | 'day' | 'week' | 'month', label: string }[] = [
+  { value: 'hour',  label: 'hour(s)' },
+  { value: 'day',   label: 'day(s)' },
+  { value: 'week',  label: 'week(s)' },
+  { value: 'month', label: 'month(s)' },
+]
+
+const categoryOpen = ref(false)
+const selectedCategory = computed(() =>
+  categoryOptions.value.find(c => c.id === form.service_category_id),
+)
+onKeyStroke('Escape', () => { if (categoryOpen.value) categoryOpen.value = false })
 
 const form = reactive({
   service_category_id: 0,
@@ -163,7 +177,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-6 pt-10 pb-32">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
     <NuxtLink to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
@@ -184,11 +198,35 @@ onMounted(async () => {
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Category *</label>
-        <select v-model.number="form.service_category_id" required class="contact-input w-full"
-          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }">
-          <option :value="0" disabled>— pick a category —</option>
-          <option v-for="c in categoryOptions" :key="c.id" :value="c.id">{{ c.name }}</option>
-        </select>
+        <div class="relative">
+          <button type="button"
+            class="standard-select-trigger"
+            :aria-expanded="categoryOpen"
+            @click="categoryOpen = !categoryOpen">
+            <UIcon v-if="selectedCategory?.icon" :name="selectedCategory.icon" class="size-4 shrink-0" :style="{ color: 'var(--color-accent)' }" />
+            <span class="flex-1 truncate" :style="{ color: selectedCategory ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">
+              {{ selectedCategory?.name ?? '— pick a category —' }}
+            </span>
+            <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform"
+              :class="{ 'rotate-180': categoryOpen }"
+              :style="{ color: 'var(--color-text-tertiary)' }" />
+          </button>
+          <div v-if="categoryOpen" class="fixed inset-0 z-40 cursor-default" @click="categoryOpen = false" />
+          <Transition name="dropdown-panel">
+            <ul v-if="categoryOpen" class="standard-select-panel" role="listbox">
+              <li v-for="c in categoryOptions" :key="c.id">
+                <button type="button"
+                  class="standard-select-option"
+                  :aria-selected="form.service_category_id === c.id"
+                  @click="form.service_category_id = c.id; categoryOpen = false">
+                  <UIcon v-if="c.icon" :name="c.icon" class="size-4 shrink-0" />
+                  <span class="flex-1 truncate">{{ c.name }}</span>
+                  <UIcon v-if="form.service_category_id === c.id" name="i-lucide-check" class="size-4 shrink-0" />
+                </button>
+              </li>
+            </ul>
+          </Transition>
+        </div>
         <p v-if="errors.service_category_id?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.service_category_id[0] }}</p>
       </div>
 
@@ -258,14 +296,17 @@ onMounted(async () => {
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">ETA unit *</label>
-          <select v-model="form.eta_unit" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }">
-            <option value="hour">hour(s)</option>
-            <option value="day">day(s)</option>
-            <option value="week">week(s)</option>
-            <option value="month">month(s)</option>
-          </select>
-          <p class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Used by the quote builder for math + rush logic.</p>
+          <div class="flex flex-wrap gap-1.5">
+            <button v-for="u in etaUnitOptions" :key="u.value" type="button"
+              @click="form.eta_unit = u.value"
+              class="standard-pill"
+              :style="form.eta_unit === u.value
+                ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+                : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
+              {{ u.label }}
+            </button>
+          </div>
+          <p class="mt-1.5 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Used by the quote builder for math + rush logic.</p>
         </div>
       </div>
 
@@ -372,11 +413,11 @@ onMounted(async () => {
         <button type="button" @click="form.active = !form.active"
           class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
           :style="form.active
-            ? { borderColor: '#10b981', background: 'var(--color-bg-elevated)' }
+            ? { borderColor: 'var(--color-success)', background: 'var(--color-bg-elevated)' }
             : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
           <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
             :style="form.active
-              ? { background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }
+              ? { background: 'var(--color-success-soft)', color: 'var(--color-success)' }
               : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
             <UIcon name="i-lucide-power" class="size-4" />
           </span>
@@ -386,7 +427,7 @@ onMounted(async () => {
           </span>
           <span class="relative inline-block rounded-full transition-colors shrink-0"
             :style="{
-              background: form.active ? '#10b981' : '#d1d5db',
+              background: form.active ? 'var(--color-success)' : '#d1d5db',
               height: '1.25rem',
               width: '2.25rem',
             }">

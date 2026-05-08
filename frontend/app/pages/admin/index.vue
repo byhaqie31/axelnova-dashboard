@@ -95,7 +95,7 @@ const tiles = computed<StatTile[]>(() => [
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <div class="mb-8">
       <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Dashboard</h1>
@@ -105,7 +105,7 @@ const tiles = computed<StatTile[]>(() => [
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
     <!-- Stat tiles -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-10">
       <div
         v-for="tile in tiles"
         :key="tile.label"
@@ -159,11 +159,13 @@ const tiles = computed<StatTile[]>(() => [
       No quotations yet.
     </div>
 
+    <!-- Desktop: table -->
     <div
       v-else
-      class="rounded-2xl border overflow-hidden"
+      class="hidden md:block rounded-2xl border overflow-hidden"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
     >
+      <div class="overflow-x-auto">
       <table class="w-full text-left">
         <thead>
           <tr style="border-bottom: 1px solid var(--color-border); background: var(--color-bg-secondary);">
@@ -202,6 +204,32 @@ const tiles = computed<StatTile[]>(() => [
           </tr>
         </tbody>
       </table>
+      </div>
+    </div>
+
+    <!-- Mobile: cards -->
+    <div v-if="recent.length" class="md:hidden space-y-2.5">
+      <button
+        v-for="q in recent"
+        :key="q.id"
+        type="button"
+        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+        @click="navigateTo(`/admin/quotations/${q.id}`)"
+      >
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <span class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ q.reference_code }}</span>
+          <AdminStatusPill :status="q.status" />
+        </div>
+        <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ q.name }}</p>
+        <p class="text-[11px] mb-2" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
+        <div class="flex items-center justify-between gap-3 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
+          <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
+            {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
+          </p>
+          <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(q.submitted_at) }}</p>
+        </div>
+      </button>
     </div>
   </div>
 </template>

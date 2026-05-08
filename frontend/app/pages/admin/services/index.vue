@@ -85,7 +85,7 @@ function fmtPrice(min: string | number, max: string | number | null) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
       <div>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Services</h1>
@@ -116,14 +116,14 @@ function fmtPrice(min: string | number, max: string | number | null) {
       <section v-for="cat in categories" :key="cat.id"
         class="rounded-2xl border overflow-hidden"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-        <header class="flex items-center gap-3 px-5 py-4 border-b"
+        <header class="flex flex-wrap items-center gap-3 px-5 py-4 border-b"
           :style="{ borderColor: 'var(--color-border)', background: 'var(--color-accent-soft)' }">
-          <div class="size-9 rounded-xl inline-flex items-center justify-center"
+          <div class="size-9 rounded-xl inline-flex items-center justify-center shrink-0"
             :style="{ background: 'rgba(255, 255, 255, 0.6)', color: 'var(--color-accent)' }">
             <UIcon :name="cat.icon" class="size-4" />
           </div>
           <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <p class="text-[14px] font-semibold tracking-tight" :style="{ color: 'var(--color-text)' }">{{ cat.name }}</p>
               <span v-if="cat.is_default" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1"
                 :style="{ color: 'var(--color-accent)', background: 'rgba(255, 255, 255, 0.7)' }">
@@ -135,7 +135,7 @@ function fmtPrice(min: string | number, max: string | number | null) {
             </div>
             <p class="text-[12px] truncate" :style="{ color: 'var(--color-text-secondary)' }">{{ cat.description }}</p>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex items-center gap-2 w-full sm:w-auto sm:shrink-0 justify-end flex-wrap">
             <NuxtLink :to="`/admin/services/packages/new?category=${cat.id}`"
               class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-white/40"
               :style="{ borderColor: 'var(--color-border)', background: 'rgba(255, 255, 255, 0.5)', color: 'var(--color-text-secondary)' }">
@@ -156,33 +156,66 @@ function fmtPrice(min: string | number, max: string | number | null) {
 
         <ul v-if="cat.packages.length">
           <li v-for="pkg in cat.packages" :key="pkg.id"
-            class="flex items-center gap-4 px-5 py-3.5 border-b last:border-b-0"
+            class="px-5 py-3.5 border-b last:border-b-0"
             :style="{ borderColor: 'var(--color-border)' }">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
+            <!-- Desktop: row layout -->
+            <div class="hidden md:flex items-center gap-4">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ pkg.name }}</p>
+                  <span v-if="pkg.featured" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                    :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">Featured</span>
+                  <span v-if="!pkg.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                    :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
+                </div>
+                <p class="text-[12px] mt-0.5 truncate" :style="{ color: 'var(--color-text-secondary)' }">{{ pkg.tagline }}</p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ fmtPrice(pkg.price_min_myr, pkg.price_max_myr) }}</p>
+                <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ pkg.duration_text }}</p>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <NuxtLink :to="`/admin/services/packages/${pkg.id}`"
+                  class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
+                  Edit
+                </NuxtLink>
+                <button class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
+                  @click="deletePackage(pkg)">
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            <!-- Mobile: stacked card -->
+            <div class="md:hidden space-y-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ pkg.name }}</p>
                 <span v-if="pkg.featured" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                   :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">Featured</span>
                 <span v-if="!pkg.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                   :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
               </div>
-              <p class="text-[12px] mt-0.5 truncate" :style="{ color: 'var(--color-text-secondary)' }">{{ pkg.tagline }}</p>
-            </div>
-            <div class="text-right shrink-0">
-              <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ fmtPrice(pkg.price_min_myr, pkg.price_max_myr) }}</p>
-              <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ pkg.duration_text }}</p>
-            </div>
-            <div class="flex items-center gap-1 shrink-0">
-              <NuxtLink :to="`/admin/services/packages/${pkg.id}`"
-                class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
-                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
-                Edit
-              </NuxtLink>
-              <button class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
-                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
-                @click="deletePackage(pkg)">
-                Delete
-              </button>
+              <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">{{ pkg.tagline }}</p>
+              <div class="flex items-center justify-between gap-3 pt-1">
+                <div>
+                  <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ fmtPrice(pkg.price_min_myr, pkg.price_max_myr) }}</p>
+                  <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ pkg.duration_text }}</p>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <NuxtLink :to="`/admin/services/packages/${pkg.id}`"
+                    class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+                    :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
+                    Edit
+                  </NuxtLink>
+                  <button class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+                    :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
+                    @click="deletePackage(pkg)">
+                    Delete
+                  </button>
+                </div>
+              </div>
             </div>
           </li>
         </ul>

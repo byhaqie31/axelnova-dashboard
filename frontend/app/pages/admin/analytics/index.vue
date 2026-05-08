@@ -38,7 +38,7 @@ const metrics: PlannedMetric[] = [
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <div class="mb-6">
       <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin</p>
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Analytics</h1>

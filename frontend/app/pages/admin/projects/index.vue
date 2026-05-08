@@ -93,7 +93,7 @@ const liveCount = computed(() => projects.value.filter(p => p.status === 'live')
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
       <div>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Projects</h1>
@@ -107,11 +107,8 @@ const liveCount = computed(() => projects.value.filter(p => p.status === 'live')
       </NuxtLink>
     </div>
 
-    <div class="flex flex-wrap gap-3 mb-6">
-      <input v-model="filters.search" type="search" placeholder="Search by name or slug…"
-        class="contact-input" style="max-width: 300px;"
-        :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
-
+    <div class="flex flex-wrap items-center gap-3 mb-6">
+      <AdminExpandingSearch v-model="filters.search" placeholder="Search by name or slug…" />
       <AdminStatusFilter v-model="filters.status" :options="statusOptions" class="ml-auto" />
     </div>
 

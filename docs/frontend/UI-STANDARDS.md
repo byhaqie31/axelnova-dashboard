@@ -286,7 +286,247 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 
 ---
 
-## 12. Updating this doc
+## 12. Admin form patterns
+
+These patterns are the source of truth for admin CMS forms (`/admin/services/categories/[id]`, `/admin/services/packages/[id]`, future admin entities). New admin forms must reuse them, not invent variants.
+
+### 12.1 Page header — no eyebrow
+
+Admin pages use a single `<h1>` for the page title. No "Admin · CMS" eyebrow above it.
+
+**Why:** the sidebar + route already tell the user they're in admin. The eyebrow was redundant chrome that fought the page title for attention.
+
+```vue
+<div class="mb-6">
+  <h1 class="text-[28px] font-bold tracking-tight" :style="{ color: 'var(--color-text)' }">
+    {{ isNew ? 'New package' : 'Edit package' }}
+  </h1>
+</div>
+```
+
+Pages this applies to (audit before adding a new admin form): `services/index`, `services/categories/[id]`, `services/packages/[id]`, `projects/index`, `projects/[id]`. Any new admin index/edit page should match.
+
+### 12.2 Toggle row-card
+
+The canonical admin toggle. Full-width clickable card; the **whole row** is the click target, not just the switch.
+
+**Anatomy** (left → right):
+1. **Icon tile** — `size-9` rounded-lg square. Tinted with the on-color when active, neutral (`bg-elevated` + `text-tertiary`) when off.
+2. **Label + subtitle** — title (`13px font-medium`) over a `11px text-tertiary` subtitle that explains what toggling does.
+3. **Sliding switch** — track `2.25rem × 1.25rem`, knob `size-4` (white, `bg-white shadow`), slides from `left: 0.125rem` (off) to `left: 1.125rem` (on).
+
+**State semantics:**
+- **Off:** `border: var(--color-border)`, `background: var(--color-bg)`, label uses `text-tertiary`. Switch track is grey (see token gap below) — clearly inactive but **never** opacity-dimmed. The switch must look like a real, clickable control in both states.
+- **On:** `border: <on-color>`, `background: var(--color-bg-elevated)`, label uses `text` (full). Switch track fills with the on-color. Knob stays white.
+
+**Color semantics for the on-state:**
+
+| Concept | On-color | Soft tile bg | Used for |
+|---|---|---|---|
+| Brand / "this is the chosen one" | `--color-accent` | `--color-accent-soft` | Featured, Default tab, primary on/off settings |
+| Published / "visible to public" | `--color-success` | `--color-success-soft` | Active toggles |
+
+> ✅ **Resolved.** `--color-success-soft` is now defined in `main.css` (light `rgba(48, 209, 88, 0.12)`, dark `rgba(48, 209, 88, 0.18)`). All admin forms migrated to `var(--color-success)` / `var(--color-success-soft)` — no more `#10b981` or `rgba(16, 185, 129, …)` in components.
+
+> **Token gap (still open):** the off-state switch track is currently hardcoded `#d1d5db`. Add `--color-switch-off-track` (light: `#d1d5db`, dark: `rgba(255,255,255,0.18)`) to `main.css` so the off state still reads correctly in dark mode.
+
+> **Token gap (still open):** add `--color-on-accent: #FFFFFF` (and matching `--color-on-success`) for foregrounds placed on filled accent/success surfaces. Components currently fall back via `var(--color-on-accent, #fff)`.
+
+**Subtitle copy — be specific.** "Visible on the public services page" beats "Active". The subtitle is what disambiguates two toggles that look visually similar.
+
+**One toggle per concern.** Don't bundle (e.g. don't make a single switch toggle both "active" and "featured"). A row-card per concern.
+
+**Layout.** Stack vertically with `space-y-2` inside the card. Toggle group always sits below structured fields (slug, prices, etc.) and above form actions (Save / Cancel).
+
+### 12.3 Sort-order pill picker
+
+Replaces raw `<input type="number">` for `sort_order` columns on entities that live in an ordered list (categories, packages, projects).
+
+**Anatomy** (full-width row, `flex items-center gap-1.5 flex-wrap`):
+
+1. **Left chevron** — `i-lucide-chevron-left`, `size-9` button. Disabled at `sort_order <= 0` (`opacity-30`).
+2. **Numbered pills** — one per occupied position in the current scope. `size-9` rounded-lg. Selected fills with `--color-accent` + white knob; unselected uses `bg-elevated` + `text`.
+3. **Append pill** — dashed-border `i-lucide-plus` button representing the next available slot. Selected when `form.sort_order === nextAvailableSort`. Default for new records.
+4. **Right chevron** — mirror of left, disabled at `sort_order >= nextAvailableSort`.
+
+**Helper text** sits below: `+ auto-appends at position {{ nextAvailableSort }}. Click an existing number to insert there — the colliding row shifts down.`
+
+**Behaviour contract:**
+- For **new** records: default `form.sort_order = nextAvailableSort` once siblings have loaded (i.e. `[+]` highlighted).
+- For **edit** records: `form.sort_order` reflects the current position; the matching pill is highlighted.
+- Clicking a pill or chevron only updates `form.sort_order`. The actual reorder/shift happens **server-side** in `App\Support\SortOrder` (`placeNew` for create, `move` for update) — never duplicate the math client-side.
+- The pill list is derived from `siblings` fetched via the entity's index endpoint (e.g. `GET /api/v1/admin/service-packages?service_category_id=N`). Refetch when the scope changes.
+
+**Where it applies.** Every admin entity with a `sort_order` column. Future entities (orders, FAQ items, testimonials, etc.) get this same picker — never a number input.
+
+### 12.4 Pastel section header (admin lists)
+
+For grouped lists (e.g. service categories on `/admin/services` each containing packages), the **group header strip** uses the brand pastel so each card is visually bounded against the page background.
+
+```vue
+<header class="flex items-center gap-3 px-5 py-4 border-b"
+  :style="{ borderColor: 'var(--color-border)', background: 'var(--color-accent-soft)' }">
+  <!-- icon container (rgba white panel + accent icon) -->
+  <!-- title + description in default text colors (readable on pastel) -->
+  <!-- action buttons: white-tinted rgba background, neutral border, default text -->
+</header>
+```
+
+**Rules:**
+- Header background: `--color-accent-soft` (the existing token, do not invent a new pastel).
+- Title text: `--color-text`. Description: `--color-text-secondary`. Both stay legible on the pastel without inversion.
+- Action buttons (Edit / Add / Delete) sit on `rgba(255,255,255,0.5)` so they pop without competing with the pastel; the **Delete** button keeps `--color-danger` for the text — never invert destructive actions to white-on-coloured.
+- The list of children below the header sits on the standard `--color-bg`, so each group reads as a card with a tinted cap.
+
+**Do not** use full `--color-accent` (saturated brand) for these strips — that competes with primary CTAs and reads as too aggressive for content-grouping. Reserve solid accent for one primary CTA per screen (Section 6).
+
+### 12.5 Cross-form consistency checklist
+
+When adding a new admin form, verify:
+
+- [ ] No "Admin · CMS" eyebrow (12.1).
+- [ ] All boolean fields render as toggle row-cards (12.2), not native checkboxes.
+- [ ] Any `sort_order` field renders as the pill picker (12.3), not a number input.
+- [ ] Short fixed-list dropdowns (statuses, units, modes) render as a pill button group (12.6), not a native `<select>`.
+- [ ] Variable / longer-list dropdowns render as the popover dropdown (12.7), not a native `<select>`.
+- [ ] Icon-name fields use the curated icon picker (12.8), never a free-text Iconify input.
+- [ ] Subtitle copy on every toggle is specific to the user-visible effect.
+- [ ] On-colors match the semantic table (12.2): accent for "selected/featured/default", success for "published/visible".
+- [ ] Knob in the switch is always white; only the track changes color.
+- [ ] No hardcoded hex — use tokens (and add new tokens to `main.css` if missing).
+- [ ] Click target is the whole card / pill, not just the switch / number.
+
+### 12.6 Pill button group (short fixed lists)
+
+Replaces `<select>` for finite enumerations: ETA units, statuses, units of measure, mode toggles. Uses the `.standard-pill` global class (in `main.css` alongside `.status-pill`).
+
+**When to use:** option count is fixed and ≤ 8 (otherwise the row wraps awkwardly — switch to 12.7 popover dropdown).
+
+**Anatomy:** `flex flex-wrap gap-1.5` of `.standard-pill` buttons. Each pill is rounded-full (9999px), `12px` font, `0.375rem 0.75rem` padding, single-line, hover gets `--color-border-strong`.
+
+**Selected styling depends on the option's semantic colour:**
+- Generic / no semantic tone → `borderColor: var(--color-accent)`, `background: var(--color-accent-soft)`, `color: var(--color-accent)`.
+- Per-option semantic tone (e.g. project status: live → success, wip → warning, planning → accent) → use the option's `color` + `bg` from a shared status-options data file. See [data/projectStatuses.ts](frontend/app/data/projectStatuses.ts).
+
+**Sources of truth for option lists.** Don't inline option arrays in the component. Put them in `data/<thing>Statuses.ts` so the same list powers both the form picker and any read-only badge elsewhere (ProjectCard, etc).
+
+**Where it applies today:**
+- `eta_unit` in [packages/[id].vue](frontend/app/pages/admin/services/packages/[id].vue) (4 options, generic accent tone)
+- `form.status` in [projects/[id].vue](frontend/app/pages/admin/projects/[id].vue) (4 options, per-status semantic tones)
+
+### 12.7 Popover dropdown (variable / longer lists)
+
+The standard "looks like an input, opens a panel" dropdown. Uses three global classes in `main.css`:
+
+| Class | Role |
+|---|---|
+| `.standard-select-trigger` | The input-shaped button. Same `border-radius: 12px` and padding as `.contact-input`. On open (`aria-expanded="true"`) gains `--color-accent` border + `--shadow-glow`. |
+| `.standard-select-panel` | Absolute-positioned panel, `top: calc(100% + 6px)`, `z-index: 50`, `max-height: 280px` with overflow-y, rounded-xl, `--shadow-lg`. |
+| `.standard-select-option` | Row inside the panel — `0.5rem 0.625rem` padding, hover bg `--color-bg-secondary`, selected gets `--color-accent-soft` bg + accent text. |
+
+**Required behaviours:**
+- Trigger displays current selection (icon + label + chevron). Chevron rotates 180° when open.
+- Click outside closes — implement with a `<div class="fixed inset-0 z-40" @click="open = false" />` invisible backdrop. Z-order: backdrop 40, panel 50.
+- **Escape closes** — wire `onKeyStroke('Escape', …)` from `@vueuse/core` (already auto-imported via `@vueuse/nuxt`).
+- Selected option shows `i-lucide-check` on the right.
+- Panel slides in via the global `dropdown-panel` Vue Transition (defined in `main.css`): `opacity 0.15s + translateY(-4px → 0)`.
+
+**When to use:** option count is variable, can grow with admin actions, or > 8.
+
+**Where it applies today:** `service_category_id` in [packages/[id].vue](frontend/app/pages/admin/services/packages/[id].vue).
+
+### 12.8 Curated icon picker
+
+Free-typing Iconify names is forbidden — every icon-name field is a visual grid picker backed by a curated allowlist. This is what keeps the public surfaces (services page, project cards) visually consistent.
+
+**Source of truth:** the allowlist lives in `data/<scope>Icons.ts`. Today: [data/serviceIcons.ts](frontend/app/data/serviceIcons.ts) (~26 icons grouped by Web / Engineering / Design / Product / Growth / Support).
+
+**Anatomy:** `grid grid-cols-6 sm:grid-cols-9 gap-1.5` of square buttons (`aspect-square rounded-lg border`). Each icon button has:
+- `:title` and `:aria-label` set to the human label (e.g. "SaaS / product launch"), so hover and screen reader both work.
+- Selected: `--color-accent` border + `--color-accent-soft` background + accent-coloured icon.
+- Unselected: `--color-border` + neutral.
+
+**Below the grid:** a one-line caption echoing the current selection — `Selected: <code>i-lucide-globe</code> — Web presence` — so admins know the actual stored value.
+
+Adding a new icon is a one-line addition to the allowlist. Do not let admins type names.
+
+### 12.9 Admin shell
+
+The `admin.vue` layout is the only place these patterns live; no need to duplicate them per page.
+
+**Header brand marker.**
+- Custom inline (not the shared `BrandMark` — admin gets its own brand identity).
+- Aurora orb: `size-7` rounded-full circle, favicon at `size-6.5` (almost filling), inner background `color-mix(in srgb, var(--color-accent-soft) 45%, var(--color-bg-elevated))` (pastel), iridescent halo via `::before` pseudo with `--grad-iridescent` and `blur(6px)`, gently pulsing 4.5s loop.
+- Wordmark: "Admin Portal" rendered with the global `.text-gradient` utility (matches the public `BrandMark` colour treatment).
+- Links to `/admin`, not `/`.
+- Animation respects `prefers-reduced-motion`.
+
+**Mobile floating drawer** (`< md` breakpoint).
+- Detached from edges: `left-3 / top-17 / bottom-3`, `rounded-2xl`, `shadow-2xl`, internal `overflow-y-auto`.
+- Backdrop overlay: `rgba(0, 0, 0, 0.32)` + `backdrop-filter: blur(2px)`, sits at `z-20`, drawer at `z-30`. Backdrop click closes the drawer.
+- Two scoped Vue Transitions: `drawer-backdrop` (opacity 0.2s) and `drawer-panel` (opacity 0.2s + translateX(-12px → 0) over 0.25s with `cubic-bezier(0.32, 0.72, 0, 1)`).
+- Auto-closes on route change via `watch(() => route.fullPath, …)`.
+- Honors `prefers-reduced-motion`.
+
+These exist as scoped styles on `admin.vue`. If a second mobile drawer is ever needed elsewhere (portal layout?), promote the CSS to global classes before duplicating.
+
+### 12.10 Mobile responsiveness baseline
+
+Admin is used on mobile too. Every new admin page must be usable at **375px** (iPhone SE) and **414px** (iPhone 14 Pro). The patterns below are mandatory, not optional.
+
+**Container padding.** Use `max-w-[7xl|3xl] mx-auto px-4 sm:px-6 pt-10 pb-32`. Never `px-6` alone — that wastes 12px per side on tiny screens.
+
+**Tables → cards on mobile.** Tables become unusable below `md`. Render the same data twice: a `<table>` wrapped in `hidden md:block` for desktop, and a `md:hidden space-y-2.5` card list for mobile. Each mobile card is a single `<button>` (whole card is clickable, navigates to the row's detail page) with this layout:
+
+```
+┌──────────────────────────────────────┐
+│ [primary id]            [status pill] │
+│ Name                                  │
+│ subtitle (email / hint)               │
+│ ─────────────────────────────────── │
+│ [primary value]      [secondary]      │
+│ [date / footer text]                  │
+└──────────────────────────────────────┘
+```
+
+Class scaffold:
+
+```vue
+<button class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+  @click="navigateTo(detailUrl)">
+  <div class="flex items-start justify-between gap-3 mb-2"><!-- id + status --></div>
+  <p class="text-[13px] font-medium">…name…</p>
+  <p class="text-[11px] mb-3" style="color: var(--color-text-tertiary)">…subtitle…</p>
+  <div class="pt-2 border-t" style="border-color: var(--color-border)">
+    <!-- value + meta footer -->
+  </div>
+</button>
+```
+
+The desktop table still gets `<div class="overflow-x-auto">` inside the outer rounded card — it's the safety net if anyone forgets to add the mobile cards.
+
+**Don't use `display: table` media-query swaps** — duplicating the markup keeps the desktop and mobile layouts independent (different copy, different ordering) without shoehorning a table cell into a stacked card via CSS gymnastics. Yes, the data appears twice in the DOM. That's the trade.
+
+**Action button rows.** Right-aligned action groups (Edit / Delete / + Package etc.) must wrap to a new row at narrow widths instead of crowding the title. Use `w-full sm:w-auto sm:shrink-0 justify-end` on the button container, and `flex flex-wrap items-center gap-3` on the parent row. Mobile gets buttons on row 2 right-aligned; desktop keeps them inline.
+
+**Detail-page sidebars.** Use `grid lg:grid-cols-[1fr_300px] gap-8 items-start` — `grid` alone (no `grid-cols-X`) renders a single column, so children stack naturally below `lg`. Don't add `sm:grid-cols-1` (redundant).
+
+**Popover dropdowns** must not overflow the viewport. The global `.standard-select-panel` already has `max-width: calc(100vw - 24px)` for safety. If you build another floating panel, replicate that clamp.
+
+**Form rows.** `grid sm:grid-cols-2 gap-4` is the standard two-column form pattern — always with the `sm:` prefix so it stacks at mobile. `grid grid-cols-2` alone (no `sm:`) is forbidden.
+
+**Action buttons in detail pages** (status pickers, etc.) must already use the pill-button group (12.6), which wraps via `flex flex-wrap`.
+
+**Search bars** in admin index pages must use [`<AdminExpandingSearch v-model=… placeholder=… />`](frontend/app/components/admin/ExpandingSearch.vue), not a raw `<input type="search">`. Default state is an icon-only round button (~36px); clicking it slides the input open and auto-focuses it. Blurring an empty input collapses back to the icon. Pre-filling `v-model` from a query string opens the input on mount automatically. Reasons:
+- At mobile widths the full-width search input dominates the filter bar; the icon recovers that space.
+- Most admin queries are quick "open the page → maybe search" — the icon expresses that intent better than a permanently-open field.
+- Escape clears + collapses (`@keydown.escape="clearAndCollapse"` is built-in).
+
+**Audit before merging.** Open the page at 375px (Chrome DevTools mobile preset). Look for: horizontal scroll on the body, action buttons overlapping titles, modals/popovers running off-screen, sticky panels covering content. Fix before merging.
+
+---
+
+## 13. Updating this doc
 
 Whenever a new token, component, or motion rule is introduced:
 1. Add it to `app/assets/css/main.css`.
