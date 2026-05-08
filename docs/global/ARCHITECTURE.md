@@ -6,8 +6,10 @@
 axelnova-dashboard/
   frontend/          Nuxt 4 portfolio + quote builder frontend
   backend/           Laravel 11 API
-  ARCHITECTURE.md    This file
-  QUOTE_BUILDER.md   Pricing formula + pricing update guide
+  docs/
+    global/          ARCHITECTURE.md (this file), DEPLOY.md, QUOTE_BUILDER.md, README.md
+    frontend/        UI-STANDARDS.md, *-COMPONENTS.md
+    backend/         README.md
 ```
 
 ## Tech stack
@@ -16,7 +18,7 @@ axelnova-dashboard/
 |-------|-----------|
 | Frontend | Nuxt 4, Vue 3, TypeScript, @nuxt/ui v4, Tailwind CSS v4 |
 | Backend | Laravel 11, PHP 8.4+ |
-| Database | MySQL 8 (shared via [axelnova-infra](../axelnova-infra/)) |
+| Database | MySQL 8 (shared via [axelnova-infra](../../../axelnova-infra/)) |
 | Queue | Laravel database queue |
 | Email | SMTP — Mailtrap in dev, Mailgun/Postmark/SES in prod |
 | Auth | Laravel Sanctum (token-based, admin only) |

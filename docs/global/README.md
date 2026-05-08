@@ -4,9 +4,9 @@ Portfolio + client platform for Ahmad Baihaqie / Axel Nova Ventures.
 
 - **Frontend**: Nuxt 4 (TypeScript, Tailwind v4, @nuxt/ui v4) — `axelnova.tech` and `dashboard.axelnova.tech`
 - **Backend**: Laravel 11 API (Phase 3: public quote builder funnel)
-- **Database**: shared MySQL 8 from [axelnova-infra](../axelnova-infra/)
+- **Database**: shared MySQL 8 from [axelnova-infra](../../../axelnova-infra/)
 
-All `.md` documentation is centralised under [docs/](./docs/) — `docs/global/` (repo-wide), `docs/frontend/` (Nuxt), `docs/backend/` (Laravel). Start with [docs/global/ARCHITECTURE.md](./docs/global/ARCHITECTURE.md) and [docs/global/QUOTE_BUILDER.md](./docs/global/QUOTE_BUILDER.md).
+For full architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md). For pricing config / quote builder details, see [QUOTE_BUILDER.md](./QUOTE_BUILDER.md). All other docs live under [docs/](../).
 
 ## Repo layout
 
@@ -36,7 +36,7 @@ axelnova-dashboard/
    docker compose up -d
    ```
 
-   See [axelnova-infra/README.md](../axelnova-infra/README.md) for details.
+   See [axelnova-infra/README.md](../../../axelnova-infra/README.md) for details. (Shell commands assume you're at the repo root, not inside `docs/`.)
 
 ---
 
@@ -132,7 +132,7 @@ Production backend deploy isn't wired yet. Plan: PHP-FPM + Nginx, port 8003, que
 
 - **`DB_HOST` in `backend/.env` is `mysql`**, not `127.0.0.1`. That hostname only resolves on the `axelnova-shared` docker network, so `php artisan ...` from the Mac host won't connect. Always use `docker compose -f docker-compose.dev.yml exec backend php artisan ...` instead.
 - **MySQL only honors `MYSQL_ROOT_PASSWORD` on first volume boot.** If you change it in `axelnova-infra/.env` later, you must `docker compose down -v` (in the infra repo) to nuke the volume — otherwise auth will fail.
-- **The frontend prod compose binds port 3001**, which collides with `hop-frontend-dev` per [axelnova-infra/docs/port-allocation.md](../axelnova-infra/docs/port-allocation.md). Resolve before running both in production on the same host.
+- **The frontend prod compose binds port 3001**, which collides with `hop-frontend-dev` per [axelnova-infra/docs/port-allocation.md](../../../axelnova-infra/docs/port-allocation.md). Resolve before running both in production on the same host.
 
 ---
 
