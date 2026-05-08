@@ -27,10 +27,15 @@ backend/.env.*
 logs
 *.log
 
-# ── Misc ─────────────────────────────────────────────────────
-.DS_Store
+# ── Editor ───────────────────────────────────────────────────
 .fleet
 .idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ── Misc ─────────────────────────────────────────────────────
+.DS_Store
 
 # ── Claude Code ──────────────────────────────────────────────
 .claude/settings.local.json
