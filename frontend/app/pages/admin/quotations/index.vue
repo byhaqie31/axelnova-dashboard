@@ -68,7 +68,11 @@ watch(() => filters.search, () => {
   searchTimer = setTimeout(() => { filters.page = 1; fetchQuotations() }, 400)
 })
 
-watch(() => [filters.status, filters.page], () => fetchQuotations())
+watch(() => filters.status, () => {
+  if (filters.page !== 1) filters.page = 1
+  else fetchQuotations()
+})
+watch(() => filters.page, () => fetchQuotations())
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -102,18 +106,7 @@ function fmtMyr(amount: string | number) {
         class="contact-input" style="max-width: 300px;"
         :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
 
-      <div class="flex flex-wrap gap-2">
-        <button v-for="opt in statusOptions" :key="opt.value" type="button"
-          class="text-[12px] px-3.5 py-1.5 rounded-full border transition-all"
-          :style="{
-            borderColor: filters.status === opt.value ? 'var(--color-accent)' : 'var(--color-border)',
-            background: filters.status === opt.value ? 'var(--color-accent-soft)' : 'transparent',
-            color: filters.status === opt.value ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-          }"
-          @click="filters.status = opt.value; filters.page = 1">
-          {{ opt.label }}
-        </button>
-      </div>
+      <AdminStatusFilter v-model="filters.status" :options="statusOptions" class="ml-auto" />
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>

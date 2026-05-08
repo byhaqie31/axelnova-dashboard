@@ -113,18 +113,7 @@ const liveCount = computed(() => projects.value.filter(p => p.status === 'live')
         class="contact-input" style="max-width: 300px;"
         :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
 
-      <div class="flex flex-wrap gap-2">
-        <button v-for="opt in statusOptions" :key="opt.value" type="button"
-          class="text-[12px] px-3.5 py-1.5 rounded-full border transition-all"
-          :style="{
-            borderColor: filters.status === opt.value ? 'var(--color-accent)' : 'var(--color-border)',
-            background: filters.status === opt.value ? 'var(--color-accent-soft)' : 'transparent',
-            color: filters.status === opt.value ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-          }"
-          @click="filters.status = opt.value">
-          {{ opt.label }}
-        </button>
-      </div>
+      <AdminStatusFilter v-model="filters.status" :options="statusOptions" class="ml-auto" />
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
