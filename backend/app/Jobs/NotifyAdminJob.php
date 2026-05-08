@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Mail\AdminNotificationMail;
-use App\Models\QuoteRequest;
+use App\Models\Quotation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,7 +21,7 @@ class NotifyAdminJob implements ShouldQueue
 
     public function handle(): void
     {
-        $quote = QuoteRequest::findOrFail($this->quoteRequestId);
+        $quote = Quotation::findOrFail($this->quoteRequestId);
         $adminEmail = config('services.admin.email', env('ADMIN_NOTIFICATION_EMAIL'));
 
         Mail::to($adminEmail)->send(new AdminNotificationMail($quote));

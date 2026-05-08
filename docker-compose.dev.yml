@@ -16,6 +16,23 @@ services:
     networks:
       - axelnova-shared
 
+  # Queue worker — separate container so its logs are isolated and it can
+  # restart independently of the API. Reuses the same image + bind mount as
+  # backend, just runs a different command.
+  worker:
+    image: axelnova-backend:dev
+    container_name: axelnova-worker-dev
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - ./backend:/app
+    environment:
+      DB_HOST: mysql
+    command: php artisan queue:work --tries=3 --backoff=10 --verbose
+    networks:
+      - axelnova-shared
+
   frontend:
     build:
       context: ./frontend
@@ -33,14 +50,10 @@ services:
       NUXT_TELEMETRY_DISABLED: "1"
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "400"
+      # SSR (inside this container) reaches the backend via the docker-network hostname.
+      NUXT_API_BASE: http://backend:8003
       # Browser hits the backend via the Mac host loopback (container hostnames don't resolve on the host).
       NUXT_PUBLIC_API_BASE: http://127.0.0.1:8003
-      # Empty in local dev — the frontend skips the Turnstile widget when this is unset.
-      # Backend mirrors this via TURNSTILE_SECRET being empty in backend/.env.
-      # For prod: set both NUXT_PUBLIC_TURNSTILE_SITE_KEY (here) and TURNSTILE_SECRET (backend .env)
-      # to real Cloudflare values. To use Cloudflare's official always-pass test key, use:
-      # 1x00000000000000000000AA
-      NUXT_PUBLIC_TURNSTILE_SITE_KEY: ""
     volumes:
       - ./frontend/app:/app/app
       - ./frontend/public:/app/public

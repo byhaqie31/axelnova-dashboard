@@ -57,13 +57,37 @@
   --nav-bg-top: rgba(255, 255, 255, 0.55);
   --nav-bg-scrolled: rgba(255, 255, 255, 0.78);
   --nav-mobile-bg: rgba(255, 255, 255, 0.95);
+
+  /* Status pills — single source of truth. Use .status-pill[data-status="..."] */
+  --status-new-fg:        #0071E3;
+  --status-new-bg:        rgba(0, 113, 227, 0.10);
+  --status-viewed-fg:     #A855F7;
+  --status-viewed-bg:     rgba(168, 85, 247, 0.10);
+  --status-contacted-fg:  #FF9F0A;
+  --status-contacted-bg:  rgba(255, 159, 10, 0.12);
+  --status-accepted-fg:   #30D158;
+  --status-accepted-bg:   rgba(48, 209, 88, 0.12);
+  --status-rejected-fg:   #FF3B30;
+  --status-rejected-bg:   rgba(255, 59, 48, 0.10);
+  --status-spam-fg:       #86868B;
+  --status-spam-bg:       rgba(134, 134, 139, 0.14);
+  --status-pending-fg:    #86868B;
+  --status-pending-bg:    rgba(134, 134, 139, 0.14);
+  --status-in_progress-fg: #0071E3;
+  --status-in_progress-bg: rgba(0, 113, 227, 0.10);
+  --status-delivered-fg:  #A855F7;
+  --status-delivered-bg:  rgba(168, 85, 247, 0.10);
+  --status-completed-fg:  #30D158;
+  --status-completed-bg:  rgba(48, 209, 88, 0.12);
+  --status-cancelled-fg:  #FF3B30;
+  --status-cancelled-bg:  rgba(255, 59, 48, 0.10);
 }
 
 .dark {
-  --color-bg: #000000;
-  --color-bg-elevated: #161617;
-  --color-bg-secondary: #1D1D1F;
-  --color-bg-sunken: #0A0A0B;
+  --color-bg: #0A0F1F;
+  --color-bg-elevated: #141B33;
+  --color-bg-secondary: #1B2240;
+  --color-bg-sunken: #060A16;
 
   --color-text: #F5F5F7;
   --color-text-secondary: #A1A1A6;
@@ -87,9 +111,33 @@
   --shadow-glow: 0 0 0 4px rgba(41, 151, 255, 0.18);
   --shadow-card-hover: 0 16px 40px rgba(0, 0, 0, 0.5);
 
-  --nav-bg-top: rgba(0, 0, 0, 0.55);
-  --nav-bg-scrolled: rgba(0, 0, 0, 0.78);
-  --nav-mobile-bg: rgba(0, 0, 0, 0.95);
+  --nav-bg-top: rgba(10, 15, 31, 0.55);
+  --nav-bg-scrolled: rgba(10, 15, 31, 0.78);
+  --nav-mobile-bg: rgba(10, 15, 31, 0.95);
+
+  /* Status pills — dark mode overrides (slightly brighter foregrounds, lighter bg alpha) */
+  --status-new-fg:        #2997FF;
+  --status-new-bg:        rgba(41, 151, 255, 0.16);
+  --status-viewed-fg:     #C77DFF;
+  --status-viewed-bg:     rgba(199, 125, 255, 0.16);
+  --status-contacted-fg:  #FFB340;
+  --status-contacted-bg:  rgba(255, 179, 64, 0.16);
+  --status-accepted-fg:   #5DE38C;
+  --status-accepted-bg:   rgba(93, 227, 140, 0.16);
+  --status-rejected-fg:   #FF6961;
+  --status-rejected-bg:   rgba(255, 105, 97, 0.16);
+  --status-spam-fg:       #A1A1A6;
+  --status-spam-bg:       rgba(161, 161, 166, 0.18);
+  --status-pending-fg:    #A1A1A6;
+  --status-pending-bg:    rgba(161, 161, 166, 0.18);
+  --status-in_progress-fg: #2997FF;
+  --status-in_progress-bg: rgba(41, 151, 255, 0.16);
+  --status-delivered-fg:  #C77DFF;
+  --status-delivered-bg:  rgba(199, 125, 255, 0.16);
+  --status-completed-fg:  #5DE38C;
+  --status-completed-bg:  rgba(93, 227, 140, 0.16);
+  --status-cancelled-fg:  #FF6961;
+  --status-cancelled-bg:  rgba(255, 105, 97, 0.16);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -260,6 +308,52 @@ h1 { letter-spacing: -0.045em; }
 }
 .dark .btn-pill-accent:hover {
   box-shadow: 0 12px 32px rgba(41, 151, 255, 0.42);
+}
+
+/* Status pill — driven by data-status attribute, colors come from --status-{name}-fg/bg */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+}
+.status-pill[data-status="new"]         { color: var(--status-new-fg);        background: var(--status-new-bg); }
+.status-pill[data-status="viewed"]      { color: var(--status-viewed-fg);     background: var(--status-viewed-bg); }
+.status-pill[data-status="contacted"]   { color: var(--status-contacted-fg);  background: var(--status-contacted-bg); }
+.status-pill[data-status="accepted"]    { color: var(--status-accepted-fg);   background: var(--status-accepted-bg); }
+.status-pill[data-status="rejected"]    { color: var(--status-rejected-fg);   background: var(--status-rejected-bg); }
+.status-pill[data-status="spam"]        { color: var(--status-spam-fg);       background: var(--status-spam-bg); }
+.status-pill[data-status="pending"]     { color: var(--status-pending-fg);    background: var(--status-pending-bg); }
+.status-pill[data-status="in_progress"] { color: var(--status-in_progress-fg); background: var(--status-in_progress-bg); }
+.status-pill[data-status="delivered"]   { color: var(--status-delivered-fg);  background: var(--status-delivered-bg); }
+.status-pill[data-status="completed"]   { color: var(--status-completed-fg);  background: var(--status-completed-bg); }
+.status-pill[data-status="cancelled"]   { color: var(--status-cancelled-fg);  background: var(--status-cancelled-bg); }
+
+/* Status pill — selectable button variant (used in detail pages for status changes) */
+.status-pill-button {
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.status-pill-button:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+.status-pill-button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.status-pill-button[data-status][data-active="true"] {
+  border-color: currentColor;
 }
 
 /* Form inputs (used by quote, contact, admin login) */

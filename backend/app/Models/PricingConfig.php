@@ -20,9 +20,9 @@ class PricingConfig extends Model
         ];
     }
 
-    public function quoteRequests(): HasMany
+    public function quotations(): HasMany
     {
-        return $this->hasMany(QuoteRequest::class);
+        return $this->hasMany(Quotation::class);
     }
 
     public static function getActive(): self

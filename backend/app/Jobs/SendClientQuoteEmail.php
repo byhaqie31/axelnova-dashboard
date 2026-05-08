@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Mail\ClientQuoteMail;
-use App\Models\QuoteRequest;
+use App\Models\Quotation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,7 +28,7 @@ class SendClientQuoteEmail implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
-        $quote = QuoteRequest::with('addons', 'pricingConfig')->findOrFail($this->quoteRequestId);
+        $quote = Quotation::with('addons', 'pricingConfig')->findOrFail($this->quoteRequestId);
 
         Mail::to($quote->email, $quote->name)->send(new ClientQuoteMail($quote));
     }
