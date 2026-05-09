@@ -54,12 +54,10 @@ export default defineNuxtConfig({
         { property: 'og:description', content: 'UI/UX-focused software engineer. Vue · Nuxt · Laravel · Docker · AWS.' },
       ],
       link: [
-        // Modern browsers — sharpest at any size.
-        { rel: 'icon', type: 'image/svg+xml', href: '/axelnovaicon.svg' },
-        // Fallback for browsers that don't render SVG favicons.
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        // iOS home-screen icon.
-        { rel: 'apple-touch-icon', href: '/axel_nova_favicon.png' },
+        { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/favicon/favicon-96x96.png' },
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon/favicon.ico' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/favicon/apple-touch-icon.png' },
+        { rel: 'manifest', href: '/favicon/site.webmanifest' },
       ],
     },
     pageTransition: { name: 'page', mode: 'out-in' },

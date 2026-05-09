@@ -22,7 +22,7 @@ const wordmarkSize = computed(() => props.variant === 'compact' ? 'text-[13px]' 
     :class="[wordmarkSize, 'font-semibold tracking-tight inline-flex items-center gap-2', props.class]"
   >
     <img
-      src="/axel_nova_favicon.png"
+      src="/favicon/apple-touch-icon.png"
       alt=""
       aria-hidden="true"
       :class="[iconSize, 'object-contain brand-logo-glow']"
