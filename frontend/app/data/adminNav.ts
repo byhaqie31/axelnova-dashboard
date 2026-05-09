@@ -11,6 +11,7 @@ export const adminNav: AdminNavItem[] = [
   { to: '/admin/orders', label: 'Orders', icon: 'i-lucide-package-check', matchPrefix: '/admin/orders' },
   { to: '/admin/services', label: 'Services', icon: 'i-lucide-briefcase-business', matchPrefix: '/admin/services' },
   { to: '/admin/projects', label: 'Projects', icon: 'i-lucide-folder-kanban', matchPrefix: '/admin/projects' },
+  { to: '/admin/investors', label: 'Investors', icon: 'i-lucide-handshake', matchPrefix: '/admin/investors' },
   { to: '/admin/analytics', label: 'Analytics', icon: 'i-lucide-chart-line', matchPrefix: '/admin/analytics' },
 ]
 
