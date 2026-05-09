@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roofly — Pricing & Financial Summary</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAFAF7;
+  --bg-elev:#F4F2EC;
+  --ink:#1A1A1A;
+  --ink-2:#3C3A36;
+  --muted:#7A736B;
+  --muted-2:#A8A199;
+  --line:#E5E1D8;
+  --line-2:#EFEBE2;
+  --accent:#E76F51;
+  --accent-soft:#F7E2DA;
+  --accent-ink:#B0492E;
+
+  --serif:'Fraunces','Iowan Old Style','Georgia',serif;
+  --sans:'Inter',system-ui,-apple-system,'Helvetica Neue',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+@page{ size: A4 portrait; margin: 0; }
+
+html,body{
+  background:#3C3A36;
+  font-family:var(--sans);
+  color:var(--ink);
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
+}
+
+/* A4 portrait sheet — 210 × 297 mm */
+.sheet{
+  width:210mm;
+  height:297mm;
+  background:var(--bg);
+  margin:24px auto;
+  padding:9mm 13mm 8mm;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  box-shadow:0 30px 80px -30px rgba(0,0,0,.4);
+  font-size:8.5pt;
+  line-height:1.3;
+  color:var(--ink-2);
+  font-feature-settings:"tnum" 1, "lnum" 1;
+  overflow:hidden;
+}
+
+@media print{
+  html,body{background:#fff}
+  .sheet{margin:0;box-shadow:none;width:210mm;height:297mm;page-break-after:avoid;break-after:avoid}
+}
+
+/* ---------- Header ---------- */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding-bottom:5px;
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .glyph{width:24px;height:24px;flex-shrink:0}
+.brand .word{
+  font-family:var(--sans);font-weight:600;
+  font-size:13pt;letter-spacing:-0.022em;color:var(--ink);line-height:1;
+}
+
+.doc-meta{
+  display:flex;flex-direction:row;gap:10px;align-items:center;
+}
+.doc-meta .v{
+  font-size:9pt;font-weight:500;color:var(--ink);letter-spacing:-0.005em;
+}
+.doc-meta .v .when{
+  color:var(--muted);font-weight:400;font-family:var(--mono);
+  font-size:7.5pt;letter-spacing:0.04em;margin-left:6px;
+}
+.doc-meta .pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:6.5pt;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--accent-ink);background:var(--accent-soft);
+  padding:4px 8px;border-radius:999px;
+}
+.doc-meta .pill .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+
+/* ---------- Section heads ---------- */
+.section{
+  margin-top:14px;padding-bottom:10px;
+  display:flex;flex-direction:column;
+}
+.section:last-of-type{padding-bottom:0}
+.section-head{
+  display:flex;align-items:baseline;gap:10px;
+  margin-bottom:6px;
+}
+.section-head .num{
+  font-family:var(--mono);font-size:10.5pt;letter-spacing:0.04em;
+  color:var(--accent);font-weight:500;line-height:1.1;
+}
+.section-head h2{
+  font-family:var(--sans);font-weight:500;font-size:10.5pt;letter-spacing:-0.02em;color:var(--ink);
+  line-height:1.1;
+}
+.section-head .sep{
+  color:var(--muted-2);font-weight:300;font-size:9pt;line-height:1;
+}
+.section-head .lede{
+  flex:1;font-size:8pt;color:var(--muted);line-height:1.3;letter-spacing:-0.005em;
+}
+
+/* ---------- Section 1 — Pricing ---------- */
+.tiers{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+}
+.tier{
+  border:1px solid var(--line);border-radius:8px;background:#fff;
+  padding:7px 9px 7px;
+  display:flex;flex-direction:column;gap:3px;
+  position:relative;
+}
+.tier.feature{
+  border-color:var(--accent);
+  box-shadow:0 0 0 1px var(--accent) inset;
+}
+.tier .badge{
+  position:absolute;top:-7px;right:10px;
+  font-family:var(--mono);font-size:6pt;letter-spacing:0.16em;text-transform:uppercase;
+  color:#fff;background:var(--accent);padding:3px 7px;border-radius:999px;font-weight:500;
+}
+.tier .name{
+  font-size:8.5pt;font-weight:600;color:var(--ink);letter-spacing:-0.01em;
+}
+.tier .price{
+  display:flex;align-items:baseline;gap:4px;
+  border-top:1px solid var(--line);padding-top:3px;
+}
+.tier .price .v{
+  font-family:var(--serif);font-weight:300;font-size:18pt;line-height:0.9;letter-spacing:-0.03em;color:var(--ink);
+}
+.tier .price .u{
+  font-family:var(--mono);font-size:6.8pt;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;
+}
+.tier .row{
+  display:flex;justify-content:space-between;gap:6px;
+  font-size:7pt;
+  padding:2px 0;border-bottom:1px dashed var(--line);
+}
+.tier .row:last-child{border-bottom:0}
+.tier .row .k{
+  font-family:var(--mono);font-size:6.5pt;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);
+}
+.tier .row .v{color:var(--ink);font-weight:500;text-align:right;font-variant-numeric:tabular-nums;}
+.tier .row .v.save{color:var(--accent-ink)}
+
+.caption{
+  margin-top:3px;
+  font-family:var(--mono);font-size:6.4pt;letter-spacing:0.1em;color:var(--muted);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.caption em{font-style:italic;color:var(--accent-ink);font-family:var(--sans);font-size:7.5pt;letter-spacing:0;text-transform:none}
+
+/* ---------- Section 2 — Unit economics ---------- */
+.unit{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+}
+.box{
+  border:1px solid var(--line);border-radius:8px;background:#fff;
+  padding:7px 9px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.box.dark{
+  background:var(--ink);color:#E8E2D6;border-color:var(--ink);
+}
+.box .head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  border-bottom:1px solid var(--line);padding-bottom:3px;margin-bottom:0;
+}
+.box.dark .head{border-color:#2E2A24}
+.box .head h3{
+  font-size:8.2pt;font-weight:600;color:var(--ink);letter-spacing:-0.01em;
+}
+.box.dark .head h3{color:#fff}
+.box .head .tag{
+  font-family:var(--mono);font-size:6pt;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);
+}
+.box .head .tag.projected{
+  color:var(--accent-ink);background:var(--accent-soft);
+  padding:2px 7px;border-radius:3px;font-weight:500;
+}
+.box.dark .head .tag{color:var(--accent)}
+.box.dark .head .tag.projected{
+  color:var(--accent);background:rgba(231,111,81,.18);
+}
+
+.metrics{display:flex;flex-direction:column;gap:0}
+.metric{
+  display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
+  padding:3px 0;border-bottom:1px dashed var(--line);
+}
+.box.dark .metric{border-color:#2E2A24}
+.metric:last-child{border-bottom:0}
+.metric .lbl{font-size:7.5pt;color:var(--ink-2);font-weight:500}
+.box.dark .metric .lbl{color:#E8E2D6}
+.metric .lbl small{display:block;font-size:6.2pt;color:var(--muted);font-weight:400;margin-top:0;letter-spacing:-0.005em;line-height:1.25}
+.box.dark .metric .lbl small{color:#9C958B}
+.metric .val{
+  font-family:var(--serif);font-weight:400;font-size:10.5pt;letter-spacing:-0.02em;color:var(--ink);
+  font-variant-numeric:tabular-nums;line-height:1;
+}
+.box.dark .metric .val{color:#fff}
+.metric.proj .val{font-style:italic;color:var(--accent-ink);font-weight:300}
+.metric.proj .val::after{
+  content:" projected";
+  display:inline-block;
+  font-family:var(--mono);font-size:5.5pt;letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--accent-ink);background:var(--accent-soft);
+  padding:1px 5px;border-radius:3px;margin-left:6px;font-weight:500;font-style:normal;
+  vertical-align:2px;
+}
+.box.dark .metric.proj .val{color:var(--accent)}
+.box.dark .metric.proj .val::after{background:rgba(231,111,81,.18);color:var(--accent)}
+
+.metric.total{
+  background:var(--bg-elev);
+  margin:2px -9px -7px;padding:4px 9px;
+  border-top:1px solid var(--line);border-bottom:0;
+  border-radius:0 0 7px 7px;
+}
+.box.dark .metric.total{background:#2E2A24;border-color:#2E2A24}
+.metric.total .lbl{font-weight:600;color:var(--ink)}
+.box.dark .metric.total .lbl{color:#fff}
+.metric.total .val{font-size:11.5pt;color:var(--ink)}
+
+/* fill variant — spreads metrics vertically to fill remaining box height
+   (used on the per-customer economics box so it visually balances the
+   denser cost-structure box on the right) */
+.metrics.fill{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.metrics.fill .metric:not(.total){
+  flex:1;
+  align-items:center;
+  padding:6px 0;
+}
+.metrics.fill .metric .val{font-size:14pt}
+.metrics.fill .metric.total{margin-top:auto}
+.metrics.fill .metric.total .val{font-size:17pt}
+
+.unit-footnote{
+  grid-column:1 / -1;
+  font-family:var(--mono);font-size:6.2pt;letter-spacing:0.08em;color:var(--muted);
+  margin-top:2px;line-height:1.4;
+  text-align:justify;
+}
+.unit-footnote em{
+  font-style:normal;color:var(--accent-ink);font-weight:500;
+  background:var(--accent-soft);padding:1px 5px;border-radius:3px;letter-spacing:0.14em;
+}
+
+/* ---------- Section 3 — Projections ---------- */
+.proj-table{
+  width:100%;border-collapse:collapse;
+  background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  font-variant-numeric:tabular-nums;
+}
+.proj-table th,.proj-table td{
+  text-align:left;padding:2.5px 9px;border-bottom:1px solid var(--line);font-size:7.4pt;
+  vertical-align:middle;
+}
+.proj-table tr:last-child td{border-bottom:0}
+.proj-table th{
+  font-family:var(--mono);font-size:6.5pt;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;background:var(--bg-elev);
+  border-bottom:1px solid var(--line);
+}
+.proj-table td.milestone{font-weight:500;color:var(--ink)}
+.proj-table td.milestone .when{
+  display:block;font-family:var(--mono);font-size:6.2pt;color:var(--muted);
+  letter-spacing:0.1em;text-transform:uppercase;font-weight:400;margin-top:1px;
+}
+.proj-table td.num{text-align:right;font-feature-settings:"tnum" 1;color:var(--ink)}
+.proj-table td.bar{width:36%;padding-right:14px}
+.proj-table td.bar .barwrap{
+  position:relative;height:11px;background:var(--bg-elev);border-radius:3px;overflow:hidden;
+}
+.proj-table td.bar .barwrap div{
+  position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:3px;
+  display:flex;align-items:center;justify-content:flex-end;padding-right:6px;
+  font-family:var(--mono);font-size:6pt;color:#fff;letter-spacing:0.06em;
+}
+.proj-table tr.now td.milestone{color:var(--accent-ink)}
+.proj-table tr.now td.bar .barwrap div{background:var(--ink)}
+
+/* ---------- Section 4 — The ask ---------- */
+.ask{
+  display:grid;grid-template-columns:1fr 1.05fr;gap:8px;
+}
+.seek-list{display:flex;flex-direction:column;gap:0}
+.seek-item{
+  display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:flex-start;
+  padding:3px 0;border-bottom:1px dashed var(--line);
+}
+.seek-item:last-child{border-bottom:0}
+.seek-item .n{
+  font-family:var(--mono);font-size:6.5pt;letter-spacing:0.14em;color:var(--accent);padding-top:2px;
+}
+.seek-item h4{font-size:8pt;font-weight:500;color:var(--ink);letter-spacing:-0.005em;line-height:1.2}
+.seek-item p{font-size:7pt;color:var(--muted);margin-top:1px;line-height:1.3}
+.seek-item .tbd{
+  font-family:var(--mono);font-size:6.2pt;letter-spacing:0.16em;text-transform:uppercase;
+  color:var(--accent-ink);background:var(--accent-soft);
+  padding:1px 5px;border-radius:3px;margin-left:4px;
+}
+
+.use-of-funds{display:flex;flex-direction:column;gap:6px}
+.alloc{display:flex;flex-direction:column;gap:2px}
+.alloc-row{display:flex;flex-direction:column;gap:0}
+.alloc-row .top{display:flex;justify-content:space-between;align-items:baseline;font-size:7.5pt}
+.alloc-row .lbl{color:#fff;font-weight:500}
+.alloc-row .pct{font-family:var(--mono);font-size:7pt;color:var(--accent);letter-spacing:0.06em}
+.alloc-row .bar{height:4px;background:#2E2A24;border-radius:2px;overflow:hidden}
+.alloc-row .bar div{height:100%;background:var(--accent)}
+
+/* ---------- Footer ---------- */
+.footer{
+  margin-top:auto;
+  border-top:1px solid var(--line);padding-top:5px;
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;
+  align-items:flex-start;
+}
+.footer .col{display:flex;flex-direction:column;gap:1px}
+.footer .k{
+  font-family:var(--mono);font-size:6pt;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);
+}
+.footer .v{font-size:7.5pt;color:var(--ink);font-weight:500;letter-spacing:-0.005em}
+.footer .v small{display:block;font-weight:400;color:var(--muted);margin-top:1px}
+.footer .conf{
+  font-family:var(--mono);font-size:5.8pt;color:var(--muted-2);letter-spacing:0.12em;line-height:1.5;
+  text-align:right;text-transform:uppercase;
+}
+
+/* utility */
+.flag-projected{
+  font-family:var(--mono);font-size:5.5pt;letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--accent-ink);background:var(--accent-soft);
+  padding:1px 5px;border-radius:3px;font-weight:500;vertical-align:1px;
+  margin-left:5px;
+}
+</style>
+</head>
+<body>
+
+<div class="sheet">
+
+  <!-- ============ HEADER ============ -->
+  <header class="header">
+    <div class="brand">
+      <svg class="glyph" viewBox="0 0 24 24" fill="#993C1D" fill-opacity="0.2" stroke="#993C1D" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
+        <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      </svg>
+      <span class="word">Roofly.my</span>
+    </div>
+    <div class="doc-meta">
+      <span class="v">Pricing &amp; Financial Summary <span class="when">· May 2026</span></span>
+      <span class="pill"><span class="dot"></span>Seed</span>
+    </div>
+  </header>
+
+  <!-- ============ SECTION 1 — PRICING ============ -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">01</span>
+      <h2>Pricing tiers</h2>
+      <span class="sep">—</span>
+      <p class="lede">Four-tier SaaS pricing. Free is acquisition, Pro carries the median portfolio, Business serves agents.</p>
+    </div>
+
+    <div class="tiers">
+
+      <div class="tier">
+        <div class="name">Free</div>
+        <div class="price"><span class="v">0</span><span class="u">RM / mo</span></div>
+        <div class="row"><span class="k">Units</span><span class="v">Up to 2</span></div>
+        <div class="row"><span class="k">Best for</span><span class="v">Single-property owners</span></div>
+        <div class="row"><span class="k">Annual save</span><span class="v">—</span></div>
+      </div>
+
+      <div class="tier">
+        <div class="name">Starter</div>
+        <div class="price"><span class="v">29</span><span class="u">RM / mo</span></div>
+        <div class="row"><span class="k">Units</span><span class="v">Up to 5</span></div>
+        <div class="row"><span class="k">Best for</span><span class="v">Small landlords</span></div>
+        <div class="row"><span class="k">Annual save</span><span class="v save">RM 58 · 2 mo free</span></div>
+      </div>
+
+      <div class="tier feature">
+        <span class="badge">Most popular</span>
+        <div class="name">Pro</div>
+        <div class="price"><span class="v">79</span><span class="u">RM / mo</span></div>
+        <div class="row"><span class="k">Units</span><span class="v">Up to 25</span></div>
+        <div class="row"><span class="k">Best for</span><span class="v">Growing portfolios</span></div>
+        <div class="row"><span class="k">Annual save</span><span class="v save">RM 158 · 2 mo free</span></div>
+      </div>
+
+      <div class="tier">
+        <div class="name">Business</div>
+        <div class="price"><span class="v">199</span><span class="u">RM / mo</span></div>
+        <div class="row"><span class="k">Units</span><span class="v">Unlimited</span></div>
+        <div class="row"><span class="k">Best for</span><span class="v">Agents &amp; multi-org</span></div>
+        <div class="row"><span class="k">Annual save</span><span class="v save">RM 398 · 2 mo free</span></div>
+      </div>
+
+    </div>
+
+    <div class="caption">
+      <span>Annual billing offers two months free across all paid tiers.</span>
+      <em>SaaS pricing — not commission-based.</em>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 2 — UNIT ECONOMICS ============ -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">02</span>
+      <h2>Unit economics &amp; burn</h2>
+      <span class="sep">—</span>
+      <p class="lede">Per-customer profitability on the left; full monthly burn and 12-month runway on the right.</p>
+    </div>
+
+    <div class="unit">
+
+      <div class="box">
+        <div class="head">
+          <h3>Per-customer economics</h3>
+          <span class="tag projected">Projected</span>
+        </div>
+        <div class="metrics fill">
+          <div class="metric">
+            <div class="lbl">Average revenue per user<small>Monthly subscription · blended Starter + Pro tier mix</small></div>
+            <div class="val">RM 70</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Customer acquisition cost<small>Founder-led and organic only · first 100 customers</small></div>
+            <div class="val">RM 80</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Customer lifetime value<small>Average revenue per user × 24-month retention</small></div>
+            <div class="val">RM 1,680</div>
+          </div>
+          <div class="metric total">
+            <div class="lbl">Lifetime value to acquisition ratio<small>Every RM 1 spent on acquisition returns RM 21</small></div>
+            <div class="val">21 : 1</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box dark">
+        <div class="head">
+          <h3>Monthly business burn</h3>
+          <span class="tag">Operating forecast</span>
+        </div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="lbl">Founder draw<small>Solo founder · starter salary, pre-revenue</small></div>
+            <div class="val">RM 3,000</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Marketing &amp; content<small>Light paid testing + content tooling</small></div>
+            <div class="val">RM 1,000</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">SaaS infrastructure<small>Hostinger VPS &amp; mailbox, Cloudflare R2, WhatsApp Cloud API · ~97% gross margin at 100 customers</small></div>
+            <div class="val">RM 190</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Tools &amp; subscriptions<small>Design, dev, accounting, ops software</small></div>
+            <div class="val">RM 300</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Legal &amp; compliance<small>SSM, agreement templates, T&amp;Cs · annualized</small></div>
+            <div class="val">RM 200</div>
+          </div>
+          <div class="metric total">
+            <div class="lbl">Total monthly burn<small>× 12 months ≈ RM 56,000 seed runway</small></div>
+            <div class="val">RM 4,690</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="unit-footnote">
+        Per-customer figures are projections, to be validated during the pilot.
+Monthly burn combines actual May 2026 vendor invoices with a modest solo-founder draw, light paid acquisition, and core operating expenses. This reflects a solo build with no contractor spend.
+Free-tier services excluded from the burn: Cloudflare DNS (roofly.com), Resend (transactional email), and Billplz (transaction fees passed to users). Cloudflare is expected to migrate to the Business plan (~USD 250/mo) once edge traffic justifies it.
+At this run rate, twelve months of runway sizes the seed ask at RM 56,000.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 3 — PROJECTIONS ============ -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">03</span>
+      <h2>Revenue projections<span class="flag-projected">Projected</span></h2>
+      <span class="sep">—</span>
+      <p class="lede">Conservative — Starter+Pro mix, organic-only, no enterprise deals.</p>
+    </div>
+
+    <table class="proj-table">
+      <thead>
+        <tr>
+          <th>Milestone</th>
+          <th style="text-align:right">Customers</th>
+          <th style="text-align:right">Monthly revenue (RM)</th>
+          <th style="text-align:right">Annual revenue (RM)</th>
+          <th>Trajectory</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="milestone">Beta close<span class="when">Month 6</span></td>
+          <td class="num">10 free</td>
+          <td class="num">0</td>
+          <td class="num">0</td>
+          <td class="bar"><div class="barwrap"><div style="width:1%"></div></div></td>
+        </tr>
+        <tr class="now">
+          <td class="milestone">Public launch<span class="when">Month 9</span></td>
+          <td class="num">50</td>
+          <td class="num">3,500</td>
+          <td class="num">42,000</td>
+          <td class="bar"><div class="barwrap"><div style="width:3.3%"></div></div></td>
+        </tr>
+        <tr>
+          <td class="milestone">Year 1 close<span class="when">Month 12</span></td>
+          <td class="num">150</td>
+          <td class="num">10,500</td>
+          <td class="num">126,000</td>
+          <td class="bar"><div class="barwrap"><div style="width:10%"></div></div></td>
+        </tr>
+        <tr>
+          <td class="milestone">Year 2 target<span class="when">Month 24</span></td>
+          <td class="num">500</td>
+          <td class="num">35,000</td>
+          <td class="num">420,000</td>
+          <td class="bar"><div class="barwrap"><div style="width:33.3%"></div></div></td>
+        </tr>
+        <tr>
+          <td class="milestone">Year 3 target<span class="when">Month 36</span></td>
+          <td class="num">1,500</td>
+          <td class="num">105,000</td>
+          <td class="num">1,260,000</td>
+          <td class="bar"><div class="barwrap"><div style="width:100%">RM 1.26M annual revenue</div></div></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="caption" style="margin-top:5px">
+      <span>Each customer averages RM 70/mo (blended Starter + Pro) ·<br> organic acquisition · no enterprise deals.</span>
+      <em>All figures pending pilot validation.</em>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 4 — THE ASK ============ -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">04</span>
+      <h2>The ask</h2>
+      <span class="sep">—</span>
+      <p class="lede">A focused seed round to complete backend, fund 12-month runway, and onboard the pilot cohort.</p>
+    </div>
+
+    <div class="ask">
+
+      <div class="box">
+        <div class="head">
+          <h3>What we're seeking</h3>
+          <span class="tag">Seed stage</span>
+        </div>
+        <div class="seek-list">
+          <div class="seek-item">
+            <span class="n">01</span>
+            <div>
+              <h4>Strategic pilot partners</h4>
+              <p>5–10 Klang Valley landlords willing to co-build the early product loop.</p>
+            </div>
+          </div>
+          <div class="seek-item">
+            <span class="n">02</span>
+            <div>
+              <h4>Early product validation</h4>
+              <p>Retention behaviour, onboarding friction, willingness to pay at the Pro tier.</p>
+            </div>
+          </div>
+          <div class="seek-item">
+            <span class="n">03</span>
+            <div>
+              <h4>Seed-stage support<span class="tbd">Amount TBD</span></h4>
+              <p>Capital sized to a 12-month operational runway — exact number to be set with lead investor.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box dark">
+        <div class="head">
+          <h3>Use of funds</h3>
+          <span class="tag">Allocation</span>
+        </div>
+        <div class="alloc">
+          <div class="alloc-row">
+            <div class="top"><span class="lbl">Backend completion · Phases 3–6</span><span class="pct">40%</span></div>
+            <div class="bar"><div style="width:40%"></div></div>
+          </div>
+          <div class="alloc-row">
+            <div class="top"><span class="lbl">Infrastructure &amp; operational runway · 12 mo</span><span class="pct">25%</span></div>
+            <div class="bar"><div style="width:25%"></div></div>
+          </div>
+          <div class="alloc-row">
+            <div class="top"><span class="lbl">Beta onboarding &amp; founder-led sales</span><span class="pct">20%</span></div>
+            <div class="bar"><div style="width:20%"></div></div>
+          </div>
+          <div class="alloc-row">
+            <div class="top"><span class="lbl">Marketing site &amp; content</span><span class="pct">10%</span></div>
+            <div class="bar"><div style="width:10%"></div></div>
+          </div>
+          <div class="alloc-row">
+            <div class="top"><span class="lbl">Legal · agreement template review, T&amp;C</span><span class="pct">5%</span></div>
+            <div class="bar"><div style="width:5%"></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="col">
+      <span class="k">Founder</span>
+      <span class="v">Ahmad Baihaqie (Qie)<small>Axel Nova Enterprise</small></span>
+    </div>
+    <div class="col">
+      <span class="k">Contact</span>
+      <span class="v">baihaqie@axelnova.tech<small>linkedin.com/in/baihaqie</small></span>
+    </div>
+    <div class="conf">
+      Confidential. Prepared for prospective pilot partners and investors. Do not redistribute. Figures marked projected are forecasts pending pilot validation.
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>
