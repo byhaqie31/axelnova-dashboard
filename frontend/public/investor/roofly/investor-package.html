@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roofly — Investor Package</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAFAF7;
+  --bg-elev:#F4F2EC;
+  --ink:#1A1A1A;
+  --ink-2:#3C3A36;
+  --muted:#7A736B;
+  --muted-2:#A8A199;
+  --line:#E5E1D8;
+  --line-2:#EFEBE2;
+  --accent:#E76F51;
+  --accent-soft:#F7E2DA;
+  --accent-ink:#B0492E;
+
+  --serif:'Fraunces','Iowan Old Style','Georgia',serif;
+  --sans:'Inter',system-ui,-apple-system,'Helvetica Neue',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+@page{ size: A4 portrait; margin: 0; }
+
+html,body{
+  background:#3C3A36;
+  font-family:var(--sans);
+  color:var(--ink);
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
+}
+
+/* A4 portrait sheet — 210 × 297 mm */
+.sheet{
+  width:210mm;
+  height:297mm;
+  background:var(--bg);
+  margin:24px auto;
+  padding:9mm 13mm 8mm;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  box-shadow:0 30px 80px -30px rgba(0,0,0,.4);
+  font-size:8.5pt;
+  line-height:1.3;
+  color:var(--ink-2);
+  font-feature-settings:"tnum" 1, "lnum" 1;
+  overflow:hidden;
+}
+
+@media print{
+  html,body{background:#fff}
+  .sheet{margin:0;box-shadow:none;width:210mm;height:297mm;page-break-after:avoid;break-after:avoid}
+}
+
+/* ---------- Header ---------- */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding-bottom:5px;
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .glyph{width:24px;height:24px;flex-shrink:0}
+.brand .word{
+  font-family:var(--sans);font-weight:600;
+  font-size:13pt;letter-spacing:-0.022em;color:var(--ink);line-height:1;
+}
+
+.doc-meta{
+  display:flex;flex-direction:row;gap:10px;align-items:center;
+}
+.doc-meta .v{
+  font-size:9pt;font-weight:500;color:var(--ink);letter-spacing:-0.005em;
+}
+.doc-meta .v .when{
+  color:var(--muted);font-weight:400;font-family:var(--mono);
+  font-size:7.5pt;letter-spacing:0.04em;margin-left:6px;
+}
+.doc-meta .pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:6.5pt;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--accent-ink);background:var(--accent-soft);
+  padding:4px 8px;border-radius:999px;
+}
+.doc-meta .pill .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+
+/* ---------- Section heads ---------- */
+.section{
+  margin-top:14px;padding-bottom:10px;
+  display:flex;flex-direction:column;
+}
+.section:last-of-type{padding-bottom:0}
+.section-head{
+  display:flex;align-items:baseline;gap:10px;
+  margin-bottom:6px;
+}
+.section-head .num{
+  font-family:var(--mono);font-size:10.5pt;letter-spacing:0.04em;
+  color:var(--accent);font-weight:500;line-height:1.1;
+}
+.section-head h2{
+  font-family:var(--sans);font-weight:500;font-size:10.5pt;letter-spacing:-0.02em;color:var(--ink);
+  line-height:1.1;
+}
+.section-head .sep{
+  color:var(--muted-2);font-weight:300;font-size:9pt;line-height:1;
+}
+.section-head .lede{
+  flex:1;font-size:8pt;color:var(--muted);line-height:1.3;letter-spacing:-0.005em;
+}
+
+/* ---------- Boxes (shared from pricing summary) ---------- */
+.unit{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+}
+.box{
+  border:1px solid var(--line);border-radius:8px;background:#fff;
+  padding:7px 9px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.box.dark{
+  background:var(--ink);color:#E8E2D6;border-color:var(--ink);
+}
+.box .head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  border-bottom:1px solid var(--line);padding-bottom:3px;margin-bottom:0;
+}
+.box.dark .head{border-color:#2E2A24}
+.box .head h3{
+  font-size:8.2pt;font-weight:600;color:var(--ink);letter-spacing:-0.01em;
+}
+.box.dark .head h3{color:#fff}
+.box .head .tag{
+  font-family:var(--mono);font-size:6pt;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);
+}
+.box .head .tag.accent{
+  color:var(--accent-ink);background:var(--accent-soft);
+  padding:2px 7px;border-radius:3px;font-weight:500;
+}
+.box.dark .head .tag{color:var(--accent)}
+.box.dark .head .tag.accent{
+  color:var(--accent);background:rgba(231,111,81,.18);
+}
+
+.metrics{display:flex;flex-direction:column;gap:0}
+.metric{
+  display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
+  padding:3px 0;border-bottom:1px dashed var(--line);
+}
+.box.dark .metric{border-color:#2E2A24}
+.metric:last-child{border-bottom:0}
+.metric .lbl{font-size:7.5pt;color:var(--ink-2);font-weight:500}
+.box.dark .metric .lbl{color:#E8E2D6}
+.metric .lbl small{display:block;font-size:6.2pt;color:var(--muted);font-weight:400;margin-top:0;letter-spacing:-0.005em;line-height:1.25}
+.box.dark .metric .lbl small{color:#9C958B}
+.metric .val{
+  font-family:var(--serif);font-weight:400;font-size:10.5pt;letter-spacing:-0.02em;color:var(--ink);
+  font-variant-numeric:tabular-nums;line-height:1;
+}
+.box.dark .metric .val{color:#fff}
+
+.metric.total{
+  background:var(--bg-elev);
+  margin:2px -9px -7px;padding:4px 9px;
+  border-top:1px solid var(--line);border-bottom:0;
+  border-radius:0 0 7px 7px;
+}
+.box.dark .metric.total{background:#2E2A24;border-color:#2E2A24}
+.metric.total .lbl{font-weight:600;color:var(--ink)}
+.box.dark .metric.total .lbl{color:#fff}
+.metric.total .val{font-size:11.5pt;color:var(--ink)}
+
+.metrics.fill{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.metrics.fill .metric:not(.total){
+  flex:1;
+  align-items:center;
+  padding:6px 0;
+}
+.metrics.fill .metric .val{font-size:14pt}
+.metrics.fill .metric.total{margin-top:auto}
+.metrics.fill .metric.total .val{font-size:17pt}
+
+.unit-footnote{
+  grid-column:1 / -1;
+  font-family:var(--mono);font-size:6.2pt;letter-spacing:0.08em;color:var(--muted);
+  margin-top:2px;line-height:1.4;
+  text-align:justify;
+}
+
+/* ---------- Section 02 — Benefits grid ---------- */
+.benefits{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;
+}
+.benefit{
+  border:1px solid var(--line);border-radius:8px;background:#fff;
+  padding:8px 10px;
+  display:grid;grid-template-columns:24px 1fr;gap:10px;align-items:flex-start;
+}
+.benefit .n{
+  font-family:var(--mono);font-size:6.8pt;letter-spacing:0.16em;color:var(--accent);
+  font-weight:500;padding-top:2px;
+}
+.benefit h4{
+  font-size:8.5pt;font-weight:600;color:var(--ink);letter-spacing:-0.01em;
+  line-height:1.2;margin-bottom:3px;
+}
+.benefit p{
+  font-size:7pt;color:var(--muted);line-height:1.4;letter-spacing:-0.005em;
+}
+
+/* ---------- Section 03 — Legal table ---------- */
+.legal{
+  border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden;
+}
+.legal-row{
+  display:grid;grid-template-columns:170px 1fr;gap:14px;
+  padding:5px 12px;
+  border-bottom:1px solid var(--line-2);
+  align-items:start;
+}
+.legal-row:last-child{border-bottom:0}
+.legal-row .k{
+  font-family:var(--mono);font-size:6.4pt;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;padding-top:2px;line-height:1.3;
+}
+.legal-row .v{
+  font-size:7.6pt;color:var(--ink);font-weight:500;line-height:1.35;letter-spacing:-0.005em;
+}
+.legal-row .v small{
+  display:block;font-size:6.5pt;color:var(--muted);font-weight:400;
+  margin-top:1px;letter-spacing:-0.005em;line-height:1.3;
+}
+
+.legal-disclaimer{
+  margin-top:6px;
+  font-family:var(--mono);font-size:6.2pt;letter-spacing:0.08em;color:var(--muted);
+  line-height:1.4;text-align:justify;
+}
+.legal-disclaimer em{
+  font-style:normal;color:var(--accent-ink);font-weight:500;
+  background:var(--accent-soft);padding:1px 5px;border-radius:3px;letter-spacing:0.14em;
+}
+
+/* ---------- Footer ---------- */
+.footer{
+  margin-top:auto;
+  border-top:1px solid var(--line);padding-top:5px;
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;
+  align-items:flex-start;
+}
+.footer .col{display:flex;flex-direction:column;gap:1px}
+.footer .k{
+  font-family:var(--mono);font-size:6pt;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);
+}
+.footer .v{font-size:7.5pt;color:var(--ink);font-weight:500;letter-spacing:-0.005em}
+.footer .v small{display:block;font-weight:400;color:var(--muted);margin-top:1px}
+.footer .conf{
+  font-family:var(--mono);font-size:5.8pt;color:var(--muted-2);letter-spacing:0.12em;line-height:1.5;
+  text-align:right;text-transform:uppercase;
+}
+</style>
+</head>
+<body>
+
+<div class="sheet">
+
+  <!-- ============ HEADER ============ -->
+  <header class="header">
+    <div class="brand">
+      <svg class="glyph" viewBox="0 0 24 24" fill="#993C1D" fill-opacity="0.2" stroke="#993C1D" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
+        <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      </svg>
+      <span class="word">Roofly.my</span>
+    </div>
+    <div class="doc-meta">
+      <span class="v">Investor Package <span class="when">· May 2026</span></span>
+      <span class="pill"><span class="dot"></span>Seed</span>
+    </div>
+  </header>
+
+  <!-- ============ SECTION 1 — INVESTOR PACKAGE ============ -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">01</span>
+      <h2>Investor package</h2>
+      <span class="sep">—</span>
+      <p class="lede">RM 56,000 SAFE for 12 months operational runway. Pre-priced cap, simple instrument, rolling close.</p>
+    </div>
+
+    <div class="unit">
+
+      <div class="box">
+        <div class="head">
+          <h3>Headline terms</h3>
+          <span class="tag accent">SAFE</span>
+        </div>
+        <div class="metrics fill">
+          <div class="metric">
+            <div class="lbl">Amount sought<small>Sized to 12-month operational runway (Section 02 burn × 12)</small></div>
+            <div class="val">RM 56,000</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Valuation cap<small>Pre-money · negotiable with lead investor</small></div>
+            <div class="val">RM 750,000</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Discount rate<small>Applied at next priced round, lower of cap or discount</small></div>
+            <div class="val">20%</div>
+          </div>
+          <div class="metric total">
+            <div class="lbl">Implied ownership at conversion<small>Full RM 56K ticket at RM 750K cap</small></div>
+            <div class="val">~7%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box dark">
+        <div class="head">
+          <h3>Where the RM 56,000 goes</h3>
+          <span class="tag">12-month plan</span>
+        </div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="lbl">Founder draw<small>RM 3,000/mo × 12 · solo founder, pre-revenue</small></div>
+            <div class="val">RM 36,000</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Marketing &amp; content<small>RM 1,000/mo × 12 · light paid testing</small></div>
+            <div class="val">RM 12,000</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">SaaS infrastructure<small>RM 190/mo × 12 · Hostinger, R2, WhatsApp, mailbox</small></div>
+            <div class="val">RM 2,280</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Tools &amp; subscriptions<small>RM 300/mo × 12 · design, dev, accounting</small></div>
+            <div class="val">RM 3,600</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">Legal &amp; compliance<small>RM 200/mo × 12 · SAFE drafting, T&amp;Cs, SSM</small></div>
+            <div class="val">RM 2,400</div>
+          </div>
+          <div class="metric total">
+            <div class="lbl">Total deployed<small>RM 280 slack absorbed in operating buffer</small></div>
+            <div class="val">RM 56,280</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="unit-footnote">
+        SAFE (Simple Agreement for Future Equity) avoids fixing a valuation today. Investor commits capital now, equity is determined at next priced round at the lower of valuation cap or discount. Rolling close means commitments are accepted as they come, with no waiting for full round to clear. Allocation per category derived from monthly burn shown in the Pricing &amp; Financial Summary, Section 02.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 2 — INVESTOR BENEFITS ============ -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">02</span>
+      <h2>Investor benefits</h2>
+      <span class="sep">—</span>
+      <p class="lede">What backers get beyond equity. Practical, deliverable, no fluff.</p>
+    </div>
+
+    <div class="benefits">
+
+      <div class="benefit">
+        <span class="n">01</span>
+        <div>
+          <h4>Monthly investor update</h4>
+          <p>One-page email every month covering revenue, burn, customers, key learnings, and asks. First update sent within 30 days of close. Standard information rights.</p>
+        </div>
+      </div>
+
+      <div class="benefit">
+        <span class="n">02</span>
+        <div>
+          <h4>Pro-rata rights for next round</h4>
+          <p>Right to maintain ownership percentage in the next priced funding round. Protects against dilution as Roofly scales beyond seed.</p>
+        </div>
+      </div>
+
+      <div class="benefit">
+        <span class="n">03</span>
+        <div>
+          <h4>Free Roofly Business tier for life</h4>
+          <p>Lifetime access to the Business plan (RM 199/mo, unlimited units). Useful if investor owns or manages rental property. Converts backer into power user.</p>
+        </div>
+      </div>
+
+      <div class="benefit">
+        <span class="n">04</span>
+        <div>
+          <h4>Advisory access · 30-min monthly call</h4>
+          <p>Direct line to the founder for operational decisions, strategy questions, or product feedback. Optional, with no obligation to use it.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ SECTION 3 — LEGAL & STRUCTURE ============ -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">03</span>
+      <h2>Legal &amp; structure</h2>
+      <span class="sep">—</span>
+      <p class="lede">The frame your lawyer will check first. Standard or founder-friendly across the board.</p>
+    </div>
+
+    <div class="legal">
+      <div class="legal-row">
+        <span class="k">Investing entity</span>
+        <span class="v">Axel Nova Ventures<small>Currently SSM-registered as Axel Nova Ventures Enterprise (sole proprietorship). Conversion to Axel Nova Ventures Sdn Bhd completed prior to SAFE signing, as required for issuing equity under Malaysian company law. Roofly is the primary product within Axel Nova Ventures. SSM incorporation cost approximately RM 1,000, included in the Legal &amp; compliance budget.</small></span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Instrument</span>
+        <span class="v">SAFE (Simple Agreement for Future Equity)<small>No fixed valuation today; converts at next priced round</small></span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Governing law</span>
+        <span class="v">Malaysia · Companies Act 2016</span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Investor declaration</span>
+        <span class="v">Sophisticated Investor under Securities Commission Capital Markets &amp; Services Act 2007, <br> Schedule 6/7<small>Required for unregulated private placement; investor self-certifies</small></span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Founder vesting</span>
+        <span class="v">4-year vesting · 1-year cliff<small>Standard founder commitment signal. Protects investors against founder departure.</small></span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Liquidation preference</span>
+        <span class="v">1× non-participating<small>Investor receives investment back first at exit, then participates pro-rata in remainder</small></span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Anti-dilution</span>
+        <span class="v">Weighted-average, broad-based<small>Standard founder-friendly protection against down rounds</small></span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Drag-along · tag-along</span>
+        <span class="v">Yes — standard rights<small>Drag protects majority sale; tag protects minority investors at exit</small></span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Conversion trigger</span>
+        <span class="v">Next priced round of RM 500,000 or more<small>Or change of control / acquisition event, whichever first</small></span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Conversion price</span>
+        <span class="v">Lower of RM 750K cap or 20% discount to round price<small>Whichever is more favourable to the investor</small></span>
+      </div>
+      <div class="legal-row">
+        <span class="k">Future restructuring</span>
+        <span class="v">Investor stake follows Roofly economics<small>If Roofly is later moved to a separate Sdn Bhd, investor receives equivalent equity in that entity at no additional cost. Preserves the original economic interest tied to the Roofly product.</small></span>
+      </div>
+    </div>
+
+    <p class="legal-disclaimer">
+      This document is a starting framework for discussion, not a legal opinion. Final SAFE terms to be drafted, reviewed, and signed under qualified Malaysian counsel. Investors should obtain independent advice before committing capital. Estimated drafting cost RM 1,500 to RM 3,000, already accounted for in the Legal &amp; compliance line of the operational budget.
+    </p>
+  </section>
+
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,1822 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roofly — Investor pitch</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="application/json" id="speaker-notes">[
+"",
+"Three pain points — fragmented tools, missed obligations, no tenant visibility. Most landlords with 1 to 20 units run their portfolio out of WhatsApp threads, Excel files, and memory.",
+"Independent landlord SaaS in Malaysia is structurally underserved. Listing platforms own acquisition, enterprise software is built for Western markets. The middle is empty.",
+"Mid-market gap — between listing platforms focused on acquisition and enterprise software priced for institutional portfolios. Roofly is the operations layer for everyone in between.",
+"Roofly is the operating system for what happens after the tenant moves in. One workspace for agreements, payments, maintenance, receipts, reporting.",
+"Seven localization wedges. Together they make Roofly feel native — not a global product translated into Malay.",
+"Owner experience grouped by the five product pillars. Every feature maps back to one of these.",
+"The tenant side mirrors the owner workflow. Self-service reduces the 'where's my receipt' WhatsApp messages by an order of magnitude.",
+"Competitor map. Roofly does not compete with listing platforms — it picks up after they finish.",
+"UX risk is already retired. The frontend works today on mock services. A single useMock toggle promotes each module to live backend as it ships.",
+"Stack chosen for long-horizon SaaS scalability. Boring, proven, multi-tenant ready from day one.",
+"Free tier is an acquisition funnel, not a destination. Two units lets a landlord experience the product; growing portfolios trigger natural upgrades.",
+"Four-phase rollout — founder-led beta, organic referrals, content-led acquisition, agent expansion.",
+"Klang Valley pilot. Five to ten landlords, two to three months, free onboarding. We are validating retention behaviour, not vanity metrics.",
+"Seven-phase product roadmap. Phases 1 through 6 are scoped; phase 7 begins the public beta.",
+"What we are seeking and where the capital goes. Specific and credible — no inflated numbers.",
+"Founder background. Nearly a decade in fintech, payments, and operational tooling. Founder–market fit is the thesis.",
+""
+]</script>
+<style>
+:root{
+  --bg:#FAFAF7;
+  --bg-elev:#F4F2EC;
+  --ink:#1A1A1A;
+  --ink-2:#3C3A36;
+  --muted:#7A736B;
+  --muted-2:#A8A199;
+  --line:#E5E1D8;
+  --line-2:#EFEBE2;
+  --accent:#E76F51;
+  --accent-soft:#F7E2DA;
+  --accent-ink:#B0492E;
+  --warm:#F0EBE0;
+
+  --type-display:120px;
+  --type-title:64px;
+  --type-subtitle:40px;
+  --type-lead:32px;
+  --type-body:26px;
+  --type-small:22px;
+  --type-micro:16px;
+
+  --pad-top:96px;
+  --pad-bottom:88px;
+  --pad-x:104px;
+  --gap-title:48px;
+  --gap-item:24px;
+
+  --serif:'Fraunces', 'Iowan Old Style', 'Georgia', serif;
+  --sans:'Inter', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0E0D0B;color:var(--ink);font-family:var(--sans);}
+body{overflow:hidden}
+
+deck-stage{background:#0E0D0B}
+deck-stage section{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:var(--type-body);
+  line-height:1.5;
+  letter-spacing:-0.005em;
+  overflow:hidden;
+  position:relative;
+}
+
+/* ---------- Persistent chrome ---------- */
+.mark{
+  position:absolute;
+  top:48px; left:var(--pad-x);
+  display:flex;align-items:center;gap:14px;
+  font-size:var(--type-small);
+  font-weight:500;
+  letter-spacing:-0.01em;
+  color:var(--ink);
+  z-index:5;
+}
+.mark .glyph{width:34px;height:34px}
+.mark .word{font-weight:600;letter-spacing:-0.02em}
+
+.eyebrow{
+  position:absolute;
+  top:48px; right:var(--pad-x);
+  display:flex;align-items:center;gap:14px;
+  font-size:var(--type-micro);
+  font-family:var(--mono);
+  text-transform:uppercase;
+  letter-spacing:0.16em;
+  color:var(--muted);
+  z-index:5;
+}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+
+.foot{
+  position:absolute;
+  bottom:48px;left:var(--pad-x);right:var(--pad-x);
+  display:flex;justify-content:space-between;align-items:flex-end;
+  font-size:var(--type-micro);
+  font-family:var(--mono);
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--muted-2);
+  z-index:5;
+}
+
+/* ---------- Layout helpers ---------- */
+.frame{
+  position:absolute;
+  inset:var(--pad-top) var(--pad-x) var(--pad-bottom);
+  display:flex;flex-direction:column;
+}
+
+.section-label{
+  font-family:var(--mono);
+  font-size:var(--type-micro);
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:32px;
+}
+.section-label .num{color:var(--accent);margin-right:14px;font-weight:500}
+
+h1.title{
+  font-family:var(--sans);
+  font-weight:500;
+  font-size:var(--type-title);
+  line-height:1.05;
+  letter-spacing:-0.03em;
+  color:var(--ink);
+  text-wrap:balance;
+}
+.subtitle{
+  font-size:var(--type-lead);
+  font-weight:400;
+  line-height:1.35;
+  color:var(--ink-2);
+  letter-spacing:-0.015em;
+  max-width:1200px;
+  margin-top:28px;
+  text-wrap:pretty;
+}
+.kicker{
+  font-family:var(--mono);
+  font-size:var(--type-micro);
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--accent-ink);
+  margin-bottom:20px;
+}
+
+.serif{font-family:var(--serif);font-weight:400;font-style:normal}
+.serif-i{font-family:var(--serif);font-weight:300;font-style:italic}
+
+/* ---------- Slide 1 — Cover ---------- */
+.cover{background:var(--bg)}
+.cover .grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(to right, rgba(26,26,26,.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(26,26,26,.04) 1px, transparent 1px);
+  background-size:120px 120px;
+  background-position:50% 50%;
+  pointer-events:none;
+}
+.cover-inner{
+  position:absolute;inset:0;
+  display:grid;
+  grid-template-columns:1.05fr 1fr;
+}
+.cover-left{
+  padding:var(--pad-top) 80px var(--pad-bottom) var(--pad-x);
+  display:flex;flex-direction:column;justify-content:space-between;
+  position:relative;
+}
+.cover-right{
+  background:linear-gradient(160deg,#FBEDE5 0%, #F2D7C9 100%);
+  position:relative;overflow:hidden;
+  border-left:1px solid var(--line);
+}
+.cover-right::after{
+  content:"";position:absolute;inset:0;
+  background-image:
+    linear-gradient(to right, rgba(176,73,46,.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(176,73,46,.08) 1px, transparent 1px);
+  background-size:80px 80px;
+  pointer-events:none;
+}
+.house-art{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.cover-meta{display:flex;flex-direction:column;gap:18px}
+.cover-meta .pill{
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:var(--type-small);font-weight:500;
+  padding:10px 16px;border:1px solid var(--line);border-radius:999px;
+  background:#fff;width:max-content;
+  color:var(--ink-2);
+}
+.cover-meta .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.cover-wordmark{
+  font-family:var(--serif);
+  font-weight:300;
+  font-size:200px;
+  line-height:0.92;
+  letter-spacing:-0.05em;
+  color:var(--ink);
+  margin-top:12px;
+}
+.cover-wordmark .dot{color:var(--accent)}
+.cover-tag{
+  font-size:var(--type-lead);
+  color:var(--ink-2);
+  font-weight:400;
+  letter-spacing:-0.015em;
+  margin-top:32px;
+  max-width:560px;
+}
+.cover-bm{
+  font-family:var(--serif);
+  font-style:italic;
+  font-weight:300;
+  font-size:var(--type-body);
+  color:var(--accent-ink);
+  margin-top:14px;
+}
+.cover-bottom{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;
+  font-size:var(--type-micro);
+  font-family:var(--mono);
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+  border-top:1px solid var(--line);
+  padding-top:24px;
+}
+.cover-bottom strong{color:var(--ink);font-weight:500;display:block;margin-top:6px;font-family:var(--sans);text-transform:none;letter-spacing:-0.01em;font-size:var(--type-small)}
+
+/* ---------- Generic content cards ---------- */
+.card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:36px;
+  display:flex;flex-direction:column;
+  position:relative;
+}
+.card .num{
+  font-family:var(--mono);
+  font-size:var(--type-micro);
+  color:var(--muted);
+  letter-spacing:0.15em;
+  margin-bottom:18px;
+}
+.card h3{
+  font-size:var(--type-lead);
+  font-weight:500;
+  letter-spacing:-0.02em;
+  color:var(--ink);
+  margin-bottom:14px;
+  line-height:1.2;
+}
+.card p{
+  font-size:var(--type-small);
+  color:var(--ink-2);
+  line-height:1.5;
+}
+
+/* ---------- Slide 2 — Problem ---------- */
+.problem-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:28px;
+  margin-top:auto;
+}
+.problem-grid .card{min-height:340px;justify-content:space-between}
+.chaos{
+  display:flex;flex-direction:column;gap:8px;margin-top:auto;
+}
+.chaos .row{
+  display:flex;gap:8px;flex-wrap:wrap;
+}
+.chip{
+  font-family:var(--mono);
+  font-size:14px;
+  padding:7px 11px;
+  border-radius:6px;
+  background:var(--bg-elev);
+  color:var(--ink-2);
+  border:1px solid var(--line);
+  letter-spacing:0.04em;
+}
+.chip.warn{color:var(--accent-ink);background:var(--accent-soft);border-color:#ECC9BC}
+
+/* ---------- Slide 3 — Why now ---------- */
+.hero-stat{
+  display:flex;flex-direction:column;
+  margin-top:auto;
+}
+.hero-stat .big{
+  font-family:var(--serif);
+  font-weight:300;
+  font-size:240px;
+  line-height:0.9;
+  letter-spacing:-0.05em;
+  color:var(--ink);
+}
+.hero-stat .big sup{
+  font-size:0.35em;color:var(--accent);font-weight:400;vertical-align:top;margin-left:8px;
+}
+.hero-stat .legend{
+  margin-top:24px;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:48px;
+  border-top:1px solid var(--line);
+  padding-top:24px;
+}
+.hero-stat .legend p{font-size:var(--type-body);color:var(--ink-2);max-width:720px;line-height:1.4}
+.tailwind-list{
+  display:flex;flex-direction:column;gap:18px;font-size:var(--type-small);
+}
+.tailwind-list .row{display:flex;gap:14px;align-items:flex-start}
+.tailwind-list .num{
+  font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:0.1em;min-width:32px;padding-top:4px;
+}
+.tailwind-list strong{display:block;font-weight:500;color:var(--ink);font-size:var(--type-small)}
+.tailwind-list span{color:var(--muted);font-size:18px}
+
+/* ---------- Slide 4 — Opportunity ---------- */
+.opp{
+  display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:24px;
+  margin-top:auto;align-items:stretch;
+}
+.opp .col{
+  border:1px solid var(--line);border-radius:18px;padding:36px;
+  background:#fff;display:flex;flex-direction:column;gap:18px;
+  min-height:480px;
+}
+.opp .col.feature{
+  background:var(--ink);color:#fff;border-color:var(--ink);
+  box-shadow:0 24px 60px -30px rgba(231,111,81,.55);
+  position:relative;overflow:hidden;
+}
+.opp .col.feature::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);
+}
+.opp .col h4{font-size:var(--type-small);font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.14em;font-family:var(--mono);font-size:14px}
+.opp .col.feature h4{color:var(--accent-soft)}
+.opp .col h2{font-size:36px;font-weight:500;letter-spacing:-0.02em;line-height:1.15}
+.opp .col.feature h2{color:#fff}
+.opp .col p{color:var(--muted);font-size:var(--type-small);line-height:1.5;margin-top:auto}
+.opp .col.feature p{color:#D8CEC4}
+.opp .col ul{list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.opp .col li{font-size:18px;color:var(--ink-2);font-family:var(--mono)}
+.opp .col.feature li{color:#fff}
+.opp .col li::before{content:"— ";color:var(--accent)}
+
+/* ---------- Slide 5 — Solution ---------- */
+.solution-grid{
+  display:grid;grid-template-columns:0.85fr 1.15fr;gap:48px;
+  align-items:stretch;flex:1;
+}
+.solution-copy{display:flex;flex-direction:column;justify-content:space-between}
+.solution-copy .lead{
+  font-family:var(--serif);font-weight:300;
+  font-size:60px;line-height:1.1;letter-spacing:-0.025em;
+  color:var(--ink);
+}
+.solution-copy .lead em{font-style:italic;color:var(--accent-ink)}
+.solution-copy .body{
+  font-size:var(--type-body);color:var(--ink-2);line-height:1.5;max-width:560px;margin-top:24px;
+}
+.solution-copy .meta{
+  display:flex;gap:32px;border-top:1px solid var(--line);padding-top:24px;
+}
+.solution-copy .meta div{display:flex;flex-direction:column}
+.solution-copy .meta .k{font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+.solution-copy .meta .v{font-size:var(--type-small);color:var(--ink);font-weight:500;margin-top:6px}
+
+.mock{
+  background:#fff;border:1px solid var(--line);border-radius:20px;
+  padding:24px;display:flex;flex-direction:column;gap:18px;
+  box-shadow:0 30px 60px -40px rgba(26,26,26,.18);
+  position:relative;overflow:hidden;
+}
+.mock-bar{display:flex;align-items:center;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.mock-bar .dots{display:flex;gap:6px}
+.mock-bar .dots span{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.mock-bar .url{
+  margin-left:14px;font-family:var(--mono);font-size:14px;color:var(--muted);
+  background:var(--bg-elev);padding:6px 12px;border-radius:8px;flex:1;
+}
+.mock-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.stat-tile{
+  border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:6px;
+}
+.stat-tile .k{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+.stat-tile .v{font-family:var(--serif);font-size:42px;font-weight:300;letter-spacing:-0.02em;color:var(--ink);line-height:1}
+.stat-tile .d{font-size:13px;color:var(--accent-ink);font-weight:500;display:flex;align-items:center;gap:4px}
+.stat-tile.alt{background:var(--ink);color:#fff;border-color:var(--ink)}
+.stat-tile.alt .v{color:#fff}
+.stat-tile.alt .k{color:#9C958B}
+.mock-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:14px;
+}
+.mock-list{
+  border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;
+}
+.mock-list h5{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:4px}
+.mock-list .item{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.mock-list .item:last-child{border:0}
+.mock-list .item .name{color:var(--ink);font-weight:500}
+.mock-list .item .sub{color:var(--muted);font-size:12px;font-family:var(--mono)}
+.mock-list .item .tag{font-family:var(--mono);font-size:11px;padding:3px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent-ink);letter-spacing:0.06em}
+.mock-list .item .tag.ok{background:#E5EFE7;color:#3B6E48}
+.mock-list .item .tag.warn{background:#FBEED4;color:#8C6A1F}
+.mock-chart{
+  border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;height:100%;
+}
+.mock-chart .bars{display:flex;align-items:flex-end;gap:6px;height:90px}
+.mock-chart .bars div{flex:1;background:var(--accent-soft);border-radius:3px 3px 0 0}
+.mock-chart .bars div.hi{background:var(--accent)}
+
+/* ---------- Slide 6 — Why we win ---------- */
+.localize{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:auto;
+}
+.loc-card{
+  border:1px solid var(--line);border-radius:14px;padding:24px;background:#fff;
+  display:flex;flex-direction:column;gap:14px;min-height:230px;
+}
+.loc-card .num{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:0.14em}
+.loc-card h4{font-size:24px;font-weight:500;letter-spacing:-0.015em;color:var(--ink);line-height:1.2}
+.loc-card p{font-size:16px;color:var(--muted);line-height:1.45;margin-top:auto}
+.loc-card.feature{background:var(--ink);color:#fff;border-color:var(--ink);grid-column:span 1;grid-row:span 1;}
+.loc-card.feature h4,.loc-card.feature .num{color:#fff}
+.loc-card.feature .num{color:var(--accent)}
+.loc-card.feature p{color:#B7AFA5}
+
+/* ---------- Slide 7 / 8 — Owner / tenant ---------- */
+.pillars{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:18px;margin-top:auto;
+}
+.pillar{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;
+  display:flex;flex-direction:column;gap:14px;min-height:380px;
+}
+.pillar .head{display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.pillar .head .k{font-family:var(--mono);font-size:12px;letter-spacing:0.14em;color:var(--accent-ink);text-transform:uppercase}
+.pillar .head h4{font-size:24px;font-weight:500;letter-spacing:-0.02em;color:var(--ink)}
+.pillar .head p{font-size:14px;color:var(--muted);line-height:1.4;margin-top:4px}
+.pillar ul{list-style:none;display:flex;flex-direction:column;gap:9px;font-size:16px;color:var(--ink-2)}
+.pillar li{display:flex;gap:10px;align-items:flex-start}
+.pillar li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:9px;flex-shrink:0}
+
+.tenant-grid{
+  display:grid;grid-template-columns:1.1fr 0.9fr;gap:48px;flex:1;
+}
+.tenant-features{display:flex;flex-direction:column;gap:18px;justify-content:center}
+.tenant-row{
+  display:grid;grid-template-columns:64px 1fr;gap:24px;align-items:start;
+  border-bottom:1px solid var(--line);padding:20px 0;
+}
+.tenant-row:first-child{padding-top:0}
+.tenant-row:last-child{border-bottom:0}
+.tenant-row .num{font-family:var(--mono);font-size:14px;color:var(--accent);letter-spacing:0.14em;padding-top:4px}
+.tenant-row h4{font-size:28px;font-weight:500;letter-spacing:-0.02em;color:var(--ink);line-height:1.15}
+.tenant-row p{font-size:18px;color:var(--muted);margin-top:6px;line-height:1.45}
+.phone{
+  align-self:center;width:340px;height:680px;
+  border:1px solid var(--line);border-radius:48px;background:#fff;
+  padding:18px;
+  box-shadow:0 30px 80px -40px rgba(26,26,26,.25);
+  display:flex;flex-direction:column;gap:14px;
+  position:relative;overflow:hidden;
+}
+.phone .notch{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:90px;height:24px;border-radius:14px;background:var(--ink)}
+.phone .ph-head{
+  margin-top:36px;padding:14px 8px;display:flex;justify-content:space-between;align-items:center;
+}
+.phone .ph-head .hi{font-size:13px;color:var(--muted);font-family:var(--mono);letter-spacing:0.1em;text-transform:uppercase}
+.phone .ph-head .name{font-size:22px;font-weight:600;color:var(--ink);letter-spacing:-0.015em}
+.phone .ph-card{
+  border:1px solid var(--line);border-radius:18px;padding:18px;
+  background:linear-gradient(160deg,#FBEDE5,#F2D7C9);
+}
+.phone .ph-card .k{font-family:var(--mono);font-size:11px;color:var(--accent-ink);letter-spacing:0.14em;text-transform:uppercase}
+.phone .ph-card .v{font-family:var(--serif);font-size:48px;font-weight:300;color:var(--ink);letter-spacing:-0.02em;line-height:1;margin-top:8px}
+.phone .ph-card .due{font-size:13px;color:var(--accent-ink);margin-top:6px;font-weight:500}
+.phone .ph-cta{
+  background:var(--ink);color:#fff;border-radius:14px;padding:16px;text-align:center;font-size:16px;font-weight:500;letter-spacing:-0.005em;
+}
+.phone .ph-list{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.phone .ph-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;font-size:14px;border-bottom:1px solid var(--line)}
+.phone .ph-row:last-child{border-bottom:0}
+.phone .ph-row .l{color:var(--ink);font-weight:500}
+.phone .ph-row .r{color:var(--muted);font-family:var(--mono);font-size:12px}
+.phone .ph-tabs{
+  margin-top:auto;display:flex;justify-content:space-around;border-top:1px solid var(--line);padding-top:12px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;
+}
+.phone .ph-tabs span.act{color:var(--accent-ink);font-weight:600}
+
+/* ---------- Slide 9 — Competitive ---------- */
+.compare{
+  width:100%;border-collapse:collapse;margin-top:auto;
+  font-size:var(--type-small);
+  background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;
+}
+.compare th,.compare td{
+  text-align:left;padding:18px 28px;border-bottom:1px solid var(--line);vertical-align:top;
+}
+.compare tr:last-child td{border-bottom:0}
+.compare th{
+  font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);font-weight:500;
+  background:var(--bg-elev);
+}
+.compare td.who{font-weight:500;color:var(--ink);font-size:24px;letter-spacing:-0.015em;width:24%}
+.compare td.who .sub{display:block;font-family:var(--mono);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-top:4px}
+.compare td.lim{color:var(--ink-2);width:34%}
+.compare td.adv{color:var(--ink);font-weight:500}
+.compare td.adv span{color:var(--accent-ink)}
+.compare tr.hl td{background:#FFF8F4}
+.compare tr.hl td.who{color:var(--accent-ink)}
+
+/* ---------- Slide 10 — Maturity ---------- */
+.maturity{
+  display:grid;grid-template-columns:1fr 1.05fr;gap:56px;flex:1;align-items:stretch;
+}
+.maturity .left{display:flex;flex-direction:column;justify-content:space-between}
+.maturity .takeaway{
+  border-top:1px solid var(--line);padding-top:24px;
+  font-family:var(--serif);font-weight:300;font-size:34px;line-height:1.25;letter-spacing:-0.01em;color:var(--ink);
+}
+.maturity .takeaway em{font-style:italic;color:var(--accent-ink)}
+
+.toggle-card{
+  background:#fff;border:1px solid var(--line);border-radius:18px;padding:32px;
+  display:flex;flex-direction:column;gap:20px;
+}
+.toggle-row{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding:14px 18px;border:1px solid var(--line);border-radius:12px;background:var(--bg);
+  font-family:var(--mono);font-size:14px;
+}
+.toggle-row .name{color:var(--ink);font-weight:500;letter-spacing:0.02em}
+.toggle-row .name span{color:var(--muted);margin-left:8px;font-weight:400}
+.switch{display:flex;align-items:center;gap:10px}
+.switch .dot{width:36px;height:20px;border-radius:999px;background:var(--line);position:relative;flex-shrink:0}
+.switch .dot::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff}
+.switch.live .dot{background:var(--accent)}
+.switch.live .dot::after{left:19px}
+.switch .label{font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted)}
+.switch.live .label{color:var(--accent-ink)}
+.toggle-card .code{
+  background:var(--ink);color:#E8E2D6;border-radius:12px;padding:18px;
+  font-family:var(--mono);font-size:14px;line-height:1.6;
+}
+.toggle-card .code .c{color:#7A736B}
+.toggle-card .code .k{color:#E76F51}
+.toggle-card .code .s{color:#A8C9A1}
+
+/* ---------- Slide 11 — Tech ---------- */
+.stack{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:auto;
+}
+.stack-col{
+  background:#fff;border:1px solid var(--line);border-radius:18px;padding:32px;
+  display:flex;flex-direction:column;gap:14px;
+}
+.stack-col h4{
+  font-family:var(--mono);font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent-ink);
+  border-bottom:1px solid var(--line);padding-bottom:14px;
+}
+.stack-col ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+.stack-col li{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:18px;color:var(--ink);font-weight:500;
+  padding:6px 0;border-bottom:1px dashed var(--line);
+}
+.stack-col li:last-child{border:0}
+.stack-col li span{font-family:var(--mono);font-size:13px;color:var(--muted);letter-spacing:0.04em}
+.tech-strip{
+  margin-top:32px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
+}
+.tech-strip .b{
+  border:1px solid var(--line);border-radius:10px;padding:14px 18px;background:var(--bg-elev);
+  font-family:var(--mono);font-size:13px;letter-spacing:0.06em;color:var(--ink-2);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.tech-strip .b strong{color:var(--accent-ink);font-weight:500}
+
+/* ---------- Slide 12 — Pricing ---------- */
+.pricing{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:auto;
+}
+.tier{
+  background:#fff;border:1px solid var(--line);border-radius:18px;padding:32px 28px;
+  display:flex;flex-direction:column;gap:18px;min-height:480px;
+}
+.tier h4{font-size:22px;font-weight:600;letter-spacing:-0.015em;color:var(--ink)}
+.tier .price{
+  font-family:var(--serif);font-weight:300;font-size:72px;line-height:1;letter-spacing:-0.03em;color:var(--ink);
+  display:flex;align-items:baseline;gap:6px;
+}
+.tier .price small{font-family:var(--sans);font-size:14px;color:var(--muted);font-weight:500;letter-spacing:0;text-transform:uppercase}
+.tier .units{
+  font-family:var(--mono);font-size:14px;letter-spacing:0.06em;color:var(--accent-ink);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0;
+}
+.tier ul{list-style:none;display:flex;flex-direction:column;gap:8px;font-size:15px;color:var(--ink-2)}
+.tier ul li{display:flex;gap:8px}
+.tier ul li::before{content:"+";color:var(--accent);font-family:var(--mono)}
+.tier.feature{background:var(--ink);color:#fff;border-color:var(--ink);position:relative}
+.tier.feature h4,.tier.feature .price{color:#fff}
+.tier.feature .units{color:var(--accent);border-color:#2E2A24}
+.tier.feature ul{color:#D8CEC4}
+.tier.feature::after{
+  content:"Most popular";position:absolute;top:18px;right:18px;
+  font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--accent);
+}
+.pricing-foot{
+  margin-top:32px;display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid var(--line);padding-top:20px;
+  font-size:var(--type-small);color:var(--ink-2);
+}
+.pricing-foot em{font-style:normal;color:var(--accent-ink);font-weight:500}
+
+/* ---------- Slide 13 — GTM ---------- */
+.gtm{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:auto;position:relative;
+}
+.gtm::before{
+  content:"";position:absolute;top:48px;left:24px;right:24px;height:1px;background:var(--line);
+}
+.phase{padding:0 18px;display:flex;flex-direction:column;gap:18px;position:relative}
+.phase .marker{
+  width:96px;height:96px;border-radius:50%;background:#fff;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-weight:300;font-size:48px;color:var(--ink);
+  position:relative;z-index:2;
+}
+.phase.act .marker{background:var(--accent);color:#fff;border-color:var(--accent)}
+.phase .stage{font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+.phase h4{font-size:24px;font-weight:500;letter-spacing:-0.015em;color:var(--ink);line-height:1.2}
+.phase p{font-size:16px;color:var(--muted);line-height:1.5}
+.phase .when{
+  margin-top:auto;font-family:var(--mono);font-size:12px;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--accent-ink);font-weight:500;
+}
+
+/* ---------- Slide 14 — Pilot ---------- */
+.pilot{
+  display:grid;grid-template-columns:1.1fr 1fr;gap:64px;flex:1;align-items:stretch;
+}
+.pilot-meta{display:flex;flex-direction:column;justify-content:space-between;gap:32px}
+.pilot-stats{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:18px;
+}
+.pilot-stats .s{
+  border:1px solid var(--line);background:#fff;border-radius:14px;padding:24px;
+}
+.pilot-stats .k{font-family:var(--mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+.pilot-stats .v{font-family:var(--serif);font-size:54px;font-weight:300;line-height:1;color:var(--ink);letter-spacing:-0.02em;margin-top:10px}
+.pilot-stats .v small{font-size:18px;color:var(--muted);font-family:var(--sans);font-weight:400;margin-left:6px;letter-spacing:0}
+.pilot-metrics{
+  background:var(--ink);color:#fff;border-radius:18px;padding:32px;
+  display:flex;flex-direction:column;gap:18px;
+}
+.pilot-metrics h4{font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent)}
+.pilot-metrics ul{list-style:none;display:flex;flex-direction:column;gap:14px;font-size:18px;color:#fff}
+.pilot-metrics li{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid #2E2A24}
+.pilot-metrics li:last-child{border:0;padding-bottom:0}
+.pilot-metrics li span{font-family:var(--mono);font-size:14px;color:#9C958B;letter-spacing:0.06em}
+
+.map{
+  background:#fff;border:1px solid var(--line);border-radius:18px;padding:36px;
+  display:flex;flex-direction:column;gap:24px;
+}
+.map .legend{display:flex;justify-content:space-between;align-items:center}
+.map .legend h4{font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+.map .legend .area{font-size:24px;font-weight:500;color:var(--ink);letter-spacing:-0.015em}
+.map svg{width:100%;height:auto}
+.map .pins{display:flex;justify-content:space-around;border-top:1px solid var(--line);padding-top:18px;font-size:13px;font-family:var(--mono);color:var(--muted);letter-spacing:0.06em;flex-wrap:wrap;gap:8px}
+.map .pins .p{display:flex;gap:6px;align-items:center}
+.map .pins .p::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent)}
+
+/* ---------- Slide 15 — Roadmap ---------- */
+.roadmap{
+  margin-top:auto;display:flex;flex-direction:column;gap:22px;
+}
+.road-track{
+  position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:14px;
+}
+.road-track::before{
+  content:"";position:absolute;top:18px;left:14px;right:14px;height:2px;background:var(--line);
+}
+.road-track::after{
+  content:"";position:absolute;top:18px;left:14px;width:calc((100%/7)*5.4);height:2px;background:var(--accent);
+}
+.road-step{position:relative;display:flex;flex-direction:column;gap:12px;padding-top:48px}
+.road-step .marker{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--line);
+}
+.road-step.done .marker{background:var(--accent);border-color:var(--accent)}
+.road-step.now .marker{background:#fff;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.road-step .ph{font-family:var(--mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);text-align:center}
+.road-step.done .ph,.road-step.now .ph{color:var(--accent-ink)}
+.road-step h5{font-size:18px;font-weight:500;color:var(--ink);text-align:center;letter-spacing:-0.01em;line-height:1.25}
+.road-step p{font-size:14px;color:var(--muted);text-align:center;line-height:1.4}
+.road-future{
+  margin-top:24px;border-top:1px solid var(--line);padding-top:24px;
+  display:flex;align-items:center;gap:32px;flex-wrap:wrap;
+}
+.road-future .lab{font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+.road-future .items{display:flex;gap:12px;flex-wrap:wrap}
+.road-future .items span{
+  font-size:15px;color:var(--ink-2);padding:8px 14px;border:1px dashed var(--line);border-radius:999px;
+  background:#fff;
+}
+
+/* ---------- Slide 16 — Ask ---------- */
+.ask{
+  display:grid;grid-template-columns:1fr 1fr;gap:64px;flex:1;align-items:stretch;
+}
+.ask .seek{display:flex;flex-direction:column;gap:16px;justify-content:center}
+.ask .seek h3{font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent-ink)}
+.ask .seek .item{
+  border-bottom:1px solid var(--line);padding:22px 0;display:flex;gap:24px;align-items:flex-start;
+}
+.ask .seek .item .num{font-family:var(--mono);font-size:14px;color:var(--accent);letter-spacing:0.14em;min-width:36px;padding-top:6px}
+.ask .seek .item h4{font-size:26px;font-weight:500;letter-spacing:-0.015em;color:var(--ink);line-height:1.2}
+.ask .seek .item p{font-size:17px;color:var(--muted);margin-top:6px;line-height:1.45}
+
+.use{
+  background:var(--ink);color:#fff;border-radius:18px;padding:40px;
+  display:flex;flex-direction:column;gap:20px;
+}
+.use h3{font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent)}
+.use .alloc{display:flex;flex-direction:column;gap:18px;margin-top:8px}
+.use .alloc .row{display:flex;flex-direction:column;gap:6px}
+.use .alloc .row .top{display:flex;justify-content:space-between;align-items:baseline}
+.use .alloc .row .lbl{font-size:18px;color:#fff;font-weight:500}
+.use .alloc .row .pct{font-family:var(--mono);font-size:14px;color:#9C958B;letter-spacing:0.04em}
+.use .alloc .bar{height:6px;background:#2E2A24;border-radius:3px;overflow:hidden}
+.use .alloc .bar div{height:100%;background:var(--accent);border-radius:3px}
+.use .note{font-family:var(--mono);font-size:12px;color:#9C958B;letter-spacing:0.06em;margin-top:8px;border-top:1px solid #2E2A24;padding-top:14px;line-height:1.5}
+
+/* ---------- Slide 17 — Founder ---------- */
+.founder{
+  display:grid;grid-template-columns:0.55fr 1.45fr;gap:80px;flex:1;align-items:center;
+}
+.founder-photo-wrap{
+  width:100%;max-width:440px;
+  padding:18px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  box-shadow:0 24px 60px -32px rgba(26,26,26,.18), 0 2px 0 rgba(26,26,26,.04);
+  position:relative;
+}
+.founder-photo-wrap::after{
+  content:"";position:absolute;inset:8px;border:1px solid var(--line-2);border-radius:8px;pointer-events:none;
+}
+.founder-photo{
+  background:linear-gradient(160deg,#FBEDE5,#F2D7C9);
+  border:none;border-radius:6px;
+  aspect-ratio:4/5;width:100%;
+  display:flex;align-items:flex-end;justify-content:flex-start;padding:18px;
+  position:relative;overflow:hidden;
+}
+.founder-photo::before{
+  content:"";position:absolute;inset:0;
+  background-image:repeating-linear-gradient(135deg, rgba(176,73,46,.10) 0 1px, transparent 1px 18px);
+  z-index:1;pointer-events:none;
+}
+.founder-photo img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center 18%;
+  z-index:0;
+}
+.founder-photo .tag{
+  position:relative;z-index:2;
+  font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--accent-ink);background:#FFFFFFCC;backdrop-filter:blur(4px);
+  padding:8px 12px;border-radius:6px;border:1px solid #FFFFFF;
+}
+.founder-bio{display:flex;flex-direction:column;gap:24px}
+.founder-bio .name{
+  font-family:var(--serif);font-weight:300;font-size:96px;line-height:1;letter-spacing:-0.03em;color:var(--ink);
+}
+.founder-bio .role{font-size:24px;color:var(--muted);font-weight:400;letter-spacing:-0.01em}
+.founder-bio .bio{font-size:24px;color:var(--ink-2);line-height:1.5;max-width:720px;margin-top:8px}
+.founder-tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.founder-tags span{
+  font-size:15px;font-family:var(--mono);padding:8px 14px;border:1px solid var(--line);border-radius:999px;
+  color:var(--ink-2);letter-spacing:0.04em;
+}
+.founder-links{
+  display:flex;gap:32px;border-top:1px solid var(--line);padding-top:20px;margin-top:12px;
+  font-family:var(--mono);font-size:14px;letter-spacing:0.06em;
+}
+.founder-links .l{display:flex;flex-direction:column;gap:4px}
+.founder-links .k{font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+.founder-links .v{color:var(--ink);font-weight:500}
+
+/* ---------- Slide 18 — Vision ---------- */
+.vision{background:var(--ink);color:#fff}
+.vision .frame{align-items:flex-start;justify-content:space-between}
+.vision .mark{color:#fff}
+.vision .mark .glyph path{stroke:#fff}
+.vision .eyebrow{color:#9C958B}
+.vision .eyebrow .dot{background:var(--accent)}
+.vision .foot{color:#5A544D}
+.vision .v-eyebrow{
+  font-family:var(--mono);font-size:var(--type-micro);letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:64px;
+}
+.vision .v-statement{
+  font-family:var(--serif);font-weight:300;
+  font-size:148px;line-height:0.98;letter-spacing:-0.04em;
+  color:#fff;text-wrap:balance;max-width:1700px;
+}
+.vision .v-statement em{font-style:italic;color:var(--accent)}
+.vision .v-foot{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  margin-top:auto;padding-top:32px;border-top:1px solid #2E2A24;width:100%;
+}
+.vision .v-foot .col{display:flex;flex-direction:column;gap:6px;max-width:420px}
+.vision .v-foot .k{font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:#9C958B}
+.vision .v-foot .v{font-size:22px;color:#fff;font-weight:400;line-height:1.4;letter-spacing:-0.01em}
+
+/* ---------- Section openers (re-usable) ---------- */
+.opener .frame{justify-content:space-between}
+.opener .top{display:flex;justify-content:space-between;align-items:flex-start}
+.opener .top .num{
+  font-family:var(--serif);font-weight:300;font-size:200px;line-height:0.8;letter-spacing:-0.04em;color:var(--accent);
+}
+.opener h2{
+  font-family:var(--sans);font-weight:500;font-size:88px;line-height:1.02;letter-spacing:-0.03em;color:var(--ink);
+  max-width:1300px;
+}
+</style>
+</head>
+<body>
+<deck-stage width="1920" height="1080">
+
+<!-- ============================================================
+     1. COVER
+     ============================================================ -->
+<section data-label="01 Cover" class="cover">
+  <div class="grid"></div>
+  <div class="cover-inner">
+    <div class="cover-left">
+      <div class="cover-meta">
+        <div class="mark" style="position:static;padding:0">
+          <svg class="glyph" viewBox="0 0 32 32" fill="none">
+            <path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="word">Roofly</span>
+        </div>
+        <span class="pill"><span class="dot"></span>Investor pitch · seed</span>
+      </div>
+
+      <div>
+        <div class="cover-wordmark">Roofly<span class="dot">.</span></div>
+        <p class="cover-tag">Modern rental operations for Malaysian landlords.</p>
+        <p class="cover-bm">Urus sewa rumah, lebih mudah.</p>
+      </div>
+
+      <div class="cover-bottom">
+        <div>Founder<strong>Ahmad Baihaqie</strong></div>
+        <div>Date<strong>May 2026</strong></div>
+        <div>Status<strong>Confidential — do not redistribute</strong></div>
+      </div>
+    </div>
+
+    <div class="cover-right">
+      <div class="house-art">
+        <svg viewBox="0 0 540 540" width="78%" fill="none" aria-hidden="true">
+          <!-- soft shadow ground -->
+          <ellipse cx="270" cy="470" rx="200" ry="14" fill="#B0492E" opacity="0.08"/>
+          <!-- main house body -->
+          <path d="M120 250 L270 130 L420 250 V440 H120 Z" fill="#FAFAF7" stroke="#1A1A1A" stroke-width="4" stroke-linejoin="round"/>
+          <!-- roof shading -->
+          <path d="M120 250 L270 130 L420 250 Z" fill="#E76F51"/>
+          <path d="M120 250 L270 130 L420 250 Z" fill="none" stroke="#1A1A1A" stroke-width="4" stroke-linejoin="round"/>
+          <!-- chimney -->
+          <rect x="350" y="160" width="28" height="60" fill="#1A1A1A"/>
+          <!-- door -->
+          <path d="M240 440 V340 A30 30 0 0 1 300 340 V440" fill="#1A1A1A"/>
+          <circle cx="288" cy="395" r="3" fill="#E76F51"/>
+          <!-- left window -->
+          <rect x="155" y="290" width="60" height="60" fill="#FBEDE5" stroke="#1A1A1A" stroke-width="3"/>
+          <line x1="185" y1="290" x2="185" y2="350" stroke="#1A1A1A" stroke-width="3"/>
+          <line x1="155" y1="320" x2="215" y2="320" stroke="#1A1A1A" stroke-width="3"/>
+          <!-- right window -->
+          <rect x="325" y="290" width="60" height="60" fill="#FBEDE5" stroke="#1A1A1A" stroke-width="3"/>
+          <line x1="355" y1="290" x2="355" y2="350" stroke="#1A1A1A" stroke-width="3"/>
+          <line x1="325" y1="320" x2="385" y2="320" stroke="#1A1A1A" stroke-width="3"/>
+          <!-- attic round window -->
+          <circle cx="270" cy="220" r="14" fill="#FBEDE5" stroke="#1A1A1A" stroke-width="3"/>
+          <!-- key indicator -->
+          <g transform="translate(420 380)">
+            <circle cx="0" cy="0" r="36" fill="#1A1A1A"/>
+            <path d="M -10 0 L 10 0 M 8 -4 L 8 4 M 4 -3 L 4 3" stroke="#E76F51" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="-12" cy="0" r="5" fill="none" stroke="#E76F51" stroke-width="3"/>
+          </g>
+          <!-- subtle dotted ground -->
+          <g fill="#1A1A1A" opacity="0.4">
+            <circle cx="80" cy="450" r="2"/>
+            <circle cx="100" cy="455" r="2"/>
+            <circle cx="60" cy="445" r="2"/>
+            <circle cx="460" cy="450" r="2"/>
+            <circle cx="480" cy="455" r="2"/>
+            <circle cx="500" cy="445" r="2"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     2. PROBLEM
+     ============================================================ -->
+<section data-label="02 The problem">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>The problem</div>
+  <div class="foot"><span>Section 01</span><span>02 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">01</span>The problem</div>
+    <h1 class="title">Rental management in Malaysia <span class="serif-i">still runs on chat threads.</span></h1>
+    <p class="subtitle">Most landlords with 1–20 units operate without proper software. Their workflow is held together by WhatsApp, Excel, scattered PDFs, and memory-based reminders.</p>
+
+    <div class="problem-grid">
+      <div class="card">
+        <div class="num">01 — fragmented tools</div>
+        <h3>Operations live in five places at once.</h3>
+        <p>Rental income, agreements, maintenance, and tenant comms each sit in a different app. Nothing reconciles.</p>
+        <div class="chaos">
+          <div class="row">
+            <span class="chip warn">WhatsApp</span>
+            <span class="chip warn">Excel</span>
+            <span class="chip warn">PDF folder</span>
+          </div>
+          <div class="row">
+            <span class="chip warn">Bank app</span>
+            <span class="chip warn">Memory</span>
+            <span class="chip warn">Sticky notes</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="num">02 — missed obligations</div>
+        <h3>Things slip through the cracks as portfolios grow.</h3>
+        <p>Late rent goes uncaught. Agreements expire silently. Maintenance loops back to the landlord on Sunday night.</p>
+        <div class="chaos">
+          <div class="row"><span class="chip">Late payments</span><span class="chip">Expired agreements</span></div>
+          <div class="row"><span class="chip">Lost receipts</span><span class="chip">Tax season chaos</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="num">03 — tenant friction</div>
+        <h3>Tenants have nowhere to self-serve.</h3>
+        <p>No portal, no receipts on demand, no maintenance visibility. Every small request becomes another WhatsApp message.</p>
+        <div class="chaos">
+          <div class="row"><span class="chip">No portal</span><span class="chip">Manual receipts</span></div>
+          <div class="row"><span class="chip">No status</span><span class="chip">Slow response</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     3. WHY NOW
+     ============================================================ -->
+<section data-label="03 Why now">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Why now</div>
+  <div class="foot"><span>Section 02</span><span>03 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">02</span>Why now</div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:80px;flex:1;align-items:end">
+      <div class="hero-stat" style="margin-top:0">
+        <div style="font-family:var(--mono);font-size:14px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:18px">Independent landlord SaaS · Malaysia</div>
+        <div class="big">Underserved<sup>★</sup></div>
+        <div class="legend">
+          <p>Listing platforms own acquisition. Enterprise software is built for institutional portfolios. The 1–20 unit landlord — the structural majority of the market — has no native operating layer.</p>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;text-align:right;line-height:1.6">★ verify: market<br>sizing forthcoming</div>
+        </div>
+      </div>
+      <div class="tailwind-list">
+        <div style="font-family:var(--mono);font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:8px">What's changing now</div>
+        <div class="row"><span class="num">01</span><div><strong>Digital-first landlords arriving.</strong><span>A generation of portfolio owners already runs life through apps and expects the same from rental.</span></div></div>
+        <div class="row"><span class="num">02</span><div><strong>FPX & e-invoicing maturing.</strong><span>Local payment rails and LHDN e-invoicing make automated rent collection and receipts viable end-to-end.</span></div></div>
+        <div class="row"><span class="num">03</span><div><strong>SME SaaS adoption rising.</strong><span>Malaysian SMEs are paying for vertical software they previously did in spreadsheets. Rental is next in line.</span></div></div>
+        <div class="row"><span class="num">04</span><div><strong>WhatsApp-native workflows.</strong><span>Operational tools that meet landlords inside WhatsApp now compound faster than browser-only platforms.</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     4. OPPORTUNITY
+     ============================================================ -->
+<section data-label="04 The opportunity">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>The opportunity</div>
+  <div class="foot"><span>Section 03</span><span>04 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">03</span>The opportunity</div>
+    <h1 class="title">A wide gap sits between listings <span class="serif-i">and enterprise.</span></h1>
+    <p class="subtitle">Existing solutions cluster at the two extremes. The independent landlord segment in the middle has no native operating system.</p>
+
+    <div class="opp">
+      <div class="col">
+        <h4>Left side</h4>
+        <h2>Listing platforms</h2>
+        <ul>
+          <li>Speedhome</li>
+          <li>iBilik</li>
+          <li>PropertyGuru</li>
+        </ul>
+        <p>Optimised for tenant acquisition. The relationship ends the moment the lease is signed.</p>
+      </div>
+      <div class="col feature">
+        <h4>The gap — Roofly</h4>
+        <h2>Independent landlords with 1–20 units</h2>
+        <ul>
+          <li>Operations after move-in</li>
+          <li>Local payment rails</li>
+          <li>Bilingual, WhatsApp-native</li>
+          <li>SaaS pricing, not commission</li>
+        </ul>
+        <p>The structural majority of Malaysian landlords. Currently served by spreadsheets.</p>
+      </div>
+      <div class="col">
+        <h4>Right side</h4>
+        <h2>Enterprise property software</h2>
+        <ul>
+          <li>Buildium</li>
+          <li>AppFolio</li>
+          <li>Yardi</li>
+        </ul>
+        <p>Priced and designed for institutional portfolios in Western markets. Overshoots on cost and complexity.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     5. SOLUTION
+     ============================================================ -->
+<section data-label="05 Solution">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>The solution</div>
+  <div class="foot"><span>Section 04</span><span>05 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">04</span>The solution</div>
+    <div class="solution-grid">
+      <div class="solution-copy">
+        <div>
+          <div class="kicker">One workspace</div>
+          <p class="lead">Roofly is the operating system for everything that happens <em>after the tenant moves in.</em></p>
+          <p class="body">Agreements, rent collection, receipts, maintenance, reporting — one workspace, one source of truth, automated where it should be and visible where it counts.</p>
+        </div>
+        <div class="meta">
+          <div><span class="k">Replaces</span><span class="v">WhatsApp · Excel · PDFs</span></div>
+          <div><span class="k">Built for</span><span class="v">1–20 unit landlords</span></div>
+          <div><span class="k">Pricing</span><span class="v">SaaS, not commission</span></div>
+        </div>
+      </div>
+
+      <div class="mock">
+        <div class="mock-bar">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <div class="url">app.roofly.my / dashboard</div>
+        </div>
+        <div class="mock-grid">
+          <div class="stat-tile">
+            <span class="k">Collected · Nov</span>
+            <span class="v">RM 24,800</span>
+            <span class="d">↑ 96% on time</span>
+          </div>
+          <div class="stat-tile alt">
+            <span class="k">Outstanding</span>
+            <span class="v">RM 1,200</span>
+            <span class="d" style="color:#E76F51">2 tenants · day 4</span>
+          </div>
+          <div class="stat-tile">
+            <span class="k">Active units</span>
+            <span class="v">12 / 14</span>
+            <span class="d">2 vacant</span>
+          </div>
+        </div>
+        <div class="mock-row">
+          <div class="mock-list">
+            <h5>Upcoming payments</h5>
+            <div class="item"><div><div class="name">Aisyah · Damansara A-12</div><div class="sub">Due 1 Dec</div></div><span class="tag">RM 1,800</span></div>
+            <div class="item"><div><div class="name">Tan Wei · Mont Kiara B-05</div><div class="sub">Due 1 Dec</div></div><span class="tag">RM 2,400</span></div>
+            <div class="item"><div><div class="name">Faiz · KLCC P-22</div><div class="sub">Overdue · day 4</div></div><span class="tag warn">RM 2,100</span></div>
+            <div class="item"><div><div class="name">Mei Lin · Bangsar G-08</div><div class="sub">Paid · 28 Nov</div></div><span class="tag ok">Settled</span></div>
+          </div>
+          <div class="mock-chart">
+            <h5 style="font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);font-weight:500">Rent collection · 6 mo</h5>
+            <div class="bars">
+              <div style="height:62%"></div>
+              <div style="height:71%"></div>
+              <div style="height:68%"></div>
+              <div style="height:84%"></div>
+              <div style="height:79%"></div>
+              <div class="hi" style="height:96%"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.06em">
+              <span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span>
+            </div>
+            <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--line);padding-top:10px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)">On-time rate</span>
+              <span style="font-family:var(--serif);font-size:32px;font-weight:300;color:var(--accent-ink);letter-spacing:-0.02em">96%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     6. WHY WE WIN
+     ============================================================ -->
+<section data-label="06 Why we win">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Why we win</div>
+  <div class="foot"><span>Section 05</span><span>06 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">05</span>Why we win</div>
+    <h1 class="title">Built for how Malaysian landlords <span class="serif-i">actually operate.</span></h1>
+    <p class="subtitle">Roofly is not a global product translated into Malay. Seven localization decisions compound into a moat global SaaS players can't easily replicate.</p>
+
+    <div class="localize">
+      <div class="loc-card">
+        <span class="num">01</span>
+        <h4>FPX via Billplz</h4>
+        <p>Native Malaysian bank rails. No Stripe-shaped workarounds.</p>
+      </div>
+      <div class="loc-card">
+        <span class="num">02</span>
+        <h4>BM + EN bilingual</h4>
+        <p>Every screen, agreement, and notification ships in both languages.</p>
+      </div>
+      <div class="loc-card feature">
+        <span class="num">03</span>
+        <h4>WhatsApp-first workflows</h4>
+        <p>Reminders, receipts, and confirmations land where landlords already operate.</p>
+      </div>
+      <div class="loc-card">
+        <span class="num">04</span>
+        <h4>Local tenancy patterns</h4>
+        <p>Annual leases, deposits, utility deposits, agent splits — modelled correctly.</p>
+      </div>
+      <div class="loc-card">
+        <span class="num">05</span>
+        <h4>IC / passport onboarding</h4>
+        <p>Tenant verification flows match Malaysian ID conventions, not US SSNs.</p>
+      </div>
+      <div class="loc-card">
+        <span class="num">06</span>
+        <h4>RPGT-aware reporting</h4>
+        <p>Year-end exports prepared for Malaysian tax obligations, not Western ones.</p>
+      </div>
+      <div class="loc-card">
+        <span class="num">07</span>
+        <h4>Utility &amp; management workflows</h4>
+        <p>TNB, Air Selangor, JMB — modelled as first-class operational entities.</p>
+      </div>
+      <div class="loc-card" style="background:var(--bg-elev);border-style:dashed">
+        <span class="num" style="color:var(--ink-2)">∞</span>
+        <h4 style="color:var(--ink-2)">Compounding moat</h4>
+        <p>Every layer is harder to replicate from outside Malaysia than the last.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     7. OWNER EXPERIENCE
+     ============================================================ -->
+<section data-label="07 Owner experience">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Owner experience</div>
+  <div class="foot"><span>Section 06</span><span>07 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">06</span>Owner experience</div>
+    <h1 class="title">Five product pillars. <span class="serif-i">Every feature maps to one.</span></h1>
+    <p class="subtitle">Visibility, automation, self-service, trust, and local fit. The product roadmap is disciplined by these — features that don't ladder up don't ship.</p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <div class="head">
+          <span class="k">01 · Visibility</span>
+          <h4>Know what's happening</h4>
+          <p>Across every property, every month.</p>
+        </div>
+        <ul>
+          <li>Financial dashboard</li>
+          <li>Property &amp; unit registry</li>
+          <li>Activity history</li>
+          <li>Occupancy view</li>
+        </ul>
+      </div>
+      <div class="pillar">
+        <div class="head">
+          <span class="k">02 · Automation</span>
+          <h4>Repeat work, removed</h4>
+          <p>Manual admin shrinks every month.</p>
+        </div>
+        <ul>
+          <li>Automated invoices</li>
+          <li>Automated receipts</li>
+          <li>FPX rent collection</li>
+          <li>Renewal reminders</li>
+        </ul>
+      </div>
+      <div class="pillar">
+        <div class="head">
+          <span class="k">03 · Self-service</span>
+          <h4>Tenants resolve themselves</h4>
+          <p>Fewer messages back to the landlord.</p>
+        </div>
+        <ul>
+          <li>Tenant portal</li>
+          <li>Maintenance intake</li>
+          <li>Receipt history</li>
+          <li>Profile management</li>
+        </ul>
+      </div>
+      <div class="pillar">
+        <div class="head">
+          <span class="k">04 · Trust</span>
+          <h4>Records that hold up</h4>
+          <p>Auditable, exportable, defensible.</p>
+        </div>
+        <ul>
+          <li>Agreement generation</li>
+          <li>Receipt ledger</li>
+          <li>Audit logging</li>
+          <li>Webhook auditing</li>
+        </ul>
+      </div>
+      <div class="pillar">
+        <div class="head">
+          <span class="k">05 · Local fit</span>
+          <h4>Built for Malaysia</h4>
+          <p>Not adapted from elsewhere.</p>
+        </div>
+        <ul>
+          <li>BM/EN localization</li>
+          <li>RPGT-aware reports</li>
+          <li>WhatsApp integration</li>
+          <li>IC/passport onboarding</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     8. TENANT EXPERIENCE
+     ============================================================ -->
+<section data-label="08 Tenant experience">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Tenant experience</div>
+  <div class="foot"><span>Section 07</span><span>08 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">07</span>Tenant experience</div>
+    <div class="tenant-grid">
+      <div class="tenant-features">
+        <h1 class="title" style="margin-bottom:24px">A tenant app the landlord <span class="serif-i">doesn't have to apologise for.</span></h1>
+        <div class="tenant-row">
+          <div class="num">01</div>
+          <div><h4>Payment portal</h4><p>FPX-powered. One tap to pay rent, instant receipt, history saved automatically.</p></div>
+        </div>
+        <div class="tenant-row">
+          <div class="num">02</div>
+          <div><h4>Agreement access</h4><p>Tenants always see their current lease, dates, and obligations — not buried in a Google Drive.</p></div>
+        </div>
+        <div class="tenant-row">
+          <div class="num">03</div>
+          <div><h4>Maintenance requests</h4><p>Submit, track status, see resolution. The landlord sees the same thread.</p></div>
+        </div>
+        <div class="tenant-row">
+          <div class="num">04</div>
+          <div><h4>Receipt history</h4><p>Every payment, every month, exportable for visa, tax, or housing applications.</p></div>
+        </div>
+      </div>
+
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="ph-head">
+          <div>
+            <div class="hi">Hi, Aisyah</div>
+            <div class="name">Damansara · A-12</div>
+          </div>
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-soft);border:1px solid var(--line)"></div>
+        </div>
+        <div class="ph-card">
+          <span class="k">Rent due · 1 Dec</span>
+          <div class="v">RM 1,800</div>
+          <div class="due">5 days remaining</div>
+        </div>
+        <div class="ph-cta">Pay with FPX</div>
+        <div class="ph-list">
+          <div class="ph-row"><span class="l">Agreement</span><span class="r">View · 12 mo</span></div>
+          <div class="ph-row"><span class="l">Receipts</span><span class="r">11 records</span></div>
+          <div class="ph-row"><span class="l">Maintenance</span><span class="r">1 in progress</span></div>
+          <div class="ph-row"><span class="l">Profile</span><span class="r">Verified</span></div>
+        </div>
+        <div class="ph-tabs">
+          <span class="act">Home</span><span>Pay</span><span>Repair</span><span>Account</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     9. COMPETITIVE
+     ============================================================ -->
+<section data-label="09 Competitive landscape">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Competitive landscape</div>
+  <div class="foot"><span>Section 08</span><span>09 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">08</span>Competitive landscape</div>
+    <h1 class="title">Roofly does not compete with listings. <span class="serif-i">It picks up where they finish.</span></h1>
+    <p class="subtitle">Other players solve a different problem in the rental lifecycle, or solve it for the wrong customer.</p>
+
+    <table class="compare">
+      <thead>
+        <tr><th>Player</th><th>What they do</th><th>Where Roofly is different</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="who">Speedhome &amp; iBilik<span class="sub">Listing platforms</span></td>
+          <td class="lim">Optimised for tenant acquisition. The relationship ends when the lease starts.</td>
+          <td class="adv">Roofly owns <span>everything after move-in.</span></td>
+        </tr>
+        <tr>
+          <td class="who">Excel + WhatsApp<span class="sub">Status quo</span></td>
+          <td class="lim">Manual, fragmented, breaks at scale. Works at 2 units, painful at 10.</td>
+          <td class="adv">Roofly is <span>centralised and automated.</span></td>
+        </tr>
+        <tr>
+          <td class="who">Buildium &amp; AppFolio<span class="sub">Western enterprise</span></td>
+          <td class="lim">Built for US landlords, US tax, US payments. Wrong shape, wrong price for Malaysia.</td>
+          <td class="adv">Roofly is <span>Malaysian-first by design.</span></td>
+        </tr>
+        <tr>
+          <td class="who">Property agents<span class="sub">Outsourced ops</span></td>
+          <td class="lim">High commissions, opaque process, landlord loses direct visibility into their portfolio.</td>
+          <td class="adv">Roofly is <span>SaaS pricing, full visibility.</span></td>
+        </tr>
+        <tr class="hl">
+          <td class="who">Roofly<span class="sub">Operations layer</span></td>
+          <td class="lim">Centralised operating system for landlords with 1–20 units. Local rails, bilingual, WhatsApp-native.</td>
+          <td class="adv">The only product <span>built natively for this segment.</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================
+     10. PRODUCT MATURITY
+     ============================================================ -->
+<section data-label="10 Product maturity">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Product maturity</div>
+  <div class="foot"><span>Section 09</span><span>10 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">09</span>Product maturity</div>
+    <div class="maturity">
+      <div class="left">
+        <div>
+          <h1 class="title" style="font-size:72px">UX risk has already <span class="serif-i">been retired.</span></h1>
+          <p class="subtitle">The full owner experience runs today on a frontend-first mock architecture. Every module — dashboard, properties, tenants, agreements, payments, maintenance, reports — is demonstrable in mock form.</p>
+        </div>
+        <div class="takeaway">
+          A single <em>useMock</em> toggle promotes each module from mock service to live backend, progressively. Investor takeaway: <em>the product experience is shippable today, even before backend is fully wired.</em>
+        </div>
+      </div>
+
+      <div class="toggle-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:14px">
+          <span style="font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)">useMock — module status</span>
+          <span style="font-family:var(--mono);font-size:13px;color:var(--accent-ink);letter-spacing:0.06em">8 / 8 demoable</span>
+        </div>
+        <div class="toggle-row">
+          <span class="name">Dashboard <span>· financial summary</span></span>
+          <div class="switch live"><span class="label">Live</span><span class="dot"></span></div>
+        </div>
+        <div class="toggle-row">
+          <span class="name">Properties <span>· units, owners</span></span>
+          <div class="switch live"><span class="label">Live</span><span class="dot"></span></div>
+        </div>
+        <div class="toggle-row">
+          <span class="name">Tenants <span>· records, invites</span></span>
+          <div class="switch"><span class="label">Mock</span><span class="dot"></span></div>
+        </div>
+        <div class="toggle-row">
+          <span class="name">Agreements <span>· generation, lifecycle</span></span>
+          <div class="switch"><span class="label">Mock</span><span class="dot"></span></div>
+        </div>
+        <div class="toggle-row">
+          <span class="name">Payments <span>· invoices, FPX, receipts</span></span>
+          <div class="switch"><span class="label">Mock</span><span class="dot"></span></div>
+        </div>
+        <div class="toggle-row">
+          <span class="name">Maintenance <span>· intake, status</span></span>
+          <div class="switch"><span class="label">Mock</span><span class="dot"></span></div>
+        </div>
+        <div class="code">
+<span class="c">// services/payments.ts</span><br>
+<span class="k">export const</span> usePayments = () =&gt;<br>
+&nbsp;&nbsp;useMock ? <span class="s">mockService</span> : <span class="s">apiService</span>;
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     11. TECHNICAL FOUNDATION
+     ============================================================ -->
+<section data-label="11 Technical foundation">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Technical foundation</div>
+  <div class="foot"><span>Section 10</span><span>11 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">10</span>Technical foundation</div>
+    <h1 class="title">Boring, proven, multi-tenant <span class="serif-i">from day one.</span></h1>
+    <p class="subtitle">Stack chosen for long-horizon SaaS scalability. UUIDs everywhere, integer money, soft deletes, queue-ready notifications, webhook auditing — the patterns mature SaaS settles into anyway, adopted upfront.</p>
+
+    <div class="stack">
+      <div class="stack-col">
+        <h4>Backend</h4>
+        <ul>
+          <li>Laravel <span>11</span></li>
+          <li>PHP <span>8.3</span></li>
+          <li>Sanctum <span>auth</span></li>
+          <li>Spatie <span>ecosystem</span></li>
+          <li>RabbitMQ <span>queues</span></li>
+          <li>Pest <span>testing</span></li>
+        </ul>
+      </div>
+      <div class="stack-col">
+        <h4>Frontend</h4>
+        <ul>
+          <li>Nuxt <span>4</span></li>
+          <li>Vue <span>3</span></li>
+          <li>TypeScript <span>strict</span></li>
+          <li>Tailwind <span>CSS</span></li>
+          <li>Pinia <span>state</span></li>
+          <li>Zod + TanStack <span>validation, table</span></li>
+        </ul>
+      </div>
+      <div class="stack-col">
+        <h4>Infrastructure</h4>
+        <ul>
+          <li>Docker <span>Compose</span></li>
+          <li>MySQL <span>8</span></li>
+          <li>Redis <span>cache, queues</span></li>
+          <li>Nginx <span>+ Cloudflare CDN</span></li>
+          <li>GitHub Actions <span>CI / CD</span></li>
+          <li>Ubuntu <span>VPS</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tech-strip">
+      <div class="b"><strong>Multi-tenant</strong><span>org-scoped</span></div>
+      <div class="b"><strong>Integer money</strong><span>no float drift</span></div>
+      <div class="b"><strong>Activity log</strong><span>full audit</span></div>
+      <div class="b"><strong>S3 / R2 ready</strong><span>document storage</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     12. PRICING
+     ============================================================ -->
+<section data-label="12 Pricing">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Business model</div>
+  <div class="foot"><span>Section 11</span><span>12 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">11</span>Business model</div>
+    <h1 class="title">SaaS subscription, not commission. <span class="serif-i">Free tier is the funnel.</span></h1>
+    <p class="subtitle">Four tiers, priced for landlords with 1–20 units. The free plan exists to demonstrate value — growing portfolios trigger natural upgrades.</p>
+
+    <div class="pricing">
+      <div class="tier">
+        <h4>Free</h4>
+        <div class="price">RM 0<small>/ MONTH</small></div>
+        <div class="units">Up to 2 units</div>
+        <ul>
+          <li>Owner dashboard</li>
+          <li>Properties &amp; tenants</li>
+          <li>Manual receipts</li>
+          <li>Tenant portal</li>
+        </ul>
+      </div>
+      <div class="tier">
+        <h4>Starter</h4>
+        <div class="price">RM 29<small>/ MONTH</small></div>
+        <div class="units">Up to 5 units</div>
+        <ul>
+          <li>Everything in free</li>
+          <li>FPX rent collection</li>
+          <li>Auto receipts &amp; reminders</li>
+          <li>WhatsApp notifications</li>
+        </ul>
+      </div>
+      <div class="tier feature">
+        <h4>Pro</h4>
+        <div class="price">RM 79<small>/ MONTH</small></div>
+        <div class="units">Up to 25 units</div>
+        <ul>
+          <li>Everything in starter</li>
+          <li>Maintenance workflows</li>
+          <li>Tax &amp; RPGT reports</li>
+          <li>Agreement generation</li>
+          <li>Activity audit log</li>
+        </ul>
+      </div>
+      <div class="tier">
+        <h4>Business</h4>
+        <div class="price">RM 199<small>/ MONTH</small></div>
+        <div class="units">Unlimited units</div>
+        <ul>
+          <li>Everything in pro</li>
+          <li>Multi-organisation</li>
+          <li>Agent &amp; staff roles</li>
+          <li>Priority support</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pricing-foot">
+      <span style="width: 766px"><em>Free tier strategy.</em> Two units lets a landlord experience the product. Growth past two — natural in a healthy portfolio — moves them into paid.</span>
+      <span style="font-family: var(--mono); font-size: 13px; letter-spacing: 1.9px; color: var(--muted); text-transform: uppercase; height: 59px">All prices in MYR · billed monthly</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     13. GO-TO-MARKET
+     ============================================================ -->
+<section data-label="13 Go-to-market">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Go-to-market</div>
+  <div class="foot"><span>Section 12</span><span>13 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">12</span>Go-to-market</div>
+    <h1 class="title">Founder-led beta, then compounded by content <span class="serif-i">and word of mouth.</span></h1>
+    <p class="subtitle">Four phases. Each unlocks the next — paid acquisition only enters once the funnel is proven, not before.</p>
+
+    <div class="gtm">
+      <div class="phase act">
+        <div class="marker">1</div>
+        <div class="stage">Phase 01</div>
+        <h4>Founder-led beta</h4>
+        <p>5–10 hand-picked landlords in the Klang Valley. Direct onboarding, weekly feedback loops.</p>
+        <div class="when">Now → Q3 2026</div>
+      </div>
+      <div class="phase">
+        <div class="marker">2</div>
+        <div class="stage">Phase 02</div>
+        <h4>Organic referrals</h4>
+        <p>Landlord-to-landlord sharing inside Malaysian property communities and WhatsApp groups.</p>
+        <div class="when">Q4 2026</div>
+      </div>
+      <div class="phase">
+        <div class="marker">3</div>
+        <div class="stage">Phase 03</div>
+        <h4>Content-led acquisition</h4>
+        <p>Landlord education, tax workflows, automation tips. SEO + LinkedIn + YouTube.</p>
+        <div class="when">2027</div>
+      </div>
+      <div class="phase">
+        <div class="marker">4</div>
+        <div class="stage">Phase 04</div>
+        <h4>Agent &amp; multi-org</h4>
+        <p>Open the platform to property agents managing portfolios on behalf of multiple owners.</p>
+        <div class="when">2027 →</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     14. PILOT
+     ============================================================ -->
+<section data-label="14 Pilot program">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Pilot program</div>
+  <div class="foot"><span>Section 13</span><span>14 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">13</span>Pilot program</div>
+    <div class="pilot">
+      <div class="pilot-meta">
+        <div>
+          <h1 class="title">Klang Valley pilot, <span class="serif-i">two to three months.</span></h1>
+          <p class="subtitle" style="margin-top:20px">Small, fast, accountable. The objective is to validate operational workflows and landlord retention behaviour — not vanity metrics.</p>
+        </div>
+
+        <div class="pilot-stats">
+          <div class="s"><div class="k">Region</div><div class="v">Klang Valley</div></div>
+          <div class="s"><div class="k">Cohort</div><div class="v">5–10<small>landlords</small></div></div>
+          <div class="s"><div class="k">Duration</div><div class="v">2–3<small>months</small></div></div>
+          <div class="s"><div class="k">Cost</div><div class="v">Free<small>onboarding</small></div></div>
+        </div>
+      </div>
+
+      <div class="pilot-metrics">
+        <h4>Success metrics</h4>
+        <ul>
+          <li><span style="color:#fff">Active agreements</span><span>weekly</span></li>
+          <li><span style="color:#fff">Rent collection rate</span><span>monthly</span></li>
+          <li><span style="color:#fff">Tenant invite acceptance</span><span>per landlord</span></li>
+          <li><span style="color:#fff">Time-to-first-agreement</span><span>per landlord</span></li>
+          <li><span style="color:#fff">Monthly active properties</span><span>cohort</span></li>
+        </ul>
+        <div style="margin-top:8px;border-top:1px solid #2E2A24;padding-top:18px;font-size:14px;color:#9C958B;line-height:1.5">A pilot landlord that renews into Starter or Pro after the free period is the leading indicator we are tracking.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     15. ROADMAP
+     ============================================================ -->
+<section data-label="15 Roadmap">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Roadmap</div>
+  <div class="foot"><span>Section 14</span><span>15 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">14</span>Roadmap</div>
+    <h1 class="title">Seven phases to public beta. <span class="serif-i">Currently in phase six.</span></h1>
+    <p class="subtitle">Disciplined sequencing — each phase ships behind the useMock toggle before the next one starts.</p>
+
+    <div class="roadmap">
+      <div class="road-track">
+        <div class="road-step done"><div class="marker"></div><div class="ph">Phase 01</div><h5>Foundation &amp; auth</h5><p>Multi-tenant scaffold, Sanctum auth, org model.</p></div>
+        <div class="road-step done"><div class="marker"></div><div class="ph">Phase 02</div><h5>Properties &amp; agreements</h5><p>Property registry, lease lifecycle, generation.</p></div>
+        <div class="road-step done"><div class="marker"></div><div class="ph">Phase 03</div><h5>Payments &amp; receipts</h5><p>FPX via Billplz, invoice and receipt ledger.</p></div>
+        <div class="road-step done"><div class="marker"></div><div class="ph">Phase 04</div><h5>Notifications &amp; WhatsApp</h5><p>Reminders, confirmations, tenant comms.</p></div>
+        <div class="road-step done"><div class="marker"></div><div class="ph">Phase 05</div><h5>Maintenance</h5><p>Intake, triage, status, resolution.</p></div>
+        <div class="road-step now"><div class="marker"></div><div class="ph">Phase 06 · now</div><h5>Reporting &amp; analytics</h5><p>Financial dashboard, RPGT-aware exports.</p></div>
+        <div class="road-step"><div class="marker"></div><div class="ph">Phase 07</div><h5>Marketing &amp; beta</h5><p>roofly.my launch, public waitlist, beta cohort.</p></div>
+      </div>
+
+      <div class="road-future">
+        <span class="lab">Future expansion</span>
+        <div class="items">
+          <span>Mobile apps</span>
+          <span>Agent multi-org</span>
+          <span>Tenant credit scoring</span>
+          <span>AI-assisted agreements</span>
+          <span>Stamp duty integration</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     16. THE ASK
+     ============================================================ -->
+<section data-label="16 The ask">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>The ask</div>
+  <div class="foot"><span>Section 15</span><span>16 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">15</span>The ask</div>
+    <div class="ask">
+      <div class="seek">
+        <h3>What we're seeking</h3>
+        <h1 class="title" style="font-size:64px;margin-bottom:8px">Pilot partners and seed-stage support.</h1>
+        <div class="item">
+          <span class="num">01</span>
+          <div><h4>Strategic pilot partners</h4><p>Landlords or property networks willing to be cohort one.</p></div>
+        </div>
+        <div class="item">
+          <span class="num">02</span>
+          <div><h4>Early product validation</h4><p>Direct introductions to landlords with 5–20 unit portfolios.</p></div>
+        </div>
+        <div class="item">
+          <span class="num">03</span>
+          <div><h4>Seed-stage capital</h4><p>To fund infrastructure, backend acceleration, and launch execution.</p></div>
+        </div>
+      </div>
+
+      <div class="use">
+        <h3>Use of funds</h3>
+        <div style="font-family:var(--serif);font-weight:300;font-size:54px;line-height:1.1;letter-spacing:-0.02em;margin-top:4px">Targeted to ship public beta within 12 months.</div>
+        <div class="alloc">
+          <div class="row"><div class="top"><span class="lbl">Backend development</span><span class="pct">40%</span></div><div class="bar"><div style="width:40%"></div></div></div>
+          <div class="row"><div class="top"><span class="lbl">Infrastructure scaling</span><span class="pct">20%</span></div><div class="bar"><div style="width:20%"></div></div></div>
+          <div class="row"><div class="top"><span class="lbl">Beta onboarding &amp; success</span><span class="pct">15%</span></div><div class="bar"><div style="width:15%"></div></div></div>
+          <div class="row"><div class="top"><span class="lbl">Operational runway</span><span class="pct">15%</span></div><div class="bar"><div style="width:15%"></div></div></div>
+          <div class="row"><div class="top"><span class="lbl">Product refinement</span><span class="pct">10%</span></div><div class="bar"><div style="width:10%"></div></div></div>
+        </div>
+        <div class="note">Round size and instrument under discussion with prospective partners. Specific figures shared on request.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     17. FOUNDER
+     ============================================================ -->
+<section data-label="17 Founder">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Founder</div>
+  <div class="foot"><span>Section 16</span><span>17 / 18</span></div>
+
+  <div class="frame">
+    <div class="section-label"><span class="num">16</span>Founder</div>
+    <div class="founder">
+      <div class="founder-photo-wrap">
+        <div class="founder-photo">
+          <img src="assets/founder-photo.png" alt="Ahmad Baihaqie — founder">
+          <span class="tag">Ahmad Baihaqie · founder</span>
+        </div>
+      </div>
+      <div class="founder-bio">
+        <div class="kicker">Founder &amp; product</div>
+        <div class="name">Ahmad Baihaqie</div>
+        <div class="role">Qie · Kuala Lumpur · UI/UX-focused software engineer</div>
+        <p class="bio">Nearly a decade building fintech and operational platforms — payment systems, onboarding flows, admin workflows, and frontend engineering. Roofly combines that operational understanding with modern SaaS architecture and Malaysian localization expertise.</p>
+        <div class="founder-tags">
+          <span>Fintech</span>
+          <span>Payments</span>
+          <span>Onboarding</span>
+          <span>Admin tooling</span>
+          <span>Frontend</span>
+          <span>Product UX</span>
+        </div>
+        <div class="founder-links">
+          <div class="l"><span class="k">Web</span><span class="v">roofly.my</span></div>
+          <div class="l"><span class="k">Studio</span><span class="v">Axel Nova Ventures</span></div>
+          <div class="l"><span class="k">Contact</span><span class="v">qie@roofly.my</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     18. VISION
+     ============================================================ -->
+<section data-label="18 Vision" class="vision">
+  <div class="mark"><svg class="glyph" viewBox="0 0 32 32" fill="none"><path d="M4 14 L16 4 L28 14 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 Z" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/><path d="M13 28 V19 H19 V28" stroke="#E76F51" stroke-width="2" stroke-linejoin="round"/></svg><span class="word" style="color:#fff">Roofly</span></div>
+  <div class="eyebrow"><span class="dot"></span>Vision</div>
+  <div class="foot"><span>Section 17</span><span>18 / 18</span></div>
+
+  <div class="frame">
+    <div>
+      <div class="v-eyebrow">Long-term vision</div>
+      <div class="v-statement">The operating system for modern <em>rental property management</em> in Malaysia.</div>
+    </div>
+
+    <div class="v-foot">
+      <div class="col">
+        <span class="k">Today</span>
+        <span class="v">Operations layer for landlords with 1–20 units.</span>
+      </div>
+      <div class="col">
+        <span class="k">Tomorrow</span>
+        <span class="v">Financial services, maintenance ecosystems, AI-assisted workflows.</span>
+      </div>
+      <div class="col" style="text-align:right;align-items:flex-end">
+        <span class="k">Contact</span>
+        <span class="v">baihaqie@axelnova.tech · roofly.my</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+</deck-stage>
+<script src="deck-stage.js"></script>
+</body>
+</html>
