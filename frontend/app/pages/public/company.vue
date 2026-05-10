@@ -56,7 +56,7 @@ useScrollReveal('.reveal')
         <span aria-hidden class="hero-logo-aurora" />
         <span aria-hidden class="hero-logo-orbit" />
         <img
-          src="/axel_nova_favicon.png"
+          src="/favicon/web-app-manifest-512x512.png"
           alt=""
           aria-hidden="true"
           class="relative size-52 sm:size-64 lg:size-72 object-contain hero-logo-mark"
