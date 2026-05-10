@@ -285,8 +285,8 @@ onMounted(() => {
               <div class="flex flex-col items-center lg:items-start gap-2.5">
                 <NuxtLink to="/contact" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Contact Us</NuxtLink>
                 <a href="https://ko-fi.com/axelnova" target="_blank" rel="noopener" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Support Our Work</a>
-                <a href="mailto:baihaqie@axelnova.tech?subject=Feedback%20—%20axelnova.tech" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Give Feedback</a>
-                <a href="mailto:baihaqie@axelnova.tech?subject=Issue%20Report%20—%20axelnova.tech" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Report an Issue</a>
+                <a href="mailto:baihaqie@axelnova.tech?subject=Feedback%20—%20axelnovaventures.com" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Give Feedback</a>
+                <a href="mailto:baihaqie@axelnova.tech?subject=Issue%20Report%20—%20axelnovaventures.com" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Report an Issue</a>
               </div>
             </div>
 

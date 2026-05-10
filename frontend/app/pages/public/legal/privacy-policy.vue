@@ -70,7 +70,7 @@ useScrollReveal('.reveal')
         <h2 class="text-[19px] font-semibold tracking-tight mb-4" style="color: var(--color-text);">Overview</h2>
         <div class="space-y-4 text-[16px] leading-relaxed" style="color: var(--color-text-secondary);">
           <p>
-            Axel Nova Ventures ("we", "us", "our") operates axelnova.tech. This Privacy Policy explains
+            Axel Nova Ventures ("we", "us", "our") operates axelnovaventures.com. This Privacy Policy explains
             how we collect, use, and protect information about you when you visit our website or engage
             with our services.
           </p>

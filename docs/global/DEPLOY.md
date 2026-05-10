@@ -1,6 +1,6 @@
 # Deploy & Ops — axelnova-dashboard
 
-Production runs at **https://axelnova.tech**. Stack lives on a Hostinger VPS (`vps` SSH alias) — backend, frontend, and queue worker in Docker via [docker-compose.prod.yml](./docker-compose.prod.yml); fronted by system **nginx** which terminates TLS and routes traffic.
+Production runs at **https://axelnovaventures.com**. Stack lives on a Hostinger VPS (`vps` SSH alias) — backend, frontend, and queue worker in Docker via [docker-compose.prod.yml](./docker-compose.prod.yml); fronted by system **nginx** which terminates TLS and routes traffic.
 
 ## Daily flow
 
@@ -34,12 +34,12 @@ Total: ~30s when only source changes; ~2 min for a full rebuild (PHP extension r
 
 | Component | Where | Purpose |
 |---|---|---|
-| nginx (system) | `/etc/nginx/sites-available/axelnova.tech` | TLS terminator + reverse proxy. Routes `/api/*` → `127.0.0.1:8003`, everything else → `127.0.0.1:3003` |
+| nginx (system) | `/etc/nginx/sites-available/axelnovaventures.com` | TLS terminator + reverse proxy. Routes `/api/*` → `127.0.0.1:8003`, everything else → `127.0.0.1:3003` |
 | Frontend (Nuxt 4 SSR) | `axelnova-frontend` container | Built from [frontend/Dockerfile](./frontend/Dockerfile), port 3000 → host 3003 |
 | Backend (Laravel 11) | `axelnova-backend` container | nginx + php-fpm via supervisord, built from [backend/Dockerfile](./backend/Dockerfile), port 8003 |
 | Queue worker | `axelnova-queue` container | Same image as backend; runs `php artisan queue:work`. Healthcheck disabled (no HTTP server) |
 | MySQL | `axelnova-mysql` (shared infra at `~/infra/`) | Shared with portfolio-v2; reachable as `mysql:3306` from app containers via `axelnova-shared` Docker network |
-| TLS cert | `/etc/letsencrypt/live/axelnova.tech/` | Let's Encrypt, auto-renewed via certbot timer |
+| TLS cert | `/etc/letsencrypt/live/axelnovaventures.com/` | Let's Encrypt, auto-renewed via certbot timer |
 
 ## Common ops
 

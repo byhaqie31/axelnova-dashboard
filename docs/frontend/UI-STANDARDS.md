@@ -1,4 +1,4 @@
-# UI Standard — axelnova.tech
+# UI Standard — axelnovaventures.com
 
 The design system reference for `axelnova-dashboard`. Apple-inspired premium minimalism, graphite + Apple Blue + iridescent accent moments. This document is the source of truth. Implementation lives in [`app/assets/css/main.css`](app/assets/css/main.css).
 

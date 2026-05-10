@@ -66,7 +66,7 @@ const handleSubmit = async () => {
         access_key: 'a9100b0c-2c2b-4c5c-a381-543301ef9b17',
         name: form.name,
         email: form.email,
-        subject: `${form.subject} — axelnova.tech`,
+        subject: `${form.subject} — axelnovaventures.com`,
         message: form.message,
       }),
     })

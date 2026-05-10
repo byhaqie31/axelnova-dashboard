@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Portfolio + client platform for Ahmad Baihaqie / Axel Nova Ventures. Production: https://axelnova.tech.
+Portfolio + client platform for Ahmad Baihaqie / Axel Nova Ventures. Production: https://axelnovaventures.com.
 
 ## Documentation standard — CENTRALISED IN `docs/`
 
