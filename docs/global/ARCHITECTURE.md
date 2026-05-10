@@ -112,7 +112,7 @@ See `backend/.env.example` for the full list. Key variables:
 
 ## Deployment
 
-- **Frontend**: Nuxt runs in Docker, reverse-proxied by Caddy/Nginx to `axelnova.tech`
+- **Frontend**: Nuxt runs in Docker, reverse-proxied by Caddy/Nginx to `axelnovaventures.com`
 - **Local dev**: `docker compose -f docker-compose.dev.yml up -d --build` from the monorepo root brings up `axelnova-backend-dev` (port 8003) and `axelnova-frontend-dev` (port 3003). Both join the external `axelnova-shared` network from `axelnova-infra` and reach MySQL via hostname `mysql`.
 - **Artisan commands**: run them inside the backend container — `docker compose -f docker-compose.dev.yml exec backend php artisan migrate` (because `DB_HOST=mysql` in `.env` only resolves on the docker network).
 - **MySQL**: shared instance from `axelnova-infra` (Docker, `127.0.0.1:3306` from host, `mysql:3306` from containers); database `axelnova_dashboard_db`, user `axelnova_dashboard_user`.

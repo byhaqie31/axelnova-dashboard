@@ -220,7 +220,7 @@ const contactChannels = [
     label: 'Email',
     value: 'baihaqie@axelnova.tech',
     helper: 'Best for briefs, scope docs, and longer conversations.',
-    href: 'mailto:baihaqie@axelnova.tech?subject=Project%20enquiry%20—%20axelnova.tech',
+    href: 'mailto:baihaqie@axelnova.tech?subject=Project%20enquiry%20—%20axelnovaventures.com',
     target: '_self',
     icon: 'i-fluent-mail-24-regular',
     iconColor: 'var(--color-accent)',

@@ -24,7 +24,7 @@ useScrollReveal('.reveal')
       <section class="reveal">
         <h2 class="text-[19px] font-semibold tracking-tight mb-4" style="color: var(--color-text);">General</h2>
         <p class="text-[16px] leading-relaxed" style="color: var(--color-text-secondary);">
-          The information provided on axelnova.tech is for general informational and portfolio
+          The information provided on axelnovaventures.com is for general informational and portfolio
           purposes only. While we make every effort to keep the content accurate, complete, and
           up to date, Axel Nova Ventures makes no representations or warranties of any kind,
           express or implied, about the completeness, accuracy, reliability, or suitability of
@@ -89,7 +89,7 @@ useScrollReveal('.reveal')
       <section class="reveal">
         <h2 class="text-[19px] font-semibold tracking-tight mb-4" style="color: var(--color-text);">Website Availability</h2>
         <p class="text-[16px] leading-relaxed" style="color: var(--color-text-secondary);">
-          We strive to keep axelnova.tech available at all times, but we do not guarantee
+          We strive to keep axelnovaventures.com available at all times, but we do not guarantee
           uninterrupted access. The website may be temporarily unavailable due to maintenance,
           technical issues, or circumstances beyond our control. We reserve the right to modify
           or discontinue any part of the website at any time without notice.

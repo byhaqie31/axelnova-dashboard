@@ -120,7 +120,7 @@ useHead({ title: () => proposal.value ? `Proposal — ${proposal.value.client}` 
 
         <footer class="border-t pt-8" :style="{ borderColor: 'var(--color-border)' }">
           <p class="text-[13px]" style="color: var(--color-text-secondary);">
-            Prepared by Ahmad Baihaqie · axelnova.tech ·
+            Prepared by Ahmad Baihaqie · axelnovaventures.com ·
             <a href="mailto:baihaqie@axelnova.tech" style="color: var(--color-accent);">baihaqie@axelnova.tech</a>
           </p>
         </footer>
@@ -132,7 +132,7 @@ useHead({ title: () => proposal.value ? `Proposal — ${proposal.value.client}` 
           This link may have expired or been mistyped.
         </p>
         <NuxtLink to="/" class="text-[14px]" style="color: var(--color-accent);">
-          ← Back to axelnova.tech
+          ← Back to axelnovaventures.com
         </NuxtLink>
       </div>
     </div>

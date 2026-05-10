@@ -41,7 +41,7 @@ useScrollReveal('.reveal')
       <section class="reveal">
         <h2 class="text-[19px] font-semibold tracking-tight mb-4" style="color: var(--color-text);">Acceptance of Terms</h2>
         <p class="text-[16px] leading-relaxed" style="color: var(--color-text-secondary);">
-          By accessing or using axelnova.tech, you agree to be bound by these Terms & Conditions
+          By accessing or using axelnovaventures.com, you agree to be bound by these Terms & Conditions
           and all applicable laws and regulations. If you do not agree with any part of these terms,
           you must not use this website. These terms apply to all visitors, users, and anyone who
           accesses or uses our website.

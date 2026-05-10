@@ -2,7 +2,7 @@
 
 Portfolio + client platform for Ahmad Baihaqie / Axel Nova Ventures.
 
-- **Frontend**: Nuxt 4 (TypeScript, Tailwind v4, @nuxt/ui v4) — `axelnova.tech` and `dashboard.axelnova.tech`
+- **Frontend**: Nuxt 4 (TypeScript, Tailwind v4, @nuxt/ui v4) — `axelnovaventures.com` and `admin.axelnovaventures.com`
 - **Backend**: Laravel 11 API (Phase 3: public quote builder funnel)
 - **Database**: shared MySQL 8 from [axelnova-infra](../../../axelnova-infra/)
 

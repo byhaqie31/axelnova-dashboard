@@ -1,6 +1,6 @@
 # Axel Nova Platform — Backend API
 
-Laravel 11 API for the Axel Nova Ventures platform (`dashboard.axelnova.tech`).
+Laravel 11 API for the Axel Nova Ventures platform (`admin.axelnovaventures.com`).
 
 ## Setup
 
