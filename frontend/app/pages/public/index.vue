@@ -18,9 +18,8 @@ interface ApiProject {
   featured: boolean
 }
 
-const runtimeConfig = useRuntimeConfig()
 const { data: apiResponse } = await useFetch<{ data: ApiProject[] }>(
-  `${runtimeConfig.public.apiBase}/api/v1/projects`,
+  `${useApiBase()}/api/v1/projects`,
   { key: 'public-projects-home' },
 )
 
@@ -151,17 +150,12 @@ useScrollReveal('.reveal')
       </p>
 
       <div ref="heroCtas" class="mt-9 flex flex-wrap items-center justify-center gap-3">
-        <NuxtLink to="/projects" class="btn-pill btn-pill-accent">
-          See my work
+        <NuxtLink to="/quote" class="btn-pill btn-pill-accent">
+          Get a quotation
         </NuxtLink>
-        <a
-          href="https://baihaqie.com"
-          target="_blank"
-          rel="noopener"
-          class="btn-pill btn-pill-ghost"
-        >
-          Full portfolio →
-        </a>
+        <NuxtLink to="/services" class="btn-pill btn-pill-ghost">
+          See my services
+        </NuxtLink>
       </div>
     </section>
 

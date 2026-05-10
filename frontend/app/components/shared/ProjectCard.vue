@@ -14,11 +14,17 @@ const statusMeta = (status: Project['status']) => {
 </script>
 
 <template>
-  <NuxtLink
-    :to="`/projects/${project.id}`"
-    class="card group relative block rounded-2xl border p-7 transition-all duration-300 overflow-hidden h-full"
+  <div
+    class="card group relative rounded-2xl border p-7 transition-all duration-300 overflow-hidden h-full"
     style="background: var(--color-bg-elevated); border-color: var(--color-border);"
   >
+    <!-- Stretched link covers the whole card → detail page -->
+    <NuxtLink
+      :to="`/projects/${project.id}`"
+      class="absolute inset-0 z-10"
+      :aria-label="`View ${project.name} details`"
+    />
+
     <!-- Subtle gradient hover wash -->
     <span
       aria-hidden
@@ -64,13 +70,32 @@ const statusMeta = (status: Project['status']) => {
       </span>
     </div>
 
+    <!--
+      Hover shortcut button.
+      If project.url is set → opens it directly in a new tab (skips detail page).
+      Otherwise → routes to the detail page (same target as the stretched card link).
+    -->
+    <a
+      v-if="project.url"
+      :href="project.url"
+      target="_blank"
+      rel="noopener"
+      :aria-label="`Open ${project.name} in a new tab`"
+      class="card-action absolute bottom-7 right-7 size-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20"
+      style="background: var(--color-accent); color: #fff; box-shadow: 0 6px 16px rgba(0,113,227,0.32);"
+      @click.stop
+    >
+      <UIcon name="i-fluent-arrow-up-right-24-regular" class="size-4" />
+    </a>
     <span
-      class="absolute bottom-7 right-7 size-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
-      style="background: var(--color-accent); color: #fff; transform: translate(4px, 4px); box-shadow: 0 6px 16px rgba(0,113,227,0.32);"
+      v-else
+      aria-hidden
+      class="card-action absolute bottom-7 right-7 size-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none"
+      style="background: var(--color-accent); color: #fff; box-shadow: 0 6px 16px rgba(0,113,227,0.32);"
     >
       <UIcon name="i-fluent-arrow-right-24-regular" class="size-4" />
     </span>
-  </NuxtLink>
+  </div>
 </template>
 
 <style scoped>
@@ -81,5 +106,11 @@ const statusMeta = (status: Project['status']) => {
 }
 .card:hover .card-glow {
   opacity: 1;
+}
+.card-action {
+  transform: translate(4px, 4px);
+}
+a.card-action:hover {
+  filter: brightness(1.05);
 }
 </style>
