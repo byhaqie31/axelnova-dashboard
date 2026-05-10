@@ -3,7 +3,7 @@ definePageMeta({ layout: 'public' })
 useHead({
   title: 'Roofly — Investor materials | Axel Nova Ventures',
   meta: [
-    { name: 'description', content: 'Investor materials for Roofly — a rent-management SaaS for Malaysian landlords. Pitch deck, investment package, and financial summary.' },
+    { name: 'description', content: 'Investor materials for Roofly — the modern operating system for rental property management in Malaysia. Pitch deck, investment package, and financial summary.' },
     { name: 'robots', content: 'noindex' },
   ],
 })
@@ -53,14 +53,16 @@ const materials: Material[] = [
           class="reveal text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight"
           style="color: var(--color-text); letter-spacing: -0.045em; line-height: 1.05;"
         >
-          Roofly
+          Roofly.my
           <span class="text-gradient">— investor brief</span>
         </h1>
         <p
           class="reveal mt-6 text-[17px] md:text-[19px] leading-relaxed max-w-2xl"
           style="color: var(--color-text-secondary);"
         >
-          A rent-management SaaS for Malaysian landlords. Currently in active development under
+          Roofly is the modern operating system for rental property management in Malaysia — replacing the chaos of WhatsApp and Excel with one calm platform for tenants, agreements, FPX rent collection, and maintenance. Currently in active development at
+          <a href="https://roofly.com" target="_blank" rel="noopener" class="underline" :style="{ color: 'var(--color-accent)' }">roofly.com</a>
+          under
           <NuxtLink to="/" class="underline" :style="{ color: 'var(--color-accent)' }">Axel Nova Ventures</NuxtLink>.
           The materials below are the full investor brief — review at your own pace.
         </p>
@@ -74,6 +76,15 @@ const materials: Material[] = [
           >
             Open pitch deck
             <UIcon name="i-lucide-arrow-up-right" class="size-4" />
+          </a>
+          <a
+            href="https://demo.roofly.my"
+            target="_blank"
+            rel="noopener"
+            class="btn-pill text-[14px] inline-flex items-center gap-2 bg-orange-400 text-white border-0 hover:bg-orange-500"
+          >
+            <UIcon name="i-lucide-play" class="size-4" />
+            See demo
           </a>
           <a
             href="mailto:baihaqie@axelnova.tech?subject=Roofly%20%E2%80%94%20investor%20conversation"

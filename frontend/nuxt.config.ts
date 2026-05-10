@@ -29,7 +29,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     apiBase: 'http://backend:8003',
     public: {
-      apiBase: 'http://localhost:8000',
+      apiBase: 'http://localhost:8003',
     },
   },
 
