@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
+
+useSeoMeta({ robots: 'noindex, nofollow' })
 </script>
 
 <template>

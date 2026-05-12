@@ -5,6 +5,56 @@ import type { Project } from '~/data/projects'
 import ProjectCard from '~/components/shared/ProjectCard.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
+const siteUrl = 'https://axelnovaventures.com'
+const ogImage = `${siteUrl}/og-image.png`
+const seoTitle = 'Axel Nova Ventures — Design & Engineering Studio'
+const seoDescription = 'Design-led software studio building fintech, SaaS, and bespoke web products. Vue · Nuxt · Laravel · Docker · AWS.'
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogImage,
+  ogUrl: siteUrl,
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  twitterImage: ogImage,
+  twitterCard: 'summary_large_image',
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: siteUrl }],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'Axel Nova Ventures',
+        url: siteUrl,
+        logo: `${siteUrl}/axel_nova_logo.png`,
+        description: seoDescription,
+        foundingDate: '2026',
+        founder: {
+          '@type': 'Person',
+          name: 'Ahmad Baihaqie',
+          jobTitle: 'Founder & Software Engineer',
+        },
+        address: {
+          '@type': 'PostalAddress',
+          addressLocality: 'Kuala Lumpur',
+          addressCountry: 'MY',
+        },
+        sameAs: [
+          'https://github.com/byhaqie31',
+          'https://linkedin.com/in/byhaqieyusri',
+        ],
+      }),
+    },
+  ],
+})
+
 interface ApiProject {
   slug: string
   name: string

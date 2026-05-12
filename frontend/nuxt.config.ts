@@ -19,7 +19,24 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@vueuse/nuxt',
     '@nuxtjs/google-fonts',
+    '@nuxtjs/sitemap',
   ],
+
+  site: {
+    url: 'https://axelnovaventures.com',
+    name: 'Axel Nova Ventures',
+  },
+
+  sitemap: {
+    exclude: [
+      '/admin/**',
+      '/portal/**',
+      '/proposals/**',
+      '/quote/preview',
+      '/quote/success',
+      '/investor/**',
+    ],
+  },
 
   css: ['~/assets/css/main.css'],
 
@@ -48,10 +65,20 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'Axel Nova Ventures',
+      htmlAttrs: { lang: 'en' },
       meta: [
         { name: 'description', content: 'UI/UX engineer with 7 years of building — fintech, SaaS, and products that need real craft.' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { property: 'og:title', content: 'Axel Nova Ventures' },
         { property: 'og:description', content: 'UI/UX-focused software engineer. Vue · Nuxt · Laravel · Docker · AWS.' },
+        { property: 'og:type', content: 'website' },
+        { property: 'og:site_name', content: 'Axel Nova Ventures' },
+        { property: 'og:locale', content: 'en_US' },
+        { property: 'og:image', content: 'https://axelnovaventures.com/og-image.png' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: 'Axel Nova Ventures' },
+        { name: 'twitter:description', content: 'UI/UX-focused software engineer. Vue · Nuxt · Laravel · Docker · AWS.' },
+        { name: 'twitter:image', content: 'https://axelnovaventures.com/og-image.png' },
       ],
       link: [
         { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/favicon/favicon-96x96.png' },

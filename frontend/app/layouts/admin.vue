@@ -2,6 +2,8 @@
 import BrandMark from '~/components/shared/BrandMark.vue'
 import { adminNav, isAdminNavActive } from '~/data/adminNav'
 
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 const mobileNavOpen = ref(false)
 const profileOpen = ref(false)
 

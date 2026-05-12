@@ -1,6 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 const route = useRoute()
 const slug = computed(() => route.params.slug as string)
 
