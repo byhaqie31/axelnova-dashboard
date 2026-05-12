@@ -1,6 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 const runtimeConfig = useRuntimeConfig()
 
 useHead({ title: 'Review your quote — Axel Nova Ventures' })
