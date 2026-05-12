@@ -111,10 +111,6 @@ function fmtPrice(min: number, max: number | null): string {
   return `${prefix}${convertAmt(min)} – ${convertAmt(max)}`
 }
 
-// Categories with a dedicated SEO landing page at /services/<slug>.vue.
-// Add a slug here when you launch a new detail page.
-const categoriesWithDetailPage = new Set(['web', 'dashboard', 'design-frontend'])
-
 // ── Service tabs ──────────────────────────────────────────────────────────────
 const route = useRoute()
 const router = useRouter()
@@ -352,7 +348,6 @@ useScrollReveal('.reveal')
         </p>
 
         <NuxtLink
-          v-if="categoriesWithDetailPage.has(currentCategory.id)"
           :to="`/services/${currentCategory.id}`"
           class="inline-flex items-center gap-1.5 text-[14px] font-medium mb-6 sm:mb-8 transition-all hover:gap-2.5"
           style="color: var(--color-accent);"

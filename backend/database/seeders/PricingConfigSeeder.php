@@ -4,13 +4,17 @@ namespace Database\Seeders;
 
 use App\Models\PricingConfig;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Cache;
 
 class PricingConfigSeeder extends Seeder
 {
     public function run(): void
     {
-        PricingConfig::create([
-            'version' => '2026.05.01',
+        $version = '2026.05.01';
+
+        $config = PricingConfig::firstOrCreate([
+            'version' => $version,
+        ], [
             'active' => true,
             'notes' => 'Initial pricing config — Phase 3 launch.',
             'config' => [
@@ -53,5 +57,23 @@ class PricingConfigSeeder extends Seeder
                 'valid_for_days' => 30,
             ],
         ]);
+
+        // Ensure exactly one row is active: this version becomes active, every
+        // other config row gets deactivated. Self-heals if the active flag was
+        // toggled off via admin or a botched seed earlier left things in a
+        // stuck state (which is what 404'd the /quote-builder/config endpoint).
+        PricingConfig::where('id', '!=', $config->id)->update(['active' => false]);
+        if (!$config->active) {
+            $config->update(['active' => true]);
+        }
+
+        // Bust the controller's cached payload so the next request reads fresh state.
+        Cache::forget('quote_builder_config_v1');
+
+        $this->command->info(
+            $config->wasRecentlyCreated
+                ? "Pricing config {$version} seeded + activated."
+                : "Pricing config {$version} already exists — ensured active."
+        );
     }
 }
