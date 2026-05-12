@@ -343,9 +343,17 @@ useScrollReveal('.reveal')
       <div v-if="currentCategory" :key="activeCat" class="mb-32">
 
         <!-- Category description -->
-        <p class="text-[15px] leading-relaxed mb-6 sm:mb-8 max-w-2xl" style="color: var(--color-text-secondary);">
+        <p class="text-[15px] leading-relaxed mb-3 max-w-2xl" style="color: var(--color-text-secondary);">
           {{ currentCategory.description }}
         </p>
+
+        <NuxtLink
+          :to="`/services/${currentCategory.id}`"
+          class="inline-flex items-center gap-1.5 text-[14px] font-medium mb-6 sm:mb-8 transition-all hover:gap-2.5"
+          style="color: var(--color-accent);"
+        >
+          Learn more about {{ currentCategory.label }} <span aria-hidden>→</span>
+        </NuxtLink>
 
         <!-- Currency dropdown (mobile — below the description, hidden on sm+) -->
         <div ref="currencyMenuRefMobile" class="sm:hidden flex items-center justify-end gap-2 relative mb-8">

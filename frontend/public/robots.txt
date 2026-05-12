@@ -1,2 +1,10 @@
-User-Agent: *
-Disallow:
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+Sitemap: https://axelnovaventures.com/sitemap.xml

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 useHead({ title: 'Admin Login — Axel Nova' })
+useSeoMeta({ robots: 'noindex, nofollow' })
 
 const { setToken, apiFetch } = useAdminAuth()
 const email = ref('')

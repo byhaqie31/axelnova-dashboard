@@ -2,6 +2,7 @@
 definePageMeta({ layout: 'public' })
 
 useHead({ title: 'Quote Sent — Axel Nova Ventures' })
+useSeoMeta({ robots: 'noindex, nofollow' })
 
 const route = useRoute()
 const ref_ = route.query.ref as string

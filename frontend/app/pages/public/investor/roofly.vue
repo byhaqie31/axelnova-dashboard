@@ -1,5 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
+useSeoMeta({ robots: 'noindex, nofollow' })
 useHead({
   title: 'Roofly — Investor materials | Axel Nova Ventures',
   meta: [

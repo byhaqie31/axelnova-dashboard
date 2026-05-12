@@ -1,6 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 const runtimeConfig = useRuntimeConfig()
 
 useHead({ title: 'Review your quote — Axel Nova Ventures' })
@@ -187,7 +189,11 @@ async function handleSubmit() {
 
     const res = await $fetch<{ data: { reference_code: string; valid_until: string } }>(
       `${runtimeConfig.public.apiBase}/api/v1/quote-requests`,
-      { method: 'POST', body: payload },
+      {
+        method: 'POST',
+        body: payload,
+        headers: { Accept: 'application/json' },
+      },
     )
 
     await navigateTo(`/quote/success?ref=${res.data.reference_code}&until=${res.data.valid_until}`)
