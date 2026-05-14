@@ -55,10 +55,6 @@ const loading = ref(false)
 const error = ref('')
 
 const handleSubmit = async () => {
-  if (!form.businessEmail.trim() && !form.businessPhone.trim()) {
-    error.value = 'Please provide at least one way to reach the business — an email or a phone number.'
-    return
-  }
   if (!form.agreed) {
     error.value = 'Please agree to the Partner Program Terms & Conditions to continue.'
     return
@@ -227,36 +223,33 @@ useScrollReveal('.reveal')
               />
             </div>
 
-            <div class="space-y-1.5">
-              <div class="grid sm:grid-cols-2 gap-5">
-                <div class="space-y-1.5">
-                  <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
-                    Their email
-                  </label>
-                  <input
-                    v-model="form.businessEmail"
-                    type="email"
-                    placeholder="contact@company.com"
-                    class="contact-input"
-                    :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-                  />
-                </div>
-                <div class="space-y-1.5">
-                  <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
-                    Their phone
-                  </label>
-                  <input
-                    v-model="form.businessPhone"
-                    type="tel"
-                    placeholder="+60 12-345 6789"
-                    class="contact-input"
-                    :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-                  />
-                </div>
+            <div class="grid sm:grid-cols-2 gap-5">
+              <div class="space-y-1.5">
+                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
+                  Their email <span style="color: var(--color-danger);">*</span>
+                </label>
+                <input
+                  v-model="form.businessEmail"
+                  type="email"
+                  placeholder="contact@company.com"
+                  required
+                  class="contact-input"
+                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
+                />
               </div>
-              <p class="text-[12px] leading-relaxed pt-1" style="color: var(--color-text-tertiary);">
-                Provide at least one — whichever you have for them.
-              </p>
+              <div class="space-y-1.5">
+                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
+                  Their phone <span style="color: var(--color-danger);">*</span>
+                </label>
+                <input
+                  v-model="form.businessPhone"
+                  type="tel"
+                  placeholder="+60 12-345 6789"
+                  required
+                  class="contact-input"
+                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
+                />
+              </div>
             </div>
 
             <div class="space-y-1.5">
