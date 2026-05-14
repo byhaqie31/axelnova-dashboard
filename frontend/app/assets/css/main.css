@@ -57,7 +57,7 @@
   /* Nav surface — themed via CSS so SSR matches client */
   --nav-bg-top: rgba(255, 255, 255, 0.55);
   --nav-bg-scrolled: rgba(255, 255, 255, 0.78);
-  --nav-mobile-bg: rgba(255, 255, 255, 0.95);
+  --nav-mobile-bg: rgba(255, 255, 255, 1);
 
   /* Status pills — single source of truth. Use .status-pill[data-status="..."] */
   --status-new-fg:        #0071E3;
@@ -115,7 +115,7 @@
 
   --nav-bg-top: rgba(10, 15, 31, 0.55);
   --nav-bg-scrolled: rgba(10, 15, 31, 0.78);
-  --nav-mobile-bg: rgba(10, 15, 31, 0.95);
+  --nav-mobile-bg: rgba(10, 15, 31, 1);
 
   /* Status pills — dark mode overrides (slightly brighter foregrounds, lighter bg alpha) */
   --status-new-fg:        #2997FF;

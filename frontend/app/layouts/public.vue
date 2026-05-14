@@ -14,6 +14,7 @@ const links = [
   { label: 'Company',  to: '/company' },
   { label: 'Projects', to: '/projects' },
   { label: 'Services', to: '/services' },
+  { label: 'Partners', to: '/partners' },
   { label: 'Contact',  to: '/contact' },
 ]
 
