@@ -276,7 +276,7 @@ useScrollReveal('.reveal')
     </section>
 
     <!-- CTA BANNER -->
-    <section class="relative overflow-hidden border-y" :style="{ borderColor: 'var(--color-border)' }">
+    <section class="relative overflow-hidden" :style="{ borderColor: 'var(--color-border)' }">
       <!-- gradient backdrop -->
       <div
         aria-hidden
