@@ -9,6 +9,11 @@ name: Deploy via GHCR
 
 on:
   workflow_dispatch:  # manual trigger only for now — uncomment push after verified
+  # TEMPORARY: lets us test the pipeline from feat/ghcr-pipeline without merging
+  # to main (workflow_dispatch isn't selectable until the file is on the default
+  # branch). REVERT to `push: branches: [main]` before merging — see Phase 5.
+  push:
+    branches: [feat/ghcr-pipeline]
   # push:
   #   branches: [main]
 
