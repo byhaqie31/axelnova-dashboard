@@ -219,11 +219,11 @@ onMounted(() => {
           <div class="grid grid-cols-2 lg:grid-cols-[1.8fr_1fr_1fr_1fr_1fr] gap-x-8 gap-y-10 mb-10">
 
             <!-- Brand: full width on mobile, first col on desktop -->
-            <div class="col-span-2 lg:col-span-1 text-center lg:text-left">
-              <div class="flex justify-center lg:justify-start mb-4">
+            <div class="col-span-2 lg:col-span-1 text-left">
+              <div class="flex justify-start mb-4">
                 <BrandMark />
               </div>
-              <p class="text-[13px] leading-relaxed mb-5 max-w-xs mx-auto lg:mx-0" style="color: var(--color-text-secondary);">
+              <p class="text-[13px] leading-relaxed mb-5 max-w-xs" style="color: var(--color-text-secondary);">
                 Building thoughtful digital experiences through design, systems, and technology.
               </p>
 
@@ -244,7 +244,7 @@ onMounted(() => {
               </div>
 
               <!-- Availability badge -->
-              <div class="flex items-center justify-center lg:justify-start gap-2">
+              <div class="flex items-center justify-start gap-2">
                 <span class="footer-avail-dot" aria-hidden />
                 <span class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
                   Available for selected collaborations
@@ -253,9 +253,9 @@ onMounted(() => {
             </div>
 
             <!-- Explore -->
-            <div class="text-center lg:text-left">
+            <div class="text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Explore</p>
-              <div class="flex flex-col items-center lg:items-start gap-2.5">
+              <div class="flex flex-col items-start gap-2.5">
                 <NuxtLink
                   v-for="l in links"
                   :key="l.to"
@@ -269,9 +269,9 @@ onMounted(() => {
             </div>
 
             <!-- Services -->
-            <div class="text-center lg:text-left">
+            <div class="text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Services</p>
-              <div class="flex flex-col items-center lg:items-start gap-2.5">
+              <div class="flex flex-col items-start gap-2.5">
                 <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">UI/UX Design</NuxtLink>
                 <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Frontend Engineering</NuxtLink>
                 <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Product Design</NuxtLink>
@@ -281,9 +281,9 @@ onMounted(() => {
             </div>
 
             <!-- Support -->
-            <div class="text-center lg:text-left">
+            <div class="text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Support</p>
-              <div class="flex flex-col items-center lg:items-start gap-2.5">
+              <div class="flex flex-col items-start gap-2.5">
                 <NuxtLink to="/contact" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Contact Us</NuxtLink>
                 <a href="https://ko-fi.com/axelnova" target="_blank" rel="noopener" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Support Our Work</a>
                 <a href="mailto:baihaqie@axelnova.tech?subject=Feedback%20—%20axelnovaventures.com" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Give Feedback</a>
@@ -292,9 +292,9 @@ onMounted(() => {
             </div>
 
             <!-- Legal -->
-            <div class="text-center lg:text-left">
+            <div class="text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Legal</p>
-              <div class="flex flex-col items-center lg:items-start gap-2.5">
+              <div class="flex flex-col items-start gap-2.5">
                 <NuxtLink to="/legal/privacy-policy" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Privacy Policy</NuxtLink>
                 <NuxtLink to="/legal/terms" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Terms & Conditions</NuxtLink>
                 <NuxtLink to="/legal/cookies" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Cookie Policy</NuxtLink>
