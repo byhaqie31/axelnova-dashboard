@@ -1,0 +1,139 @@
+name: Deploy via GHCR
+
+# New image-based pipeline. Builds on GitHub runners, pushes to GHCR, then the
+# VPS only pulls + restarts (~10-15s downtime instead of a 2-5min on-VPS build).
+#
+# Runs in PARALLEL with the legacy deploy.yml during the transition. Manual
+# trigger only for now (workflow_dispatch) — flip on the `push` trigger below
+# once verified on feat/ghcr-pipeline (Phase 5).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Share the legacy pipeline's concurrency group so a manual GHCR deploy and a
+# legacy push-deploy can never race each other on the VPS.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/byhaqie31
+
+jobs:
+  build-backend:
+    name: Build + push backend image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/byhaqie31/axelnova-dashboard-backend:latest
+            ghcr.io/byhaqie31/axelnova-dashboard-backend:sha-${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  build-frontend:
+    name: Build + push frontend image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/byhaqie31/axelnova-dashboard-frontend:latest
+            ghcr.io/byhaqie31/axelnova-dashboard-frontend:sha-${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  deploy:
+    name: Pull + restart on VPS
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            cd ~/axelnova-dashboard
+
+            echo "=== log in to GHCR (cached creds exist; this is belt-and-suspenders) ==="
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u byhaqie31 --password-stdin
+
+            echo ""
+            echo "=== pull latest images from GHCR ==="
+            docker compose -f docker-compose.prod.ghcr.yml pull
+
+            echo ""
+            echo "=== recreate containers (--no-deps keeps unrelated services untouched) ==="
+            docker compose -f docker-compose.prod.ghcr.yml up -d --no-deps backend frontend queue
+
+            echo ""
+            echo "=== wait for entrypoint config:cache ==="
+            sleep 12
+
+            echo ""
+            echo "=== migrations (idempotent) ==="
+            docker compose -f docker-compose.prod.ghcr.yml exec -T backend php artisan migrate --force
+
+            echo ""
+            echo "=== restart queue worker (picks up new job code) ==="
+            docker compose -f docker-compose.prod.ghcr.yml exec -T backend php artisan queue:restart
+
+            echo ""
+            echo "=== container status ==="
+            docker compose -f docker-compose.prod.ghcr.yml ps
+
+            echo ""
+            echo "=== /up health check ==="
+            curl -fsS http://127.0.0.1:8003/up && echo
+
+            echo ""
+            echo "=== prune dangling images ==="
+            docker image prune -f
