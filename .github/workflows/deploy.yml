@@ -1,9 +1,12 @@
 name: Deploy to production
 
 on:
-  push:
-    branches:
-      - main
+  # Auto-deploy disabled at the Phase 5 GHCR cutover — deploy-ghcr.yml now owns
+  # automatic deploys on push to main. This legacy build-on-VPS path is kept
+  # workflow_dispatch-only as a manual rollback until it's removed in Phase 6.
+  # push:
+  #   branches:
+  #     - main
   workflow_dispatch:
 
 # Prevent two deploys racing each other; second push waits for first to finish.

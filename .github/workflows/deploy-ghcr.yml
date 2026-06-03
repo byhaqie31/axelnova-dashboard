@@ -8,14 +8,9 @@ name: Deploy via GHCR
 # once verified on feat/ghcr-pipeline (Phase 5).
 
 on:
-  workflow_dispatch:  # manual trigger only for now — uncomment push after verified
-  # TEMPORARY: lets us test the pipeline from feat/ghcr-pipeline without merging
-  # to main (workflow_dispatch isn't selectable until the file is on the default
-  # branch). REVERT to `push: branches: [main]` before merging — see Phase 5.
+  workflow_dispatch:
   push:
-    branches: [feat/ghcr-pipeline]
-  # push:
-  #   branches: [main]
+    branches: [main]
 
 # Share the legacy pipeline's concurrency group so a manual GHCR deploy and a
 # legacy push-deploy can never race each other on the VPS.
