@@ -324,9 +324,6 @@ onMounted(() => {
                   <UIcon :name="social.icon" class="size-4" />
                 </a>
               </div>
-              <p class="text-[11px] order-3 lg:order-0 lg:col-start-2 lg:text-center" style="color: var(--color-text-tertiary);">
-                Designed & built by Qie · Nuxt · Tailwind CSS · TypeScript
-              </p>
             </div>
           </div>
         </div>
