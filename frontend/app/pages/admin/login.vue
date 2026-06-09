@@ -48,20 +48,19 @@ async function handleLogin() {
     <div class="admin-login-glow" aria-hidden="true" />
 
     <div class="relative w-full max-w-md">
+      <!-- Brand sits above the card -->
+      <div class="flex justify-center mb-7">
+        <BrandMark class="admin-brand" />
+      </div>
+
       <div class="rounded-3xl border p-10 sm:p-12 space-y-8"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
-        <!-- Brand + heading -->
-        <div class="space-y-5">
-          <BrandMark variant="mark-only" to="/" class="w-fit" />
-          <div class="space-y-1.5">
-            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">
-              Axel Nova Platform
-            </p>
-            <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Admin access</h1>
-            <p class="text-[13px]" style="color: var(--color-text-secondary);">
-              Sign in to manage projects, quotations and orders.
-            </p>
-          </div>
+        <!-- Heading -->
+        <div class="space-y-1.5 text-center">
+          <h1 class="text-[30px] font-bold tracking-tight" style="color: var(--color-text);">Admin portal</h1>
+          <p class="text-[13px]" style="color: var(--color-text-secondary);">
+            Sign in to manage projects, quotations and orders.
+          </p>
         </div>
 
         <form class="space-y-5" @submit.prevent="handleLogin">
@@ -115,6 +114,15 @@ async function handleLogin() {
   transform: translateX(-50%);
   background: radial-gradient(circle, var(--color-accent-soft) 0%, transparent 70%);
   pointer-events: none;
+}
+
+/* Make the brand mark bigger than the nav default for the login card */
+.admin-brand :deep(img) {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.admin-brand :deep(span) {
+  font-size: 22px;
 }
 
 .pw-toggle {
