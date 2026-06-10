@@ -146,7 +146,13 @@ const mapGradientWords = (split: { words: Element[] }) => {
   })
 }
 
-const { build: buildHeadline } = useSplitTextReveal(heroHeadline, { onSplit: mapGradientWords })
+// Keep the split mounted after the reveal: reverting it re-runs layout and, on
+// Safari, produces a second visible reflow (the "shrink"). The gradient is
+// already mapped per word, so leaving the split in place looks identical.
+const { build: buildHeadline } = useSplitTextReveal(heroHeadline, {
+  onSplit: mapGradientWords,
+  revertOnComplete: false,
+})
 
 useMagnetic(heroCta)
 useMagnetic(bandCta)
@@ -157,6 +163,7 @@ useScrollReveal('.reveal')
 
 let heroTl: gsap.core.Timeline | null = null
 let safetyTimer: number | undefined
+let fontGate: number | undefined
 
 onMounted(() => {
   if (import.meta.server) return
@@ -165,28 +172,48 @@ onMounted(() => {
   const els = [heroBadge.value, heroSub.value, heroCtas.value].filter(Boolean) as HTMLElement[]
   if (reduced || !els.length) return
 
+  // Hide immediately so there's no flash while we wait for the font.
   gsap.set(els, { opacity: 0, y: 24 })
 
-  const tl = gsap.timeline({
-    defaults: { ease: MOTION.ease.out },
-    onComplete: () => gsap.set(els, { clearProps: 'opacity,transform' }),
-  })
-  tl.to(heroBadge.value, { opacity: 1, y: 0, duration: MOTION.dur.base })
-  const headline = buildHeadline()
-  if (headline) tl.add(headline, '-=0.3')
-  tl.to(heroSub.value, { opacity: 1, y: 0, duration: MOTION.dur.slow }, '-=0.55')
-  tl.to(heroCtas.value, { opacity: 1, y: 0, duration: MOTION.dur.slow }, '-=0.7')
-  heroTl = tl
+  const start = () => {
+    if (heroTl) return // already started (font-ready and safety-net can race)
 
-  // Throttled/background tabs may never run rAF — force-finish the entrance
-  // so nothing is stranded hidden.
+    // SplitText measures word geometry now, so it must run AFTER the webfont
+    // loads — splitting against the metrically-different fallback font and then
+    // swapping Inter in is what made the headline reflow ("shrink") on Safari.
+    const tl = gsap.timeline({
+      defaults: { ease: MOTION.ease.out },
+      onComplete: () => gsap.set(els, { clearProps: 'opacity,transform' }),
+    })
+    tl.to(heroBadge.value, { opacity: 1, y: 0, duration: MOTION.dur.base })
+    const headline = buildHeadline()
+    if (headline) tl.add(headline, '-=0.3')
+    tl.to(heroSub.value, { opacity: 1, y: 0, duration: MOTION.dur.slow }, '-=0.55')
+    tl.to(heroCtas.value, { opacity: 1, y: 0, duration: MOTION.dur.slow }, '-=0.7')
+    heroTl = tl
+  }
+
+  // Gate on fonts; fall back after a short timeout if fonts.ready stalls.
+  fontGate = window.setTimeout(start, 600)
+  document.fonts?.ready.then(() => {
+    clearTimeout(fontGate)
+    start()
+  }) ?? start()
+
+  // Throttled/background tabs may never run rAF — force-finish whatever has
+  // started so nothing is stranded hidden. If the gate never fired, reveal flat.
   safetyTimer = window.setTimeout(() => {
-    if (tl.progress() < 1) tl.progress(1)
+    if (!heroTl) {
+      gsap.set(els, { clearProps: 'opacity,transform' })
+      return
+    }
+    if (heroTl.progress() < 1) heroTl.progress(1)
   }, 3500)
 })
 
 onUnmounted(() => {
   clearTimeout(safetyTimer)
+  clearTimeout(fontGate)
   heroTl?.kill()
 })
 
