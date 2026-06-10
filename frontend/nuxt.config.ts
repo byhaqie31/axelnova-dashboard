@@ -87,6 +87,6 @@ export default defineNuxtConfig({
         { rel: 'manifest', href: '/favicon/site.webmanifest' },
       ],
     },
-    pageTransition: { name: 'page', mode: 'out-in' },
+    // Page transitions are GSAP-driven via JS hooks on <NuxtPage> in app.vue.
   },
 })

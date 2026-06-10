@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import BrandMark from '~/components/shared/BrandMark.vue'
 
@@ -6,7 +7,11 @@ const route = useRoute()
 const colorMode = useColorMode()
 const mobileOpen = ref(false)
 const scrolled = ref(false)
+const navHidden = ref(false)
 const headerRef = ref<HTMLElement | null>(null)
+const navCta = ref<ComponentPublicInstance | HTMLElement | null>(null)
+
+useMagnetic(navCta)
 
 const links = [
   { label: 'Home',     to: '/' },
@@ -36,18 +41,49 @@ watch(() => route.fullPath, () => { mobileOpen.value = false })
 
 onClickOutside(headerRef, () => { mobileOpen.value = false })
 
+// Hide on scroll-down past 160px (6px accumulator so micro-jitters don't
+// trigger it), reveal on any 4px scroll-up. Tint + shrink past 20px.
 onMounted(() => {
-  const onScroll = () => { scrolled.value = window.scrollY > 8 }
+  let lastY = window.scrollY
+  let downAccum = 0
+
+  const onScroll = () => {
+    const y = window.scrollY
+    scrolled.value = y > 20
+
+    const dy = y - lastY
+    if (y <= 160) {
+      navHidden.value = false
+      downAccum = 0
+    }
+    else if (dy > 0) {
+      downAccum += dy
+      if (downAccum > 6) navHidden.value = true
+    }
+    else if (dy < -4) {
+      navHidden.value = false
+      downAccum = 0
+    }
+    lastY = y
+  }
+
   onScroll()
   window.addEventListener('scroll', onScroll, { passive: true })
   onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 })
+
+// Never hide the nav while the mobile drawer is open.
+watch(mobileOpen, (open) => { if (open) navHidden.value = false })
 </script>
 
 <template>
   <div class="min-h-screen flex flex-col" style="background: var(--color-bg); color: var(--color-text);">
     <!-- NAV -->
-    <header ref="headerRef" class="sticky top-0 z-50">
+    <header
+      ref="headerRef"
+      class="sticky top-0 z-50 nav-header"
+      :class="{ 'nav-header-hidden': navHidden && !mobileOpen }"
+    >
       <!-- Iridescent gradient hairline (always visible on refresh) -->
       <div class="aurora-line" />
 
@@ -58,14 +94,17 @@ onMounted(() => {
           borderColor: 'var(--color-border)'
         }"
       >
-        <nav class="max-w-7xl mx-auto h-12 px-6 flex items-center justify-between">
+        <nav
+          class="max-w-7xl mx-auto px-6 flex items-center justify-between nav-bar"
+          :style="{ height: scrolled ? '44px' : '48px' }"
+        >
           <BrandMark />
 
           <ul class="hidden md:flex items-center gap-8">
             <li v-for="l in links" :key="l.to">
               <NuxtLink
                 :to="l.to"
-                class="text-[12px] transition-colors"
+                class="text-[12px] transition-colors link-underline"
                 :style="{
                   color: isActive(l.to) ? 'var(--color-text)' : 'var(--color-text-secondary)',
                   fontWeight: isActive(l.to) ? 500 : 400
@@ -95,11 +134,12 @@ onMounted(() => {
             </button>
 
             <NuxtLink
+              ref="navCta"
               to="/services"
               class="hidden md:inline-flex btn-pill btn-pill-accent"
               style="height: 32px; font-size: 12px; padding: 0 16px;"
             >
-              Let's talk
+              <span class="magnetic-label">Let's talk</span>
             </NuxtLink>
 
             <button
@@ -260,7 +300,7 @@ onMounted(() => {
                   v-for="l in links"
                   :key="l.to"
                   :to="l.to"
-                  class="text-[13px] transition-colors w-fit"
+                  class="text-[13px] transition-colors w-fit link-underline"
                   style="color: var(--color-text-secondary);"
                 >
                   {{ l.label }}
@@ -272,11 +312,11 @@ onMounted(() => {
             <div class="text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Services</p>
               <div class="flex flex-col items-start gap-2.5">
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">UI/UX Design</NuxtLink>
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Frontend Engineering</NuxtLink>
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Product Design</NuxtLink>
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">System Architecture</NuxtLink>
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Consultation</NuxtLink>
+                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">UI/UX Design</NuxtLink>
+                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Frontend Engineering</NuxtLink>
+                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Product Design</NuxtLink>
+                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">System Architecture</NuxtLink>
+                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Consultation</NuxtLink>
               </div>
             </div>
 
@@ -284,10 +324,10 @@ onMounted(() => {
             <div class="text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Support</p>
               <div class="flex flex-col items-start gap-2.5">
-                <NuxtLink to="/contact" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Contact Us</NuxtLink>
-                <a href="https://ko-fi.com/axelnova" target="_blank" rel="noopener" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Support Our Work</a>
-                <a href="mailto:baihaqie@axelnova.tech?subject=Feedback%20—%20axelnovaventures.com" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Give Feedback</a>
-                <a href="mailto:baihaqie@axelnova.tech?subject=Issue%20Report%20—%20axelnovaventures.com" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Report an Issue</a>
+                <NuxtLink to="/contact" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Contact Us</NuxtLink>
+                <a href="https://ko-fi.com/axelnova" target="_blank" rel="noopener" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Support Our Work</a>
+                <a href="mailto:baihaqie@axelnova.tech?subject=Feedback%20—%20axelnovaventures.com" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Give Feedback</a>
+                <a href="mailto:baihaqie@axelnova.tech?subject=Issue%20Report%20—%20axelnovaventures.com" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Report an Issue</a>
               </div>
             </div>
 
@@ -295,11 +335,11 @@ onMounted(() => {
             <div class="text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Legal</p>
               <div class="flex flex-col items-start gap-2.5">
-                <NuxtLink to="/legal/privacy-policy" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Privacy Policy</NuxtLink>
-                <NuxtLink to="/legal/terms" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Terms & Conditions</NuxtLink>
-                <NuxtLink to="/legal/cookies" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Cookie Policy</NuxtLink>
-                <NuxtLink to="/legal/disclaimer" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Disclaimer</NuxtLink>
-                <NuxtLink to="/legal/refund" class="text-[13px] transition-colors w-fit" style="color: var(--color-text-secondary);">Refund Policy</NuxtLink>
+                <NuxtLink to="/legal/privacy-policy" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Privacy Policy</NuxtLink>
+                <NuxtLink to="/legal/terms" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Terms & Conditions</NuxtLink>
+                <NuxtLink to="/legal/cookies" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Cookie Policy</NuxtLink>
+                <NuxtLink to="/legal/disclaimer" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Disclaimer</NuxtLink>
+                <NuxtLink to="/legal/refund" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Refund Policy</NuxtLink>
               </div>
             </div>
           </div>
@@ -342,6 +382,16 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.nav-header {
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.nav-header-hidden {
+  transform: translateY(-110%);
+}
+.nav-bar {
+  transition: height 0.3s ease;
+}
+
 .footer-avail-dot {
   width: 7px;
   height: 7px;

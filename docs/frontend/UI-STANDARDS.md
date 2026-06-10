@@ -233,13 +233,16 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 
 ## 8. Motion
 
-- **Micro-interactions:** 150–300ms.
-- **Page enter / scroll reveal:** 600–800ms with `power2.out` / `power3.out`.
-- **Card hover:** 300ms ease.
+**Single source of truth: [MOTION.md](MOTION.md)** — tokens (`app/utils/motion.ts`),
+composables, Lenis smooth-scroll plumbing, and the rules for adding animations.
+Highlights:
+
+- **Tokens, never magic numbers:** durations 0.3/0.6/0.9/1.2s, default ease `power3.out`, staggers 0.08/0.1/0.14, reveals y: 52 from `top 85%`.
+- **Dashboard register is faster:** 0.3–0.5s; no parallax/magnetic/SplitText on admin/portal.
 - **Aurora drift:** 24s `ease-in-out` infinite alternate (background mesh).
 - **Aurora line shift:** 14s ease-in-out infinite (navbar gradient hairline).
-- **Page transition:** 250ms opacity + translateY (`<NuxtPage>` `out-in` mode).
-- **Reduced motion:** all decorative animations short-circuit; content goes to final state immediately.
+- **Page transition:** GSAP JS hooks on `<NuxtPage>` (`out-in`): leave 0.3s, enter 0.45s.
+- **Reduced motion:** entrances are no-ops (content instantly visible), Lenis disabled; essential state transitions kept.
 
 ### Scroll reveal contract
 

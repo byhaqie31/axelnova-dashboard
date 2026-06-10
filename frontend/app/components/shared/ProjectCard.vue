@@ -107,6 +107,24 @@ const statusMeta = (status: Project['status']) => {
 .card:hover .card-glow {
   opacity: 1;
 }
+
+/* Diagonal sheen sweeping across the card on hover. It rests off-canvas at
+   both ends (transparent edges), so the instant reset on leave is invisible. */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, var(--sheen-color) 50%, transparent 60%);
+  transform: translateX(-120%);
+}
+.card:hover::after {
+  transform: translateX(120%);
+  transition: transform 0.55s cubic-bezier(0.33, 1, 0.68, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card:hover::after { transition: none; transform: translateX(-120%); }
+}
 .card-action {
   transform: translate(4px, 4px);
 }
