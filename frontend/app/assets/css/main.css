@@ -46,6 +46,9 @@
   --grad-text-accent:  linear-gradient(135deg, #0071E3 0%, #A855F7 100%);
   --grad-cta: linear-gradient(135deg, #0071E3 0%, #2997FF 100%);
 
+  /* Hover sheen sweep (ProjectCard etc.) */
+  --sheen-color: rgba(0, 0, 0, 0.028);
+
   /* Elevation */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -106,6 +109,8 @@
   --grad-text-accent:  linear-gradient(135deg, #2997FF 0%, #C77DFF 100%);
   --grad-cta: linear-gradient(135deg, #2997FF 0%, #6CB8FF 100%);
 
+  --sheen-color: rgba(255, 255, 255, 0.05);
+
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
@@ -148,6 +153,12 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Lenis owns smooth scrolling when active — native smooth fights it and
+   breaks anchor jumps. Lenis adds this class to <html> itself. */
+html.lenis {
+  scroll-behavior: auto;
 }
 
 body {
@@ -275,6 +286,38 @@ h1 { letter-spacing: -0.045em; }
   will-change: transform;
 }
 .btn-pill:active { transform: scale(0.97); }
+
+/* Magnetic buttons (useMagnetic) — GSAP owns transform on these, so the CSS
+   transform transition must come off or every cursor update is smoothed twice. */
+.is-magnetic {
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.magnetic-label {
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+  pointer-events: none;
+}
+
+/* Text-link underline draw-in — transform only, never animated borders. */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(0.33, 1, 0.68, 1);
+}
+.link-underline:hover::after {
+  transform: scaleX(1);
+}
 
 .btn-pill-primary {
   background: var(--color-text);

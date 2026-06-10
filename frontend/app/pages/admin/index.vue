@@ -1,7 +1,10 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
+import { MOTION } from '~/utils/motion'
+
 const { apiFetch } = useAdminAuth()
+const motion = useMotion()
 
 interface Quotation {
   id: number
@@ -22,6 +25,25 @@ const activeOrders = ref<number | null>(null)
 const loading = ref(true)
 const error = ref('')
 
+// Displayed metric values — counted up briefly (dashboard register, ~0.9s)
+// when the real numbers arrive. Instant under reduced motion.
+const shown = reactive({ total: 0, newQ: 0, orders: 0 })
+
+function countTo(key: keyof typeof shown, end: number) {
+  if (!import.meta.client || motion.reduced) {
+    shown[key] = end
+    return
+  }
+  const proxy = { v: shown[key] }
+  motion.gsap.to(proxy, {
+    v: end,
+    duration: 0.9,
+    ease: MOTION.ease.settle,
+    snap: { v: 1 },
+    onUpdate: () => { shown[key] = Math.round(proxy.v) },
+  })
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -35,6 +57,9 @@ async function load() {
     totalQuotations.value = recentRes.meta.total
     newQuotations.value = newRes.meta.total
     activeOrders.value = ordersRes.meta.total
+    countTo('total', recentRes.meta.total)
+    countTo('newQ', newRes.meta.total)
+    countTo('orders', ordersRes.meta.total)
   }
   catch {
     error.value = 'Failed to load dashboard. Check your session.'
@@ -44,7 +69,24 @@ async function load() {
   }
 }
 
-onMounted(load)
+const tilesGrid = ref<HTMLElement | null>(null)
+
+onMounted(() => {
+  load()
+
+  // Staggered tile entrance — once per navigation, dashboard register.
+  const { gsap, reduced } = motion
+  const tileEls = Array.from(tilesGrid.value?.children ?? [])
+  if (reduced || !tileEls.length) return
+  gsap.fromTo(tileEls,
+    { opacity: 0, y: 16 },
+    {
+      opacity: 1, y: 0,
+      duration: 0.4, ease: MOTION.ease.out, stagger: MOTION.stagger.tight,
+      clearProps: 'opacity,transform',
+    },
+  )
+})
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
@@ -67,19 +109,19 @@ interface StatTile {
 const tiles = computed<StatTile[]>(() => [
   {
     label: 'Total quotations',
-    value: totalQuotations.value === null ? '—' : String(totalQuotations.value),
+    value: totalQuotations.value === null ? '—' : String(shown.total),
     hint: 'All-time inquiries',
     icon: 'i-lucide-file-text',
   },
   {
     label: 'New (unactioned)',
-    value: newQuotations.value === null ? '—' : String(newQuotations.value),
+    value: newQuotations.value === null ? '—' : String(shown.newQ),
     hint: 'Status = new',
     icon: 'i-lucide-inbox',
   },
   {
     label: 'Active orders',
-    value: activeOrders.value === null ? '—' : String(activeOrders.value),
+    value: activeOrders.value === null ? '—' : String(shown.orders),
     hint: 'Converted engagements',
     icon: 'i-lucide-package-check',
   },
@@ -103,7 +145,7 @@ const tiles = computed<StatTile[]>(() => [
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
     <!-- Stat tiles -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-10">
+    <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-10">
       <div
         v-for="tile in tiles"
         :key="tile.label"
@@ -126,7 +168,7 @@ const tiles = computed<StatTile[]>(() => [
           </span>
         </div>
         <p class="text-[11px] font-semibold uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">{{ tile.label }}</p>
-        <p class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
+        <p class="text-[28px] font-bold tracking-tight tabular-nums" style="color: var(--color-text);">
           <span v-if="loading && !tile.pending" class="opacity-50">—</span>
           <span v-else>{{ tile.value }}</span>
         </p>

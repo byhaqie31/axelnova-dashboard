@@ -1,43 +1,46 @@
+import { MOTION } from '~/utils/motion'
+
+/**
+ * Selector-based scroll reveal — the standard `.reveal` API used by pages.
+ * Upgraded to the motion tokens (y: 52, top 85%, power3.out, 0.9s); same
+ * signature as before so existing call sites keep working. Initial hidden
+ * state is set by GSAP only — SSR/JS-off paints full content.
+ */
 export function useScrollReveal(selector: string, options: Record<string, unknown> = {}) {
   if (import.meta.server) return
 
-  const { $gsap, $ScrollTrigger } = useNuxtApp() as unknown as {
-    $gsap: typeof import('gsap').default
-    $ScrollTrigger: typeof import('gsap/ScrollTrigger').ScrollTrigger
-  }
-
+  const { gsap, ScrollTrigger, reduced } = useMotion()
   const tweens: gsap.core.Tween[] = []
 
   const reveal = () => {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return // content is already visible — no-op
+
     const elements = document.querySelectorAll<HTMLElement>(selector)
 
-    if (prefersReduced) {
-      elements.forEach((el) => { el.style.opacity = '1'; el.style.transform = 'none' })
-      return
-    }
-
     elements.forEach((el, i) => {
-      const tween = $gsap.fromTo(el,
-        { opacity: 0, y: 24 },
+      const tween = gsap.fromTo(el,
+        { opacity: 0, y: MOTION.reveal.y },
         {
           opacity: 1,
           y: 0,
-          duration: 0.7,
+          duration: MOTION.dur.slow,
+          // Adjacent elements entering the viewport together cascade.
           delay: i * 0.06,
-          ease: 'power2.out',
+          ease: MOTION.ease.out,
           scrollTrigger: {
             trigger: el,
-            start: 'top 95%',
+            start: MOTION.reveal.start,
             once: true,
           },
+          // Leftover transforms break sticky/fixed descendants and hover transforms.
+          onComplete: () => gsap.set(el, { clearProps: 'opacity,transform' }),
           ...options,
         },
       )
       tweens.push(tween)
     })
 
-    $ScrollTrigger?.refresh()
+    ScrollTrigger?.refresh()
   }
 
   onMounted(() => {

@@ -1,9 +1,14 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+import type { ComponentPublicInstance } from 'vue'
 import type { Project } from '~/data/projects'
 import ProjectCard from '~/components/shared/ProjectCard.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
+import { MOTION } from '~/utils/motion'
+
+// Captured at setup — Nuxt context isn't available inside event callbacks.
+const motion = useMotion()
 
 const siteUrl = 'https://axelnovaventures.com'
 const ogImage = `${siteUrl}/og-image.png`
@@ -109,59 +114,163 @@ const stats = [
   { value: 2,  suffix: '',  label: 'Degrees pursuing' },
 ]
 
-const heroBadge = ref<HTMLElement | null>(null)
-const heroLine1 = ref<HTMLElement | null>(null)
-const heroLine2 = ref<HTMLElement | null>(null)
-const heroSub   = ref<HTMLElement | null>(null)
-const heroCtas  = ref<HTMLElement | null>(null)
-const statValues = ref<HTMLElement[]>([])
+const heroBadge    = ref<HTMLElement | null>(null)
+const heroHeadline = ref<HTMLElement | null>(null)
+const heroLine2    = ref<HTMLElement | null>(null)
+const heroSub      = ref<HTMLElement | null>(null)
+const heroCtas     = ref<HTMLElement | null>(null)
+const heroCta      = ref<ComponentPublicInstance | HTMLElement | null>(null)
+const bandCta      = ref<ComponentPublicInstance | HTMLElement | null>(null)
+const statEls      = ref<(HTMLElement | null)[]>([])
 
-onMounted(async () => {
+// `background-clip: text` on an ancestor stops painting text inside transformed
+// descendants (the SplitText words), so the gradient line gets per-word
+// backgrounds sized/positioned to emulate one continuous gradient. The split
+// reverts after the entrance, restoring the original parent gradient.
+const mapGradientWords = (split: { words: Element[] }) => {
+  const base = heroLine2.value
+  if (!base) return
+  const baseRect = base.getBoundingClientRect()
+  split.words.forEach((node) => {
+    const w = node as HTMLElement
+    if (!base.contains(w)) return
+    const r = w.getBoundingClientRect()
+    w.style.backgroundImage = 'var(--grad-text-accent)'
+    w.style.backgroundSize = `${baseRect.width}px ${baseRect.height}px`
+    w.style.backgroundPosition = `${baseRect.left - r.left}px ${baseRect.top - r.top}px`
+    // Vendor prefix still required for gradient text in Safari/Chrome; set via
+    // setProperty so the standard backgroundClip property carries the lint.
+    w.style.setProperty('-webkit-background-clip', 'text')
+    w.style.backgroundClip = 'text'
+    w.style.color = 'transparent'
+  })
+}
+
+const { build: buildHeadline } = useSplitTextReveal(heroHeadline, { onSplit: mapGradientWords })
+
+useMagnetic(heroCta)
+useMagnetic(bandCta)
+
+stats.forEach((s, i) => useCountUp(() => statEls.value[i], s.value))
+useReveal('.stat-cell', { stagger: MOTION.stagger.base })
+useScrollReveal('.reveal')
+
+let heroTl: gsap.core.Timeline | null = null
+let safetyTimer: number | undefined
+
+onMounted(() => {
   if (import.meta.server) return
 
-  const targets = [heroBadge.value, heroLine1.value, heroLine2.value, heroSub.value, heroCtas.value].filter(Boolean) as HTMLElement[]
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const { gsap, reduced } = motion
+  const els = [heroBadge.value, heroSub.value, heroCtas.value].filter(Boolean) as HTMLElement[]
+  if (reduced || !els.length) return
 
-  if (prefersReduced) {
-    targets.forEach((el) => { el.style.opacity = '1'; el.style.transform = 'none' })
-    statValues.value.forEach((el) => { if (el) el.textContent = el.dataset.value || '0' })
+  gsap.set(els, { opacity: 0, y: 24 })
+
+  const tl = gsap.timeline({
+    defaults: { ease: MOTION.ease.out },
+    onComplete: () => gsap.set(els, { clearProps: 'opacity,transform' }),
+  })
+  tl.to(heroBadge.value, { opacity: 1, y: 0, duration: MOTION.dur.base })
+  const headline = buildHeadline()
+  if (headline) tl.add(headline, '-=0.3')
+  tl.to(heroSub.value, { opacity: 1, y: 0, duration: MOTION.dur.slow }, '-=0.55')
+  tl.to(heroCtas.value, { opacity: 1, y: 0, duration: MOTION.dur.slow }, '-=0.7')
+  heroTl = tl
+
+  // Throttled/background tabs may never run rAF — force-finish the entrance
+  // so nothing is stranded hidden.
+  safetyTimer = window.setTimeout(() => {
+    if (tl.progress() < 1) tl.progress(1)
+  }, 3500)
+})
+
+onUnmounted(() => {
+  clearTimeout(safetyTimer)
+  heroTl?.kill()
+})
+
+// --- Filter tabs: sliding pill indicator + GSAP grid swap -------------------
+
+const filterPill = ref<HTMLElement | null>(null)
+const filterBtns: Record<string, HTMLElement | null> = {}
+const projectGrid = ref<HTMLElement | null>(null)
+const pillReady = ref(false)
+
+const setFilterBtn = (f: string) => (el: unknown) => {
+  filterBtns[f] = el as HTMLElement | null
+}
+
+const movePill = (f: string, animate = true) => {
+  const pill = filterPill.value
+  const btn = filterBtns[f]
+  if (!pill || !btn) return
+  const { gsap, reduced } = motion
+  const vars = { x: btn.offsetLeft, y: btn.offsetTop, width: btn.offsetWidth, height: btn.offsetHeight }
+  if (!animate || reduced) gsap.set(pill, vars)
+  else gsap.to(pill, { ...vars, duration: 0.45, ease: MOTION.ease.out, overwrite: 'auto' })
+  pillReady.value = true
+}
+
+let swapTl: gsap.core.Timeline | null = null
+
+const setFilter = (f: string) => {
+  if (f === activeFilter.value) return
+  movePill(f)
+
+  const { gsap, reduced } = motion
+  if (reduced) {
+    activeFilter.value = f
     return
   }
 
-  const { $gsap } = useNuxtApp() as unknown as { $gsap: typeof import('gsap').default }
+  // Rapid clicks: kill the in-flight timeline and start over — an
+  // early-return guard would drop inputs and can strand cards invisible.
+  swapTl?.kill()
 
-  await nextTick()
-  $gsap.set(targets, { opacity: 0, y: 20 })
-
-  requestAnimationFrame(() => {
-    $gsap.to(targets,
-      { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out', stagger: 0.09 },
+  const outCards = Array.from(projectGrid.value?.children ?? []) as HTMLElement[]
+  const tl = gsap.timeline()
+  swapTl = tl
+  if (outCards.length) {
+    tl.to(outCards, {
+      opacity: 0, y: 10, scale: 0.98,
+      duration: 0.22, stagger: 0.03, ease: 'power2.in',
+    })
+  }
+  tl.call(async () => {
+    activeFilter.value = f
+    await nextTick()
+    const inCards = Array.from(projectGrid.value?.children ?? []) as HTMLElement[]
+    if (!inCards.length) return
+    // immediateRender: false — otherwise the from-state (opacity 0) is applied
+    // at build time and visible (DOM-reused) cards flash out.
+    swapTl = gsap.timeline().fromTo(inCards,
+      { opacity: 0, y: 16, scale: 0.98 },
+      {
+        opacity: 1, y: 0, scale: 1,
+        duration: 0.5, stagger: 0.06, ease: MOTION.ease.out,
+        immediateRender: false, clearProps: 'opacity,transform',
+      },
     )
   })
+}
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return
-      const el = entry.target as HTMLElement
-      const target = parseInt(el.dataset.value || '0', 10)
-      $gsap.fromTo({ n: 0 }, { n: 0 },
-        {
-          n: target,
-          duration: 1.4,
-          ease: 'power2.out',
-          onUpdate() {
-            el.textContent = Math.floor(this.targets()[0].n).toString()
-          },
-        },
-      )
-      observer.unobserve(el)
-    })
-  }, { threshold: 0.4 })
+const syncPill = () => movePill(activeFilter.value, false)
 
-  statValues.value.forEach(el => el && observer.observe(el))
+onMounted(() => {
+  if (import.meta.server) return
+  nextTick(() => {
+    syncPill()
+    // Font swap changes button widths after first layout.
+    document.fonts?.ready?.then(syncPill)
+    window.addEventListener('resize', syncPill, { passive: true })
+  })
 })
 
-useScrollReveal('.reveal')
+onUnmounted(() => {
+  window.removeEventListener('resize', syncPill)
+  swapTl?.kill()
+})
 </script>
 
 <template>
@@ -176,17 +285,18 @@ useScrollReveal('.reveal')
         class="inline-flex items-center gap-2 px-3 py-1 rounded-full border backdrop-blur-md"
         :style="{ borderColor: 'var(--color-border-strong)', background: 'var(--color-accent-soft)' }"
       >
-        <span class="size-1.5 rounded-full" style="background: var(--color-success); box-shadow: 0 0 0 4px rgba(48,209,88,0.18);" />
+        <span class="hero-status-dot size-1.5 rounded-full" style="background: var(--color-success);" />
         <span class="text-[12px] font-medium" style="color: var(--color-text);">
           Open to freelance
         </span>
       </div>
 
       <h1
+        ref="heroHeadline"
         class="mt-7 leading-[1.02] tracking-tighter font-semibold max-w-5xl"
         style="font-size: clamp(52px, 9vw, 112px);"
       >
-        <span ref="heroLine1" class="block">I craft interfaces</span>
+        <span class="block">I craft interfaces</span>
         <span ref="heroLine2" class="block text-gradient">people actually enjoy.</span>
       </h1>
 
@@ -200,8 +310,8 @@ useScrollReveal('.reveal')
       </p>
 
       <div ref="heroCtas" class="mt-9 flex flex-wrap items-center justify-center gap-3">
-        <NuxtLink to="/quote" class="btn-pill btn-pill-accent">
-          Get a quotation
+        <NuxtLink ref="heroCta" to="/quote" class="btn-pill btn-pill-accent">
+          <span class="magnetic-label">Get a quotation</span>
         </NuxtLink>
         <NuxtLink to="/services" class="btn-pill btn-pill-ghost">
           See my services
@@ -215,7 +325,7 @@ useScrollReveal('.reveal')
         <div
           v-for="(s, i) in stats"
           :key="s.label"
-          class="px-6 py-14 text-center"
+          class="stat-cell px-6 py-14 text-center"
           :style="{
             borderRight: i < stats.length - 1 ? '1px solid var(--color-border)' : 'none',
             borderBottom: i < 2 ? '1px solid var(--color-border)' : 'none'
@@ -223,7 +333,7 @@ useScrollReveal('.reveal')
           :class="{ 'md:border-b-0!': true }"
         >
           <div class="text-4xl md:text-5xl font-semibold tracking-tight tabular-nums">
-            <span ref="statValues" :data-value="s.value">0</span>{{ s.suffix }}
+            <span :ref="el => { statEls[i] = el as HTMLElement | null }">{{ s.value }}</span>{{ s.suffix }}
           </div>
           <div class="text-[13px] mt-2" style="color: var(--color-text-secondary);">
             {{ s.label }}
@@ -240,43 +350,47 @@ useScrollReveal('.reveal')
         :action="{ label: 'View all', to: '/projects' }"
       />
 
-      <div class="hidden md:flex flex-wrap gap-2 mb-10">
+      <div class="relative hidden md:flex flex-wrap gap-2 mb-10">
+        <span
+          ref="filterPill"
+          aria-hidden
+          class="filter-pill"
+          :style="{ opacity: pillReady ? 1 : 0 }"
+        />
         <button
           v-for="f in homeFilters" :key="f"
-          class="text-[13px] px-4 py-1.5 rounded-full border transition-all duration-200"
+          :ref="setFilterBtn(f)"
+          class="relative text-[13px] px-4 py-1.5 rounded-full border transition-colors duration-200"
           :style="{
             borderColor: activeFilter === f ? 'transparent' : 'var(--color-border-strong)',
-            background: activeFilter === f ? 'var(--color-text)' : 'transparent',
+            background: activeFilter === f && !pillReady ? 'var(--color-text)' : 'transparent',
             color: activeFilter === f ? 'var(--color-bg)' : 'var(--color-text-secondary)',
             fontWeight: activeFilter === f ? 500 : 400,
-            boxShadow: activeFilter === f ? 'var(--shadow-sm)' : 'none'
           }"
-          @click="activeFilter = f"
+          @click="setFilter(f)"
         >
           {{ f }}
         </button>
       </div>
 
-      <Transition name="page" mode="out-in">
-        <div :key="activeFilter" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          <ProjectCard
-            v-for="p in visibleProjects" :key="p.id"
-            :project="p"
-            class="reveal"
-          />
-          <div
-            v-if="visibleProjects.length === 0"
-            class="col-span-full text-center py-12 text-sm"
-            style="color: var(--color-text-secondary);"
-          >
-            No projects match this filter yet.
-          </div>
+      <div ref="projectGrid" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <ProjectCard
+          v-for="p in visibleProjects" :key="p.id"
+          :project="p"
+          class="reveal"
+        />
+        <div
+          v-if="visibleProjects.length === 0"
+          class="col-span-full text-center py-12 text-sm"
+          style="color: var(--color-text-secondary);"
+        >
+          No projects match this filter yet.
         </div>
-      </Transition>
+      </div>
     </section>
 
     <!-- CTA BANNER -->
-    <section class="relative overflow-hidden" :style="{ borderColor: 'var(--color-border)' }">
+    <section class="relative overflow-hidden reveal" :style="{ borderColor: 'var(--color-border)' }">
       <!-- gradient backdrop -->
       <div
         aria-hidden
@@ -297,10 +411,39 @@ useScrollReveal('.reveal')
             Let's design something premium together. Fintech, SaaS, or a product that needs senior craft.
           </p>
         </div>
-        <NuxtLink to="/services" class="btn-pill btn-pill-accent shrink-0">
-          Let's talk
+        <NuxtLink ref="bandCta" to="/services" class="btn-pill btn-pill-accent shrink-0">
+          <span class="magnetic-label">Let's talk</span>
         </NuxtLink>
       </div>
     </section>
   </div>
 </template>
+
+<style scoped>
+/* Gentle pulse on the availability dot only — felt, not noticed. */
+.hero-status-dot {
+  box-shadow: 0 0 0 4px rgba(48, 209, 88, 0.18);
+  animation: hero-dot-pulse 2.6s ease-in-out infinite;
+}
+@keyframes hero-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(48, 209, 88, 0.18); }
+  50%      { box-shadow: 0 0 0 8px rgba(48, 209, 88, 0.05); }
+}
+
+/* Sliding indicator behind the filter tabs; x/width tweened by GSAP. */
+.filter-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-radius: 9999px;
+  background: var(--color-text);
+  box-shadow: var(--shadow-sm);
+  transition: opacity 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-status-dot { animation: none; }
+}
+</style>
