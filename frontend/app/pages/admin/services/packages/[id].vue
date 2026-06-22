@@ -3,6 +3,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
+const toast = useAdminToast()
 
 const isNew = computed(() => route.params.id === 'new')
 
@@ -157,11 +158,13 @@ async function save() {
     else {
       await apiFetch(`/api/v1/admin/service-packages/${route.params.id}`, { method: 'PUT', body: form })
     }
+    toast.success(isNew.value ? 'Package created' : 'Package saved', `“${form.name}” is up to date.`)
     await navigateTo('/admin/services')
   }
   catch (e: any) {
     if (e?.data?.errors) errors.value = e.data.errors
     message.value = e?.data?.message ?? 'Failed to save.'
+    toast.error('Couldn’t save package', message.value)
   }
   finally {
     saving.value = false

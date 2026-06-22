@@ -37,7 +37,7 @@ const pageTransition = {
 </script>
 
 <template>
-  <UApp>
+  <UApp :toaster="{ position: 'top-right' }">
     <NuxtRouteAnnouncer />
     <NuxtLayout>
       <NuxtPage :transition="pageTransition" />

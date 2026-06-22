@@ -99,7 +99,6 @@ function fmtMyr(amount: string | number) {
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Drafts you're building plus quotes you've sent. Accepted quotations move to <NuxtLink to="/admin/orders" class="underline" :style="{ color: 'var(--color-accent)' }">Orders</NuxtLink>.</p>
       </div>
       <div class="flex items-center gap-3">
-        <span v-if="meta" class="text-[13px]" style="color: var(--color-text-secondary);">{{ meta.total }} total</span>
         <NuxtLink to="/admin/quotations/new" class="btn-pill btn-pill-accent text-[13px]">New quotation</NuxtLink>
       </div>
     </div>
@@ -107,7 +106,11 @@ function fmtMyr(amount: string | number) {
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, reference…" />
-      <AdminStatusFilter v-model="filters.status" :options="statusOptions" class="ml-auto" />
+      <div class="ml-auto flex items-center gap-2.5">
+        <span v-if="meta" class="text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ meta.total }} total</span>
+        <span v-if="meta" aria-hidden="true" class="text-[13px] select-none" style="color: var(--color-text-tertiary);">|</span>
+        <AdminStatusFilter v-model="filters.status" :options="statusOptions" />
+      </div>
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>

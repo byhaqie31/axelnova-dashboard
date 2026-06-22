@@ -3,6 +3,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
+const toast = useAdminToast()
 
 interface Inquiry {
   id: number
@@ -25,7 +26,6 @@ const inquiry = ref<Inquiry | null>(null)
 const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
-const actionMessage = ref('')
 
 useHead(() => ({
   title: inquiry.value ? `${inquiry.value.name} — Inquiry` : 'Inquiry — Admin',
@@ -55,10 +55,10 @@ async function updateStatus(status: string) {
       body: { status },
     })
     inquiry.value.status = status
-    actionMessage.value = `Status updated to "${status}".`
+    toast.success('Status updated', `Inquiry set to ${statusLabels[status] ?? status}.`)
   }
   catch {
-    actionMessage.value = 'Failed to update status.'
+    toast.error('Couldn’t update status', 'Something went wrong. Please try again.')
   }
   finally {
     statusLoading.value = false
@@ -209,10 +209,6 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
             WhatsApp
           </a>
         </div>
-
-        <p v-if="actionMessage" class="text-[12px] text-center px-3" style="color: var(--color-text-secondary);">
-          {{ actionMessage }}
-        </p>
 
         <!-- Audit -->
         <div class="rounded-xl border px-4 py-3.5 space-y-2"

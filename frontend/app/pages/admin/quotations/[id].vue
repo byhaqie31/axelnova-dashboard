@@ -5,6 +5,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
+const toast = useAdminToast()
 
 interface Quotation {
   id: number
@@ -34,7 +35,6 @@ const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
 const acceptLoading = ref(false)
-const actionMessage = ref('')
 
 useHead(() => ({
   title: quotation.value ? `${quotation.value.reference_code} — Admin` : 'Quotation — Admin',
@@ -63,9 +63,9 @@ async function updateStatus(status: string) {
   try {
     await apiFetch(`/api/v1/admin/quotations/${quotation.value.id}/status`, { method: 'POST', body: { status } })
     quotation.value.status = status
-    actionMessage.value = `Status updated to "${status}".`
+    toast.success('Status updated', `Quotation set to ${statusLabels[status] ?? status}.`)
   }
-  catch { actionMessage.value = 'Failed to update status.' }
+  catch { toast.error('Couldn’t update status', 'Something went wrong. Please try again.') }
   finally { statusLoading.value = false }
 }
 
@@ -76,10 +76,10 @@ async function acceptQuotation() {
     const res = await apiFetch<{ message: string; order_id: number; order_number: string }>(
       `/api/v1/admin/quotations/${quotation.value.id}/accept`, { method: 'POST' },
     )
-    actionMessage.value = `${res.message} Redirecting to ${res.order_number}…`
-    setTimeout(() => navigateTo(`/admin/orders/${res.order_id}`), 600)
+    toast.success('Order created', `${res.order_number} created from this quotation.`)
+    navigateTo(`/admin/orders/${res.order_id}`)
   }
-  catch { actionMessage.value = 'Failed to accept quotation.' }
+  catch { toast.error('Couldn’t accept quotation', 'Something went wrong. Please try again.') }
   finally { acceptLoading.value = false }
 }
 
@@ -245,8 +245,6 @@ const scopeFields = computed(() => {
               {{ acceptLoading ? 'Accepting…' : 'Accept & create order' }}
             </button>
           </div>
-
-          <p v-if="actionMessage" class="text-[12px] text-center px-3" style="color: var(--color-text-secondary);">{{ actionMessage }}</p>
         </div>
       </div>
     </template>

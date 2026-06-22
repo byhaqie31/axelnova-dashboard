@@ -32,6 +32,7 @@ const emit = defineEmits<{
 
 const { apiFetch } = useAdminAuth()
 const { config, loadConfig, fmtMyr, formatEta } = usePricingEngine()
+const toast = useAdminToast()
 
 const isEdit = computed(() => !!props.quotation)
 
@@ -249,7 +250,9 @@ function buildPayload() {
   }
 }
 
-async function save(): Promise<number | null> {
+// Persist without UI feedback — shared by the Save button and the send flow
+// so sending doesn't fire two toasts ("saved" then "sent").
+async function persist(): Promise<number | null> {
   if (!canSave.value) { error.value = 'Add a client and pick a package first.'; return null }
   saving.value = true
   error.value = ''
@@ -272,18 +275,27 @@ async function save(): Promise<number | null> {
   }
 }
 
+async function save(): Promise<number | null> {
+  const id = await persist()
+  if (id) toast.success(isEdit.value ? 'Changes saved' : 'Draft saved', 'Quotation stored. Preview the PDF or send it to the client.')
+  else if (error.value) toast.error('Couldn’t save quotation', error.value)
+  return id
+}
+
 async function sendToClient() {
   if (!isEdit.value) return
   sending.value = true
   error.value = ''
   try {
-    const id = await save()
-    if (!id) return
+    const id = await persist()
+    if (!id) { toast.error('Couldn’t send quotation', error.value || 'Save failed.'); return }
     await apiFetch(`/api/v1/admin/quotations/${id}/send`, { method: 'POST' })
     emit('sent')
+    toast.success('Quotation sent', `PDF emailed to ${client.email || 'the client'}.`)
   }
   catch (e: any) {
     error.value = e?.data?.message || 'Failed to send quotation.'
+    toast.error('Couldn’t send quotation', error.value)
   }
   finally {
     sending.value = false
@@ -296,10 +308,12 @@ async function accept() {
   error.value = ''
   try {
     const res = await apiFetch<{ order_id: number }>(`/api/v1/admin/quotations/${props.quotation!.id}/accept`, { method: 'POST' })
+    toast.success('Order created', 'Quotation accepted and converted to an order.')
     emit('accepted', res.order_id)
   }
   catch (e: any) {
     error.value = e?.data?.message || 'Failed to accept quotation.'
+    toast.error('Couldn’t accept quotation', error.value)
   }
   finally {
     accepting.value = false

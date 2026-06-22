@@ -3,6 +3,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
+const toast = useAdminToast()
 
 interface Order {
   id: number
@@ -46,7 +47,6 @@ const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
-const actionMessage = ref('')
 
 const issuing = ref(false)
 const docForm = reactive({
@@ -58,21 +58,21 @@ const docForm = reactive({
 
 async function issueDocument() {
   if (!order.value) return
+  const label = docForm.type === 'invoice' ? 'Invoice' : 'Receipt'
   issuing.value = true
-  actionMessage.value = ''
   try {
     const body: Record<string, unknown> = { type: docForm.type }
     if (docForm.amountPaid !== '') body.amountPaid = Number(docForm.amountPaid)
     if (docForm.paymentMethod) body.paymentMethod = docForm.paymentMethod
     if (docForm.paymentRef) body.paymentRef = docForm.paymentRef
     await apiFetch(`/api/v1/admin/orders/${order.value.id}/documents`, { method: 'POST', body })
-    actionMessage.value = `${docForm.type === 'invoice' ? 'Invoice' : 'Receipt'} issued.`
+    toast.success(`${label} issued`, 'The document is ready to view and share.')
     docForm.paymentRef = ''
     docForm.amountPaid = ''
     await fetchOrder()
   }
   catch {
-    actionMessage.value = 'Failed to issue document.'
+    toast.error(`Couldn’t issue ${label.toLowerCase()}`, 'Something went wrong. Please try again.')
   }
   finally {
     issuing.value = false
@@ -108,10 +108,10 @@ async function setStatus(next: string) {
     )
     const updated = (res.order as any).data ?? res.order
     order.value = updated as Order
-    actionMessage.value = `Order status set to ${statusLabels[next] ?? next}.`
+    toast.success('Status updated', `Order set to ${statusLabels[next] ?? next}.`)
   }
   catch {
-    actionMessage.value = 'Failed to update status.'
+    toast.error('Couldn’t update status', 'Something went wrong. Please try again.')
   }
   finally {
     statusLoading.value = false
@@ -338,10 +338,6 @@ const timeline = computed<TimelineStep[]>(() => {
             WhatsApp
           </a>
         </div>
-
-        <p v-if="actionMessage" class="text-[12px] text-center px-3" style="color: var(--color-text-secondary);">
-          {{ actionMessage }}
-        </p>
       </div>
     </div>
   </div>

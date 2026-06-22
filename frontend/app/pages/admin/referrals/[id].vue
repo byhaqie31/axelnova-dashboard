@@ -3,6 +3,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
+const toast = useAdminToast()
 
 interface Referral {
   id: number
@@ -34,7 +35,6 @@ const referral = ref<Referral | null>(null)
 const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
-const actionMessage = ref('')
 
 const linkOpen = ref(false)
 const orders = ref<OrderRow[]>([])
@@ -71,10 +71,10 @@ async function updateStatus(status: string) {
       body: { status },
     })
     referral.value.status = status
-    actionMessage.value = `Status updated to "${status}".`
+    toast.success('Status updated', `Referral set to ${statusLabels[status] ?? status}.`)
   }
   catch {
-    actionMessage.value = 'Failed to update status.'
+    toast.error('Couldn’t update status', 'Something went wrong. Please try again.')
   }
   finally {
     statusLoading.value = false
@@ -90,7 +90,7 @@ async function openLinkPanel() {
       orders.value = res.data
     }
     catch {
-      actionMessage.value = 'Failed to load orders.'
+      toast.error('Couldn’t load orders', 'Something went wrong. Please try again.')
     }
     finally {
       ordersLoading.value = false
@@ -110,10 +110,10 @@ async function linkOrder(orderId: number, orderNumber: string) {
     referral.value.linked_order_id = orderId
     referral.value.order_number = orderNumber
     linkOpen.value = false
-    actionMessage.value = `Linked to ${orderNumber} — marked converted.`
+    toast.success('Referral linked', `Linked to ${orderNumber} — marked converted.`)
   }
   catch {
-    actionMessage.value = 'Failed to link order.'
+    toast.error('Couldn’t link order', 'Something went wrong. Please try again.')
   }
   finally {
     linkLoading.value = false
@@ -301,10 +301,6 @@ const statusLabels: Record<string, string> = {
             WhatsApp
           </a>
         </div>
-
-        <p v-if="actionMessage" class="text-[12px] text-center px-3" style="color: var(--color-text-secondary);">
-          {{ actionMessage }}
-        </p>
 
         <!-- Audit -->
         <div class="rounded-xl border px-4 py-3.5 space-y-2"
