@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInquiryRequest;
+use App\Mail\InquiryReceivedMail;
 use App\Models\Inquiry;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Mail;
 
 class InquiryController extends Controller
 {
@@ -25,6 +27,9 @@ class InquiryController extends Controller
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
         ]);
+
+        // Queued acknowledgement back to the person who inquired.
+        Mail::to($inquiry->email, $inquiry->name)->send(new InquiryReceivedMail($inquiry));
 
         return response()->json([
             'data' => ['id' => $inquiry->id],

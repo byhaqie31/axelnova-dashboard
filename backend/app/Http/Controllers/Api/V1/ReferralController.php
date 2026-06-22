@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreReferralRequest;
+use App\Mail\ReferralReceivedMail;
 use App\Models\Referral;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Mail;
 
 class ReferralController extends Controller
 {
@@ -29,6 +31,9 @@ class ReferralController extends Controller
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
         ]);
+
+        // Queued acknowledgement back to the person who made the referral.
+        Mail::to($referral->referrer_email, $referral->referrer_name)->send(new ReferralReceivedMail($referral));
 
         return response()->json([
             'data' => [
