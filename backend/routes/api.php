@@ -79,6 +79,8 @@ Route::middleware([
         Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrdersController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status', [OrdersController::class, 'updateStatus'])->name('orders.status');
+        // Issue an invoice/receipt for the order (freezes a document snapshot).
+        Route::post('/orders/{order}/documents', [OrdersController::class, 'issueDocument'])->name('orders.documents.issue');
 
         // Partner referrals
         Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');

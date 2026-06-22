@@ -26,6 +26,20 @@ interface Order {
   completed_at: string | null
   notes: string | null
   created_at: string
+  documents?: OrderDocument[]
+}
+
+interface OrderDocument {
+  id: number
+  type: 'invoice' | 'receipt'
+  number: string
+  status: 'issued' | 'paid' | 'void'
+  amount_total: string
+  amount_paid: string | null
+  payment_ref: string | null
+  payment_method: string | null
+  issued_at: string | null
+  pdf_path: string
 }
 
 const order = ref<Order | null>(null)
@@ -33,6 +47,37 @@ const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
 const actionMessage = ref('')
+
+const issuing = ref(false)
+const docForm = reactive({
+  type: 'invoice' as 'invoice' | 'receipt',
+  amountPaid: '' as string,
+  paymentMethod: '',
+  paymentRef: '',
+})
+
+async function issueDocument() {
+  if (!order.value) return
+  issuing.value = true
+  actionMessage.value = ''
+  try {
+    const body: Record<string, unknown> = { type: docForm.type }
+    if (docForm.amountPaid !== '') body.amountPaid = Number(docForm.amountPaid)
+    if (docForm.paymentMethod) body.paymentMethod = docForm.paymentMethod
+    if (docForm.paymentRef) body.paymentRef = docForm.paymentRef
+    await apiFetch(`/api/v1/admin/orders/${order.value.id}/documents`, { method: 'POST', body })
+    actionMessage.value = `${docForm.type === 'invoice' ? 'Invoice' : 'Receipt'} issued.`
+    docForm.paymentRef = ''
+    docForm.amountPaid = ''
+    await fetchOrder()
+  }
+  catch {
+    actionMessage.value = 'Failed to issue document.'
+  }
+  finally {
+    issuing.value = false
+  }
+}
 
 useHead(() => ({
   title: order.value ? `${order.value.order_number} — Order` : 'Order — Admin',
@@ -198,6 +243,66 @@ const timeline = computed<TimelineStep[]>(() => {
           </p>
         </div>
 
+        <!-- Documents (invoices & receipts) -->
+        <div class="rounded-2xl border p-6"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Documents</p>
+
+          <div v-if="order.documents?.length" class="space-y-2 mb-5">
+            <div v-for="d in order.documents" :key="d.id"
+              class="flex items-center justify-between gap-3 rounded-xl border p-3"
+              :style="{ borderColor: 'var(--color-border)' }">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ d.number }}</span>
+                  <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                    :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">{{ d.type }}</span>
+                </div>
+                <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
+                  {{ fmtMyr(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ fmtMyr(d.amount_paid) }}</span> · {{ d.status }} · {{ fmtDate(d.issued_at) }}
+                </p>
+              </div>
+              <a :href="d.pdf_path" target="_blank" rel="noopener"
+                class="btn-pill btn-pill-ghost text-[12px] shrink-0" style="height: 32px; padding: 0 16px;">
+                View PDF
+              </a>
+            </div>
+          </div>
+          <p v-else class="text-[13px] mb-5" style="color: var(--color-text-tertiary);">No documents issued yet.</p>
+
+          <!-- Issue form -->
+          <div class="pt-4 border-t space-y-3" style="border-color: var(--color-border);">
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Type</span>
+                <select v-model="docForm.type" class="doc-input mt-1">
+                  <option value="invoice">Invoice</option>
+                  <option value="receipt">Receipt</option>
+                </select>
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">
+                  {{ docForm.type === 'receipt' ? 'Amount paid (full)' : 'Deposit received' }}
+                </span>
+                <input v-model="docForm.amountPaid" type="number" min="0" step="0.01" placeholder="e.g. 1250"
+                  class="doc-input mt-1">
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment method</span>
+                <input v-model="docForm.paymentMethod" type="text" placeholder="e.g. DuitNow QR (RHB)" class="doc-input mt-1">
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment ref</span>
+                <input v-model="docForm.paymentRef" type="text" placeholder="optional" class="doc-input mt-1">
+              </label>
+            </div>
+            <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
+              :class="{ 'opacity-50': issuing }" :disabled="issuing" @click="issueDocument">
+              {{ issuing ? 'Issuing…' : `Issue ${docForm.type}` }}
+            </button>
+          </div>
+        </div>
+
       </div>
 
       <div class="lg:sticky lg:top-20 space-y-4">
@@ -241,3 +346,22 @@ const timeline = computed<TimelineStep[]>(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.doc-input {
+  display: block;
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  transition: border-color 0.18s ease;
+}
+.doc-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+</style>

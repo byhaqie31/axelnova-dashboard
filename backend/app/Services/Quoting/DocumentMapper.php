@@ -2,6 +2,7 @@
 
 namespace App\Services\Quoting;
 
+use App\Models\Order;
 use App\Models\Quotation;
 
 /**
@@ -73,6 +74,112 @@ class DocumentMapper
                 'online' => 'Card & FPX online banking via secure link',
             ],
         ];
+    }
+
+    /**
+     * Build invoice/receipt DocumentData from an order. Derived from the order's
+     * quotation (line items → summary) plus admin-supplied payment details. The
+     * caller (DocumentIssuer) freezes the returned array as the document payload.
+     *
+     * `$input` keys: number, issued, layout, amountPaid, paymentRef,
+     * paymentMethod, statusLabel, notes, payload (full override).
+     */
+    public static function forOrder(Order $order, string $type, array $input = []): array
+    {
+        // Full override from a customized builder — stamp number/issued and use as-is.
+        if (! empty($input['payload']) && is_array($input['payload'])) {
+            return array_merge($input['payload'], array_filter([
+                'kind' => $type,
+                'number' => $input['number'] ?? null,
+                'issued' => $input['issued'] ?? null,
+            ]));
+        }
+
+        $quotation = $order->quotation;
+        $doc = $quotation?->document ?? [];
+        $items = $quotation ? self::items($quotation, $doc) : [];
+
+        $subtotal = array_sum(array_map(
+            fn ($it) => (float) ($it['qty'] ?? 1) * (float) ($it['rate'] ?? 0),
+            $items,
+        ));
+        $discount = (float) ($doc['discount'] ?? 0);
+        $total = $subtotal - $discount;
+
+        $amountPaid = isset($input['amountPaid']) ? (float) $input['amountPaid'] : null;
+        $balance = $amountPaid !== null ? max($total - $amountPaid, 0) : $total;
+
+        // Line items → summary rows, then subtotal / discount / total.
+        $rows = array_map(fn ($it) => [
+            'label' => (string) ($it['title'] ?? 'Item')
+                . (! empty($it['desc']) ? " ({$it['desc']})" : ''),
+            'price' => (float) ($it['qty'] ?? 1) * (float) ($it['rate'] ?? 0),
+        ], $items);
+        $rows[] = ['label' => 'Subtotal', 'price' => $subtotal];
+        if ($discount > 0) {
+            $rows[] = ['label' => 'Discount', 'price' => $discount, 'negative' => true];
+        }
+        $rows[] = ['label' => $type === 'receipt' ? 'Total paid' : 'Total due',
+            'price' => $total, 'total' => true, 'red' => true];
+
+        // Payment panels.
+        $panels = [];
+        if ($type === 'receipt') {
+            $panels[] = array_filter([
+                'label' => 'Paid in full',
+                'value' => $amountPaid ?? $total,
+                'note' => self::paymentNote($input),
+            ]);
+        } else {
+            if ($amountPaid !== null && $amountPaid > 0) {
+                $panels[] = array_filter([
+                    'label' => 'Deposit received',
+                    'value' => $amountPaid,
+                    'note' => self::paymentNote($input),
+                ]);
+            }
+            $panels[] = array_filter([
+                'label' => 'Balance due on completion',
+                'value' => $balance,
+                'accent' => true,
+                'note' => 'Payable by card, online banking (FPX), bank transfer, or DuitNow QR to '
+                    . self::STUDIO['name'] . '.',
+            ]);
+        }
+
+        return array_filter([
+            'layout' => $input['layout'] ?? 'detailed',
+            'kind' => $type,
+            'number' => $input['number'] ?? null,
+            'issued' => $input['issued'] ?? now()->format('d F Y'),
+            'status' => $input['statusLabel']
+                ?? ($type === 'receipt' ? 'Paid in full'
+                    : ($amountPaid ? 'Deposit received' : 'Issued')),
+            'currency' => 'RM',
+            'studio' => self::STUDIO,
+            'client' => array_filter([
+                'name' => $quotation?->name ?: $quotation?->company ?: 'Client',
+                'attn' => $doc['client']['attn'] ?? null,
+                'address' => $doc['client']['address'] ?? null,
+                'email' => $quotation?->email,
+            ]),
+            'project' => $doc['project'] ?? ($quotation ? self::defaultProject($quotation) : 'Project'),
+            'subtitle' => $doc['subtitle']
+                ?? ($quotation?->reference_code ? "Ref {$quotation->reference_code}" : null),
+            'summary' => ['rows' => $rows],
+            'panels' => $panels,
+            'notes' => $input['notes'] ?? null,
+        ], fn ($v) => $v !== null && $v !== []);
+    }
+
+    private static function paymentNote(array $input): ?string
+    {
+        $bits = array_filter([
+            $input['paymentMethod'] ?? null,
+            ! empty($input['paymentRef']) ? "Ref {$input['paymentRef']}" : null,
+        ]);
+
+        return $bits ? implode("\n", $bits) : null;
     }
 
     private static function defaultProject(Quotation $quotation): string
