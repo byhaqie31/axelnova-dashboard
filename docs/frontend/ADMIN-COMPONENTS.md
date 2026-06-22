@@ -31,6 +31,19 @@ The admin quotation generator. Used by `pages/admin/quotations/new.vue` (create)
 - Sections: **Client** (typeahead against `GET /v1/admin/clients`, or new-client fields), **Package & scope** (`<QuoteScopeFields>`), **Quotation document** (project title, intro, editable line items seeded from the package + add-ons, terms, deposit %), and a sticky **sidebar** (live engine estimate as a guide + the line-items total + Save / Send / Accept / View-PDF).
 - Re-prices server-side via `PricingEngine` on save; the committed **line items** drive the PDF (`DocumentMapper` → `DocumentData`). Import explicitly (auto-name would be `<AdminQuotationBuilder>`).
 
+### `pages/admin/orders/[id].vue` — Documents panel
+
+The order detail page carries the **invoice/receipt builder**. A "Documents"
+card lists the order's issued documents (number, type, total/paid, status,
+issued date, View-PDF link) and an **issue form** — type (invoice/receipt),
+amount paid, payment method, payment ref — that `POST`s to
+`/v1/admin/orders/{order}/documents`. Issuance freezes a `DocumentData` snapshot
+(`DocumentIssuer`) and assigns a derived number (`INV-`/`RCP-` + quote ref); the
+panel refetches the order to show the new row. View-PDF opens the public
+`pdf_path` (`/api/documents/{token}/pdf`). Issuance is **manual** — issue the
+invoice when the deposit/full payment lands, the receipt on full payment. Full
+pipeline: [DOCUMENT-GENERATION.md](../global/DOCUMENT-GENERATION.md).
+
 ### Referrals / Inquiries pages
 
 `pages/admin/referrals/{index,[id]}.vue` and `pages/admin/inquiries/{index,[id]}.vue`
