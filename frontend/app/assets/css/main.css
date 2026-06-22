@@ -95,6 +95,14 @@
   --status-quoted-bg:     rgba(168, 85, 247, 0.10);
   --status-archived-fg:   #86868B;
   --status-archived-bg:   rgba(134, 134, 139, 0.14);
+  --status-draft-fg:      #86868B;
+  --status-draft-bg:      rgba(134, 134, 139, 0.14);
+  --status-sent-fg:       #0071E3;
+  --status-sent-bg:       rgba(0, 113, 227, 0.10);
+  --status-declined-fg:   #FF3B30;
+  --status-declined-bg:   rgba(255, 59, 48, 0.10);
+  --status-expired-fg:    #FF9F0A;
+  --status-expired-bg:    rgba(255, 159, 10, 0.12);
 }
 
 .dark {
@@ -165,6 +173,14 @@
   --status-quoted-bg:     rgba(199, 125, 255, 0.16);
   --status-archived-fg:   #A1A1A6;
   --status-archived-bg:   rgba(161, 161, 166, 0.18);
+  --status-draft-fg:      #A1A1A6;
+  --status-draft-bg:      rgba(161, 161, 166, 0.18);
+  --status-sent-fg:       #2997FF;
+  --status-sent-bg:       rgba(41, 151, 255, 0.16);
+  --status-declined-fg:   #FF6961;
+  --status-declined-bg:   rgba(255, 105, 97, 0.16);
+  --status-expired-fg:    #FFB340;
+  --status-expired-bg:    rgba(255, 179, 64, 0.16);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -406,6 +422,10 @@ h1 { letter-spacing: -0.045em; }
 .status-pill[data-status="reviewing"]   { color: var(--status-reviewing-fg);  background: var(--status-reviewing-bg); }
 .status-pill[data-status="quoted"]      { color: var(--status-quoted-fg);     background: var(--status-quoted-bg); }
 .status-pill[data-status="archived"]    { color: var(--status-archived-fg);   background: var(--status-archived-bg); }
+.status-pill[data-status="draft"]       { color: var(--status-draft-fg);      background: var(--status-draft-bg); }
+.status-pill[data-status="sent"]        { color: var(--status-sent-fg);       background: var(--status-sent-bg); }
+.status-pill[data-status="declined"]    { color: var(--status-declined-fg);   background: var(--status-declined-bg); }
+.status-pill[data-status="expired"]     { color: var(--status-expired-fg);    background: var(--status-expired-bg); }
 
 /* Status pill — selectable button variant (used in detail pages for status changes) */
 .status-pill-button {

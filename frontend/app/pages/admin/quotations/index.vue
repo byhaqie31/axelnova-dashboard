@@ -32,9 +32,13 @@ const filters = reactive({
 // 'converted' is intentionally absent — converted quotations live on the Orders page.
 const statusOptions = [
   { value: '', label: 'Active' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'sent', label: 'Sent' },
   { value: 'new', label: 'New' },
   { value: 'viewed', label: 'Viewed' },
   { value: 'contacted', label: 'Contacted' },
+  { value: 'declined', label: 'Declined' },
+  { value: 'expired', label: 'Expired' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'spam', label: 'Spam' },
 ]
@@ -92,10 +96,11 @@ function fmtMyr(amount: string | number) {
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Quotations</h1>
-        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Quote requests submitted from the public site. Converted quotations move to <NuxtLink to="/admin/orders" class="underline" :style="{ color: 'var(--color-accent)' }">Orders</NuxtLink>.</p>
+        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Drafts you're building plus quotes you've sent. Accepted quotations move to <NuxtLink to="/admin/orders" class="underline" :style="{ color: 'var(--color-accent)' }">Orders</NuxtLink>.</p>
       </div>
       <div class="flex items-center gap-3">
         <span v-if="meta" class="text-[13px]" style="color: var(--color-text-secondary);">{{ meta.total }} total</span>
+        <NuxtLink to="/admin/quotations/new" class="btn-pill btn-pill-accent text-[13px]">New quotation</NuxtLink>
       </div>
     </div>
 

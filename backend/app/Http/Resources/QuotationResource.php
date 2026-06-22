@@ -9,11 +9,14 @@ class QuotationResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $detailRoute = $request->routeIs('admin.quotations.show');
+        // The list endpoint stays lean; everything else (detail/store/update/send)
+        // carries the full document + scope payload the builder needs.
+        $listRoute = $request->routeIs('admin.quotations.index');
 
         return [
             'id' => $this->id,
             'reference_code' => $this->reference_code,
+            'source' => $this->source,
             'client_id' => $this->client_id,
             'name' => $this->name,
             'email' => $this->email,
@@ -27,9 +30,12 @@ class QuotationResource extends JsonResource
             'status' => $this->status,
             'submitted_at' => $this->submitted_at?->toISOString(),
             'viewed_at' => $this->viewed_at?->toISOString(),
+            'sent_at' => $this->sent_at?->toISOString(),
             'order_id' => $this->whenLoaded('order', fn () => $this->order?->id),
             'order_number' => $this->whenLoaded('order', fn () => $this->order?->order_number),
-            'form_payload' => $this->when($detailRoute, $this->form_payload),
+            'public_token' => $this->when(! $listRoute, $this->public_token),
+            'form_payload' => $this->when(! $listRoute, $this->form_payload),
+            'document' => $this->when(! $listRoute, $this->document),
             'addons' => $this->whenLoaded('addons', fn () => $this->addons->map(fn ($a) => [
                 'key' => $a->addon_key,
                 'label' => $a->addon_label,

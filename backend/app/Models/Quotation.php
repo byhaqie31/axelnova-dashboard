@@ -14,6 +14,8 @@ class Quotation extends Model
 
     protected $fillable = [
         'reference_code',
+        'source',
+        'public_token',
         'client_id',
         'name',
         'email',
@@ -23,6 +25,7 @@ class Quotation extends Model
         'package_key',
         'pricing_config_id',
         'form_payload',
+        'document',
         'estimate_min_myr',
         'estimate_max_myr',
         'estimate_eta_value',
@@ -32,17 +35,20 @@ class Quotation extends Model
         'user_agent',
         'submitted_at',
         'viewed_at',
+        'sent_at',
     ];
 
     protected function casts(): array
     {
         return [
             'form_payload' => 'array',
+            'document' => 'array',
             'estimate_min_myr' => 'decimal:2',
             'estimate_max_myr' => 'decimal:2',
             'estimate_eta_value' => 'integer',
             'submitted_at' => 'datetime',
             'viewed_at' => 'datetime',
+            'sent_at' => 'datetime',
         ];
     }
 

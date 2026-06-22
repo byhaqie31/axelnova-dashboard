@@ -19,10 +19,15 @@ RUN npm run build
 FROM node:22-alpine AS runtime
 WORKDIR /app
 
+# Headless Chromium for server-side quotation PDF rendering (Nitro /api/documents route).
+# Alpine's system Chromium + playwright-core (Playwright's bundled build is glibc-only).
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
+
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV NUXT_TELEMETRY_DISABLED=1
+ENV PLAYWRIGHT_CHROMIUM_PATH=/usr/bin/chromium-browser
 
 RUN addgroup -S nuxt && adduser -S nuxt -G nuxt
 COPY --from=builder --chown=nuxt:nuxt /app/.output ./.output

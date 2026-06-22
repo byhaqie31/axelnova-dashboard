@@ -12,6 +12,12 @@ Here's the estimate for your project, based on what you submitted on the quote b
 | **Estimated Timeline** | {{ $quote->eta_label }} |
 | **Valid Until** | {{ $validUntil }} |
 
+@if($pdfUrl)
+@component('mail::button', ['url' => $pdfUrl, 'color' => 'blue'])
+Download your quotation (PDF)
+@endcomponent
+@endif
+
 @php
     $breakdown = $quote->form_payload['breakdown'] ?? [];
 @endphp

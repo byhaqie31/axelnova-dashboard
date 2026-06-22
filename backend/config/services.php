@@ -13,4 +13,9 @@ return [
         'name' => env('ADMIN_NAME', 'Ahmad Baihaqie'),
         'whatsapp_url' => env('ADMIN_WHATSAPP_URL', 'https://wa.me/60177109486'),
     ],
+
+    // Public site / Nuxt app — used to build links (e.g. the quotation PDF) in emails.
+    'frontend' => [
+        'url' => env('FRONTEND_URL', 'http://localhost:3003'),
+    ],
 ];

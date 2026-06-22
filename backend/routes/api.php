@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\AuthController;
+use App\Http\Controllers\Api\V1\Admin\ClientsController;
 use App\Http\Controllers\Api\V1\Admin\InquiriesController;
 use App\Http\Controllers\Api\V1\Admin\OrdersController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
+use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\InquiryController;
 use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
@@ -25,6 +27,9 @@ Route::get('/v1/quote-builder/config', [QuoteBuilderConfigController::class, 'sh
 Route::get('/v1/services', [PublicServicesController::class, 'index'])->name('services.index');
 Route::get('/v1/projects', [PublicProjectsController::class, 'index'])->name('projects.index');
 Route::get('/v1/projects/{slug}', [PublicProjectsController::class, 'show'])->name('projects.show');
+
+// Public — token-gated quotation document data for the PDF renderer (unguessable token).
+Route::get('/v1/documents/{token}', [DocumentController::class, 'show'])->name('documents.show');
 
 // Public — submit quote
 // Production: 3/hour per IP (spam protection). Non-prod: very high so dev/staging can test freely.
@@ -60,9 +65,15 @@ Route::middleware([
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/me', [AuthController::class, 'me'])->name('me');
 
+        // Client typeahead for the quotation builder
+        Route::get('/clients', [ClientsController::class, 'index'])->name('clients.index');
+
         Route::get('/quotations', [QuotationsController::class, 'index'])->name('quotations.index');
+        Route::post('/quotations', [QuotationsController::class, 'store'])->name('quotations.store');
         Route::get('/quotations/{quotation}', [QuotationsController::class, 'show'])->name('quotations.show');
+        Route::put('/quotations/{quotation}', [QuotationsController::class, 'update'])->name('quotations.update');
         Route::post('/quotations/{quotation}/status', [QuotationsController::class, 'updateStatus'])->name('quotations.status');
+        Route::post('/quotations/{quotation}/send', [QuotationsController::class, 'send'])->name('quotations.send');
         Route::post('/quotations/{quotation}/accept', [QuotationsController::class, 'accept'])->name('quotations.accept');
 
         Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
