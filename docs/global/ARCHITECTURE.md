@@ -45,6 +45,13 @@ axelnova-dashboard/
 | `documents` | Issued invoices & receipts — frozen `DocumentData` snapshots, rendered on demand. See [DOCUMENT-GENERATION.md](./DOCUMENT-GENERATION.md) |
 | `projects` | Active project tracking |
 
+### Analytics (Phase B — see [ANALYTICS.md](./ANALYTICS.md))
+
+| Table | Purpose |
+|-------|---------|
+| `page_views` | Append-only public page-view log (hashed IP, path, referrer, UA). Bots dropped on write |
+| `entity_likes` | Anonymous likes per entity (`project` / `service_package`), deduped by hashed IP + optional cookie id |
+
 ## API routes
 
 All routes prefixed with `/api`:
@@ -61,6 +68,11 @@ POST /v1/admin/leads/{id}/convert    Sanctum + admin role
 POST /v1/admin/orders/{order}/documents   Sanctum — issue an invoice/receipt
 GET  /v1/documents/{token}                Public  — token-gated document data (JSON)
 # Frontend Nitro: GET /api/documents/{token}/pdf — renders & streams the PDF
+
+# Analytics (see ANALYTICS.md)
+POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)
+POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like
+GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?range=7d|30d)
 ```
 
 ## Frontend routes
