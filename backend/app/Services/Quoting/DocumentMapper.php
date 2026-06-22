@@ -41,6 +41,34 @@ class DocumentMapper
             ? array_values(array_filter($doc['terms']))
             : self::DEFAULT_TERMS;
 
+        // Detailed / customized layout — the builder authors the full presentation
+        // content (sections, included, options, care, summary, panels, …) under
+        // document.payload. Pass it straight through (same override pattern as
+        // forOrder), stamping only the server-controlled identity fields.
+        if (($doc['layout'] ?? 'standard') === 'detailed') {
+            $payload = is_array($doc['payload'] ?? null) ? $doc['payload'] : [];
+            $payloadClient = is_array($payload['client'] ?? null) ? $payload['client'] : [];
+
+            return array_filter(array_merge($payload, [
+                'layout' => 'detailed',
+                'kind' => 'quotation',
+                'number' => $quotation->reference_code,
+                'issued' => $issuedAt->format('d F Y'),
+                'validUntil' => $validUntil->format('d F Y'),
+                'currency' => 'RM',
+                'studio' => array_merge(self::STUDIO, array_filter([
+                    'logo' => config('services.studio.logo_url') ?: null,
+                ])),
+                'client' => array_filter([
+                    'name' => $quotation->name ?: $quotation->company ?: 'Client',
+                    'attn' => $payloadClient['attn'] ?? null,
+                    'address' => $payloadClient['address'] ?? null,
+                    'email' => $quotation->email,
+                ]),
+                'project' => $payload['project'] ?? self::defaultProject($quotation),
+            ]), fn ($v) => $v !== null && $v !== []);
+        }
+
         return [
             // "standard" = the simple parties → scope-table format, good for
             // non-customized projects. The detailed/customized layout is built

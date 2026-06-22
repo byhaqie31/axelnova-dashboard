@@ -24,8 +24,27 @@ quotations, a frozen snapshot for invoices/receipts).
   hero (quote = client-as-title; invoice/receipt = Bill-to / Project), and the
   panel/summary labels.
 
-Any kind can render in either layout. Today: quotations default to `standard`;
-invoices/receipts default to `detailed`.
+Any kind can render in either layout. Today: quotations default to `standard`,
+but the admin can author a `detailed` quotation too (see below); invoices/receipts
+default to `detailed`.
+
+### Choosing a quotation layout (admin)
+
+The **Quotations → New quotation** button opens a chooser:
+- **Standard** → `/admin/quotations/new` → [`QuotationBuilder.vue`](../../frontend/app/components/admin/QuotationBuilder.vue) (package-priced, scope → line items → totals).
+- **Detailed** → `/admin/quotations/new?layout=detailed` → [`DetailedQuotationBuilder.vue`](../../frontend/app/components/admin/DetailedQuotationBuilder.vue) (sectioned proposal: scope sections, "what's included", option cards, care plan; auto summary + deposit/balance panels).
+
+The record remembers its layout via `document.layout`, and `/admin/quotations/[id]`
+reopens a draft in the matching builder. Standard quotations created from inquiries
+/ the public quote form are unaffected. A detailed quote still captures a package &
+scope as the **internal pricing basis** (it drives `estimate_*` and the order value);
+the client-facing PDF renders the composed `document.payload`, not that estimate.
+
+**Storage / mapping.** The detailed builder writes `document = { layout: 'detailed',
+payload: {…full content…} }`. `DocumentMapper::toDocumentData` passes `payload`
+straight through (stamping studio / reference number / issued / client), mirroring
+the order override path. `AdminQuotationRequest` validates `document.payload` loosely
+(`array`) so new section types don't need request-rule changes.
 
 ---
 
@@ -231,12 +250,14 @@ fit before reflowing spacing.
 
 ---
 
-## Roadmap (not yet built)
+## Roadmap
 
-- **Customized detailed-quotation builder UI** — the `detailed` renderer and a
-  full-`payload` override path exist, but there's no admin screen yet to *compose*
-  a detailed quote (sections / options / care). The standard quotation builder is
-  the `QuotationBuilder` component; the detailed builder is next.
-- **"Draft with AI"** — Claude (server-side, structured output → `DocumentData`)
-  to draft the customized quotation prose. Own PR; never for invoices/receipts,
-  which stay deterministic.
+- ✅ **Customized detailed-quotation builder UI** — shipped as
+  [`DetailedQuotationBuilder.vue`](../../frontend/app/components/admin/DetailedQuotationBuilder.vue),
+  reached via the New-quotation chooser. Covers scope sections, "what's included",
+  option cards, care plan, auto summary + deposit/balance panels. Future polish:
+  editable summary rows, `provide` / `notIncluded` / `timeline` / `notes` blocks
+  (the renderer already supports them — just no editor yet).
+- **"Draft with AI"** (not yet built) — Claude (server-side, structured output →
+  `DocumentData`) to draft the customized quotation prose. Own PR; never for
+  invoices/receipts, which stay deterministic.

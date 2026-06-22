@@ -51,6 +51,13 @@ class AdminQuotationRequest extends FormRequest
             'document.deposit_pct' => ['nullable', 'integer', 'min:0', 'max:100'],
             'document.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:1'],
 
+            // Layout selector + the detailed/customized presentation blob. The
+            // detailed builder stores its full content (sections, options, care,
+            // summary, panels…) under document.payload; it's passed straight
+            // through to the PDF by DocumentMapper, so it's validated loosely.
+            'document.layout' => ['nullable', 'string', Rule::in(['standard', 'detailed'])],
+            'document.payload' => ['nullable', 'array'],
+
             // Link back to the inquiry this was built from.
             'inquiry_id' => ['nullable', 'integer', 'exists:inquiries,id'],
         ];

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
+import DetailedQuotationBuilder from '~/components/admin/DetailedQuotationBuilder.vue'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -11,6 +12,7 @@ interface Quotation {
   id: number
   reference_code: string
   source: string
+  client_id: number | null
   name: string
   email: string
   phone: string | null
@@ -56,6 +58,7 @@ async function fetchQuotation() {
 }
 
 const isDraft = computed(() => quotation.value?.status === 'draft')
+const isDetailed = computed(() => quotation.value?.document?.layout === 'detailed')
 
 async function updateStatus(status: string) {
   if (!quotation.value) return
@@ -136,11 +139,19 @@ const scopeFields = computed(() => {
         <div class="mb-8 flex items-center justify-between flex-wrap gap-3">
           <div>
             <p class="font-mono text-[18px] font-bold" style="color: var(--color-accent);">{{ quotation.reference_code }}</p>
-            <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Edit draft quotation</h1>
+            <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Edit {{ isDetailed ? 'detailed ' : '' }}draft quotation</h1>
           </div>
           <AdminStatusPill :status="quotation.status" size="md" />
         </div>
+        <DetailedQuotationBuilder
+          v-if="isDetailed"
+          :quotation="quotation"
+          @saved="fetchQuotation"
+          @sent="fetchQuotation"
+          @accepted="(orderId) => navigateTo(`/admin/orders/${orderId}`)"
+        />
         <QuotationBuilder
+          v-else
           :quotation="quotation"
           @saved="fetchQuotation"
           @sent="fetchQuotation"
