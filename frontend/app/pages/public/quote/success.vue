@@ -77,10 +77,10 @@ async function copyRef() {
     <!-- CTAs -->
     <div class="flex flex-col sm:flex-row gap-3 justify-center">
       <a
-        href="https://calendly.com/baihaqie"
+        href="https://wa.me/60177109486?text=Hi%20Qie%2C%20I%27d%20like%20to%20chat%20about%20my%20project."
         target="_blank" rel="noopener"
         class="btn-pill btn-pill-accent">
-        Book a discovery call →
+        Chat on WhatsApp →
       </a>
       <NuxtLink to="/" class="btn-pill btn-pill-ghost">Back to home</NuxtLink>
     </div>

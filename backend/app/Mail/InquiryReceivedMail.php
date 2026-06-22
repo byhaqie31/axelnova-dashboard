@@ -29,7 +29,8 @@ class InquiryReceivedMail extends Mailable implements ShouldQueue
             markdown: 'mail.inquiry-received',
             with: [
                 'inquiry' => $this->inquiry,
-                'calendlyUrl' => config('services.admin.calendly_url') ?: env('ADMIN_CALENDLY_URL', ''),
+                'whatsappUrl' => config('services.admin.whatsapp_url')
+                    .'?text='.rawurlencode("Hi Qie, I'd like to chat about my project."),
             ],
         );
     }

@@ -19,11 +19,11 @@ Here's what you shared:
 @endforeach
 @endif
 
-If you'd like to talk it through sooner, you're welcome to book a quick call:
+If you'd like to talk it through sooner, the quickest way to reach me is a WhatsApp message:
 
-@if($calendlyUrl)
-@component('mail::button', ['url' => $calendlyUrl, 'color' => 'blue'])
-Book a Discovery Call
+@if($whatsappUrl)
+@component('mail::button', ['url' => $whatsappUrl, 'color' => 'green'])
+Chat on WhatsApp
 @endcomponent
 @endif
 

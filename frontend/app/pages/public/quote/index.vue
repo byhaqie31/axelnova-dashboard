@@ -260,8 +260,8 @@ useScrollReveal('.reveal')
           <p class="text-[13px] leading-relaxed mb-4" style="color: var(--color-text-secondary);">
             Browse the <NuxtLink to="/services" style="color: var(--color-accent);">services</NuxtLink> to see what's possible, or just describe your idea above — I'll help you shape it.
           </p>
-          <a href="https://calendly.com/baihaqie" target="_blank" rel="noopener" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
-            Book a discovery call →
+          <a href="https://wa.me/60177109486?text=Hi%20Qie%2C%20I%27d%20like%20to%20chat%20about%20my%20project." target="_blank" rel="noopener" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
+            Chat on WhatsApp →
           </a>
         </div>
       </div>
