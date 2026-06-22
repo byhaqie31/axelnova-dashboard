@@ -18,4 +18,9 @@ return [
     'frontend' => [
         'url' => env('FRONTEND_URL', 'http://localhost:3003'),
     ],
+
+    // Studio branding for generated documents (quotation PDF).
+    'studio' => [
+        'logo_url' => env('STUDIO_LOGO_URL'), // URL or base64 data URI; blank → text wordmark
+    ],
 ];

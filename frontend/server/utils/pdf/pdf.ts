@@ -21,11 +21,13 @@ export async function renderDocumentPDF(data: DocumentData): Promise<Buffer> {
   try {
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'networkidle' })
+    // Honour the template's CSS `@page` rule (A4 size, margins, and the
+    // running page-foot in @bottom-left/@bottom-right). Don't pass width/
+    // height/margin here — those would override the CSS and drop the
+    // page-number footer on multi-page documents.
     const pdf = await page.pdf({
-      width: '210mm',
-      height: '297mm',
       printBackground: true,
-      margin: { top: '0', bottom: '0', left: '0', right: '0' },
+      preferCSSPageSize: true,
     })
     return Buffer.from(pdf)
   }

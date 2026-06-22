@@ -15,11 +15,11 @@ class DocumentMapper
     /** Studio details on every document. */
     private const STUDIO = [
         'name' => 'Axel Nova Ventures',
-        'tagline' => 'Design & Engineering Studio',
+        'tagline' => 'Simple, effortless, human.',
         'reg' => 'Reg. 202603119899 (CA0420977-U)',
         'email' => 'baihaqie@axelnova.tech',
         'site' => 'axelnovaventures.com',
-        'location' => 'Kuala Lumpur, Malaysia',
+        'designedBy' => 'Designed by Qie / Axel Nova Ventures',
     ];
 
     private const DEFAULT_TERMS = [
@@ -41,12 +41,19 @@ class DocumentMapper
             : self::DEFAULT_TERMS;
 
         return [
+            // "standard" = the simple parties → scope-table format, good for
+            // non-customized projects. The detailed/customized layout is built
+            // from the customized quotation builder with richer data.
+            'layout' => $doc['layout'] ?? 'standard',
             'kind' => 'quotation',
             'number' => $quotation->reference_code,
             'issued' => $issuedAt->format('d F Y'),
             'validUntil' => $validUntil->format('d F Y'),
             'currency' => 'RM',
-            'studio' => self::STUDIO,
+            'studio' => array_merge(self::STUDIO, array_filter([
+                // URL or base64 data URI; null/blank falls back to the bundled mark.
+                'logo' => config('services.studio.logo_url') ?: null,
+            ])),
             'client' => array_filter([
                 'name' => $quotation->name ?: $quotation->company ?: 'Client',
                 'attn' => $doc['client']['attn'] ?? null,
@@ -54,6 +61,7 @@ class DocumentMapper
                 'email' => $quotation->email,
             ]),
             'project' => $doc['project'] ?? self::defaultProject($quotation),
+            'subtitle' => $doc['subtitle'] ?? null,
             'intro' => $doc['intro'] ?? null,
             'items' => self::items($quotation, $doc),
             'discount' => (float) ($doc['discount'] ?? 0),

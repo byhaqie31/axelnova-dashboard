@@ -22,12 +22,14 @@ const recent = ref<Quotation[]>([])
 const totalQuotations = ref<number | null>(null)
 const newQuotations = ref<number | null>(null)
 const activeOrders = ref<number | null>(null)
+const openInquiries = ref<number | null>(null)
+const draftQuotations = ref<number | null>(null)
 const loading = ref(true)
 const error = ref('')
 
 // Displayed metric values — counted up briefly (dashboard register, ~0.9s)
 // when the real numbers arrive. Instant under reduced motion.
-const shown = reactive({ total: 0, newQ: 0, orders: 0 })
+const shown = reactive({ total: 0, newQ: 0, orders: 0, inq: 0, draft: 0 })
 
 function countTo(key: keyof typeof shown, end: number) {
   if (!import.meta.client || motion.reduced) {
@@ -48,18 +50,24 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [recentRes, newRes, ordersRes] = await Promise.all([
+    const [recentRes, newRes, ordersRes, inqRes, draftRes] = await Promise.all([
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?include_accepted=1&page=1'),
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?status=new&page=1'),
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/orders?page=1'),
+      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/inquiries?status=new&page=1'),
+      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/quotations?status=draft&page=1'),
     ])
     recent.value = recentRes.data.slice(0, 5)
     totalQuotations.value = recentRes.meta.total
     newQuotations.value = newRes.meta.total
     activeOrders.value = ordersRes.meta.total
+    openInquiries.value = inqRes.meta.total
+    draftQuotations.value = draftRes.meta.total
     countTo('total', recentRes.meta.total)
     countTo('newQ', newRes.meta.total)
     countTo('orders', ordersRes.meta.total)
+    countTo('inq', inqRes.meta.total)
+    countTo('draft', draftRes.meta.total)
   }
   catch {
     error.value = 'Failed to load dashboard. Check your session.'
@@ -108,6 +116,18 @@ interface StatTile {
 
 const tiles = computed<StatTile[]>(() => [
   {
+    label: 'Open inquiries',
+    value: openInquiries.value === null ? '—' : String(shown.inq),
+    hint: 'New project inquiries',
+    icon: 'i-lucide-inbox',
+  },
+  {
+    label: 'Draft quotations',
+    value: draftQuotations.value === null ? '—' : String(shown.draft),
+    hint: 'Building, not yet sent',
+    icon: 'i-lucide-file-pen',
+  },
+  {
     label: 'Total quotations',
     value: totalQuotations.value === null ? '—' : String(shown.total),
     hint: 'All-time inquiries',
@@ -145,7 +165,7 @@ const tiles = computed<StatTile[]>(() => [
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
     <!-- Stat tiles -->
-    <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-10">
+    <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-10">
       <div
         v-for="tile in tiles"
         :key="tile.label"
