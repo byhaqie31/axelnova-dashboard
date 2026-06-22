@@ -4,13 +4,16 @@ use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\OrdersController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
+use App\Http\Controllers\Api\V1\Admin\ReferralsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
 use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
 use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
 use App\Http\Controllers\Api\V1\QuoteRequestController;
+use App\Http\Controllers\Api\V1\ReferralController;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 // Public — pricing config (cached 1 hour)
 Route::get('/v1/quote-builder/config', [QuoteBuilderConfigController::class, 'show'])
@@ -27,6 +30,10 @@ $quoteThrottle = app()->environment('production') ? 'throttle:3,60' : 'throttle:
 Route::middleware($quoteThrottle)->group(function () {
     Route::post('/v1/quote-requests', [QuoteRequestController::class, 'store'])
         ->name('quote-requests.store');
+
+    // Partner referrals — same env-aware policy; distinct URI = its own rate-limit bucket.
+    Route::post('/v1/referrals', [ReferralController::class, 'store'])
+        ->name('referrals.store');
 });
 
 // Admin — login (public, throttled to deter brute-force)
@@ -37,10 +44,10 @@ Route::middleware($loginThrottle)->group(function () {
 
 // Admin — Sanctum SPA (stateful via cookie + CSRF) + role:admin
 Route::middleware([
-        \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-        'auth:sanctum',
-        'role:admin',
-    ])
+    EnsureFrontendRequestsAreStateful::class,
+    'auth:sanctum',
+    'role:admin',
+])
     ->prefix('v1/admin')
     ->name('admin.')
     ->group(function () {
@@ -55,6 +62,12 @@ Route::middleware([
         Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrdersController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status', [OrdersController::class, 'updateStatus'])->name('orders.status');
+
+        // Partner referrals
+        Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');
+        Route::get('/referrals/{referral}', [ReferralsController::class, 'show'])->name('referrals.show');
+        Route::post('/referrals/{referral}/status', [ReferralsController::class, 'updateStatus'])->name('referrals.status');
+        Route::post('/referrals/{referral}/link-order', [ReferralsController::class, 'linkOrder'])->name('referrals.link-order');
 
         // CMS — Service categories
         Route::get('/service-categories', [ServiceCategoriesController::class, 'index'])->name('service-categories.index');

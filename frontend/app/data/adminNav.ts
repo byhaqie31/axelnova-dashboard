@@ -9,6 +9,7 @@ export const adminNav: AdminNavItem[] = [
   { to: '/admin', label: 'Dashboard', icon: 'i-lucide-layout-dashboard' },
   { to: '/admin/quotations', label: 'Quotations', icon: 'i-lucide-file-text', matchPrefix: '/admin/quotations' },
   { to: '/admin/orders', label: 'Orders', icon: 'i-lucide-package-check', matchPrefix: '/admin/orders' },
+  { to: '/admin/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/admin/referrals' },
   { to: '/admin/services', label: 'Services', icon: 'i-lucide-briefcase-business', matchPrefix: '/admin/services' },
   { to: '/admin/projects', label: 'Projects', icon: 'i-lucide-folder-kanban', matchPrefix: '/admin/projects' },
   { to: '/admin/investors', label: 'Investors', icon: 'i-lucide-handshake', matchPrefix: '/admin/investors' },

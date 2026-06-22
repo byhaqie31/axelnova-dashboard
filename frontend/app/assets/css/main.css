@@ -85,6 +85,10 @@
   --status-completed-bg:  rgba(48, 209, 88, 0.12);
   --status-cancelled-fg:  #FF3B30;
   --status-cancelled-bg:  rgba(255, 59, 48, 0.10);
+  --status-qualified-fg:  #00A0B4;
+  --status-qualified-bg:  rgba(0, 160, 180, 0.12);
+  --status-converted-fg:  #30D158;
+  --status-converted-bg:  rgba(48, 209, 88, 0.12);
 }
 
 .dark {
@@ -145,6 +149,10 @@
   --status-completed-bg:  rgba(93, 227, 140, 0.16);
   --status-cancelled-fg:  #FF6961;
   --status-cancelled-bg:  rgba(255, 105, 97, 0.16);
+  --status-qualified-fg:  #34C7D6;
+  --status-qualified-bg:  rgba(52, 199, 214, 0.16);
+  --status-converted-fg:  #5DE38C;
+  --status-converted-bg:  rgba(93, 227, 140, 0.16);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -381,6 +389,8 @@ h1 { letter-spacing: -0.045em; }
 .status-pill[data-status="delivered"]   { color: var(--status-delivered-fg);  background: var(--status-delivered-bg); }
 .status-pill[data-status="completed"]   { color: var(--status-completed-fg);  background: var(--status-completed-bg); }
 .status-pill[data-status="cancelled"]   { color: var(--status-cancelled-fg);  background: var(--status-cancelled-bg); }
+.status-pill[data-status="qualified"]   { color: var(--status-qualified-fg);  background: var(--status-qualified-bg); }
+.status-pill[data-status="converted"]   { color: var(--status-converted-fg);  background: var(--status-converted-bg); }
 
 /* Status pill — selectable button variant (used in detail pages for status changes) */
 .status-pill-button {
