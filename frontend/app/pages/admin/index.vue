@@ -24,12 +24,13 @@ const newQuotations = ref<number | null>(null)
 const activeOrders = ref<number | null>(null)
 const openInquiries = ref<number | null>(null)
 const draftQuotations = ref<number | null>(null)
+const pageViews7d = ref<number | null>(null)
 const loading = ref(true)
 const error = ref('')
 
 // Displayed metric values — counted up briefly (dashboard register, ~0.9s)
 // when the real numbers arrive. Instant under reduced motion.
-const shown = reactive({ total: 0, newQ: 0, orders: 0, inq: 0, draft: 0 })
+const shown = reactive({ total: 0, newQ: 0, orders: 0, inq: 0, draft: 0, views: 0 })
 
 function countTo(key: keyof typeof shown, end: number) {
   if (!import.meta.client || motion.reduced) {
@@ -68,6 +69,14 @@ async function load() {
     countTo('orders', ordersRes.meta.total)
     countTo('inq', inqRes.meta.total)
     countTo('draft', draftRes.meta.total)
+
+    // Page views — best-effort; a tracking hiccup must never break the dashboard.
+    try {
+      const ov = await apiFetch<{ views: { total: number } }>('/api/v1/admin/analytics/overview?range=7d')
+      pageViews7d.value = ov.views.total
+      countTo('views', ov.views.total)
+    }
+    catch { /* leave the tile as — */ }
   }
   catch {
     error.value = 'Failed to load dashboard. Check your session.'
@@ -159,12 +168,11 @@ const tiles = computed<StatTile[]>(() => [
   },
   {
     label: 'Page views (7d)',
-    value: '—',
-    hint: 'Wires up in Phase B',
+    value: pageViews7d.value === null ? '—' : String(shown.views),
+    hint: 'Public site visits',
     icon: 'i-lucide-eye',
     to: '/admin/analytics',
     cta: 'View analytics',
-    pending: true,
   },
 ])
 </script>

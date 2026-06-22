@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\V1\PublicServicesController;
 use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
 use App\Http\Controllers\Api\V1\QuoteRequestController;
 use App\Http\Controllers\Api\V1\ReferralController;
+use App\Http\Controllers\Api\V1\TrackingController;
+use App\Http\Controllers\Api\V1\Admin\AnalyticsController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
@@ -47,6 +49,14 @@ Route::middleware($quoteThrottle)->group(function () {
         ->name('inquiries.store');
 });
 
+// Public — analytics page-view beacon. High ceiling (normal browsing bursts),
+// stateless, fire-and-forget. Server hashes the IP; obvious bots are dropped.
+$trackThrottle = app()->environment('production') ? 'throttle:120,1' : 'throttle:100000,1';
+Route::middleware($trackThrottle)->group(function () {
+    Route::post('/v1/track/page-view', [TrackingController::class, 'pageView'])
+        ->name('track.page-view');
+});
+
 // Admin — login (public, throttled to deter brute-force)
 $loginThrottle = app()->environment('production') ? 'throttle:10,1' : 'throttle:1000,1';
 Route::middleware($loginThrottle)->group(function () {
@@ -67,6 +77,9 @@ Route::middleware([
 
         // Client typeahead for the quotation builder
         Route::get('/clients', [ClientsController::class, 'index'])->name('clients.index');
+
+        // Analytics overview (traffic / engagement)
+        Route::get('/analytics/overview', [AnalyticsController::class, 'overview'])->name('analytics.overview');
 
         Route::get('/quotations', [QuotationsController::class, 'index'])->name('quotations.index');
         Route::post('/quotations', [QuotationsController::class, 'store'])->name('quotations.store');
