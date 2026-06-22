@@ -123,28 +123,27 @@ useHead({ title: 'Admin Portal' })
     </header>
 
     <div class="flex-1 flex">
-      <!-- Sidebar (desktop) -->
+      <!-- Sidebar (desktop) — sticks below the topbar while content scrolls -->
       <aside
-        class="hidden md:flex flex-col border-r"
+        class="hidden md:flex flex-col border-r self-start sticky"
         :style="{
-          width: '240px',
+          width: '248px',
+          top: '3.5rem',
+          height: 'calc(100vh - 3.5rem)',
           background: 'var(--color-bg)',
           borderColor: 'var(--color-border)',
         }"
       >
-        <nav class="p-3 flex flex-col gap-1">
+        <nav class="p-3 flex flex-col gap-1.5 overflow-y-auto">
           <NuxtLink
             v-for="item in adminNav"
             :key="item.to"
             :to="item.to"
-            class="inline-flex items-center gap-3 h-9 rounded-md px-2.5 transition-colors"
-            :style="{
-              background: isAdminNavActive(item, route.path) ? 'var(--color-accent-soft)' : 'transparent',
-              color: isAdminNavActive(item, route.path) ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-            }"
+            class="admin-nav-item"
+            :data-active="isAdminNavActive(item, route.path)"
           >
-            <UIcon :name="item.icon" class="size-4 shrink-0" />
-            <span class="text-[13px] font-medium tracking-tight">{{ item.label }}</span>
+            <UIcon :name="item.icon" class="size-4.5 shrink-0" />
+            <span>{{ item.label }}</span>
           </NuxtLink>
         </nav>
       </aside>
@@ -168,28 +167,24 @@ useHead({ title: 'Admin Portal' })
             borderColor: 'var(--color-border)',
           }"
         >
-          <nav class="p-3 flex flex-col gap-1 h-full overflow-y-auto">
+          <nav class="p-3 flex flex-col gap-1.5 h-full overflow-y-auto">
             <NuxtLink
               v-for="item in adminNav"
               :key="item.to"
               :to="item.to"
-              class="inline-flex items-center gap-3 h-10 rounded-md px-3 transition-colors"
-              :style="{
-                background: isAdminNavActive(item, route.path) ? 'var(--color-accent-soft)' : 'transparent',
-                color: isAdminNavActive(item, route.path) ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-              }"
+              class="admin-nav-item"
+              :data-active="isAdminNavActive(item, route.path)"
             >
-              <UIcon :name="item.icon" class="size-4 shrink-0" />
-              <span class="text-[13px] font-medium tracking-tight">{{ item.label }}</span>
+              <UIcon :name="item.icon" class="size-4.5 shrink-0" />
+              <span>{{ item.label }}</span>
             </NuxtLink>
             <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
             <button
-              class="inline-flex items-center gap-3 h-10 rounded-md px-3 transition-colors hover:bg-(--color-bg-secondary)"
-              :style="{ color: 'var(--color-text-secondary)' }"
+              class="admin-nav-item"
               @click="logout"
             >
-              <UIcon name="i-lucide-log-out" class="size-4 shrink-0" />
-              <span class="text-[13px] font-medium tracking-tight">Sign out</span>
+              <UIcon name="i-lucide-log-out" class="size-4.5 shrink-0" />
+              <span>Sign out</span>
             </button>
           </nav>
         </aside>

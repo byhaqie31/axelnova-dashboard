@@ -118,12 +118,11 @@ function fmtMyr(amount: string | number) {
       </p>
     </div>
 
-    <div v-else class="hidden md:block rounded-2xl border overflow-hidden"
-      :style="{ borderColor: 'var(--color-border)' }">
+    <div v-else class="hidden md:block admin-table-card">
       <div class="overflow-x-auto">
       <table class="w-full text-left">
         <thead>
-          <tr style="border-bottom: 1px solid var(--color-border); background: var(--color-bg-secondary);">
+          <tr>
             <th v-for="h in ['Order', 'Client', 'Value', 'Status', 'Started', 'Created']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
@@ -132,8 +131,7 @@ function fmtMyr(amount: string | number) {
         </thead>
         <tbody>
           <tr v-for="o in orders" :key="o.id"
-            class="border-b cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
-            style="border-color: var(--color-border);"
+            class="admin-table-row"
             @click="navigateTo(`/admin/orders/${o.id}`)">
             <td class="px-4 py-3.5">
               <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ o.order_number }}</p>

@@ -413,26 +413,36 @@ function viewPdf() {
           <div v-if="!doc.items.length" class="rounded-xl border border-dashed px-4 py-6 text-center text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }">
             No line items yet. Click <strong>Seed line items from scope</strong> or <strong>+ Add line</strong>.
           </div>
-          <div v-for="(it, i) in doc.items" :key="i" class="rounded-xl border p-3 mb-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-            <div class="flex gap-2 items-start">
-              <div class="flex-1 space-y-2">
-                <input v-model="it.title" type="text" placeholder="Title" class="contact-input w-full text-[13px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
-                <input v-model="it.desc" type="text" placeholder="Description (optional)" class="contact-input w-full text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-elevated)' }" />
-                <div class="flex gap-2">
-                  <input v-model.number="it.qty" type="number" min="0" step="0.5" placeholder="Qty" class="contact-input w-16 text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
-                  <input v-model="it.unit" type="text" placeholder="unit" class="contact-input w-24 text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
-                  <div class="relative flex-1">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px]" style="color: var(--color-text-tertiary);">RM</span>
-                    <input v-model.number="it.rate" type="number" min="0" step="50" placeholder="Rate" class="contact-input w-full text-[12px] pl-9" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
-                  </div>
-                  <div class="w-24 text-right text-[13px] font-semibold tabular-nums pt-2.5" style="color: var(--color-text);">
-                    RM {{ ((Number(it.qty) || 0) * (Number(it.rate) || 0)).toLocaleString() }}
-                  </div>
+          <div v-for="(it, i) in doc.items" :key="i" class="rounded-xl border p-3 mb-2 space-y-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+            <input v-model="it.title" type="text" placeholder="Title" class="contact-input w-full text-[13px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+            <input v-model="it.desc" type="text" placeholder="Description (optional)" class="contact-input w-full text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-elevated)' }" />
+            <div class="flex flex-wrap items-end gap-x-2 gap-y-3">
+              <div class="w-16">
+                <span class="line-label">Qty</span>
+                <input v-model.number="it.qty" type="number" min="0" step="0.5" class="contact-input w-full text-[13px] text-center" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+              </div>
+              <div class="flex-1 min-w-20">
+                <span class="line-label">Unit</span>
+                <input v-model="it.unit" type="text" placeholder="project, page, hr…" class="contact-input w-full text-[13px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+              </div>
+              <div class="w-32">
+                <span class="line-label">Rate</span>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none" style="color: var(--color-text-tertiary);">RM</span>
+                  <input v-model.number="it.rate" type="number" min="0" step="50" class="contact-input w-full text-[13px] pl-9 text-right" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
                 </div>
               </div>
-              <button type="button" class="size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove line" @click="removeItem(i)">
+            </div>
+            <!-- Footer: delete on the left, line total on the right -->
+            <div class="flex items-center justify-between gap-3 pt-2.5 mt-0.5 border-t" :style="{ borderColor: 'var(--color-border)' }">
+              <button type="button" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove line" @click="removeItem(i)">
                 <UIcon name="i-lucide-trash-2" class="size-4" />
+                Remove
               </button>
+              <div class="flex items-baseline gap-2">
+                <span class="text-[12px]" style="color: var(--color-text-tertiary);">Total</span>
+                <span class="text-[14px] font-semibold tabular-nums" style="color: var(--color-text);">RM {{ ((Number(it.qty) || 0) * (Number(it.rate) || 0)).toLocaleString() }}</span>
+              </div>
             </div>
           </div>
           <div v-if="doc.items.length" class="flex justify-end items-center gap-3 pt-1">
@@ -494,3 +504,16 @@ function viewPdf() {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Micro-label above the qty / unit / rate / total fields in a line item. */
+.line-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-tertiary);
+}
+</style>

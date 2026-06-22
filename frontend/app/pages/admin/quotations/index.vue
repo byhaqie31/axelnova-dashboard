@@ -118,12 +118,11 @@ function fmtMyr(amount: string | number) {
       No quotations found.
     </div>
 
-    <div v-else class="hidden md:block rounded-2xl border overflow-hidden"
-      :style="{ borderColor: 'var(--color-border)' }">
+    <div v-else class="hidden md:block admin-table-card">
       <div class="overflow-x-auto">
       <table class="w-full text-left">
         <thead>
-          <tr style="border-bottom: 1px solid var(--color-border); background: var(--color-bg-secondary);">
+          <tr>
             <th v-for="h in ['Reference', 'Name', 'Package', 'Estimate', 'Status', 'Submitted']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
@@ -132,8 +131,7 @@ function fmtMyr(amount: string | number) {
         </thead>
         <tbody>
           <tr v-for="q in quotations" :key="q.id"
-            class="border-b cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
-            style="border-color: var(--color-border);"
+            class="admin-table-row"
             @click="navigateTo(`/admin/quotations/${q.id}`)">
             <td class="px-4 py-3.5">
               <span class="font-mono text-[12px] font-medium" style="color: var(--color-accent);">{{ q.reference_code }}</span>
