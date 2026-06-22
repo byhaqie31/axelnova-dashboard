@@ -111,6 +111,8 @@ interface StatTile {
   value: string
   hint: string
   icon: string
+  to: string
+  cta: string
   pending?: boolean
 }
 
@@ -120,36 +122,48 @@ const tiles = computed<StatTile[]>(() => [
     value: openInquiries.value === null ? '—' : String(shown.inq),
     hint: 'New project inquiries',
     icon: 'i-lucide-inbox',
+    to: '/admin/inquiries?status=new',
+    cta: 'View inquiries',
   },
   {
     label: 'Draft quotations',
     value: draftQuotations.value === null ? '—' : String(shown.draft),
     hint: 'Building, not yet sent',
     icon: 'i-lucide-file-pen',
+    to: '/admin/quotations?status=draft',
+    cta: 'View drafts',
   },
   {
     label: 'Total quotations',
     value: totalQuotations.value === null ? '—' : String(shown.total),
     hint: 'All-time inquiries',
     icon: 'i-lucide-file-text',
+    to: '/admin/quotations',
+    cta: 'View quotations',
   },
   {
     label: 'New (unactioned)',
     value: newQuotations.value === null ? '—' : String(shown.newQ),
     hint: 'Status = new',
     icon: 'i-lucide-inbox',
+    to: '/admin/quotations?status=new',
+    cta: 'View new',
   },
   {
     label: 'Active orders',
     value: activeOrders.value === null ? '—' : String(shown.orders),
     hint: 'Converted engagements',
     icon: 'i-lucide-package-check',
+    to: '/admin/orders',
+    cta: 'View orders',
   },
   {
     label: 'Page views (7d)',
     value: '—',
     hint: 'Wires up in Phase B',
     icon: 'i-lucide-eye',
+    to: '/admin/analytics',
+    cta: 'View analytics',
     pending: true,
   },
 ])
@@ -166,34 +180,45 @@ const tiles = computed<StatTile[]>(() => [
 
     <!-- Stat tiles -->
     <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-10">
-      <div
+      <NuxtLink
         v-for="tile in tiles"
         :key="tile.label"
-        class="rounded-2xl border p-5"
+        :to="tile.to"
+        class="stat-tile group relative rounded-2xl border p-5"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
       >
-        <div class="flex items-start justify-between mb-3">
-          <div
-            class="size-9 rounded-xl inline-flex items-center justify-center"
-            :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }"
-          >
-            <UIcon :name="tile.icon" class="size-4" />
-          </div>
-          <span
-            v-if="tile.pending"
-            class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-            :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }"
-          >
-            Soon
-          </span>
+        <!-- Hover-revealed view button, top-right — doesn't disturb the resting card -->
+        <span
+          class="view-btn absolute top-5 right-5 inline-flex items-center justify-center size-8 rounded-lg"
+          :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }"
+          :title="tile.cta"
+          aria-hidden="true"
+        >
+          <UIcon name="i-lucide-arrow-up-right" class="size-4" />
+        </span>
+
+        <div
+          class="size-9 rounded-xl inline-flex items-center justify-center mb-3"
+          :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }"
+        >
+          <UIcon :name="tile.icon" class="size-4" />
         </div>
         <p class="text-[11px] font-semibold uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">{{ tile.label }}</p>
         <p class="text-[28px] font-bold tracking-tight tabular-nums" style="color: var(--color-text);">
           <span v-if="loading && !tile.pending" class="opacity-50">—</span>
           <span v-else>{{ tile.value }}</span>
         </p>
-        <p class="text-[12px] mt-1" style="color: var(--color-text-secondary);">{{ tile.hint }}</p>
-      </div>
+        <div class="flex items-end justify-between gap-2 mt-1">
+          <p class="text-[12px]" style="color: var(--color-text-secondary);">{{ tile.hint }}</p>
+          <span
+            v-if="tile.pending"
+            class="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }"
+          >
+            Soon
+          </span>
+        </div>
+      </NuxtLink>
     </div>
 
     <!-- Recent quotations -->
@@ -291,3 +316,33 @@ const tiles = computed<StatTile[]>(() => [
     </div>
   </div>
 </template>
+
+<style scoped>
+.stat-tile {
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.stat-tile:hover {
+  border-color: var(--color-border-strong) !important;
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+/* View button: hidden at rest, fades + rises in on card hover. */
+.view-btn {
+  opacity: 0;
+  transform: translateY(-3px) scale(0.92);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+.stat-tile:hover .view-btn,
+.stat-tile:focus-visible .view-btn {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-tile { transition: none; }
+  .stat-tile:hover { transform: none; }
+  .view-btn { transition: none; }
+}
+</style>

@@ -99,11 +99,7 @@ function fmtMyr(amount: string | number) {
 
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, order or reference…" />
-      <div class="ml-auto flex items-center gap-2.5">
-        <span v-if="meta" class="text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ meta.total }} total</span>
-        <span v-if="meta" aria-hidden="true" class="text-[13px] select-none" style="color: var(--color-text-tertiary);">|</span>
-        <AdminStatusFilter v-model="filters.status" :options="statusOptions" />
-      </div>
+      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" class="ml-auto" />
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
