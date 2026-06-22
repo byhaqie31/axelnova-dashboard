@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\AuthController;
+use App\Http\Controllers\Api\V1\Admin\InquiriesController;
 use App\Http\Controllers\Api\V1\Admin\OrdersController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
+use App\Http\Controllers\Api\V1\InquiryController;
 use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
 use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
@@ -34,6 +36,10 @@ Route::middleware($quoteThrottle)->group(function () {
     // Partner referrals — same env-aware policy; distinct URI = its own rate-limit bucket.
     Route::post('/v1/referrals', [ReferralController::class, 'store'])
         ->name('referrals.store');
+
+    // Project inquiries — lightweight intake; the admin builds the priced quote.
+    Route::post('/v1/inquiries', [InquiryController::class, 'store'])
+        ->name('inquiries.store');
 });
 
 // Admin — login (public, throttled to deter brute-force)
@@ -68,6 +74,11 @@ Route::middleware([
         Route::get('/referrals/{referral}', [ReferralsController::class, 'show'])->name('referrals.show');
         Route::post('/referrals/{referral}/status', [ReferralsController::class, 'updateStatus'])->name('referrals.status');
         Route::post('/referrals/{referral}/link-order', [ReferralsController::class, 'linkOrder'])->name('referrals.link-order');
+
+        // Project inquiries
+        Route::get('/inquiries', [InquiriesController::class, 'index'])->name('inquiries.index');
+        Route::get('/inquiries/{inquiry}', [InquiriesController::class, 'show'])->name('inquiries.show');
+        Route::post('/inquiries/{inquiry}/status', [InquiriesController::class, 'updateStatus'])->name('inquiries.status');
 
         // CMS — Service categories
         Route::get('/service-categories', [ServiceCategoriesController::class, 'index'])->name('service-categories.index');

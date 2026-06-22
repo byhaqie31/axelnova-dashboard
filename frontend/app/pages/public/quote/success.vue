@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
-useHead({ title: 'Quote Sent — Axel Nova Ventures' })
+useHead({ title: 'Inquiry Received — Axel Nova Ventures' })
 useSeoMeta({ robots: 'noindex, nofollow' })
 
 const route = useRoute()
@@ -29,11 +29,11 @@ async function copyRef() {
     </div>
 
     <h1 class="text-[32px] font-bold tracking-tight mb-3" style="color: var(--color-text);">
-      Thank you for your interest.
+      Inquiry received — thank you.
     </h1>
     <p class="text-[16px] leading-relaxed mb-8" style="color: var(--color-text-secondary);">
-      Our team will contact you as soon as possible to discuss the next steps.
-      A copy of your quote is also on its way to your inbox. Check your spam folder if it doesn't arrive within a few minutes.
+      I'll review your project details and get back to you with a tailored quote,
+      usually within 1–2 business days. Keep an eye on your inbox (and your spam folder, just in case).
     </p>
 
     <!-- Reference code -->

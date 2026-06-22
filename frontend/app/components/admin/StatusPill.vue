@@ -3,6 +3,7 @@ type StatusKey =
   | 'new' | 'viewed' | 'contacted' | 'accepted' | 'rejected' | 'spam'
   | 'pending' | 'in_progress' | 'delivered' | 'completed' | 'cancelled'
   | 'qualified' | 'converted'
+  | 'reviewing' | 'quoted' | 'archived'
 
 const props = withDefaults(defineProps<{
   status: string | null | undefined
@@ -28,6 +29,9 @@ const statusLabels: Record<StatusKey, string> = {
   cancelled: 'Cancelled',
   qualified: 'Qualified',
   converted: 'Converted',
+  reviewing: 'Reviewing',
+  quoted: 'Quoted',
+  archived: 'Archived',
 }
 
 const resolved = computed<StatusKey>(() => {

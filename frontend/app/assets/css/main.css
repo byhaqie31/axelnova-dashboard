@@ -89,6 +89,12 @@
   --status-qualified-bg:  rgba(0, 160, 180, 0.12);
   --status-converted-fg:  #30D158;
   --status-converted-bg:  rgba(48, 209, 88, 0.12);
+  --status-reviewing-fg:  #FF9F0A;
+  --status-reviewing-bg:  rgba(255, 159, 10, 0.12);
+  --status-quoted-fg:     #A855F7;
+  --status-quoted-bg:     rgba(168, 85, 247, 0.10);
+  --status-archived-fg:   #86868B;
+  --status-archived-bg:   rgba(134, 134, 139, 0.14);
 }
 
 .dark {
@@ -153,6 +159,12 @@
   --status-qualified-bg:  rgba(52, 199, 214, 0.16);
   --status-converted-fg:  #5DE38C;
   --status-converted-bg:  rgba(93, 227, 140, 0.16);
+  --status-reviewing-fg:  #FFB340;
+  --status-reviewing-bg:  rgba(255, 179, 64, 0.16);
+  --status-quoted-fg:     #C77DFF;
+  --status-quoted-bg:     rgba(199, 125, 255, 0.16);
+  --status-archived-fg:   #A1A1A6;
+  --status-archived-bg:   rgba(161, 161, 166, 0.18);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -391,6 +403,9 @@ h1 { letter-spacing: -0.045em; }
 .status-pill[data-status="cancelled"]   { color: var(--status-cancelled-fg);  background: var(--status-cancelled-bg); }
 .status-pill[data-status="qualified"]   { color: var(--status-qualified-fg);  background: var(--status-qualified-bg); }
 .status-pill[data-status="converted"]   { color: var(--status-converted-fg);  background: var(--status-converted-bg); }
+.status-pill[data-status="reviewing"]   { color: var(--status-reviewing-fg);  background: var(--status-reviewing-bg); }
+.status-pill[data-status="quoted"]      { color: var(--status-quoted-fg);     background: var(--status-quoted-bg); }
+.status-pill[data-status="archived"]    { color: var(--status-archived-fg);   background: var(--status-archived-bg); }
 
 /* Status pill — selectable button variant (used in detail pages for status changes) */
 .status-pill-button {
