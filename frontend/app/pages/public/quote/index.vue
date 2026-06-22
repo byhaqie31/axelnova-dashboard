@@ -63,6 +63,8 @@ async function handleSubmit() {
   loading.value = true
   error.value = ''
   try {
+    // Backend is the source of truth — creates the tracked inquiry row,
+    // surfaced in /admin/inquiries.
     await $fetch(`${runtimeConfig.public.apiBase}/api/v1/inquiries`, {
       method: 'POST',
       headers: { Accept: 'application/json' },
@@ -77,6 +79,26 @@ async function handleSubmit() {
         message: form.message,
       },
     })
+
+    // Best-effort email ping so a new-inquiry notification still lands; non-blocking.
+    fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        access_key: 'a9100b0c-2c2b-4c5c-a381-543301ef9b17',
+        subject: 'New Project Inquiry — axelnovaventures.com',
+        from_name: form.name,
+        email: form.email,
+        name: form.name,
+        company: form.company || '—',
+        phone: form.phone || '—',
+        project_type: form.projectType || '—',
+        budget: form.budgetHint || '—',
+        timeline: form.timelineHint || '—',
+        message: form.message,
+      }),
+    }).catch(() => {})
+
     await navigateTo('/quote/success')
   }
   catch (e: any) {
