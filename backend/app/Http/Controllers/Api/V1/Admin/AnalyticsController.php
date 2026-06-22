@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EntityLike;
 use App\Models\PageView;
+use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -64,6 +66,30 @@ class AnalyticsController extends Controller
             ],
             'topPaths' => $topPaths,
             'topReferrers' => $topReferrers,
+            'topLikedProjects' => $this->topLikedProjects(),
         ]);
+    }
+
+    /** All-time most-liked projects (likes accumulate, so not range-bound). */
+    private function topLikedProjects(): array
+    {
+        $rows = EntityLike::where('entity_type', 'project')
+            ->selectRaw('entity_id, COUNT(*) as c')
+            ->groupBy('entity_id')
+            ->orderByDesc('c')
+            ->limit(8)
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $names = Project::whereIn('id', $rows->pluck('entity_id'))->pluck('name', 'id');
+
+        return $rows->map(fn ($r) => [
+            'id' => (int) $r->entity_id,
+            'name' => $names[$r->entity_id] ?? "Project #{$r->entity_id}",
+            'likes' => (int) $r->c,
+        ])->values()->all();
     }
 }

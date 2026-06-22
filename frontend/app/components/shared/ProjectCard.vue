@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Project } from '~/data/projects'
+import LikeButton from '~/components/shared/LikeButton.vue'
 
 defineProps<{ project: Project }>()
 
@@ -43,13 +44,22 @@ const statusMeta = (status: Project['status']) => {
       >
         <UIcon name="i-fluent-stack-24-regular" class="size-4" :style="{ color: 'var(--color-accent)' }" />
       </div>
-      <span
-        class="text-[11px] font-medium px-2.5 py-1 rounded-full inline-flex items-center gap-1.5"
-        :style="{ color: statusMeta(project.status).color, background: statusMeta(project.status).bg }"
-      >
-        <span class="size-1.5 rounded-full" :style="{ background: statusMeta(project.status).color }" />
-        {{ statusMeta(project.status).label }}
-      </span>
+      <div class="flex items-center gap-2">
+        <LikeButton
+          v-if="project.dbId"
+          class="relative z-20"
+          type="project"
+          :id="project.dbId"
+          :count="project.likes ?? 0"
+        />
+        <span
+          class="text-[11px] font-medium px-2.5 py-1 rounded-full inline-flex items-center gap-1.5"
+          :style="{ color: statusMeta(project.status).color, background: statusMeta(project.status).bg }"
+        >
+          <span class="size-1.5 rounded-full" :style="{ background: statusMeta(project.status).color }" />
+          {{ statusMeta(project.status).label }}
+        </span>
+      </div>
     </div>
 
     <h3 class="relative text-[20px] font-semibold tracking-tight mb-2" style="color: var(--color-text);">

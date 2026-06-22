@@ -8,6 +8,7 @@ interface Overview {
   views: { total: number; unique: number; series: { date: string; count: number }[] }
   topPaths: { path: string; count: number }[]
   topReferrers: { referrer: string; count: number }[]
+  topLikedProjects: { id: number; name: string; likes: number }[]
 }
 
 const range = ref<'7d' | '30d'>('7d')
@@ -48,7 +49,6 @@ function hostOf(ref: string) {
 
 // Not-yet-built metrics (later Phase B slices).
 const planned = [
-  { label: 'Project likes', description: 'Anonymous likes per project, IP/cookie deduped.', icon: 'i-lucide-heart' },
   { label: 'Service interest', description: 'Likes + views per service package — informs which to feature.', icon: 'i-lucide-package' },
   { label: 'Quote funnel', description: 'Views → quote start → submitted leads conversion.', icon: 'i-lucide-funnel' },
 ]
@@ -142,9 +142,24 @@ const planned = [
       </section>
     </div>
 
+    <!-- Most-liked projects -->
+    <section v-if="!loading" class="rounded-2xl border p-6 mb-10" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+      <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Most-liked projects</p>
+      <div v-if="!data?.topLikedProjects.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No project likes yet.</div>
+      <ul v-else class="space-y-2.5">
+        <li v-for="p in data.topLikedProjects" :key="p.id" class="flex items-center justify-between gap-3">
+          <span class="text-[13px] truncate" style="color: var(--color-text);">{{ p.name }}</span>
+          <span class="inline-flex items-center gap-1.5 text-[12px] font-semibold tabular-nums shrink-0" style="color: var(--color-danger);">
+            <UIcon name="i-fluent-heart-24-filled" class="size-3.5" />
+            {{ p.likes.toLocaleString() }}
+          </span>
+        </li>
+      </ul>
+    </section>
+
     <!-- Coming in later Phase B slices -->
     <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Coming next</p>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div
         v-for="m in planned"
         :key="m.label"

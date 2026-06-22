@@ -3,9 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends Model
 {
+    /** Anonymous likes (entity_likes table, scoped to this entity type). */
+    public function likes(): HasMany
+    {
+        return $this->hasMany(EntityLike::class, 'entity_id')->where('entity_type', 'project');
+    }
+
     protected $fillable = [
         'slug',
         'name',

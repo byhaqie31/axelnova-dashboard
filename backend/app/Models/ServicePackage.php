@@ -6,10 +6,17 @@ use App\Observers\ServicePackageObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[ObservedBy([ServicePackageObserver::class])]
 class ServicePackage extends Model
 {
+    /** Anonymous likes (entity_likes table, scoped to this entity type). */
+    public function likes(): HasMany
+    {
+        return $this->hasMany(EntityLike::class, 'entity_id')->where('entity_type', 'service_package');
+    }
+
     protected $fillable = [
         'service_category_id',
         'slug',

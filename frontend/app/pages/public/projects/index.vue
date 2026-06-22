@@ -7,6 +7,7 @@ import ProjectCard from '~/components/shared/ProjectCard.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 interface ApiProject {
+  id: number
   slug: string
   name: string
   description: string
@@ -17,6 +18,7 @@ interface ApiProject {
   tags: string[]
   stack: string[]
   featured: boolean
+  likes_count: number
 }
 
 const { data: apiResponse } = await useFetch<{ data: ApiProject[] }>(
@@ -27,6 +29,8 @@ const { data: apiResponse } = await useFetch<{ data: ApiProject[] }>(
 const projects = computed<Project[]>(() => {
   return (apiResponse.value?.data ?? []).map(p => ({
     id: p.slug,
+    dbId: p.id,
+    likes: p.likes_count ?? 0,
     name: p.name,
     description: p.description,
     longDescription: p.long_description,

@@ -26,6 +26,7 @@ class ServicePackageResource extends JsonResource
             'features' => $this->features,
             'cta' => $this->cta,
             'quote_key' => $this->quote_key,
+            'likes_count' => (int) ($this->likes_count ?? $this->likes()->count()),
             'sort_order' => $this->sort_order,
             'active' => $this->active,
             'category' => new ServiceCategoryResource($this->whenLoaded('category')),

@@ -12,7 +12,7 @@ class PublicServicesController extends Controller
     public function index(): AnonymousResourceCollection
     {
         $categories = ServiceCategory::where('active', true)
-            ->with(['packages' => fn ($q) => $q->where('active', true)->orderBy('sort_order')])
+            ->with(['packages' => fn ($q) => $q->where('active', true)->withCount('likes')->orderBy('sort_order')])
             ->orderBy('sort_order')
             ->get();
 

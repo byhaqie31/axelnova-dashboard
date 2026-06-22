@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import LikeButton from '~/components/shared/LikeButton.vue'
+
 definePageMeta({ layout: 'public' })
 
 interface ApiProject {
+  id: number
   slug: string
   name: string
   description: string
@@ -13,6 +16,7 @@ interface ApiProject {
   stack: string[]
   cover_image_url: string | null
   featured: boolean
+  likes_count: number
 }
 
 const route = useRoute()
@@ -97,6 +101,7 @@ useScrollReveal('.reveal')
           <UIcon name="i-fluent-code-24-regular" class="size-4" />
           Source
         </a>
+        <LikeButton type="project" :id="project.id" :count="project.likes_count" size="md" />
       </div>
 
       <!-- Cover image -->

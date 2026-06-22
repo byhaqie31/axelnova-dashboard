@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
 use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
 use App\Http\Controllers\Api\V1\QuoteRequestController;
+use App\Http\Controllers\Api\V1\LikesController;
 use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\TrackingController;
 use App\Http\Controllers\Api\V1\Admin\AnalyticsController;
@@ -55,6 +56,11 @@ $trackThrottle = app()->environment('production') ? 'throttle:120,1' : 'throttle
 Route::middleware($trackThrottle)->group(function () {
     Route::post('/v1/track/page-view', [TrackingController::class, 'pageView'])
         ->name('track.page-view');
+
+    // Anonymous like toggle for a project / service package.
+    Route::post('/v1/likes/{type}/{id}', [LikesController::class, 'toggle'])
+        ->whereNumber('id')
+        ->name('likes.toggle');
 });
 
 // Admin — login (public, throttled to deter brute-force)
