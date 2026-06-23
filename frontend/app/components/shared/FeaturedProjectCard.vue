@@ -109,7 +109,7 @@ const statusMeta = (status: Project['status']) => {
       </div>
 
       <!-- viewport -->
-      <div class="relative aspect-[3/2] overflow-hidden" style="background: var(--color-bg-secondary);">
+      <div class="relative aspect-3/2 overflow-hidden" style="background: var(--color-bg-secondary);">
         <!-- skeleton while the shot loads -->
         <span v-if="!loaded && !failed" aria-hidden class="fshimmer absolute inset-0" />
 

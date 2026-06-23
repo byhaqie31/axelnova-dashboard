@@ -325,11 +325,11 @@ onUnmounted(() => {
           </p>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-3">
-          <NuxtLink ref="bandCta" to="/services" class="btn-pill btn-pill-accent">
-            <span class="magnetic-label">Let's talk</span>
+          <NuxtLink ref="bandCta" to="/quote" class="btn-pill btn-pill-accent">
+            <span class="magnetic-label">Get Inquiry</span>
           </NuxtLink>
           <NuxtLink to="/contact" class="btn-pill btn-pill-ghost">
-            Send inquiry
+            Let's talk
           </NuxtLink>
         </div>
       </div>
