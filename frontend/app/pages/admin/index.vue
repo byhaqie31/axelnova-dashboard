@@ -315,29 +315,19 @@ const tiles = computed<StatTile[]>(() => [
     <!-- Recent inquiries -->
     <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
       <h2 class="text-[18px] font-semibold tracking-tight" style="color: var(--color-text);">Recent inquiries</h2>
-      <div class="flex items-center gap-3">
-        <div class="inline-flex rounded-full border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-          <button
-            v-for="r in ranges"
-            :key="r.value"
-            type="button"
-            class="px-3 py-1 rounded-full text-[12px] font-medium transition-colors"
-            :style="range === r.value
-              ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-              : { color: 'var(--color-text-secondary)', background: 'transparent' }"
-            @click="range = r.value"
-          >
-            {{ r.label }}
-          </button>
-        </div>
-        <NuxtLink
-          to="/admin/inquiries"
-          class="text-[12px] font-medium inline-flex items-center gap-1 hover:underline"
-          :style="{ color: 'var(--color-accent)' }"
+      <div class="inline-flex rounded-full border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+        <button
+          v-for="r in ranges"
+          :key="r.value"
+          type="button"
+          class="px-3 py-1 rounded-full text-[12px] font-medium transition-colors"
+          :style="range === r.value
+            ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+            : { color: 'var(--color-text-secondary)', background: 'transparent' }"
+          @click="range = r.value"
         >
-          View all
-          <UIcon name="i-lucide-arrow-right" class="size-3.5" />
-        </NuxtLink>
+          {{ r.label }}
+        </button>
       </div>
     </div>
 

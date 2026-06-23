@@ -26,6 +26,7 @@ const error = ref('')
 const modalOpen = ref(false)
 
 const filters = reactive({ search: '', page: 1 })
+const view = ref<'grid' | 'list'>('grid')
 
 async function fetchClients() {
   loading.value = true
@@ -83,9 +84,24 @@ function fmtDate(iso: string) {
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, company…" />
-      <span v-if="meta" class="ml-auto text-[12px]" style="color: var(--color-text-tertiary);">
-        <span class="font-semibold" style="color: var(--color-text-secondary);">{{ meta.total }}</span> total
-      </span>
+      <div class="ml-auto flex items-center gap-3">
+        <span v-if="meta" class="inline-flex items-center gap-1.5">
+          <span class="text-[11px] font-medium uppercase tracking-wide" style="color: var(--color-text-tertiary);">Total</span>
+          <span class="text-[14px] font-bold tabular-nums leading-none" style="color: var(--color-text);">{{ meta.total }}</span>
+        </span>
+        <div class="inline-flex rounded-full border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+          <button type="button" class="size-7 rounded-full inline-flex items-center justify-center transition-colors"
+            :style="view === 'grid' ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-tertiary)' }"
+            aria-label="Grid view" @click="view = 'grid'">
+            <UIcon name="i-lucide-layout-grid" class="size-3.5" />
+          </button>
+          <button type="button" class="size-7 rounded-full inline-flex items-center justify-center transition-colors"
+            :style="view === 'list' ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-tertiary)' }"
+            aria-label="List view" @click="view = 'list'">
+            <UIcon name="i-lucide-list" class="size-3.5" />
+          </button>
+        </div>
+      </div>
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
@@ -96,61 +112,94 @@ function fmtDate(iso: string) {
       No clients found.
     </div>
 
-    <!-- Desktop: table -->
-    <div v-else class="hidden md:block admin-table-card">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr>
-              <th v-for="h in ['Client', 'Company', 'Inquiries', 'Quotations', 'Orders', 'Since']" :key="h"
-                class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
-                {{ h }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="c in clients" :key="c.id"
-              class="admin-table-row"
-              @click="navigateTo(`/admin/clients/${c.id}`)">
-              <td class="px-4 py-3.5">
-                <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ c.name }}</p>
-                <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ c.email }}</p>
-              </td>
-              <td class="px-4 py-3.5">
-                <span class="text-[13px]" style="color: var(--color-text-secondary);">{{ c.company ?? '—' }}</span>
-              </td>
-              <td class="px-4 py-3.5 text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ c.inquiries_count }}</td>
-              <td class="px-4 py-3.5 text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ c.quotations_count }}</td>
-              <td class="px-4 py-3.5 text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ c.orders_count }}</td>
-              <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">{{ fmtDate(c.created_at) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Mobile: cards -->
-    <div v-if="clients.length" class="md:hidden space-y-2.5">
+    <!-- Grid view — 3-column cards with activity counts -->
+    <div v-else-if="view === 'grid'" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
       <button
         v-for="c in clients"
         :key="c.id"
         type="button"
-        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        class="text-left rounded-2xl border p-5 transition-colors hover:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="navigateTo(`/admin/clients/${c.id}`)"
       >
-        <div class="flex items-start justify-between gap-3 mb-1">
-          <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ c.name }}</span>
-          <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ fmtDate(c.created_at) }}</span>
-        </div>
-        <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ c.email }}<span v-if="c.company"> · {{ c.company }}</span></p>
-        <div class="pt-2 border-t flex items-center gap-4 text-[11px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
-          <span>{{ c.inquiries_count }} inquiries</span>
-          <span>{{ c.quotations_count }} quotes</span>
-          <span>{{ c.orders_count }} orders</span>
+        <p class="text-[15px] font-semibold tracking-tight truncate" style="color: var(--color-text);">{{ c.name }}</p>
+        <p class="text-[12px] mt-0.5 truncate" style="color: var(--color-text-tertiary);">{{ c.email }}</p>
+        <p v-if="c.company" class="text-[12px] mt-0.5 truncate" style="color: var(--color-text-secondary);">{{ c.company }}</p>
+        <div class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t" style="border-color: var(--color-border);">
+          <div class="text-center">
+            <p class="text-[18px] font-bold tabular-nums leading-none" style="color: var(--color-text);">{{ c.inquiries_count }}</p>
+            <p class="text-[10px] uppercase tracking-wide mt-1" style="color: var(--color-text-tertiary);">Inquiries</p>
+          </div>
+          <div class="text-center">
+            <p class="text-[18px] font-bold tabular-nums leading-none" style="color: var(--color-text);">{{ c.quotations_count }}</p>
+            <p class="text-[10px] uppercase tracking-wide mt-1" style="color: var(--color-text-tertiary);">Quotes</p>
+          </div>
+          <div class="text-center">
+            <p class="text-[18px] font-bold tabular-nums leading-none" style="color: var(--color-text);">{{ c.orders_count }}</p>
+            <p class="text-[10px] uppercase tracking-wide mt-1" style="color: var(--color-text-tertiary);">Orders</p>
+          </div>
         </div>
       </button>
     </div>
+
+    <!-- List view -->
+    <template v-else>
+      <!-- Desktop: table -->
+      <div class="hidden md:block admin-table-card">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead>
+              <tr>
+                <th v-for="h in ['Client', 'Company', 'Inquiries', 'Quotations', 'Orders', 'Since']" :key="h"
+                  class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
+                  {{ h }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in clients" :key="c.id"
+                class="admin-table-row"
+                @click="navigateTo(`/admin/clients/${c.id}`)">
+                <td class="px-4 py-3.5">
+                  <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ c.name }}</p>
+                  <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ c.email }}</p>
+                </td>
+                <td class="px-4 py-3.5">
+                  <span class="text-[13px]" style="color: var(--color-text-secondary);">{{ c.company ?? '—' }}</span>
+                </td>
+                <td class="px-4 py-3.5 text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ c.inquiries_count }}</td>
+                <td class="px-4 py-3.5 text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ c.quotations_count }}</td>
+                <td class="px-4 py-3.5 text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ c.orders_count }}</td>
+                <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">{{ fmtDate(c.created_at) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mobile: cards -->
+      <div class="md:hidden space-y-2.5">
+        <button
+          v-for="c in clients"
+          :key="c.id"
+          type="button"
+          class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+          :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+          @click="navigateTo(`/admin/clients/${c.id}`)"
+        >
+          <div class="flex items-start justify-between gap-3 mb-1">
+            <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ c.name }}</span>
+            <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ fmtDate(c.created_at) }}</span>
+          </div>
+          <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ c.email }}<span v-if="c.company"> · {{ c.company }}</span></p>
+          <div class="pt-2 border-t flex items-center gap-4 text-[11px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
+            <span>{{ c.inquiries_count }} inquiries</span>
+            <span>{{ c.quotations_count }} quotes</span>
+            <span>{{ c.orders_count }} orders</span>
+          </div>
+        </button>
+      </div>
+    </template>
 
     <div v-if="meta && meta.last_page > 1" class="flex items-center justify-center gap-2 mt-6">
       <button :disabled="filters.page <= 1" class="btn-pill btn-pill-ghost text-[12px]" @click="filters.page--">← Prev</button>

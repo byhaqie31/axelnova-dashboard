@@ -204,14 +204,14 @@ onUnmounted(() => {
         <div
           v-for="(logo, i) in marqueeLogos"
           :key="i"
-          class="epoch-logo-card pill-chip h-24 w-40 shrink-0 overflow-hidden mr-4"
+          class="epoch-logo-card pill-chip h-16.75 w-28 shrink-0 overflow-hidden mr-3"
         >
           <span class="epoch-logo-wash" />
           <img
             :src="logo.src"
             :alt="logo.alt"
             loading="lazy"
-            class="relative h-8 w-auto max-w-[64%] object-contain"
+            class="relative h-5.5 w-auto max-w-[64%] object-contain"
           >
         </div>
       </div>
