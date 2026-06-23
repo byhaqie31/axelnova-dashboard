@@ -34,18 +34,25 @@ Route::get('/v1/projects/{slug}', [PublicProjectsController::class, 'show'])->na
 // Public — token-gated quotation document data for the PDF renderer (unguessable token).
 Route::get('/v1/documents/{token}', [DocumentController::class, 'show'])->name('documents.show');
 
-// Public — submit quote
-// Production: 3/hour per IP (spam protection). Non-prod: very high so dev/staging can test freely.
-$quoteThrottle = app()->environment('production') ? 'throttle:3,60' : 'throttle:1000,1';
+// Public — submit quote / referral.
+// Production: 8/hour per IP (spam protection). Non-prod: very high so dev/staging can test freely.
+// NB: Laravel's simple `throttle:N,M` keys the bucket on domain+IP, NOT the path — every
+// route inside one throttle group shares a single per-IP counter. Inquiries therefore get
+// their own group below so heavy quote traffic can't starve the lightweight intake form.
+$quoteThrottle = app()->environment('production') ? 'throttle:8,60' : 'throttle:1000,1';
 Route::middleware($quoteThrottle)->group(function () {
     Route::post('/v1/quote-requests', [QuoteRequestController::class, 'store'])
         ->name('quote-requests.store');
 
-    // Partner referrals — same env-aware policy; distinct URI = its own rate-limit bucket.
+    // Partner referrals — same env-aware policy.
     Route::post('/v1/referrals', [ReferralController::class, 'store'])
         ->name('referrals.store');
+});
 
-    // Project inquiries — lightweight intake; the admin builds the priced quote.
+// Public — project inquiries: lightweight intake (the admin builds the priced quote),
+// so a more forgiving ceiling than quotes. Production: 20/hour per IP.
+$inquiryThrottle = app()->environment('production') ? 'throttle:20,60' : 'throttle:1000,1';
+Route::middleware($inquiryThrottle)->group(function () {
     Route::post('/v1/inquiries', [InquiryController::class, 'store'])
         ->name('inquiries.store');
 });

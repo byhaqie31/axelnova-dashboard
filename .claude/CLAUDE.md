@@ -83,7 +83,7 @@ These are easy to get wrong; they exist for reasons:
 
 **Sanctum is route-scoped.** Stateful CSRF middleware only applies to `/v1/admin/*` ([backend/routes/api.php](../backend/routes/api.php)). Public POSTs (the quote form) are pure stateless. Don't set `SANCTUM_STATEFUL_DOMAINS` globally.
 
-**Quote throttle is env-aware.** 3/hour/IP in production, 1000/min otherwise. Test freely in dev.
+**Public-form throttles are env-aware.** In production: quotes/referrals 8/hour/IP, inquiries 20/hour/IP (lighter intake); 1000/min otherwise. Note Laravel's simple `throttle:N,M` keys on domain+IP, not path — routes in one throttle group share a per-IP bucket, which is why inquiries sit in their own group. Test freely in dev.
 
 **Reference codes are atomic.** `AXN-YYYY-NNNN` codes are generated via DB transaction with `lockForUpdate()` in [backend/app/Support/ReferenceCodeGenerator.php](../backend/app/Support/ReferenceCodeGenerator.php). Counter resets each year. Don't reimplement counter logic elsewhere.
 

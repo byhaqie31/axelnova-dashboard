@@ -143,6 +143,6 @@ docker exec axelnova-mysql mysqldump -uaxelnova_dashboard_user -p"$DB_PW" axelno
 ## Things to know
 
 - `TrustProxies` is wired so Laravel respects `X-Forwarded-*` headers from nginx — correct client IP for per-IP rate limiting and HTTPS-aware redirect URLs
-- Quote-form throttle is env-aware: 3/hour in production (spam protection), 1000/min in non-production (dev/staging testing)
+- Public-form throttles are env-aware: in production quotes/referrals 8/hour/IP, inquiries 20/hour/IP (spam protection); 1000/min in non-production (dev/staging testing)
 - Sanctum stateful middleware only runs on admin routes; public endpoints are pure stateless POSTs
 - Branch protection on `main` means no direct pushes — every change goes through a PR
