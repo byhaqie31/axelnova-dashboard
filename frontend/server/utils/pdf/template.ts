@@ -206,11 +206,11 @@ tbody tr:last-child td{border-bottom:0;}
 .panels{display:flex;gap:18px;margin-top:18px;}
 .panel{flex:1;border:1px solid var(--line);border-radius:9px;padding:17px 19px 18px;}
 .panel.accent{border-color:var(--red);}
-.panel .label{font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--muted);}
-.panel.accent .label{color:var(--red);}
-.panel .val{font-family:'Geist Mono',monospace;font-size:22px;margin-top:9px;
+.panel .val{font-family:'Geist Mono',monospace;font-size:22px;
   color:var(--ink);letter-spacing:-.01em;}
+.panel .label{font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted);margin-top:6px;}
+.panel.accent .label{color:var(--red);}
 .panel.accent .val{color:var(--red);}
 .panel .note{font-size:10px;color:var(--muted);line-height:1.55;margin-top:10px;}
 .panel .note b{color:var(--ink);font-weight:500;}
@@ -338,8 +338,8 @@ function panelHTML(p: Panel, cur: string): string {
     ? `<div class="note">${esc(p.note).replace(/\n/g, "<br>")}</div>`
     : "";
   return `<div class="panel${p.accent ? " accent" : ""}">
-    <div class="label">${esc(p.label)}</div>
-    <div class="val">${money(p.value, cur, 2)}</div>${note}
+    <div class="val">${money(p.value, cur, 2)}</div>
+    <div class="label">${esc(p.label)}</div>${note}
   </div>`;
 }
 

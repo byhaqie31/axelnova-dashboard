@@ -755,17 +755,8 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
           <input v-if="doc.care.length" v-model="doc.careNote" type="text" placeholder="Care note (optional)" class="contact-input w-full text-[12px]" :style="fieldStyle">
         </div>
 
-        <!-- Terms + deposit -->
-        <div class="grid sm:grid-cols-[1fr_auto] gap-4 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <div class="space-y-1.5">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Payment terms (one per line)</label>
-            <textarea v-model="doc.termsText" rows="4" class="contact-input resize-none w-full text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Deposit %</label>
-            <input v-model.number="doc.depositPct" type="number" min="0" max="100" class="contact-input" :style="{ width: '6rem', borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }">
-          </div>
-        </div>
+        <!-- Terms + deposit (shared component — identical to the standard builder) -->
+        <AdminQuoteTermsDeposit v-model:terms="doc.termsText" v-model:depositPct="doc.depositPct" separated />
       </section>
     </div>
 

@@ -23,6 +23,14 @@ class DocumentMapper
         'designedBy' => 'Designed by Qie / Axel Nova Ventures',
     ];
 
+    /** Bank / payment details shown on quotations, invoices, and receipts. */
+    private const BANK = [
+        'name' => 'OCBC Bank',
+        'acct' => '7051415701',
+        'holder' => 'Axel Nova Ventures',
+        'online' => 'Card (credit & debit) and FPX online banking',
+    ];
+
     private const DEFAULT_TERMS = [
         '50% deposit to commence; balance due on delivery before handover.',
         'Revisions are included as scoped per phase; further rounds are quoted separately.',
@@ -99,7 +107,9 @@ class DocumentMapper
             'depositPct' => (int) ($doc['deposit_pct'] ?? 50),
             'terms' => $terms,
             'pay' => [
-                'online' => 'Card & FPX online banking via secure link',
+                'online' => self::BANK['online'],
+                'bank' => self::BANK['name'] . ' — ' . self::BANK['holder'],
+                'acct' => self::BANK['acct'],
             ],
         ];
     }
@@ -170,8 +180,8 @@ class DocumentMapper
                 'label' => 'Balance due on completion',
                 'value' => $balance,
                 'accent' => true,
-                'note' => 'Payable by card, online banking (FPX), bank transfer, or DuitNow QR to '
-                    . self::STUDIO['name'] . '.',
+                'note' => 'Payable to ' . self::BANK['name'] . ' ' . self::BANK['acct']
+                    . ' (' . self::BANK['holder'] . '), or by card / FPX online banking.',
             ]);
         }
 
