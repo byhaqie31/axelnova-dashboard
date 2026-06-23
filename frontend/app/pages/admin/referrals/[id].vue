@@ -21,6 +21,9 @@ interface Referral {
   agreed_terms: boolean
   linked_order_id: number | null
   order_number: string | null
+  order_final_amount_myr: string | null
+  commission_amount_myr: number | null
+  commission_email_sent_at: string | null
   created_at: string
 }
 
@@ -40,6 +43,7 @@ const linkOpen = ref(false)
 const orders = ref<OrderRow[]>([])
 const ordersLoading = ref(false)
 const linkLoading = ref(false)
+const commissionSending = ref(false)
 
 const tierLabels: Record<string, string> = { cold: 'Cold lead', warm: 'Warm intro', closed: 'Closed referral' }
 
@@ -102,13 +106,11 @@ async function linkOrder(orderId: number, orderNumber: string) {
   if (!referral.value) return
   linkLoading.value = true
   try {
-    await apiFetch(`/api/v1/admin/referrals/${referral.value.id}/link-order`, {
-      method: 'POST',
-      body: { order_id: orderId },
-    })
-    referral.value.status = 'converted'
-    referral.value.linked_order_id = orderId
-    referral.value.order_number = orderNumber
+    const res = await apiFetch<{ message: string; referral: { data: Referral } | Referral }>(
+      `/api/v1/admin/referrals/${referral.value.id}/link-order`,
+      { method: 'POST', body: { order_id: orderId } },
+    )
+    referral.value = ((res.referral as any).data ?? res.referral) as Referral
     linkOpen.value = false
     toast.success('Referral linked', `Linked to ${orderNumber} — marked converted.`)
   }
@@ -120,11 +122,34 @@ async function linkOrder(orderId: number, orderNumber: string) {
   }
 }
 
+async function sendCommissionEmail() {
+  if (!referral.value) return
+  commissionSending.value = true
+  try {
+    const res = await apiFetch<{ message: string; referral: { data: Referral } | Referral }>(
+      `/api/v1/admin/referrals/${referral.value.id}/commission-email`,
+      { method: 'POST' },
+    )
+    referral.value = ((res.referral as any).data ?? res.referral) as Referral
+    toast.success('Request sent', 'The referrer has been emailed for their bank details.')
+  }
+  catch {
+    toast.error('Couldn’t send email', 'Make sure the linked order has a final amount, then try again.')
+  }
+  finally {
+    commissionSending.value = false
+  }
+}
+
 onMounted(fetchReferral)
 
 function fmtDate(iso?: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function fmtMyrExact(amount: string | number | null) {
+  return `RM ${Number(amount ?? 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 // 'converted' is reached only by linking an order — never a manual status button.
@@ -172,6 +197,53 @@ const statusLabels: Record<string, string> = {
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Submitted</p>
               <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(referral.created_at) }}</p>
             </div>
+          </div>
+        </div>
+
+        <!-- Commission (converted only) -->
+        <div v-if="referral.linked_order_id" class="rounded-2xl border p-6"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="flex items-center justify-between gap-3 mb-5">
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Commission</p>
+            <span v-if="referral.commission_email_sent_at" class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              :style="{ color: 'var(--color-success)', background: 'var(--color-success-soft)' }">
+              <UIcon name="i-lucide-mail-check" class="size-3" /> Requested {{ fmtDate(referral.commission_email_sent_at) }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Project value</p>
+              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(referral.order_final_amount_myr) }}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Rate</p>
+              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text-secondary);">{{ referral.commission_tier_pct }}%</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Commission</p>
+              <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-accent);">
+                {{ referral.commission_amount_myr ? fmtMyrExact(referral.commission_amount_myr) : '—' }}
+              </p>
+            </div>
+          </div>
+
+          <p class="text-[12px] mt-4" style="color: var(--color-text-tertiary);">
+            Estimated — {{ referral.commission_tier_pct }}% of the linked order's final value
+            (<NuxtLink :to="`/admin/orders/${referral.linked_order_id}`" class="underline" :style="{ color: 'var(--color-accent)' }">{{ referral.order_number ?? `#${referral.linked_order_id}` }}</NuxtLink>).
+          </p>
+
+          <div class="pt-5 mt-5 border-t flex items-center gap-3" style="border-color: var(--color-border);">
+            <p v-if="!referral.commission_amount_myr" class="text-[11px]" style="color: var(--color-text-tertiary);">
+              Set the linked order's final amount first, then request bank details.
+            </p>
+            <button type="button" class="btn-pill btn-pill-accent text-[13px] ml-auto shrink-0"
+              :class="{ 'opacity-50': commissionSending || !referral.commission_amount_myr }"
+              :disabled="commissionSending || !referral.commission_amount_myr"
+              @click="sendCommissionEmail">
+              <UIcon name="i-lucide-send" class="size-3.5 mr-1.5" />
+              {{ commissionSending ? 'Sending…' : (referral.commission_email_sent_at ? 'Resend bank-details request' : 'Email bank-details request') }}
+            </button>
           </div>
         </div>
 

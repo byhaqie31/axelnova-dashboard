@@ -117,6 +117,7 @@ Route::middleware([
         Route::get('/referrals/{referral}', [ReferralsController::class, 'show'])->name('referrals.show');
         Route::post('/referrals/{referral}/status', [ReferralsController::class, 'updateStatus'])->name('referrals.status');
         Route::post('/referrals/{referral}/link-order', [ReferralsController::class, 'linkOrder'])->name('referrals.link-order');
+        Route::post('/referrals/{referral}/commission-email', [ReferralsController::class, 'sendCommissionEmail'])->name('referrals.commission-email');
 
         // Project inquiries
         Route::get('/inquiries', [InquiriesController::class, 'index'])->name('inquiries.index');
