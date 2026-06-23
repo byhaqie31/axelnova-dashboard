@@ -88,7 +88,7 @@ async function acceptQuotation() {
 
 function viewPdf() {
   if (!quotation.value?.public_token) return
-  window.open(`${window.location.origin}/api/documents/${quotation.value.public_token}/pdf`, '_blank', 'noopener')
+  window.open(`${window.location.origin}/documents/${quotation.value.public_token}/pdf`, '_blank', 'noopener')
 }
 
 onMounted(fetchQuotation)

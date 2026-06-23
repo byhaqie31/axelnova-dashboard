@@ -460,7 +460,7 @@ async function accept() {
 
 function viewPdf() {
   if (!props.quotation?.public_token) return
-  window.open(`${window.location.origin}/api/documents/${props.quotation.public_token}/pdf`, '_blank', 'noopener')
+  window.open(`${window.location.origin}/documents/${props.quotation.public_token}/pdf`, '_blank', 'noopener')
 }
 
 function fmtRm(n: number) {
