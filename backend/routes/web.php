@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return response()->json(['service' => 'Axel Nova Platform API', 'status' => 'ok']);
+    return response()->json(['service' => 'Axel Nova Ventures API', 'status' => 'ok']);
 });
 
 Route::get('/up', function () {

@@ -90,7 +90,8 @@ These flip automatically with `:root` / `.dark`. Use for any sticky overlay surf
 
 ## 3. Typography
 
-- **Family:** Inter (fallback: SF Pro Display, system sans). Loaded via `@nuxtjs/google-fonts` with `display: swap`.
+- **Body family:** Inter (fallback: SF Pro Display, system sans). Loaded via `@nuxtjs/google-fonts` with `display: swap`.
+- **Display family:** Outfit (`--font-display`, weights 400/500/600), used on signature headlines via the `.font-display` class — it sets the family only, so weight/tracking come from utilities (e.g. the hero headline is `font-display font-medium tracking-tight`). Falls back to Inter so headings never flash in a system face. Also downloaded via `@nuxtjs/google-fonts`.
 - **Feature settings:** `cv11`, `ss01`. Body letter-spacing `-0.011em`.
 - **Headings:** weight `600`, letter-spacing `-0.022em`, line-height `1.08`. `h1` tightens to `-0.045em`.
 
@@ -113,6 +114,7 @@ These flip automatically with `:root` / `.dark`. Use for any sticky overlay surf
 - `.eyebrow` — uppercase, 12px, gradient accent
 - `.label` — 12px, secondary color
 - `.tabular-nums` — `font-variant-numeric: tabular-nums` for data
+- `.font-display` — Outfit display family (weight/tracking via utilities)
 
 ---
 
@@ -152,6 +154,15 @@ All buttons are 44pt tall (Apple HIG touch target), pill-shaped (`border-radius:
 | `.btn-pill-accent` | `--grad-cta` gradient + brand-tinted shadow + hover lift |
 
 **Rule:** one primary CTA per screen. Secondary actions are ghost.
+
+### 6.1 Glass nav & chip surfaces
+
+Two pill-family surfaces for floating overlays (introduced by the hero `HeroEpoch`). Both are theme-driven so they read in light **and** dark — never bind their backgrounds to `colorMode` in JS.
+
+| Class | Style |
+|---|---|
+| `.glass-nav` | Frosted pill rail — `--nav-bg-scrolled` + `backdrop-filter: blur(24px)` + `--shadow-lg`, fully rounded. For floating nav/overlay pills over media. |
+| `.pill-chip` | Shared chip surface — `--color-bg-elevated` + `--color-border` + `--shadow-sm`, fully rounded; hover → `--color-border-strong`. **One rule**, reused identically by the hero nav "Get in touch" pill and every marquee logo card. Size/padding via utilities at the call site. |
 
 ---
 
@@ -222,7 +233,7 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 
 - **`PriceTag`** — MYR-formatted (Intl `ms-MY`). Props: `min`, `max?`, `prefix?`, `compact?`. Renders ranges with en-dash, prefixed values with em-dash separator.
 - **`StatusPill`** — status badge with semantic tone mapping. Props: `status`, `type` (`lead` | `quotation` | `project` | `invoice` | `milestone`). Reads existing CSS tokens (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`); no new color tokens introduced.
-- **`ReferenceCode`** — monospace `AXN-YYYY-NNNN` display with click-to-copy via `useClipboard`. Falls back to plain span when `copyable={false}`.
+- **`ReferenceCode`** — monospace document-code display (e.g. `AXNQ-2026-0012`) with click-to-copy via `useClipboard`. Renders any string; falls back to plain span when `copyable={false}`.
 - **`DateRange`** — Intl `en-MY` formatted dates. Formats: `short`, `long`, `relative`. Accepts optional `prefix` ("Valid until", "Issued").
 
 ### Filter pills

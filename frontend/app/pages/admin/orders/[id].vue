@@ -3,6 +3,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
+const { config, loadConfig } = usePricingEngine()
 const toast = useAdminToast()
 
 interface Order {
@@ -21,12 +22,24 @@ interface Order {
   company: string | null
   value_min_myr: string
   value_max_myr: string
+  final_amount_myr: string
+  deposit_pct: number | null
+  deposit_due_myr: number
+  amount_paid_myr: string
+  remaining_myr: number
+  payment_status: 'unpaid' | 'deposit_paid' | 'paid'
   status: string
   started_at: string | null
   delivered_at: string | null
   completed_at: string | null
+  due_at: string | null
   notes: string | null
   created_at: string
+  estimate_min_myr?: string
+  estimate_max_myr?: string
+  quotation_document?: Record<string, any> | null
+  quotation_scope?: Record<string, any> | null
+  quotation_addons?: { key: string; label: string; amount_myr: string }[]
   documents?: OrderDocument[]
 }
 
@@ -83,6 +96,12 @@ useHead(() => ({
   title: order.value ? `${order.value.order_number} — Order` : 'Order — Admin',
 }))
 
+// Mutation endpoints (status/payment/schedule) return a lean order without the
+// quotation snapshot — merge so the scope section doesn't blink out until refetch.
+function applyOrderUpdate(updated: Order) {
+  order.value = order.value ? { ...order.value, ...updated } : updated
+}
+
 async function fetchOrder() {
   loading.value = true
   error.value = ''
@@ -106,8 +125,7 @@ async function setStatus(next: string) {
       `/api/v1/admin/orders/${order.value.id}/status`,
       { method: 'POST', body: { status: next } },
     )
-    const updated = (res.order as any).data ?? res.order
-    order.value = updated as Order
+    applyOrderUpdate(((res.order as any).data ?? res.order) as Order)
     toast.success('Status updated', `Order set to ${statusLabels[next] ?? next}.`)
   }
   catch {
@@ -118,11 +136,109 @@ async function setStatus(next: string) {
   }
 }
 
-onMounted(fetchOrder)
+// ── Payment ───────────────────────────────────────────────────────────────
+const editingPay = ref(false)
+const paySaving = ref(false)
+const payForm = reactive({ final: '', paid: '', depositPct: '' })
+
+function startEditPay() {
+  if (!order.value) return
+  payForm.final = String(Number(order.value.final_amount_myr))
+  payForm.paid = String(Number(order.value.amount_paid_myr))
+  payForm.depositPct = String(order.value.deposit_pct ?? 50)
+  editingPay.value = true
+}
+
+async function savePayment(body: Record<string, unknown>, successMsg = 'Payment updated') {
+  if (!order.value) return
+  paySaving.value = true
+  try {
+    const res = await apiFetch<{ message: string; order: { data: Order } | Order }>(
+      `/api/v1/admin/orders/${order.value.id}/payment`,
+      { method: 'POST', body },
+    )
+    applyOrderUpdate(((res.order as any).data ?? res.order) as Order)
+    editingPay.value = false
+    toast.success(successMsg, 'The order’s payment details are up to date.')
+  }
+  catch {
+    toast.error('Couldn’t update payment', 'Something went wrong. Please try again.')
+  }
+  finally {
+    paySaving.value = false
+  }
+}
+
+function saveEditedPayment() {
+  savePayment({
+    final_amount_myr: Number(payForm.final) || 0,
+    amount_paid_myr: Number(payForm.paid) || 0,
+    deposit_pct: Number(payForm.depositPct) || 0,
+  })
+}
+
+function markDepositPaid() {
+  if (!order.value) return
+  savePayment({ amount_paid_myr: Number(order.value.deposit_due_myr) }, 'Deposit recorded')
+}
+
+function markPaidInFull() {
+  if (!order.value) return
+  savePayment({ amount_paid_myr: Number(order.value.final_amount_myr) }, 'Marked paid in full')
+}
+
+// ── Expected completion (SLA) ───────────────────────────────────────────────
+const dueSaving = ref(false)
+const dueDraft = ref('')
+
+watch(order, (o) => { dueDraft.value = o?.due_at ?? '' })
+
+const isOverdue = computed(() => {
+  const o = order.value
+  if (!o?.due_at || o.status === 'completed' || o.status === 'cancelled') return false
+  const due = new Date(o.due_at)
+  due.setHours(23, 59, 59, 999)
+  return due.getTime() < Date.now()
+})
+
+async function saveDue() {
+  if (!order.value) return
+  dueSaving.value = true
+  try {
+    const res = await apiFetch<{ message: string; order: { data: Order } | Order }>(
+      `/api/v1/admin/orders/${order.value.id}/schedule`,
+      { method: 'POST', body: { due_at: dueDraft.value || null } },
+    )
+    applyOrderUpdate(((res.order as any).data ?? res.order) as Order)
+    toast.success('Expected completion updated', 'The order’s target date is set.')
+  }
+  catch {
+    toast.error('Couldn’t update date', 'Something went wrong. Please try again.')
+  }
+  finally {
+    dueSaving.value = false
+  }
+}
+
+const paymentMeta: Record<string, { label: string; color: string; bg: string }> = {
+  unpaid: { label: 'Unpaid', color: 'var(--color-warning)', bg: 'var(--color-bg-secondary)' },
+  deposit_paid: { label: 'Deposit paid', color: 'var(--color-accent)', bg: 'var(--color-accent-soft)' },
+  paid: { label: 'Paid in full', color: 'var(--color-success)', bg: 'var(--color-success-soft)' },
+}
+
+onMounted(() => {
+  fetchOrder()
+  loadConfig()
+})
 
 function fmtMyr(amount: string | number) {
   const n = Number(amount)
   return n >= 1000 ? `RM ${(n / 1000).toFixed(0)}k` : `RM ${n.toLocaleString()}`
+}
+
+// Exact, non-abbreviated — for payment figures where every ringgit matters.
+function fmtMyrExact(amount: string | number) {
+  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function fmtDate(iso?: string | null) {
@@ -154,6 +270,39 @@ const timeline = computed<TimelineStep[]>(() => {
     { key: 'delivered', label: 'Delivered to client', at: order.value.delivered_at },
     { key: 'completed', label: 'Engagement closed', at: order.value.completed_at },
   ]
+})
+
+// Once the order leaves "pending", the quotation is confirmed — the agreed
+// total and deposit lock; only payments can still be recorded.
+const confirmed = computed(() => !!order.value && order.value.status !== 'pending')
+
+// Package slug → human name from the pricing config (best-effort).
+const packageLabel = computed(() => {
+  const key = order.value?.package_key
+  if (!key || !config.value) return null
+  for (const c of config.value.categories) {
+    const p = c.packages.find(p => p.key === key)
+    if (p) return p.name
+  }
+  return null
+})
+
+const lineItems = computed(() => {
+  const items = order.value?.quotation_document?.items
+  return Array.isArray(items) ? items : []
+})
+
+// Scope inputs captured on the quotation, minus the pricing-control keys.
+const scopeFields = computed(() => {
+  const p = order.value?.quotation_scope
+  if (!p) return [] as { label: string; value: unknown }[]
+  const skip = new Set(['package_key', 'modifiers', 'addon_keys', 'rush', 'breakdown', 'category_key'])
+  const rows: { label: string; value: unknown }[] = []
+  for (const [k, v] of Object.entries(p)) {
+    if (skip.has(k) || v === '' || v === null || (Array.isArray(v) && !v.length)) continue
+    rows.push({ label: k.replace(/_/g, ' '), value: v })
+  }
+  return rows
 })
 </script>
 
@@ -194,53 +343,157 @@ const timeline = computed<TimelineStep[]>(() => {
               <span v-else class="text-[13px]" :style="{ color: 'var(--color-text-tertiary)' }">—</span>
             </div>
             <div>
-              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Order value</p>
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Total value</p>
               <p class="text-[13px] font-semibold" style="color: var(--color-text);">
-                {{ fmtMyr(order.value_min_myr) }} – {{ fmtMyr(order.value_max_myr) }}
+                {{ fmtMyrExact(order.final_amount_myr) }}
               </p>
             </div>
           </div>
         </div>
 
-        <!-- Timeline -->
+        <!-- Scope snapshot (confirmed quotation, read-only) -->
         <div class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Timeline</p>
-          <ol class="space-y-5">
-            <li v-for="step in timeline" :key="step.key" class="flex items-start gap-3">
-              <div
-                class="size-7 rounded-full inline-flex items-center justify-center shrink-0 mt-0.5"
-                :style="step.at ? {
-                  background: `var(--status-${step.key}-bg)`,
-                  color: `var(--status-${step.key}-fg)`,
-                } : {
-                  background: 'var(--color-bg-secondary)',
-                  color: 'var(--color-text-tertiary)',
-                }"
-              >
-                <UIcon :name="step.at ? 'i-lucide-check' : 'i-lucide-circle'" class="size-3.5" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[13px] font-medium" :style="{ color: step.at ? 'var(--color-text)' : 'var(--color-text-secondary)' }">{{ step.label }}</p>
-                <p class="text-[11px] mt-0.5" :style="{ color: 'var(--color-text-tertiary)' }">{{ fmtDate(step.at) }}</p>
-              </div>
-            </li>
-          </ol>
-        </div>
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Scope snapshot</p>
+            <span v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              :style="{ color: 'var(--color-text-secondary)', background: 'var(--color-bg-secondary)' }">
+              <UIcon name="i-lucide-lock" class="size-3" /> Confirmed
+            </span>
+          </div>
 
-        <!-- Source quotation -->
-        <div class="rounded-2xl border p-6"
-          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Scope snapshot</p>
-          <p class="text-[13px]" style="color: var(--color-text-secondary);">
-            <span v-if="order.estimate_eta_value && order.estimate_eta_unit">{{ formatEta(order.estimate_eta_value, order.estimate_eta_unit) }} · </span>
-            Package: <code class="font-mono" style="color: var(--color-text);">{{ order.package_key ?? '—' }}</code>
-          </p>
-          <p class="text-[12px] mt-2" style="color: var(--color-text-tertiary);">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style="color: var(--color-text-secondary);">
+            <span v-if="packageLabel" class="font-medium" style="color: var(--color-text);">{{ packageLabel }}</span>
+            <code v-if="order.package_key" class="font-mono text-[12px]" style="color: var(--color-text-tertiary);">{{ order.package_key }}</code>
+            <span v-if="order.estimate_eta_value && order.estimate_eta_unit">· {{ formatEta(order.estimate_eta_value, order.estimate_eta_unit) }}</span>
+            <span v-if="order.estimate_min_myr">· Est. {{ fmtMyr(order.estimate_min_myr) }} – {{ fmtMyr(order.estimate_max_myr) }}</span>
+          </div>
+
+          <div v-if="lineItems.length" class="mt-5 pt-4 border-t" style="border-color: var(--color-border);">
+            <p class="text-[11px] font-medium uppercase tracking-wider mb-2" style="color: var(--color-text-tertiary);">Line items</p>
+            <div class="space-y-2">
+              <div v-for="(it, i) in lineItems" :key="i" class="flex justify-between items-baseline gap-4">
+                <span class="text-[13px]" style="color: var(--color-text);">{{ it.title }}<span v-if="Number(it.qty) > 1" class="text-[12px]" style="color: var(--color-text-tertiary);"> × {{ it.qty }}</span></span>
+                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ fmtMyrExact((Number(it.qty) || 0) * (Number(it.rate) || 0)) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="order.quotation_addons?.length" class="mt-4 pt-4 border-t" style="border-color: var(--color-border);">
+            <p class="text-[11px] font-medium uppercase tracking-wider mb-2" style="color: var(--color-text-tertiary);">Add-ons</p>
+            <div class="space-y-2">
+              <div v-for="a in order.quotation_addons" :key="a.key" class="flex justify-between items-center gap-4">
+                <span class="text-[13px]" style="color: var(--color-text);">{{ a.label }}</span>
+                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ fmtMyrExact(a.amount_myr) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="scopeFields.length" class="mt-4 pt-4 border-t" style="border-color: var(--color-border);">
+            <p class="text-[11px] font-medium uppercase tracking-wider mb-3" style="color: var(--color-text-tertiary);">Scope details</p>
+            <div class="grid sm:grid-cols-2 gap-x-6 gap-y-3">
+              <div v-for="row in scopeFields" :key="row.label">
+                <p class="text-[11px] capitalize mb-0.5" style="color: var(--color-text-tertiary);">{{ row.label }}</p>
+                <p class="text-[13px]" style="color: var(--color-text);">{{ Array.isArray(row.value) ? row.value.join(', ') : String(row.value) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[12px] mt-4 pt-4 border-t" style="color: var(--color-text-tertiary); border-color: var(--color-border);">
             Source quotation
             <NuxtLink :to="`/admin/quotations/${order.quotation_id}`" class="underline ml-1" :style="{ color: 'var(--color-accent)' }">{{ order.reference_code ?? `#${order.quotation_id}` }}</NuxtLink>
             <span v-if="order.submitted_at"> · submitted {{ fmtDate(order.submitted_at) }}</span>
           </p>
+        </div>
+
+        <!-- Payment -->
+        <div class="rounded-2xl border p-6"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="flex items-center justify-between gap-3 mb-5">
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Payment</p>
+            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+              :style="{ color: paymentMeta[order.payment_status].color, background: paymentMeta[order.payment_status].bg }">
+              {{ paymentMeta[order.payment_status].label }}
+            </span>
+          </div>
+
+          <!-- Read view -->
+          <template v-if="!editingPay">
+            <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Total</p>
+                <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(order.final_amount_myr) }}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Deposit ({{ order.deposit_pct ?? 0 }}%)</p>
+                <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text-secondary);">{{ fmtMyrExact(order.deposit_due_myr) }}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Paid</p>
+                <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-success);">{{ fmtMyrExact(order.amount_paid_myr) }}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Remaining</p>
+                <p class="text-[15px] font-bold tabular-nums" :style="{ color: Number(order.remaining_myr) > 0 ? 'var(--color-warning)' : 'var(--color-success)' }">{{ fmtMyrExact(order.remaining_myr) }}</p>
+              </div>
+            </div>
+
+            <!-- Paid-vs-total progress -->
+            <div class="mt-5 h-1.5 rounded-full overflow-hidden" style="background: var(--color-bg-secondary);">
+              <div class="h-full rounded-full transition-[width] duration-500"
+                :style="{
+                  width: `${Math.min(100, Number(order.final_amount_myr) > 0 ? (Number(order.amount_paid_myr) / Number(order.final_amount_myr)) * 100 : 0)}%`,
+                  background: 'var(--color-success)',
+                }" />
+            </div>
+
+            <div class="flex flex-wrap gap-2 pt-5 mt-5 border-t" style="border-color: var(--color-border);">
+              <button type="button" class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;" @click="startEditPay">
+                {{ confirmed ? 'Record payment' : 'Edit amounts' }}
+              </button>
+              <button v-if="order.payment_status === 'unpaid' && Number(order.deposit_due_myr) > 0" type="button"
+                class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;"
+                :class="{ 'opacity-50': paySaving }" :disabled="paySaving" @click="markDepositPaid">
+                Mark deposit paid
+              </button>
+              <button v-if="Number(order.remaining_myr) > 0" type="button"
+                class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;"
+                :class="{ 'opacity-50': paySaving }" :disabled="paySaving" @click="markPaidInFull">
+                Mark paid in full
+              </button>
+            </div>
+          </template>
+
+          <!-- Edit view -->
+          <div v-else class="space-y-3">
+            <div class="grid sm:grid-cols-3 gap-3">
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Total (RM)</span>
+                <input v-model="payForm.final" type="number" min="0" step="0.01" class="doc-input mt-1" :disabled="confirmed">
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Paid (RM)</span>
+                <input v-model="payForm.paid" type="number" min="0" step="0.01" class="doc-input mt-1">
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Deposit (%)</span>
+                <input v-model="payForm.depositPct" type="number" min="0" max="100" step="1" class="doc-input mt-1" :disabled="confirmed">
+              </label>
+            </div>
+            <p class="text-[11px]" style="color: var(--color-text-tertiary);">
+              <span v-if="confirmed">Total &amp; deposit are locked — the quotation is confirmed once work is underway. You can still record payments.</span>
+              <span v-else>Paid is capped at the total — remaining can’t go negative.</span>
+            </p>
+            <div class="flex gap-2 pt-1">
+              <button type="button" class="btn-pill btn-pill-primary text-[13px]"
+                :class="{ 'opacity-50': paySaving }" :disabled="paySaving" @click="saveEditedPayment">
+                {{ paySaving ? 'Saving…' : 'Save' }}
+              </button>
+              <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="paySaving" @click="editingPay = false">
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Documents (invoices & receipts) -->
@@ -323,6 +576,47 @@ const timeline = computed<TimelineStep[]>(() => {
           </div>
         </div>
 
+        <div class="rounded-2xl border p-5"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Timeline</p>
+          <ol class="space-y-4">
+            <li v-for="step in timeline" :key="step.key" class="flex items-start gap-3">
+              <div
+                class="size-7 rounded-full inline-flex items-center justify-center shrink-0 mt-0.5"
+                :style="step.at ? {
+                  background: `var(--status-${step.key}-bg)`,
+                  color: `var(--status-${step.key}-fg)`,
+                } : {
+                  background: 'var(--color-bg-secondary)',
+                  color: 'var(--color-text-tertiary)',
+                }"
+              >
+                <UIcon :name="step.at ? 'i-lucide-check' : 'i-lucide-circle'" class="size-3.5" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[13px] font-medium" :style="{ color: step.at ? 'var(--color-text)' : 'var(--color-text-secondary)' }">{{ step.label }}</p>
+                <p class="text-[11px] mt-0.5" :style="{ color: 'var(--color-text-tertiary)' }">{{ fmtDate(step.at) }}</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+
+        <div class="rounded-2xl border p-5"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Expected completion</p>
+            <span v-if="isOverdue" class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              :style="{ color: 'var(--color-danger)', background: 'var(--color-danger-soft, var(--color-bg-secondary))' }">Overdue</span>
+          </div>
+          <input v-model="dueDraft" type="date" class="doc-input">
+          <p class="text-[11px] mt-2" style="color: var(--color-text-tertiary);">Target delivery date — your SLA for this order.</p>
+          <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px] mt-3"
+            :class="{ 'opacity-50': dueSaving || dueDraft === (order.due_at ?? '') }"
+            :disabled="dueSaving || dueDraft === (order.due_at ?? '')" @click="saveDue">
+            {{ dueSaving ? 'Saving…' : 'Save date' }}
+          </button>
+        </div>
+
         <div class="rounded-2xl border p-5 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Contact</p>
@@ -359,5 +653,9 @@ const timeline = computed<TimelineStep[]>(() => {
 .doc-input:focus {
   outline: none;
   border-color: var(--color-accent);
+}
+.doc-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 </style>

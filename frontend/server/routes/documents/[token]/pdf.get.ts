@@ -1,4 +1,8 @@
-// GET /api/documents/:token/pdf
+// GET /documents/:token/pdf
+//
+// NB: lives in server/routes (NOT server/api) on purpose — the VPS reverse proxy
+// routes all /api/* to the Laravel backend, so an /api-prefixed Nitro route would
+// be shadowed (404). Root-level /documents/* is served by Nuxt.
 //
 // Public, token-gated quotation PDF. Fetches the document data from the Laravel
 // backend (the token is the only credential — unguessable, shared via the

@@ -460,7 +460,7 @@ async function accept() {
 
 function viewPdf() {
   if (!props.quotation?.public_token) return
-  window.open(`${window.location.origin}/api/documents/${props.quotation.public_token}/pdf`, '_blank', 'noopener')
+  window.open(`${window.location.origin}/documents/${props.quotation.public_token}/pdf`, '_blank', 'noopener')
 }
 
 function fmtRm(n: number) {
@@ -578,9 +578,12 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
 
         <!-- Scope sections -->
         <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Scope sections</label>
-            <button type="button" class="text-[12px]" style="color: var(--color-accent);" @click="addSection">+ Add section</button>
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-0.5">
+              <label class="text-[12px] font-medium block" style="color: var(--color-text-secondary);">Scope sections</label>
+              <p class="text-[11px]" style="color: var(--color-text-tertiary);">Priced line items grouped by section. Drives the project total.</p>
+            </div>
+            <button type="button" class="text-[12px] shrink-0 mt-0.5" style="color: var(--color-accent);" @click="addSection">+ Add section</button>
           </div>
           <div v-if="!doc.sections.length" class="rounded-xl border border-dashed px-4 py-6 text-center text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }">
             No sections yet. <strong>Seed a scope section</strong> from the package, or <strong>+ Add section</strong>.
@@ -625,14 +628,20 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
 
         <!-- What's included -->
         <div class="space-y-3 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <div class="flex items-center justify-between">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">“What's included” groups</label>
-            <button type="button" class="text-[12px]" style="color: var(--color-accent);" @click="addIncluded">+ Add group</button>
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-0.5">
+              <label class="text-[12px] font-medium block" style="color: var(--color-text-secondary);">“What's included” groups</label>
+              <p class="text-[11px]" style="color: var(--color-text-tertiary);">Tick-list groups shown on the quotation.</p>
+            </div>
+            <button type="button" class="text-[12px] shrink-0 mt-0.5" style="color: var(--color-accent);" @click="addIncluded">+ Add group</button>
           </div>
+          <button v-if="!doc.included.length" type="button" class="w-full rounded-xl border border-dashed px-4 py-5 text-center text-[12px] transition-colors hover:border-(--color-accent)" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }" @click="addIncluded">
+            No groups yet. <span class="font-medium" style="color: var(--color-text-secondary);">Add a group</span> to list what's included, like a “BASIC SEO” set with bullet points.
+          </button>
           <div v-for="(g, gi) in doc.included" :key="gi" class="rounded-xl border p-3 space-y-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
             <div class="flex items-center gap-2">
-              <input v-model="g.eyebrow" type="text" placeholder="Eyebrow (optional, e.g. BASIC SEO)" class="contact-input flex-1 text-[12px]" :style="fieldStyle">
-              <select v-model.number="g.columns" class="contact-input text-[12px] w-28" :style="fieldStyle">
+              <input v-model="g.eyebrow" type="text" placeholder="Eyebrow (optional, e.g. BASIC SEO)" class="contact-input flex-1 min-w-0 text-[12px]" :style="fieldStyle">
+              <select v-model.number="g.columns" class="contact-input shrink-0 text-[12px]" :style="{ ...fieldStyle, width: '7rem' }">
                 <option :value="1">1 column</option>
                 <option :value="2">2 columns</option>
               </select>
@@ -647,10 +656,16 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
 
         <!-- Options A/B -->
         <div class="space-y-3 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <div class="flex items-center justify-between">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Option cards</label>
-            <button type="button" class="text-[12px]" style="color: var(--color-accent);" @click="addOption">+ Add option</button>
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-0.5">
+              <label class="text-[12px] font-medium block" style="color: var(--color-text-secondary);">Option cards</label>
+              <p class="text-[11px]" style="color: var(--color-text-tertiary);">Side-by-side package choices the client picks between.</p>
+            </div>
+            <button type="button" class="text-[12px] shrink-0 mt-0.5" style="color: var(--color-accent);" @click="addOption">+ Add option</button>
           </div>
+          <button v-if="!doc.options.length" type="button" class="w-full rounded-xl border border-dashed px-4 py-5 text-center text-[12px] transition-colors hover:border-(--color-accent)" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }" @click="addOption">
+            No options yet. <span class="font-medium" style="color: var(--color-text-secondary);">Add a card</span> to present tiered choices (Option A, Option B).
+          </button>
           <div v-if="doc.options.length" class="grid sm:grid-cols-2 gap-2">
             <div class="space-y-1.5">
               <span class="d-label">Options heading</span>
@@ -663,8 +678,8 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
           </div>
           <div v-for="(c, ci) in doc.options" :key="ci" class="rounded-xl border p-3 space-y-2" :style="{ borderColor: c.accent ? 'var(--color-accent)' : 'var(--color-border)', background: 'var(--color-bg)' }">
             <div class="flex items-center gap-2">
-              <input v-model="c.badge" type="text" placeholder="OPTION A" class="contact-input w-32 text-[11px] font-semibold uppercase tracking-wider" :style="fieldStyle">
-              <input v-model="c.title" type="text" placeholder="Option title" class="contact-input flex-1 text-[13px] font-medium" :style="fieldStyle">
+              <input v-model="c.badge" type="text" placeholder="OPTION A" class="contact-input shrink-0 text-[11px] font-semibold uppercase tracking-wider" :style="{ ...fieldStyle, width: '8rem' }">
+              <input v-model="c.title" type="text" placeholder="Option title" class="contact-input flex-1 min-w-0 text-[13px] font-medium" :style="fieldStyle">
               <button type="button" class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove option" @click="removeOption(ci)">
                 <UIcon name="i-lucide-trash-2" class="size-4" />
               </button>
@@ -698,10 +713,16 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
 
         <!-- Care plan -->
         <div class="space-y-3 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <div class="flex items-center justify-between">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Care plan</label>
-            <button type="button" class="text-[12px]" style="color: var(--color-accent);" @click="addCare">+ Add plan row</button>
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-0.5">
+              <label class="text-[12px] font-medium block" style="color: var(--color-text-secondary);">Care plan</label>
+              <p class="text-[11px]" style="color: var(--color-text-tertiary);">Optional ongoing support tiers listed after the quote.</p>
+            </div>
+            <button type="button" class="text-[12px] shrink-0 mt-0.5" style="color: var(--color-accent);" @click="addCare">+ Add plan row</button>
           </div>
+          <button v-if="!doc.care.length" type="button" class="w-full rounded-xl border border-dashed px-4 py-5 text-center text-[12px] transition-colors hover:border-(--color-accent)" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }" @click="addCare">
+            No care plan yet. <span class="font-medium" style="color: var(--color-text-secondary);">Add a row</span> for monthly or yearly support.
+          </button>
           <input v-if="doc.care.length" v-model="doc.careTitle" type="text" placeholder="Care section title" class="contact-input w-full text-[12px]" :style="fieldStyle">
           <div v-for="(r, ri) in doc.care" :key="ri" class="flex flex-wrap items-end gap-2 rounded-xl border p-2.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
             <div class="w-36">
@@ -734,17 +755,8 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
           <input v-if="doc.care.length" v-model="doc.careNote" type="text" placeholder="Care note (optional)" class="contact-input w-full text-[12px]" :style="fieldStyle">
         </div>
 
-        <!-- Terms + deposit -->
-        <div class="grid sm:grid-cols-[1fr_auto] gap-4 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <div class="space-y-1.5">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Payment terms (one per line)</label>
-            <textarea v-model="doc.termsText" rows="4" class="contact-input resize-none w-full text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Deposit %</label>
-            <input v-model.number="doc.depositPct" type="number" min="0" max="100" class="contact-input w-24" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }">
-          </div>
-        </div>
+        <!-- Terms + deposit (shared component — identical to the standard builder) -->
+        <AdminQuoteTermsDeposit v-model:terms="doc.termsText" v-model:depositPct="doc.depositPct" separated />
       </section>
     </div>
 

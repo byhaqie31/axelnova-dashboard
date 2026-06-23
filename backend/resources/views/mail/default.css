@@ -1,0 +1,350 @@
+/* Axel Nova Ventures — transactional email theme.
+   Overrides the framework's `mail::themes.default` via the
+   `view->exists('mail.default')` hook in Illuminate\Mail\Markdown, so every
+   Markdown mailable (client-quote, admin-notification, inquiry-received,
+   referral-received) inherits it with no config change.
+
+   Email clients ignore CSS variables, so the brand tokens (graphite + Apple
+   Blue, Apple-grey surfaces) are inlined as hex here on purpose. Selectors are
+   kept simple so the CSS-to-inline-styles converter can flatten them. */
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+body {
+  background-color: #F5F5F7;
+  color: #1D1D1F;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  width: 100% !important;
+  -webkit-text-size-adjust: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body,
+body *:not(html):not(style):not(br):not(tr) {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: #0071E3;
+  text-decoration: none;
+}
+
+a img {
+  border: none;
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+h1 {
+  color: #1D1D1F;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin-top: 0;
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+h2 {
+  color: #1D1D1F;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 34px;
+  margin-bottom: 4px;
+  text-align: left;
+}
+
+h3 {
+  color: #1D1D1F;
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 22px;
+  text-align: left;
+}
+
+p {
+  color: #515154;
+  font-size: 15px;
+  line-height: 1.65;
+  margin-top: 0;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+p.sub {
+  font-size: 13px;
+  color: #86868B;
+}
+
+strong {
+  color: #1D1D1F;
+  font-weight: 600;
+}
+
+ul, ol {
+  color: #515154;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-left: 20px;
+}
+
+li {
+  margin-bottom: 7px;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: #1D1D1F;
+  background-color: #F0F0F2;
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.wrapper {
+  background-color: #F5F5F7;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  -premailer-cellpadding: 0;
+  -premailer-cellspacing: 0;
+  -premailer-width: 100%;
+}
+
+.content {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  -premailer-cellpadding: 0;
+  -premailer-cellspacing: 0;
+  -premailer-width: 100%;
+}
+
+/* ── Header (brand wordmark) ────────────────────────────────────────────── */
+.header {
+  padding: 34px 0 24px;
+  text-align: center;
+}
+
+.header a {
+  color: #1D1D1F;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.logo {
+  height: 42px;
+  max-height: 42px;
+  width: auto;
+}
+
+/* ── Body card ──────────────────────────────────────────────────────────── */
+.body {
+  background-color: #F5F5F7;
+  border-top: 0;
+  border-bottom: 0;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  -premailer-cellpadding: 0;
+  -premailer-cellspacing: 0;
+  -premailer-width: 100%;
+}
+
+.inner-body {
+  background-color: #FFFFFF;
+  border: 1px solid #E8E8ED;
+  border-radius: 16px;
+  margin: 0 auto;
+  padding: 0;
+  width: 600px;
+  -premailer-cellpadding: 0;
+  -premailer-cellspacing: 0;
+  -premailer-width: 600px;
+}
+
+.content-cell {
+  max-width: 100vw;
+  padding: 44px 44px 36px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.action {
+  margin: 28px auto;
+  padding: 0;
+  text-align: center;
+  width: 100%;
+  -premailer-cellpadding: 0;
+  -premailer-cellspacing: 0;
+  -premailer-width: 100%;
+}
+
+.button {
+  -webkit-text-size-adjust: none;
+  border-radius: 980px;
+  color: #FFFFFF;
+  display: inline-block;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  padding: 13px 30px;
+  text-decoration: none;
+}
+
+.button-blue,
+.button-primary {
+  background-color: #0071E3;
+  border-bottom: 8px solid #0071E3;
+  border-left: 18px solid #0071E3;
+  border-right: 18px solid #0071E3;
+  border-top: 8px solid #0071E3;
+}
+
+.button-green,
+.button-success {
+  background-color: #25D366;
+  border-bottom: 8px solid #25D366;
+  border-left: 18px solid #25D366;
+  border-right: 18px solid #25D366;
+  border-top: 8px solid #25D366;
+}
+
+.button-red,
+.button-error {
+  background-color: #FF3B30;
+  border-bottom: 8px solid #FF3B30;
+  border-left: 18px solid #FF3B30;
+  border-right: 18px solid #FF3B30;
+  border-top: 8px solid #FF3B30;
+}
+
+/* ── Panels ─────────────────────────────────────────────────────────────── */
+.panel {
+  border-radius: 12px;
+  margin: 21px 0;
+  width: 100%;
+}
+
+.panel-content {
+  background-color: #F5F5F7;
+  border-radius: 12px;
+  color: #515154;
+  padding: 16px;
+}
+
+.panel-content p {
+  color: #515154;
+}
+
+.panel-item {
+  padding: 0;
+}
+
+.panel-item p:last-of-type {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* ── Tables (key/value summaries use an empty header row) ────────────────── */
+.table table {
+  margin: 14px auto 22px;
+  width: 100%;
+  -premailer-cellpadding: 0;
+  -premailer-cellspacing: 0;
+  -premailer-width: 100%;
+}
+
+.table th {
+  border: 0;
+  font-size: 0;
+  height: 0;
+  line-height: 0;
+  padding: 0;
+}
+
+.table td {
+  color: #515154;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 11px 0;
+  border-bottom: 1px solid #F0F0F2;
+  margin: 0;
+  text-align: left;
+}
+
+.table td:first-child {
+  color: #1D1D1F;
+  font-weight: 600;
+  padding-right: 18px;
+  white-space: nowrap;
+}
+
+/* ── Subcopy ────────────────────────────────────────────────────────────── */
+.subcopy {
+  border-top: 1px solid #ECECEC;
+  margin-top: 30px;
+  padding-top: 18px;
+}
+
+.subcopy p {
+  font-size: 13px;
+  color: #86868B;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.footer {
+  margin: 0 auto;
+  padding: 0;
+  text-align: center;
+  width: 600px;
+  -premailer-cellpadding: 0;
+  -premailer-cellspacing: 0;
+  -premailer-width: 600px;
+}
+
+.footer p {
+  color: #A1A1A6;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.footer a {
+  color: #A1A1A6;
+  text-decoration: underline;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media only screen and (max-width: 600px) {
+  .inner-body {
+    width: 100% !important;
+  }
+
+  .footer {
+    width: 100% !important;
+  }
+
+  .content-cell {
+    padding: 32px 24px 28px !important;
+  }
+}
+
+@media only screen and (max-width: 500px) {
+  .button {
+    width: 100% !important;
+  }
+}

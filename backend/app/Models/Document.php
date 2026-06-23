@@ -49,6 +49,6 @@ class Document extends Model
 
     public function getPdfPathAttribute(): string
     {
-        return "/api/documents/{$this->public_token}/pdf";
+        return "/documents/{$this->public_token}/pdf";
     }
 }

@@ -34,6 +34,7 @@ class Referral extends Model
         'status',
         'agreed_terms',
         'linked_order_id',
+        'commission_email_sent_at',
         'ip_address',
         'user_agent',
     ];
@@ -43,6 +44,7 @@ class Referral extends Model
         return [
             'commission_tier_pct' => 'integer',
             'agreed_terms' => 'boolean',
+            'commission_email_sent_at' => 'datetime',
         ];
     }
 
@@ -55,5 +57,19 @@ class Referral extends Model
     public static function commissionPctFor(string $tier): int
     {
         return self::COMMISSION_TIERS[$tier] ?? self::COMMISSION_TIERS['cold'];
+    }
+
+    /**
+     * Commission owed once converted — the linked order's final value times
+     * this referral's tier. Null until an order with a final amount is linked.
+     */
+    public function commissionAmount(): ?float
+    {
+        $final = (float) ($this->order?->final_amount_myr ?? 0);
+        if (! $this->linked_order_id || $final <= 0) {
+            return null;
+        }
+
+        return round($final * $this->commission_tier_pct / 100, 2);
     }
 }

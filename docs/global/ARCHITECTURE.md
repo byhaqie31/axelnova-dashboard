@@ -100,7 +100,7 @@ Single source of truth for pricing calculations. Reads from the active `PricingC
 TypeScript port of the same calculation logic. Fetches config from `/api/v1/quote-builder/config` on mount, then runs estimates client-side in real-time as the form changes.
 
 ### ReferenceCodeGenerator (`backend/app/Support/ReferenceCodeGenerator.php`)
-Generates `AXN-YYYY-NNNN` codes atomically using a DB transaction with `lockForUpdate()`. Counter resets each year.
+Mints the AXN document family — `AXN{TYPE}-{YYYY}-{NNNN}` (type letter fused into the prefix), `AXNQ-` (quotation) / `AXNO-` (order) / `AXNI-` (invoice, future) via the [`DocumentType`](../../backend/app/Support/DocumentType.php) enum — atomically using a DB transaction with `lockForUpdate()`. Each type has its own counter that resets each year.
 
 ### DocumentMapper (`backend/app/Services/Quoting/DocumentMapper.php`)
 Maps a `Quotation` (live, via `toDocumentData`) or an `Order` (via `forOrder`, for invoices/receipts) to the `DocumentData` shape the PDF renderer consumes. See [DOCUMENT-GENERATION.md](./DOCUMENT-GENERATION.md).

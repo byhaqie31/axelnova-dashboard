@@ -83,9 +83,9 @@ These are easy to get wrong; they exist for reasons:
 
 **Sanctum is route-scoped.** Stateful CSRF middleware only applies to `/v1/admin/*` ([backend/routes/api.php](../backend/routes/api.php)). Public POSTs (the quote form) are pure stateless. Don't set `SANCTUM_STATEFUL_DOMAINS` globally.
 
-**Quote throttle is env-aware.** 3/hour/IP in production, 1000/min otherwise. Test freely in dev.
+**Public-form throttles are env-aware.** In production: quotes/referrals 8/hour/IP, inquiries 20/hour/IP (lighter intake); 1000/min otherwise. Note Laravel's simple `throttle:N,M` keys on domain+IP, not path — routes in one throttle group share a per-IP bucket, which is why inquiries sit in their own group. Test freely in dev.
 
-**Reference codes are atomic.** `AXN-YYYY-NNNN` codes are generated via DB transaction with `lockForUpdate()` in [backend/app/Support/ReferenceCodeGenerator.php](../backend/app/Support/ReferenceCodeGenerator.php). Counter resets each year. Don't reimplement counter logic elsewhere.
+**Reference codes are atomic.** The AXN document family uses the production format `AXN{TYPE}-{YYYY}-{NNNN}` (type letter fused into the prefix) — `AXNQ-` (quotation), `AXNO-` (order), `AXNI-` (invoice, future), e.g. `AXNQ-2026-0012`. Codes are minted via DB transaction with `lockForUpdate()` in [backend/app/Support/ReferenceCodeGenerator.php](../backend/app/Support/ReferenceCodeGenerator.php), passing a [`DocumentType`](../backend/app/Support/DocumentType.php). Each type has its own counter that resets each year. Don't reimplement counter logic elsewhere; add new document kinds by extending the enum, not by minting strings at call sites.
 
 ## Conventions
 

@@ -78,10 +78,8 @@ const currencyCodes: CurrencyCode[] = ['MYR', 'USD', 'GBP', 'SGD']
 const activeCurrency = ref<CurrencyCode>('MYR')
 
 const currencyOpen = ref(false)
-const currencyMenuRefDesktop = ref<HTMLElement | null>(null)
-const currencyMenuRefMobile = ref<HTMLElement | null>(null)
-onClickOutside(currencyMenuRefDesktop, () => { currencyOpen.value = false }, { ignore: [currencyMenuRefMobile] })
-onClickOutside(currencyMenuRefMobile, () => { currencyOpen.value = false }, { ignore: [currencyMenuRefDesktop] })
+const currencyMenuRef = ref<HTMLElement | null>(null)
+onClickOutside(currencyMenuRef, () => { currencyOpen.value = false })
 
 function pickCurrency(code: CurrencyCode) {
   activeCurrency.value = code
@@ -258,88 +256,24 @@ useScrollReveal('.reveal')
       subtitle="A range of service tracks, from a landing page to a full product build. Priced transparently, delivered precisely."
     />
 
-    <!-- Tab + currency row -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-
-      <!-- Category tabs -->
-      <div class="flex items-center gap-2 flex-wrap">
-        <button
-          v-for="cat in serviceCategories"
-          :key="cat.id"
-          class="inline-flex items-center gap-1.5 text-[13px] px-4 py-1.5 rounded-full border transition-all duration-200"
-          :style="{
-            borderColor: activeCat === cat.id ? 'transparent' : 'var(--color-border-strong)',
-            background: activeCat === cat.id ? 'var(--color-text)' : 'transparent',
-            color: activeCat === cat.id ? 'var(--color-bg)' : 'var(--color-text-secondary)',
-            fontWeight: activeCat === cat.id ? '500' : '400',
-            boxShadow: activeCat === cat.id ? 'var(--shadow-sm)' : 'none',
-          }"
-          @click="selectCat(cat.id)"
-        >
-          <UIcon :name="cat.icon" class="size-3.5" />
-          {{ cat.label }}
-        </button>
-      </div>
-
-      <!-- Currency dropdown (desktop — sits in the tab row) -->
-      <div ref="currencyMenuRefDesktop" class="hidden sm:flex items-center gap-2 shrink-0 relative">
-        <span class="text-[11px] font-medium uppercase tracking-wide" style="color: var(--color-text-tertiary);">Currency</span>
-        <button
-          type="button"
-          :aria-expanded="currencyOpen"
-          aria-haspopup="listbox"
-          class="inline-flex items-center gap-2 text-[12px] px-3 py-1.5 rounded-full border transition-all duration-200"
-          :style="{
-            borderColor: currencyOpen ? 'var(--color-accent)' : 'var(--color-border-strong)',
-            background: currencyOpen ? 'var(--color-accent-soft)' : 'transparent',
-            color: currencyOpen ? 'var(--color-accent)' : 'var(--color-text)',
-            fontWeight: '500',
-          }"
-          @click="currencyOpen = !currencyOpen"
-        >
-          <span class="tabular-nums">{{ activeCurrency }}</span>
-          <UIcon
-            name="i-lucide-chevron-down"
-            class="size-3.5 transition-transform duration-200"
-            :style="{ transform: currencyOpen ? 'rotate(180deg)' : 'rotate(0)' }"
-          />
-        </button>
-
-        <Transition name="menu">
-          <ul
-            v-if="currencyOpen"
-            role="listbox"
-            class="absolute right-0 top-full mt-1.5 min-w-30 rounded-xl border p-1 z-20"
-            :style="{
-              background: 'var(--color-bg-elevated)',
-              borderColor: 'var(--color-border)',
-              boxShadow: 'var(--shadow-card-hover)',
-            }"
-          >
-            <li v-for="code in currencyCodes" :key="code">
-              <button
-                type="button"
-                role="option"
-                :aria-selected="activeCurrency === code"
-                class="w-full flex items-center justify-between gap-3 text-[12px] px-2.5 py-1.5 rounded-md transition-colors"
-                :style="{
-                  background: activeCurrency === code ? 'var(--color-accent-soft)' : 'transparent',
-                  color: activeCurrency === code ? 'var(--color-accent)' : 'var(--color-text)',
-                  fontWeight: activeCurrency === code ? '500' : '400',
-                }"
-                @click="pickCurrency(code)"
-              >
-                <span class="tabular-nums">{{ code }}</span>
-                <UIcon
-                  v-if="activeCurrency === code"
-                  name="i-fluent-checkmark-24-regular"
-                  class="size-3.5"
-                />
-              </button>
-            </li>
-          </ul>
-        </Transition>
-      </div>
+    <!-- Category tabs -->
+    <div class="flex items-center gap-2 flex-wrap mb-8">
+      <button
+        v-for="cat in serviceCategories"
+        :key="cat.id"
+        class="inline-flex items-center gap-1.5 text-[13px] px-4 py-1.5 rounded-full border transition-all duration-200"
+        :style="{
+          borderColor: activeCat === cat.id ? 'transparent' : 'var(--color-border-strong)',
+          background: activeCat === cat.id ? 'var(--color-text)' : 'transparent',
+          color: activeCat === cat.id ? 'var(--color-bg)' : 'var(--color-text-secondary)',
+          fontWeight: activeCat === cat.id ? '500' : '400',
+          boxShadow: activeCat === cat.id ? 'var(--shadow-sm)' : 'none',
+        }"
+        @click="selectCat(cat.id)"
+      >
+        <UIcon :name="cat.icon" class="size-3.5" />
+        {{ cat.label }}
+      </button>
     </div>
 
     <!-- Animated tab content -->
@@ -359,8 +293,8 @@ useScrollReveal('.reveal')
           Learn more about {{ currentCategory.label }} <span aria-hidden>→</span>
         </NuxtLink>
 
-        <!-- Currency dropdown (mobile — below the description, hidden on sm+) -->
-        <div ref="currencyMenuRefMobile" class="sm:hidden flex items-center justify-end gap-2 relative mb-8">
+        <!-- Currency dropdown — above the packages, below the category description -->
+        <div ref="currencyMenuRef" class="flex items-center justify-end gap-2 relative mb-8">
           <span class="text-[11px] font-medium uppercase tracking-wide" style="color: var(--color-text-tertiary);">Currency</span>
           <button
             type="button"

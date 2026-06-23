@@ -322,7 +322,7 @@ async function accept() {
 
 function viewPdf() {
   if (!props.quotation?.public_token) return
-  window.open(`${window.location.origin}/api/documents/${props.quotation.public_token}/pdf`, '_blank', 'noopener')
+  window.open(`${window.location.origin}/documents/${props.quotation.public_token}/pdf`, '_blank', 'noopener')
 }
 </script>
 
@@ -465,16 +465,7 @@ function viewPdf() {
           </div>
         </div>
 
-        <div class="grid sm:grid-cols-[1fr_auto] gap-4">
-          <div class="space-y-1.5">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Terms (one per line)</label>
-            <textarea v-model="doc.termsText" rows="4" class="contact-input resize-none w-full text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Deposit %</label>
-            <input v-model.number="doc.deposit_pct" type="number" min="0" max="100" class="contact-input w-24" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
-          </div>
-        </div>
+        <AdminQuoteTermsDeposit v-model:terms="doc.termsText" v-model:depositPct="doc.deposit_pct" />
       </section>
     </div>
 

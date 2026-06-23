@@ -3,12 +3,10 @@ definePageMeta({ layout: 'public' })
 
 import type { ComponentPublicInstance } from 'vue'
 import type { Project } from '~/data/projects'
+import HeroEpoch from '~/components/public/HeroEpoch.vue'
 import FeaturedProjectsCarousel from '~/components/shared/FeaturedProjectsCarousel.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import { MOTION } from '~/utils/motion'
-
-// Captured at setup — Nuxt context isn't available inside event callbacks.
-const motion = useMotion()
 
 const siteUrl = 'https://axelnovaventures.com'
 const ogImage = `${siteUrl}/og-image.png`
@@ -106,155 +104,21 @@ const stats = [
   { value: 2,  suffix: '',  label: 'Degrees pursuing' },
 ]
 
-const heroBadge    = ref<HTMLElement | null>(null)
-const heroHeadline = ref<HTMLElement | null>(null)
-const heroLine2    = ref<HTMLElement | null>(null)
-const heroSub      = ref<HTMLElement | null>(null)
-const heroCtas     = ref<HTMLElement | null>(null)
-const heroCta      = ref<ComponentPublicInstance | HTMLElement | null>(null)
-const bandCta      = ref<ComponentPublicInstance | HTMLElement | null>(null)
-const statEls      = ref<(HTMLElement | null)[]>([])
+const bandCta = ref<ComponentPublicInstance | HTMLElement | null>(null)
+const statEls = ref<(HTMLElement | null)[]>([])
 
-// `background-clip: text` on an ancestor stops painting text inside transformed
-// descendants (the SplitText words), so the gradient line gets per-word
-// backgrounds sized/positioned to emulate one continuous gradient. The split
-// reverts after the entrance, restoring the original parent gradient.
-const mapGradientWords = (split: { words: Element[] }) => {
-  const base = heroLine2.value
-  if (!base) return
-  const baseRect = base.getBoundingClientRect()
-  split.words.forEach((node) => {
-    const w = node as HTMLElement
-    if (!base.contains(w)) return
-    const r = w.getBoundingClientRect()
-    w.style.backgroundImage = 'var(--grad-text-accent)'
-    w.style.backgroundSize = `${baseRect.width}px ${baseRect.height}px`
-    w.style.backgroundPosition = `${baseRect.left - r.left}px ${baseRect.top - r.top}px`
-    // Vendor prefix still required for gradient text in Safari/Chrome; set via
-    // setProperty so the standard backgroundClip property carries the lint.
-    w.style.setProperty('-webkit-background-clip', 'text')
-    w.style.backgroundClip = 'text'
-    w.style.color = 'transparent'
-  })
-}
-
-// Keep the split mounted after the reveal: reverting it re-runs layout and, on
-// Safari, produces a second visible reflow (the "shrink"). The gradient is
-// already mapped per word, so leaving the split in place looks identical.
-const { build: buildHeadline } = useSplitTextReveal(heroHeadline, {
-  onSplit: mapGradientWords,
-  revertOnComplete: false,
-})
-
-useMagnetic(heroCta)
+// The hero (entrance timeline, SplitText, magnetic CTA) lives in <HeroEpoch>.
 useMagnetic(bandCta)
 
 stats.forEach((s, i) => useCountUp(() => statEls.value[i], s.value))
 useReveal('.stat-cell', { stagger: MOTION.stagger.base })
 useScrollReveal('.reveal')
-
-let heroTl: gsap.core.Timeline | null = null
-let safetyTimer: number | undefined
-let fontGate: number | undefined
-
-onMounted(() => {
-  if (import.meta.server) return
-
-  const { gsap, reduced } = motion
-  const els = [heroBadge.value, heroSub.value, heroCtas.value].filter(Boolean) as HTMLElement[]
-  if (reduced || !els.length) return
-
-  // Hide immediately so there's no flash while we wait for the font.
-  gsap.set(els, { opacity: 0, y: 24 })
-
-  const start = () => {
-    if (heroTl) return // already started (font-ready and safety-net can race)
-
-    // SplitText measures word geometry now, so it must run AFTER the webfont
-    // loads — splitting against the metrically-different fallback font and then
-    // swapping Inter in is what made the headline reflow ("shrink") on Safari.
-    const tl = gsap.timeline({
-      defaults: { ease: MOTION.ease.out },
-      onComplete: () => gsap.set(els, { clearProps: 'opacity,transform' }),
-    })
-    tl.to(heroBadge.value, { opacity: 1, y: 0, duration: MOTION.dur.base })
-    const headline = buildHeadline()
-    if (headline) tl.add(headline, '-=0.3')
-    tl.to(heroSub.value, { opacity: 1, y: 0, duration: MOTION.dur.slow }, '-=0.55')
-    tl.to(heroCtas.value, { opacity: 1, y: 0, duration: MOTION.dur.slow }, '-=0.7')
-    heroTl = tl
-  }
-
-  // Gate on fonts; fall back after a short timeout if fonts.ready stalls.
-  fontGate = window.setTimeout(start, 600)
-  document.fonts?.ready.then(() => {
-    clearTimeout(fontGate)
-    start()
-  }) ?? start()
-
-  // Throttled/background tabs may never run rAF — force-finish whatever has
-  // started so nothing is stranded hidden. If the gate never fired, reveal flat.
-  safetyTimer = window.setTimeout(() => {
-    if (!heroTl) {
-      gsap.set(els, { clearProps: 'opacity,transform' })
-      return
-    }
-    if (heroTl.progress() < 1) heroTl.progress(1)
-  }, 3500)
-})
-
-onUnmounted(() => {
-  clearTimeout(safetyTimer)
-  clearTimeout(fontGate)
-  heroTl?.kill()
-})
 </script>
 
 <template>
   <div>
     <!-- HERO -->
-    <section
-      class="bg-aurora flex flex-col items-center justify-center text-center px-6 relative overflow-hidden"
-      style="min-height: calc(100vh - 49px);"
-    >
-      <div
-        ref="heroBadge"
-        class="inline-flex items-center gap-2 px-3 py-1 rounded-full border backdrop-blur-md"
-        :style="{ borderColor: 'var(--color-border-strong)', background: 'var(--color-accent-soft)' }"
-      >
-        <span class="hero-status-dot size-1.5 rounded-full" style="background: var(--color-success);" />
-        <span class="text-[12px] font-medium" style="color: var(--color-text);">
-          Open to freelance
-        </span>
-      </div>
-
-      <h1
-        ref="heroHeadline"
-        class="mt-7 leading-[1.02] tracking-tighter font-semibold max-w-5xl"
-        style="font-size: clamp(52px, 9vw, 112px);"
-      >
-        <span class="block">I craft interfaces</span>
-        <span ref="heroLine2" class="block text-gradient">people actually enjoy.</span>
-      </h1>
-
-      <p
-        ref="heroSub"
-        class="mt-7 max-w-xl text-[19px] leading-normal"
-        style="color: var(--color-text-secondary);"
-      >
-        UI/UX engineer with 7 years across fintech, SaaS, and products that need real craft.
-        Vue · Nuxt · Laravel · Docker.
-      </p>
-
-      <div ref="heroCtas" class="mt-9 flex flex-wrap items-center justify-center gap-3">
-        <NuxtLink ref="heroCta" to="/quote" class="btn-pill btn-pill-accent">
-          <span class="magnetic-label">Get a quotation</span>
-        </NuxtLink>
-        <NuxtLink to="/services" class="btn-pill btn-pill-ghost">
-          See my services
-        </NuxtLink>
-      </div>
-    </section>
+    <HeroEpoch />
 
     <!-- STATS -->
     <section class="border-y" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
@@ -336,19 +200,3 @@ onUnmounted(() => {
     </section>
   </div>
 </template>
-
-<style scoped>
-/* Gentle pulse on the availability dot only — felt, not noticed. */
-.hero-status-dot {
-  box-shadow: 0 0 0 4px rgba(48, 209, 88, 0.18);
-  animation: hero-dot-pulse 2.6s ease-in-out infinite;
-}
-@keyframes hero-dot-pulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(48, 209, 88, 0.18); }
-  50%      { box-shadow: 0 0 0 8px rgba(48, 209, 88, 0.05); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-status-dot { animation: none; }
-}
-</style>

@@ -25,6 +25,9 @@ class ReferralResource extends JsonResource
             'agreed_terms' => $this->agreed_terms,
             'linked_order_id' => $this->linked_order_id,
             'order_number' => $this->whenLoaded('order', fn () => $this->order?->order_number),
+            'order_final_amount_myr' => $this->whenLoaded('order', fn () => $this->order?->final_amount_myr),
+            'commission_amount_myr' => $this->whenLoaded('order', fn () => $this->commissionAmount()),
+            'commission_email_sent_at' => $this->commission_email_sent_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }
