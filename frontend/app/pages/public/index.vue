@@ -3,7 +3,7 @@ definePageMeta({ layout: 'public' })
 
 import type { ComponentPublicInstance } from 'vue'
 import type { Project } from '~/data/projects'
-import ProjectCard from '~/components/shared/ProjectCard.vue'
+import FeaturedProjectsCarousel from '~/components/shared/FeaturedProjectsCarousel.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import { MOTION } from '~/utils/motion'
 
@@ -98,18 +98,6 @@ const projects = computed<Project[]>(() => {
 })
 
 const featuredProjects = computed(() => projects.value.filter(p => p.featured))
-
-const homeFilters = ['All', 'Laravel', 'Nuxt', 'Fintech', 'Live']
-const activeFilter = ref('All')
-
-const visibleProjects = computed(() => {
-  const f = activeFilter.value
-  if (f === 'All') return featuredProjects.value
-  if (f === 'Live') return featuredProjects.value.filter(p => p.status === 'live')
-  return featuredProjects.value.filter(p =>
-    p.stack.includes(f) || p.tags.includes(f),
-  )
-})
 
 const stats = [
   { value: 7,  suffix: '+', label: 'Years building' },
@@ -220,88 +208,6 @@ onUnmounted(() => {
   clearTimeout(fontGate)
   heroTl?.kill()
 })
-
-// --- Filter tabs: sliding pill indicator + GSAP grid swap -------------------
-
-const filterPill = ref<HTMLElement | null>(null)
-const filterBtns: Record<string, HTMLElement | null> = {}
-const projectGrid = ref<HTMLElement | null>(null)
-const pillReady = ref(false)
-
-const setFilterBtn = (f: string) => (el: unknown) => {
-  filterBtns[f] = el as HTMLElement | null
-}
-
-const movePill = (f: string, animate = true) => {
-  const pill = filterPill.value
-  const btn = filterBtns[f]
-  if (!pill || !btn) return
-  const { gsap, reduced } = motion
-  const vars = { x: btn.offsetLeft, y: btn.offsetTop, width: btn.offsetWidth, height: btn.offsetHeight }
-  if (!animate || reduced) gsap.set(pill, vars)
-  else gsap.to(pill, { ...vars, duration: 0.45, ease: MOTION.ease.out, overwrite: 'auto' })
-  pillReady.value = true
-}
-
-let swapTl: gsap.core.Timeline | null = null
-
-const setFilter = (f: string) => {
-  if (f === activeFilter.value) return
-  movePill(f)
-
-  const { gsap, reduced } = motion
-  if (reduced) {
-    activeFilter.value = f
-    return
-  }
-
-  // Rapid clicks: kill the in-flight timeline and start over — an
-  // early-return guard would drop inputs and can strand cards invisible.
-  swapTl?.kill()
-
-  const outCards = Array.from(projectGrid.value?.children ?? []) as HTMLElement[]
-  const tl = gsap.timeline()
-  swapTl = tl
-  if (outCards.length) {
-    tl.to(outCards, {
-      opacity: 0, y: 10, scale: 0.98,
-      duration: 0.22, stagger: 0.03, ease: 'power2.in',
-    })
-  }
-  tl.call(async () => {
-    activeFilter.value = f
-    await nextTick()
-    const inCards = Array.from(projectGrid.value?.children ?? []) as HTMLElement[]
-    if (!inCards.length) return
-    // immediateRender: false — otherwise the from-state (opacity 0) is applied
-    // at build time and visible (DOM-reused) cards flash out.
-    swapTl = gsap.timeline().fromTo(inCards,
-      { opacity: 0, y: 16, scale: 0.98 },
-      {
-        opacity: 1, y: 0, scale: 1,
-        duration: 0.5, stagger: 0.06, ease: MOTION.ease.out,
-        immediateRender: false, clearProps: 'opacity,transform',
-      },
-    )
-  })
-}
-
-const syncPill = () => movePill(activeFilter.value, false)
-
-onMounted(() => {
-  if (import.meta.server) return
-  nextTick(() => {
-    syncPill()
-    // Font swap changes button widths after first layout.
-    document.fonts?.ready?.then(syncPill)
-    window.addEventListener('resize', syncPill, { passive: true })
-  })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', syncPill)
-  swapTl?.kill()
-})
 </script>
 
 <template>
@@ -377,46 +283,22 @@ onUnmounted(() => {
     <section class="max-w-7xl mx-auto px-6 py-32 reveal">
       <SectionHeader
         eyebrow="Selected work"
-        title="Recent projects."
+        title="Featured projects."
+        subtitle="A few live builds — hover a card to visit the real site."
         :action="{ label: 'View all', to: '/projects' }"
       />
 
-      <div class="relative hidden md:flex flex-wrap gap-2 mb-10">
-        <span
-          ref="filterPill"
-          aria-hidden
-          class="filter-pill"
-          :style="{ opacity: pillReady ? 1 : 0 }"
-        />
-        <button
-          v-for="f in homeFilters" :key="f"
-          :ref="setFilterBtn(f)"
-          class="relative text-[13px] px-4 py-1.5 rounded-full border transition-colors duration-200"
-          :style="{
-            borderColor: activeFilter === f ? 'transparent' : 'var(--color-border-strong)',
-            background: activeFilter === f && !pillReady ? 'var(--color-text)' : 'transparent',
-            color: activeFilter === f ? 'var(--color-bg)' : 'var(--color-text-secondary)',
-            fontWeight: activeFilter === f ? 500 : 400,
-          }"
-          @click="setFilter(f)"
-        >
-          {{ f }}
-        </button>
-      </div>
-
-      <div ref="projectGrid" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-        <ProjectCard
-          v-for="p in visibleProjects" :key="p.id"
-          :project="p"
-          class="reveal"
-        />
-        <div
-          v-if="visibleProjects.length === 0"
-          class="col-span-full text-center py-12 text-sm"
-          style="color: var(--color-text-secondary);"
-        >
-          No projects match this filter yet.
-        </div>
+      <FeaturedProjectsCarousel
+        v-if="featuredProjects.length"
+        :projects="featuredProjects"
+        class="reveal"
+      />
+      <div
+        v-else
+        class="text-center py-12 text-sm"
+        style="color: var(--color-text-secondary);"
+      >
+        Featured projects coming soon.
       </div>
     </section>
 
@@ -433,18 +315,23 @@ onUnmounted(() => {
             var(--color-bg-secondary);
         "
       />
-      <div class="max-w-7xl mx-auto px-6 py-20 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+      <div class="max-w-7xl mx-auto px-6 py-20 flex flex-col items-center gap-7 text-center">
         <div>
           <p class="text-3xl md:text-5xl font-semibold tracking-tight">
             Have a project in mind?
           </p>
-          <p class="mt-3 text-[17px] max-w-lg" style="color: var(--color-text-secondary);">
+          <p class="mt-3 text-[17px] max-w-lg mx-auto" style="color: var(--color-text-secondary);">
             Let's design something premium together. Fintech, SaaS, or a product that needs senior craft.
           </p>
         </div>
-        <NuxtLink ref="bandCta" to="/services" class="btn-pill btn-pill-accent shrink-0">
-          <span class="magnetic-label">Let's talk</span>
-        </NuxtLink>
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <NuxtLink ref="bandCta" to="/services" class="btn-pill btn-pill-accent">
+            <span class="magnetic-label">Let's talk</span>
+          </NuxtLink>
+          <NuxtLink to="/contact" class="btn-pill btn-pill-ghost">
+            Send inquiry
+          </NuxtLink>
+        </div>
       </div>
     </section>
   </div>
@@ -459,19 +346,6 @@ onUnmounted(() => {
 @keyframes hero-dot-pulse {
   0%, 100% { box-shadow: 0 0 0 4px rgba(48, 209, 88, 0.18); }
   50%      { box-shadow: 0 0 0 8px rgba(48, 209, 88, 0.05); }
-}
-
-/* Sliding indicator behind the filter tabs; x/width tweened by GSAP. */
-.filter-pill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 0;
-  height: 0;
-  border-radius: 9999px;
-  background: var(--color-text);
-  box-shadow: var(--shadow-sm);
-  transition: opacity 0.2s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
