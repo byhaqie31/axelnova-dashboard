@@ -90,7 +90,7 @@ function fmtRm(n: string | number | null) {
                   :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ t }}</span>
               </div>
             </div>
-            <button type="button" class="btn-pill btn-pill-ghost text-[12px]" @click="modalOpen = true">
+            <button type="button" class="btn-pill btn-pill-ghost text-[12px] gap-1.5" @click="modalOpen = true">
               <UIcon name="i-lucide-pencil" class="size-3.5" /> Edit
             </button>
           </div>

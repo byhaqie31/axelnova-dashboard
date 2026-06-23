@@ -282,16 +282,28 @@ async function save(): Promise<number | null> {
   return id
 }
 
-async function sendToClient() {
+const sendMenuOpen = ref(false)
+
+// Deliver the quote: email it to the client, or just generate + open the PDF to
+// share manually. Both save first and mark the quote sent.
+async function deliver(channel: 'email' | 'download') {
   if (!isEdit.value) return
+  sendMenuOpen.value = false
   sending.value = true
   error.value = ''
   try {
     const id = await persist()
     if (!id) { toast.error('Couldn’t send quotation', error.value || 'Save failed.'); return }
-    await apiFetch(`/api/v1/admin/quotations/${id}/send`, { method: 'POST' })
+    await apiFetch(`/api/v1/admin/quotations/${id}/send`, { method: 'POST', body: { email: channel === 'email' } })
     emit('sent')
-    toast.success('Quotation sent', `PDF emailed to ${client.email || 'the client'}.`)
+    if (channel === 'download') {
+      const token = props.quotation?.public_token
+      if (token) window.open(`${window.location.origin}/documents/${token}/pdf`, '_blank', 'noopener')
+      toast.success('Marked as sent', 'PDF opened — download and share it with the client.')
+    }
+    else {
+      toast.success('Quotation sent', `PDF emailed to ${client.email || 'the client'}.`)
+    }
   }
   catch (e: any) {
     error.value = e?.data?.message || 'Failed to send quotation.'
@@ -495,9 +507,21 @@ function viewPdf() {
           <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :disabled="!quotation?.public_token" @click="viewPdf">
             View PDF
           </button>
-          <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]" :disabled="sending || saving" @click="sendToClient">
-            {{ sending ? 'Sending…' : 'Send to client' }}
-          </button>
+          <div class="relative">
+            <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]" :disabled="sending || saving" @click="sendMenuOpen = !sendMenuOpen">
+              {{ sending ? 'Sending…' : 'Send to client' }}
+            </button>
+            <div v-if="sendMenuOpen" class="fixed inset-0 z-10" @click="sendMenuOpen = false" />
+            <div v-if="sendMenuOpen" class="absolute left-0 right-0 mt-2 z-20 rounded-xl border p-1.5 space-y-1"
+              :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }">
+              <button type="button" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text);" @click="deliver('email')">
+                <UIcon name="i-lucide-mail" class="size-4" /> Email to client
+              </button>
+              <button type="button" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text);" @click="deliver('download')">
+                <UIcon name="i-lucide-download" class="size-4" /> Download PDF
+              </button>
+            </div>
+          </div>
           <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
             {{ accepting ? 'Accepting…' : 'Accept & create order' }}
           </button>

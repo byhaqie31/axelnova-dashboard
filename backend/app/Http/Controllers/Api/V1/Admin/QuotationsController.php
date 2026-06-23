@@ -119,7 +119,7 @@ class QuotationsController extends Controller
         return new QuotationResource($quotation->load('addons', 'order'));
     }
 
-    public function send(Quotation $quotation): JsonResponse
+    public function send(Request $request, Quotation $quotation): JsonResponse
     {
         if (! $quotation->public_token) {
             $quotation->public_token = Str::random(48);
@@ -128,7 +128,11 @@ class QuotationsController extends Controller
         $quotation->sent_at = now();
         $quotation->save();
 
-        SendClientQuoteEmail::dispatch($quotation->id);
+        // Email delivery is the default; the "download PDF" channel marks the
+        // quote sent without emailing (the admin delivers the file themselves).
+        if ($request->boolean('email', true)) {
+            SendClientQuoteEmail::dispatch($quotation->id);
+        }
 
         Inquiry::where('quotation_id', $quotation->id)
             ->where('status', '!=', 'quoted')
