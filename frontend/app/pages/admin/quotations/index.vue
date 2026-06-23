@@ -41,18 +41,13 @@ const filters = reactive({
   page: 1,
 })
 
-// 'converted' is intentionally absent — converted quotations live on the Orders page.
+// 'accepted' is intentionally absent — accepted quotations live on the Orders page.
 const statusOptions = [
   { value: '', label: 'Active' },
   { value: 'draft', label: 'Draft' },
   { value: 'sent', label: 'Sent' },
-  { value: 'new', label: 'New' },
-  { value: 'viewed', label: 'Viewed' },
-  { value: 'contacted', label: 'Contacted' },
-  { value: 'declined', label: 'Declined' },
-  { value: 'expired', label: 'Expired' },
   { value: 'rejected', label: 'Rejected' },
-  { value: 'spam', label: 'Spam' },
+  { value: 'expired', label: 'Expired' },
 ]
 
 async function fetchQuotations() {

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import CustomerFormModal from '~/components/admin/CustomerFormModal.vue'
+import ClientFormModal from '~/components/admin/ClientFormModal.vue'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
 
-interface Customer {
+interface Client {
   id: number
   name: string
   email: string
@@ -19,7 +19,7 @@ interface Customer {
   created_at: string
 }
 
-const customers = ref<Customer[]>([])
+const clients = ref<Client[]>([])
 const meta = ref<{ current_page: number; last_page: number; total: number } | null>(null)
 const loading = ref(true)
 const error = ref('')
@@ -27,37 +27,37 @@ const modalOpen = ref(false)
 
 const filters = reactive({ search: '', page: 1 })
 
-async function fetchCustomers() {
+async function fetchClients() {
   loading.value = true
   error.value = ''
   try {
     const params = new URLSearchParams({ paginate: '1', page: String(filters.page) })
     if (filters.search) params.set('search', filters.search)
 
-    const res = await apiFetch<{ data: Customer[]; meta: any }>(`/api/v1/admin/clients?${params}`)
-    customers.value = res.data
+    const res = await apiFetch<{ data: Client[]; meta: any }>(`/api/v1/admin/clients?${params}`)
+    clients.value = res.data
     meta.value = res.meta
   }
   catch {
-    error.value = 'Failed to load customers. Check your session.'
+    error.value = 'Failed to load clients. Check your session.'
   }
   finally {
     loading.value = false
   }
 }
 
-onMounted(fetchCustomers)
+onMounted(fetchClients)
 
 let searchTimer: ReturnType<typeof setTimeout>
 watch(() => filters.search, () => {
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => { filters.page = 1; fetchCustomers() }, 400)
+  searchTimer = setTimeout(() => { filters.page = 1; fetchClients() }, 400)
 })
-watch(() => filters.page, () => fetchCustomers())
+watch(() => filters.page, () => fetchClients())
 
-function onSaved(c: Customer) {
-  // Jump straight to the new customer's detail.
-  navigateTo(`/admin/customers/${c.id}`)
+function onSaved(c: Client) {
+  // Jump straight to the new client's detail.
+  navigateTo(`/admin/clients/${c.id}`)
 }
 
 function fmtDate(iso: string) {
@@ -71,11 +71,11 @@ function fmtDate(iso: string) {
     <!-- Header -->
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Customers</h1>
+        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Clients</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Everyone who's inquired, been quoted, or ordered. Open one to see their full history.</p>
       </div>
       <button type="button" class="btn-pill btn-pill-accent text-[13px]" @click="modalOpen = true">
-        <UIcon name="i-lucide-plus" class="size-4" /> New customer
+        <UIcon name="i-lucide-plus" class="size-4" /> New client
       </button>
     </div>
 
@@ -89,10 +89,10 @@ function fmtDate(iso: string) {
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
-    <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading customers…</div>
+    <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading clients…</div>
 
-    <div v-else-if="!customers.length" class="text-center py-16" style="color: var(--color-text-secondary);">
-      No customers found.
+    <div v-else-if="!clients.length" class="text-center py-16" style="color: var(--color-text-secondary);">
+      No clients found.
     </div>
 
     <!-- Desktop: table -->
@@ -101,16 +101,16 @@ function fmtDate(iso: string) {
         <table class="w-full text-left">
           <thead>
             <tr>
-              <th v-for="h in ['Customer', 'Company', 'Inquiries', 'Quotations', 'Orders', 'Since']" :key="h"
+              <th v-for="h in ['Client', 'Company', 'Inquiries', 'Quotations', 'Orders', 'Since']" :key="h"
                 class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
                 {{ h }}
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="c in customers" :key="c.id"
+            <tr v-for="c in clients" :key="c.id"
               class="admin-table-row"
-              @click="navigateTo(`/admin/customers/${c.id}`)">
+              @click="navigateTo(`/admin/clients/${c.id}`)">
               <td class="px-4 py-3.5">
                 <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ c.name }}</p>
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ c.email }}</p>
@@ -129,14 +129,14 @@ function fmtDate(iso: string) {
     </div>
 
     <!-- Mobile: cards -->
-    <div v-if="customers.length" class="md:hidden space-y-2.5">
+    <div v-if="clients.length" class="md:hidden space-y-2.5">
       <button
-        v-for="c in customers"
+        v-for="c in clients"
         :key="c.id"
         type="button"
         class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
-        @click="navigateTo(`/admin/customers/${c.id}`)"
+        @click="navigateTo(`/admin/clients/${c.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-1">
           <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ c.name }}</span>
@@ -157,6 +157,6 @@ function fmtDate(iso: string) {
       <button :disabled="filters.page >= meta.last_page" class="btn-pill btn-pill-ghost text-[12px]" @click="filters.page++">Next →</button>
     </div>
 
-    <CustomerFormModal :open="modalOpen" @close="modalOpen = false" @saved="onSaved" />
+    <ClientFormModal :open="modalOpen" @close="modalOpen = false" @saved="onSaved" />
   </div>
 </template>

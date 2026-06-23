@@ -103,10 +103,9 @@ function fmtDate(iso?: string | null) {
 }
 
 // Manual transitions; draft/sent/accepted are driven by the builder flow.
-const statusOptions = ['new', 'viewed', 'contacted', 'declined', 'expired', 'rejected', 'spam']
+const statusOptions = ['rejected', 'expired']
 const statusLabels: Record<string, string> = {
-  new: 'New', viewed: 'Viewed', contacted: 'Contacted', declined: 'Declined',
-  expired: 'Expired', rejected: 'Rejected', spam: 'Spam',
+  rejected: 'Rejected', expired: 'Expired',
 }
 
 const scopeFields = computed(() => {

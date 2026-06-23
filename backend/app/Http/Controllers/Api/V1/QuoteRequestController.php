@@ -66,7 +66,9 @@ class QuoteRequestController extends Controller
                 'estimate_max_myr' => $estimate->maxMyr,
                 'estimate_eta_value' => $estimate->etaValue,
                 'estimate_eta_unit' => $estimate->etaUnit,
-                'status' => 'new',
+                // Lands as a draft in the admin's lap for review (self-serve lead
+                // statuses retired; the simplified lifecycle is draft→sent→accepted).
+                'status' => 'draft',
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'submitted_at' => now(),

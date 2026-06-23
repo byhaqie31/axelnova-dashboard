@@ -1,5 +1,5 @@
 <script setup lang="ts">
-interface Customer {
+interface Client {
   id: number
   name: string
   email: string
@@ -9,8 +9,8 @@ interface Customer {
   tags: string[]
 }
 
-const props = defineProps<{ open: boolean; client?: Customer | null }>()
-const emit = defineEmits<{ close: []; saved: [client: Customer] }>()
+const props = defineProps<{ open: boolean; client?: Client | null }>()
+const emit = defineEmits<{ close: []; saved: [client: Client] }>()
 
 const { apiFetch } = useAdminAuth()
 const toast = useAdminToast()
@@ -51,17 +51,17 @@ async function submit() {
     tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
   }
   try {
-    const res = await apiFetch<{ data: Customer }>(
+    const res = await apiFetch<{ data: Client }>(
       isEdit.value ? `/api/v1/admin/clients/${props.client!.id}` : '/api/v1/admin/clients',
       { method: isEdit.value ? 'PUT' : 'POST', body },
     )
-    toast.success(isEdit.value ? 'Customer updated' : 'Customer added', res.data.name)
+    toast.success(isEdit.value ? 'Client updated' : 'Client added', res.data.name)
     emit('saved', res.data)
     emit('close')
   }
   catch (e: any) {
     const errs = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
-    error.value = errs || e?.data?.message || 'Could not save the customer.'
+    error.value = errs || e?.data?.message || 'Could not save the client.'
   }
   finally {
     saving.value = false
@@ -79,7 +79,7 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
       <div class="relative w-full max-w-lg rounded-2xl border p-6 max-h-[90vh] overflow-y-auto"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
         <div class="flex items-center justify-between mb-5">
-          <p class="text-[16px] font-semibold tracking-tight" style="color: var(--color-text);">{{ isEdit ? 'Edit customer' : 'New customer' }}</p>
+          <p class="text-[16px] font-semibold tracking-tight" style="color: var(--color-text);">{{ isEdit ? 'Edit client' : 'New client' }}</p>
           <button type="button" class="size-8 rounded-lg flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text-tertiary);" aria-label="Close" @click="emit('close')">
             <UIcon name="i-lucide-x" class="size-4" />
           </button>
@@ -118,7 +118,7 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <div class="flex items-center justify-end gap-2 pt-1">
             <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="emit('close')">Cancel</button>
             <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
-              {{ saving ? 'Saving…' : isEdit ? 'Save changes' : 'Add customer' }}
+              {{ saving ? 'Saving…' : isEdit ? 'Save changes' : 'Add client' }}
             </button>
           </div>
         </form>

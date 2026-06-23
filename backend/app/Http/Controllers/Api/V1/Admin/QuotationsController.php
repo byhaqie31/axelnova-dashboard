@@ -61,11 +61,6 @@ class QuotationsController extends Controller
     {
         $quotation->load('addons', 'order');
 
-        // Auto-mark legacy self-serve leads as viewed; admin drafts keep their status.
-        if (! $quotation->viewed_at && $quotation->status === 'new') {
-            $quotation->update(['viewed_at' => now(), 'status' => 'viewed']);
-        }
-
         return new QuotationResource($quotation);
     }
 
@@ -148,7 +143,7 @@ class QuotationsController extends Controller
     public function updateStatus(Request $request, Quotation $quotation): JsonResponse
     {
         $request->validate([
-            'status' => ['required', 'in:new,viewed,contacted,rejected,spam,draft,sent,declined,expired'],
+            'status' => ['required', 'in:draft,sent,accepted,rejected,expired'],
         ]);
 
         $quotation->update(['status' => $request->status]);
