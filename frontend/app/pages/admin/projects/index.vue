@@ -2,6 +2,7 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
+const toast = useAdminToast()
 
 interface Project {
   id: number
@@ -72,9 +73,10 @@ async function deleteProject(p: Project) {
   try {
     await apiFetch(`/api/v1/admin/projects/${p.id}`, { method: 'DELETE' })
     await load()
+    toast.success('Project deleted', `“${p.name}” was removed.`)
   }
   catch {
-    error.value = `Failed to delete "${p.name}".`
+    toast.error('Couldn’t delete project', `Failed to delete “${p.name}”.`)
   }
 }
 

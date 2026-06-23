@@ -85,6 +85,24 @@
   --status-completed-bg:  rgba(48, 209, 88, 0.12);
   --status-cancelled-fg:  #FF3B30;
   --status-cancelled-bg:  rgba(255, 59, 48, 0.10);
+  --status-qualified-fg:  #00A0B4;
+  --status-qualified-bg:  rgba(0, 160, 180, 0.12);
+  --status-converted-fg:  #30D158;
+  --status-converted-bg:  rgba(48, 209, 88, 0.12);
+  --status-reviewing-fg:  #FF9F0A;
+  --status-reviewing-bg:  rgba(255, 159, 10, 0.12);
+  --status-quoted-fg:     #A855F7;
+  --status-quoted-bg:     rgba(168, 85, 247, 0.10);
+  --status-archived-fg:   #86868B;
+  --status-archived-bg:   rgba(134, 134, 139, 0.14);
+  --status-draft-fg:      #86868B;
+  --status-draft-bg:      rgba(134, 134, 139, 0.14);
+  --status-sent-fg:       #0071E3;
+  --status-sent-bg:       rgba(0, 113, 227, 0.10);
+  --status-declined-fg:   #FF3B30;
+  --status-declined-bg:   rgba(255, 59, 48, 0.10);
+  --status-expired-fg:    #FF9F0A;
+  --status-expired-bg:    rgba(255, 159, 10, 0.12);
 }
 
 .dark {
@@ -145,6 +163,24 @@
   --status-completed-bg:  rgba(93, 227, 140, 0.16);
   --status-cancelled-fg:  #FF6961;
   --status-cancelled-bg:  rgba(255, 105, 97, 0.16);
+  --status-qualified-fg:  #34C7D6;
+  --status-qualified-bg:  rgba(52, 199, 214, 0.16);
+  --status-converted-fg:  #5DE38C;
+  --status-converted-bg:  rgba(93, 227, 140, 0.16);
+  --status-reviewing-fg:  #FFB340;
+  --status-reviewing-bg:  rgba(255, 179, 64, 0.16);
+  --status-quoted-fg:     #C77DFF;
+  --status-quoted-bg:     rgba(199, 125, 255, 0.16);
+  --status-archived-fg:   #A1A1A6;
+  --status-archived-bg:   rgba(161, 161, 166, 0.18);
+  --status-draft-fg:      #A1A1A6;
+  --status-draft-bg:      rgba(161, 161, 166, 0.18);
+  --status-sent-fg:       #2997FF;
+  --status-sent-bg:       rgba(41, 151, 255, 0.16);
+  --status-declined-fg:   #FF6961;
+  --status-declined-bg:   rgba(255, 105, 97, 0.16);
+  --status-expired-fg:    #FFB340;
+  --status-expired-bg:    rgba(255, 179, 64, 0.16);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -381,6 +417,15 @@ h1 { letter-spacing: -0.045em; }
 .status-pill[data-status="delivered"]   { color: var(--status-delivered-fg);  background: var(--status-delivered-bg); }
 .status-pill[data-status="completed"]   { color: var(--status-completed-fg);  background: var(--status-completed-bg); }
 .status-pill[data-status="cancelled"]   { color: var(--status-cancelled-fg);  background: var(--status-cancelled-bg); }
+.status-pill[data-status="qualified"]   { color: var(--status-qualified-fg);  background: var(--status-qualified-bg); }
+.status-pill[data-status="converted"]   { color: var(--status-converted-fg);  background: var(--status-converted-bg); }
+.status-pill[data-status="reviewing"]   { color: var(--status-reviewing-fg);  background: var(--status-reviewing-bg); }
+.status-pill[data-status="quoted"]      { color: var(--status-quoted-fg);     background: var(--status-quoted-bg); }
+.status-pill[data-status="archived"]    { color: var(--status-archived-fg);   background: var(--status-archived-bg); }
+.status-pill[data-status="draft"]       { color: var(--status-draft-fg);      background: var(--status-draft-bg); }
+.status-pill[data-status="sent"]        { color: var(--status-sent-fg);       background: var(--status-sent-bg); }
+.status-pill[data-status="declined"]    { color: var(--status-declined-fg);   background: var(--status-declined-bg); }
+.status-pill[data-status="expired"]     { color: var(--status-expired-fg);    background: var(--status-expired-bg); }
 
 /* Status pill — selectable button variant (used in detail pages for status changes) */
 .status-pill-button {
@@ -421,6 +466,63 @@ h1 { letter-spacing: -0.045em; }
 }
 .standard-pill:hover {
   border-color: var(--color-border-strong);
+}
+
+/* ── Admin shell ────────────────────────────────────────────────────────────
+   Sidebar nav items + data tables. Single source of truth so every admin
+   list/table shares the same surface, header band, hover and dark-mode swap. */
+
+/* Sidebar nav item (admin.vue desktop + mobile drawer). data-active drives the
+   selected state so hover still works on inactive items (inline bg would win). */
+.admin-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 44px;
+  border-radius: 12px;
+  padding: 0 0.875rem;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--color-text-secondary);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-nav-item:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+}
+.admin-nav-item[data-active="true"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* Data table — solid elevated card, themed header band, subtle zebra, accent
+   hover. Replaces the old transparent table that blended into the page bg. */
+.admin-table-card {
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-sm);
+}
+.admin-table-card thead tr {
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+.admin-table-row {
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.admin-table-row:nth-child(even) {
+  background: var(--color-bg);
+}
+.admin-table-row:last-child {
+  border-bottom: 0;
+}
+.admin-table-row:hover {
+  background: var(--color-accent-soft);
 }
 
 /* Standard select — popover-based dropdown for variable-length lists. */

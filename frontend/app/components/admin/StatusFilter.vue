@@ -9,9 +9,12 @@ const props = withDefaults(defineProps<{
   options: StatusOption[]
   label?: string
   placeholder?: string
+  /** Optional record count shown as "TOTAL n |" before the status control. */
+  total?: number | null
 }>(), {
   label: 'Status',
   placeholder: 'All',
+  total: null,
 })
 
 const emit = defineEmits<{
@@ -33,7 +36,12 @@ function pick(value: string) {
 </script>
 
 <template>
-  <div ref="root" class="relative inline-flex items-center gap-2">
+  <div ref="root" class="relative inline-flex items-center gap-2.5">
+    <span v-if="total != null" class="inline-flex items-center gap-1.5">
+      <span class="text-[11px] font-medium uppercase tracking-wide" style="color: var(--color-text-tertiary);">Total</span>
+      <span class="text-[14px] font-bold tabular-nums leading-none" style="color: var(--color-text);">{{ total }}</span>
+    </span>
+    <span v-if="total != null" aria-hidden="true" class="select-none text-[13px]" style="color: var(--color-text-tertiary);">|</span>
     <span class="text-[11px] font-medium uppercase tracking-wide" style="color: var(--color-text-tertiary);">{{ label }}</span>
     <button
       type="button"

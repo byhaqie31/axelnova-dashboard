@@ -31,6 +31,18 @@ class OrderResource extends JsonResource
             'completed_at' => $this->completed_at?->toISOString(),
             'notes' => $this->notes,
             'created_at' => $this->created_at?->toISOString(),
+            'documents' => $this->whenLoaded('documents', fn () => $this->documents->map(fn ($d) => [
+                'id' => $d->id,
+                'type' => $d->type,
+                'number' => $d->number,
+                'status' => $d->status,
+                'amount_total' => $d->amount_total,
+                'amount_paid' => $d->amount_paid,
+                'payment_ref' => $d->payment_ref,
+                'payment_method' => $d->payment_method,
+                'issued_at' => $d->issued_at?->toISOString(),
+                'pdf_path' => $d->pdf_path,
+            ])),
         ];
     }
 }

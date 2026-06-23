@@ -22,12 +22,15 @@ const recent = ref<Quotation[]>([])
 const totalQuotations = ref<number | null>(null)
 const newQuotations = ref<number | null>(null)
 const activeOrders = ref<number | null>(null)
+const openInquiries = ref<number | null>(null)
+const draftQuotations = ref<number | null>(null)
+const pageViews7d = ref<number | null>(null)
 const loading = ref(true)
 const error = ref('')
 
 // Displayed metric values — counted up briefly (dashboard register, ~0.9s)
 // when the real numbers arrive. Instant under reduced motion.
-const shown = reactive({ total: 0, newQ: 0, orders: 0 })
+const shown = reactive({ total: 0, newQ: 0, orders: 0, inq: 0, draft: 0, views: 0 })
 
 function countTo(key: keyof typeof shown, end: number) {
   if (!import.meta.client || motion.reduced) {
@@ -48,18 +51,32 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [recentRes, newRes, ordersRes] = await Promise.all([
+    const [recentRes, newRes, ordersRes, inqRes, draftRes] = await Promise.all([
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?include_accepted=1&page=1'),
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?status=new&page=1'),
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/orders?page=1'),
+      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/inquiries?status=new&page=1'),
+      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/quotations?status=draft&page=1'),
     ])
     recent.value = recentRes.data.slice(0, 5)
     totalQuotations.value = recentRes.meta.total
     newQuotations.value = newRes.meta.total
     activeOrders.value = ordersRes.meta.total
+    openInquiries.value = inqRes.meta.total
+    draftQuotations.value = draftRes.meta.total
     countTo('total', recentRes.meta.total)
     countTo('newQ', newRes.meta.total)
     countTo('orders', ordersRes.meta.total)
+    countTo('inq', inqRes.meta.total)
+    countTo('draft', draftRes.meta.total)
+
+    // Page views — best-effort; a tracking hiccup must never break the dashboard.
+    try {
+      const ov = await apiFetch<{ views: { total: number } }>('/api/v1/admin/analytics/overview?range=7d')
+      pageViews7d.value = ov.views.total
+      countTo('views', ov.views.total)
+    }
+    catch { /* leave the tile as — */ }
   }
   catch {
     error.value = 'Failed to load dashboard. Check your session.'
@@ -103,34 +120,59 @@ interface StatTile {
   value: string
   hint: string
   icon: string
+  to: string
+  cta: string
   pending?: boolean
 }
 
 const tiles = computed<StatTile[]>(() => [
   {
+    label: 'Open inquiries',
+    value: openInquiries.value === null ? '—' : String(shown.inq),
+    hint: 'New project inquiries',
+    icon: 'i-lucide-inbox',
+    to: '/admin/inquiries?status=new',
+    cta: 'View inquiries',
+  },
+  {
+    label: 'Draft quotations',
+    value: draftQuotations.value === null ? '—' : String(shown.draft),
+    hint: 'Building, not yet sent',
+    icon: 'i-lucide-file-pen',
+    to: '/admin/quotations?status=draft',
+    cta: 'View drafts',
+  },
+  {
     label: 'Total quotations',
     value: totalQuotations.value === null ? '—' : String(shown.total),
     hint: 'All-time inquiries',
     icon: 'i-lucide-file-text',
+    to: '/admin/quotations',
+    cta: 'View quotations',
   },
   {
     label: 'New (unactioned)',
     value: newQuotations.value === null ? '—' : String(shown.newQ),
     hint: 'Status = new',
     icon: 'i-lucide-inbox',
+    to: '/admin/quotations?status=new',
+    cta: 'View new',
   },
   {
     label: 'Active orders',
     value: activeOrders.value === null ? '—' : String(shown.orders),
     hint: 'Converted engagements',
     icon: 'i-lucide-package-check',
+    to: '/admin/orders',
+    cta: 'View orders',
   },
   {
     label: 'Page views (7d)',
-    value: '—',
-    hint: 'Wires up in Phase B',
+    value: pageViews7d.value === null ? '—' : String(shown.views),
+    hint: 'Public site visits',
     icon: 'i-lucide-eye',
-    pending: true,
+    to: '/admin/analytics',
+    cta: 'View analytics',
   },
 ])
 </script>
@@ -145,35 +187,46 @@ const tiles = computed<StatTile[]>(() => [
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
     <!-- Stat tiles -->
-    <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-10">
-      <div
+    <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-10">
+      <NuxtLink
         v-for="tile in tiles"
         :key="tile.label"
-        class="rounded-2xl border p-5"
+        :to="tile.to"
+        class="stat-tile group relative rounded-2xl border p-5"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
       >
-        <div class="flex items-start justify-between mb-3">
-          <div
-            class="size-9 rounded-xl inline-flex items-center justify-center"
-            :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }"
-          >
-            <UIcon :name="tile.icon" class="size-4" />
-          </div>
-          <span
-            v-if="tile.pending"
-            class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-            :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }"
-          >
-            Soon
-          </span>
+        <!-- Hover-revealed view button, top-right — doesn't disturb the resting card -->
+        <span
+          class="view-btn absolute top-5 right-5 inline-flex items-center justify-center size-8 rounded-lg"
+          :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }"
+          :title="tile.cta"
+          aria-hidden="true"
+        >
+          <UIcon name="i-lucide-arrow-up-right" class="size-4" />
+        </span>
+
+        <div
+          class="size-9 rounded-xl inline-flex items-center justify-center mb-3"
+          :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }"
+        >
+          <UIcon :name="tile.icon" class="size-4" />
         </div>
         <p class="text-[11px] font-semibold uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">{{ tile.label }}</p>
         <p class="text-[28px] font-bold tracking-tight tabular-nums" style="color: var(--color-text);">
           <span v-if="loading && !tile.pending" class="opacity-50">—</span>
           <span v-else>{{ tile.value }}</span>
         </p>
-        <p class="text-[12px] mt-1" style="color: var(--color-text-secondary);">{{ tile.hint }}</p>
-      </div>
+        <div class="flex items-end justify-between gap-2 mt-1">
+          <p class="text-[12px]" style="color: var(--color-text-secondary);">{{ tile.hint }}</p>
+          <span
+            v-if="tile.pending"
+            class="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }"
+          >
+            Soon
+          </span>
+        </div>
+      </NuxtLink>
     </div>
 
     <!-- Recent quotations -->
@@ -202,13 +255,12 @@ const tiles = computed<StatTile[]>(() => [
     <!-- Desktop: table -->
     <div
       v-else
-      class="hidden md:block rounded-2xl border overflow-hidden"
-      :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+      class="hidden md:block admin-table-card"
     >
       <div class="overflow-x-auto">
       <table class="w-full text-left">
         <thead>
-          <tr style="border-bottom: 1px solid var(--color-border); background: var(--color-bg-secondary);">
+          <tr>
             <th v-for="h in ['Reference', 'Name', 'Estimate', 'Status', 'Submitted']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
@@ -219,8 +271,7 @@ const tiles = computed<StatTile[]>(() => [
           <tr
             v-for="q in recent"
             :key="q.id"
-            class="border-b cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
-            style="border-color: var(--color-border);"
+            class="admin-table-row"
             @click="navigateTo(`/admin/quotations/${q.id}`)"
           >
             <td class="px-4 py-3.5">
@@ -273,3 +324,33 @@ const tiles = computed<StatTile[]>(() => [
     </div>
   </div>
 </template>
+
+<style scoped>
+.stat-tile {
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.stat-tile:hover {
+  border-color: var(--color-border-strong) !important;
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+/* View button: hidden at rest, fades + rises in on card hover. */
+.view-btn {
+  opacity: 0;
+  transform: translateY(-3px) scale(0.92);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+.stat-tile:hover .view-btn,
+.stat-tile:focus-visible .view-btn {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-tile { transition: none; }
+  .stat-tile:hover { transform: none; }
+  .view-btn { transition: none; }
+}
+</style>

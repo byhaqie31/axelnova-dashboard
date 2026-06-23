@@ -12,6 +12,7 @@ class PublicProjectsController extends Controller
     public function index(): AnonymousResourceCollection
     {
         $projects = Project::where('active', true)
+            ->withCount('likes')
             ->orderBy('sort_order')
             ->orderByDesc('id')
             ->get();
@@ -23,6 +24,7 @@ class PublicProjectsController extends Controller
     {
         $project = Project::where('slug', $slug)
             ->where('active', true)
+            ->withCount('likes')
             ->firstOrFail();
 
         return new ProjectResource($project);

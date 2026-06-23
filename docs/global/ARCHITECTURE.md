@@ -7,7 +7,7 @@ axelnova-dashboard/
   frontend/          Nuxt 4 portfolio + quote builder frontend
   backend/           Laravel 11 API
   docs/
-    global/          ARCHITECTURE.md (this file), DEPLOY.md, QUOTE_BUILDER.md, README.md
+    global/          ARCHITECTURE.md (this file), DEPLOY.md, QUOTE_BUILDER.md, DOCUMENT-GENERATION.md, README.md
     frontend/        UI-STANDARDS.md, *-COMPONENTS.md
     backend/         README.md
 ```
@@ -41,8 +41,16 @@ axelnova-dashboard/
 | `clients` | Converted leads become clients |
 | `quotations` | Formal quotations generated from leads |
 | `quotation_line_items` | Line items from the pricing breakdown |
-| `invoices` | Issued invoices (Stripe integration Phase 5) |
+| `orders` | Post-acceptance engagements (one per converted quotation) |
+| `documents` | Issued invoices & receipts — frozen `DocumentData` snapshots, rendered on demand. See [DOCUMENT-GENERATION.md](./DOCUMENT-GENERATION.md) |
 | `projects` | Active project tracking |
+
+### Analytics (Phase B — see [ANALYTICS.md](./ANALYTICS.md))
+
+| Table | Purpose |
+|-------|---------|
+| `page_views` | Append-only public page-view log (hashed IP, path, referrer, UA). Bots dropped on write |
+| `entity_likes` | Anonymous likes per entity (`project` / `service_package`), deduped by hashed IP + optional cookie id |
 
 ## API routes
 
@@ -55,6 +63,16 @@ GET  /v1/admin/leads                 Sanctum + admin role
 GET  /v1/admin/leads/{id}            Sanctum + admin role
 POST /v1/admin/leads/{id}/status     Sanctum + admin role
 POST /v1/admin/leads/{id}/convert    Sanctum + admin role
+
+# Document generation (see DOCUMENT-GENERATION.md)
+POST /v1/admin/orders/{order}/documents   Sanctum — issue an invoice/receipt
+GET  /v1/documents/{token}                Public  — token-gated document data (JSON)
+# Frontend Nitro: GET /api/documents/{token}/pdf — renders & streams the PDF
+
+# Analytics (see ANALYTICS.md)
+POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)
+POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like
+GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?range=7d|30d)
 ```
 
 ## Frontend routes
@@ -83,6 +101,12 @@ TypeScript port of the same calculation logic. Fetches config from `/api/v1/quot
 
 ### ReferenceCodeGenerator (`backend/app/Support/ReferenceCodeGenerator.php`)
 Generates `AXN-YYYY-NNNN` codes atomically using a DB transaction with `lockForUpdate()`. Counter resets each year.
+
+### DocumentMapper (`backend/app/Services/Quoting/DocumentMapper.php`)
+Maps a `Quotation` (live, via `toDocumentData`) or an `Order` (via `forOrder`, for invoices/receipts) to the `DocumentData` shape the PDF renderer consumes. See [DOCUMENT-GENERATION.md](./DOCUMENT-GENERATION.md).
+
+### DocumentIssuer (`backend/app/Services/Quoting/DocumentIssuer.php`)
+Issues an invoice/receipt for an order: assigns a derived atomic number (`INV-`/`RCP-` + the quotation ref) and **freezes** the `DocumentData` snapshot into `documents`, so the rendered PDF can never drift from what was issued.
 
 ## Queued job flow
 
@@ -118,4 +142,4 @@ See `backend/.env.example` for the full list. Key variables:
 - **MySQL**: shared instance from `axelnova-infra` (Docker, `127.0.0.1:3306` from host, `mysql:3306` from containers); database `axelnova_dashboard_db`, user `axelnova_dashboard_user`.
 - **Production**: backend via PHP-FPM + Nginx on port 8003 (TBD); frontend via the existing `frontend/docker-compose.yml` ghcr image.
 - **Queue**: `php artisan queue:work` as a supervised process (Supervisor or systemd)
-- **R2**: Private bucket — PDFs served via signed temporary URLs (1h expiry)
+- **Documents (PDF)**: not stored — rendered on demand (token-gated) by headless Chromium in the frontend image, from live data (quotations) or a frozen snapshot (invoices/receipts). The frontend prod image installs `chromium` via `apk`; `pdf.ts` uses `playwright-core` against `/usr/bin/chromium-browser`. See [DOCUMENT-GENERATION.md](./DOCUMENT-GENERATION.md).

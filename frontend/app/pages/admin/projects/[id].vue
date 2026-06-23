@@ -5,6 +5,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
+const toast = useAdminToast()
 
 const isNew = computed(() => route.params.id === 'new')
 
@@ -78,11 +79,13 @@ async function save() {
     else {
       await apiFetch(`/api/v1/admin/projects/${route.params.id}`, { method: 'PUT', body: payload })
     }
+    toast.success(isNew.value ? 'Project created' : 'Project saved', `“${form.name}” is up to date.`)
     await navigateTo('/admin/projects')
   }
   catch (e: any) {
     if (e?.data?.errors) errors.value = e.data.errors
     message.value = e?.data?.message ?? 'Failed to save.'
+    toast.error('Couldn’t save project', message.value)
   }
   finally {
     saving.value = false

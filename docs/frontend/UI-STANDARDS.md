@@ -457,6 +457,12 @@ Adding a new icon is a one-line addition to the allowlist. Do not let admins typ
 
 The `admin.vue` layout is the only place these patterns live; no need to duplicate them per page.
 
+**Sticky desktop sidebar.**
+- The `≥ md` sidebar is `position: sticky; top: 3.5rem` (clears the `h-14` sticky topbar) with `height: calc(100vh - 3.5rem)` and `self-start` (align-self: flex-start). Without `self-start` the flex child stretches to the full content height and has no room to stick — keep it.
+- The inner `<nav>` is `overflow-y-auto` so long nav lists scroll inside the pinned rail instead of pushing it taller than the viewport. Only the main content column scrolls with the page.
+
+**Sidebar nav items.** Use the global `.admin-nav-item` class (in `main.css`), not per-item inline `:style`. The selected state is driven by `:data-active="isAdminNavActive(item, route.path)"` — an attribute, not an inline background — so hover (`--color-bg-secondary`) still works on inactive items (an inline `background` would always beat a `:hover` class). Items are 44px tall, `14px` text, `size-4.5` icon, `12px` radius; active gets `--color-accent-soft` bg + accent text + `600` weight. The mobile drawer reuses the same class (including the Sign-out button).
+
 **Header brand marker.**
 - Uses the shared `<BrandMark to="/admin" wordmark="Admin Portal" />` (default variant — same `size-7.5` icon + `text-[15px]` wordmark as the public navbar) so the favicon + drop-shadow glow + gradient text treatment stay visually identical to public.
 - The `wordmark` prop is the only override; defaults to "Axel Nova Ventures" for public layouts, set explicitly per layout when it differs.
@@ -481,6 +487,8 @@ These exist as scoped styles on `admin.vue`. If a second mobile drawer is ever n
 Admin is used on mobile too. Every new admin page must be usable at **375px** (iPhone SE) and **414px** (iPhone 14 Pro). The patterns below are mandatory, not optional.
 
 **Container padding.** Use `max-w-[7xl|3xl] mx-auto px-4 sm:px-6 pt-10 pb-32`. Never `px-6` alone — that wastes 12px per side on tiny screens.
+
+**Desktop table surface.** The `hidden md:block` table wrapper uses the global `.admin-table-card` class (in `main.css`) — a solid elevated card (`--color-bg-elevated`) with `--shadow-sm`, a `--color-bg-secondary` header band, and `16px` radius. Do **not** leave the table transparent over the page background; it reads as one flat tone. Each `<tbody>` row uses `.admin-table-row` (handles the bottom hairline, `cursor-pointer`, subtle `--color-bg` zebra on even rows, and a `--color-accent-soft` hover) — drop the old per-row `border-b cursor-pointer hover:bg-(…)` utilities and the inline `border-color`/header `background` styles. All five admin lists (dashboard, inquiries, quotations, orders, referrals) share these two classes; keep them in sync there.
 
 **Tables → cards on mobile.** Tables become unusable below `md`. Render the same data twice: a `<table>` wrapped in `hidden md:block` for desktop, and a `md:hidden space-y-2.5` card list for mobile. Each mobile card is a single `<button>` (whole card is clickable, navigates to the row's detail page) with this layout:
 

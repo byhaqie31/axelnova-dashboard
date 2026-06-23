@@ -22,6 +22,8 @@ useHead({
   link: [{ rel: 'canonical', href: `${siteUrl}/partners/refer` }],
 })
 
+const runtimeConfig = useRuntimeConfig()
+
 const form = reactive({
   // Your details (so we can credit you)
   fullName: '',
@@ -32,16 +34,17 @@ const form = reactive({
   businessEmail: '',
   businessPhone: '',
   need: '',
-  relationship: 'Just passing their contact',
+  relationshipTier: 'cold' as 'cold' | 'warm' | 'closed',
   notes: '',
   agreed: false,
 })
 
 const needs = ['Website', 'UI/UX design', 'Web app or SaaS', 'Not sure yet']
-const relationships = [
-  'Just passing their contact',
-  'I’ll introduce you personally',
-  'We’ve already discussed it',
+// Relationship → backend tier (drives the commission band: cold 5% / warm 10% / closed 15%).
+const relationships: { value: 'cold' | 'warm' | 'closed', label: string }[] = [
+  { value: 'cold', label: 'Just passing their contact' },
+  { value: 'warm', label: 'I’ll introduce you personally' },
+  { value: 'closed', label: 'We’ve already discussed it' },
 ]
 
 const tiers = [
@@ -61,15 +64,38 @@ const handleSubmit = async () => {
   }
   loading.value = true
   error.value = ''
+
+  // "What they need" has no dedicated column — fold it into the stored notes.
+  const notes = form.need
+    ? `Looking for: ${form.need}${form.notes ? `\n\n${form.notes}` : ''}`
+    : form.notes
+
   try {
-    const res = await fetch('https://api.web3forms.com/submit', {
+    // Backend is the source of truth — creates the tracked referral row.
+    await $fetch(`${runtimeConfig.public.apiBase}/api/v1/referrals`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      body: {
+        referrer_name: form.fullName,
+        referrer_email: form.email,
+        referrer_phone: form.phone,
+        business_name: form.businessName,
+        business_email: form.businessEmail || null,
+        business_phone: form.businessPhone || null,
+        relationship_tier: form.relationshipTier,
+        notes: notes || null,
+        agreed_terms: form.agreed,
+      },
+    })
+
+    // Best-effort email ping so a notification still lands; non-blocking.
+    fetch('https://api.web3forms.com/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
         access_key: 'a9100b0c-2c2b-4c5c-a381-543301ef9b17',
         subject: 'New Partner Referral — axelnovaventures.com',
         from_name: form.fullName,
-        // Reply-to goes to the person making the referral.
         email: form.email,
         referred_by_name: form.fullName,
         referred_by_email: form.email,
@@ -78,19 +104,16 @@ const handleSubmit = async () => {
         business_email: form.businessEmail || '—',
         business_phone: form.businessPhone || '—',
         what_they_need: form.need || '—',
-        relationship_to_business: form.relationship,
+        relationship_tier: form.relationshipTier,
         notes: form.notes || '—',
         agreed_to_terms: 'Yes',
       }),
-    })
-    const result = await res.json()
-    if (result.success) {
-      submitted.value = true
-    } else {
-      error.value = 'Something went wrong. Please try again, or email baihaqie@axelnova.tech directly.'
-    }
-  } catch {
-    error.value = 'Network error. Please check your connection and try again.'
+    }).catch(() => {})
+
+    submitted.value = true
+  } catch (e: any) {
+    const errs = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
+    error.value = errs || e?.data?.message || 'Something went wrong. Please try again, or email baihaqie@axelnova.tech directly.'
   } finally {
     loading.value = false
   }
@@ -282,18 +305,18 @@ useScrollReveal('.reveal')
               <div class="flex flex-wrap gap-2">
                 <button
                   v-for="r in relationships"
-                  :key="r"
+                  :key="r.value"
                   type="button"
                   class="text-[12px] px-3.5 py-1.5 rounded-full border transition-all"
                   :style="{
-                    borderColor: form.relationship === r ? 'var(--color-accent)' : 'var(--color-border)',
-                    background: form.relationship === r ? 'var(--color-accent-soft)' : 'transparent',
-                    color: form.relationship === r ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-                    fontWeight: form.relationship === r ? 500 : 400,
+                    borderColor: form.relationshipTier === r.value ? 'var(--color-accent)' : 'var(--color-border)',
+                    background: form.relationshipTier === r.value ? 'var(--color-accent-soft)' : 'transparent',
+                    color: form.relationshipTier === r.value ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                    fontWeight: form.relationshipTier === r.value ? 500 : 400,
                   }"
-                  @click="form.relationship = r"
+                  @click="form.relationshipTier = r.value"
                 >
-                  {{ r }}
+                  {{ r.label }}
                 </button>
               </div>
               <p class="text-[12px] leading-relaxed pt-1" style="color: var(--color-text-tertiary);">

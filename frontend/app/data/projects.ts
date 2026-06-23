@@ -6,6 +6,9 @@ export type ProjectStatus = 'live' | 'soon' | 'wip' | 'planning'
 
 export interface Project {
   id: string
+  /** numeric DB id — keys likes (routing still uses the slug `id`) */
+  dbId?: number
+  likes?: number
   name: string
   description: string
   longDescription: string

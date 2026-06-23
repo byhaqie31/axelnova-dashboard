@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Services\Quoting\DocumentIssuer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -38,9 +39,38 @@ class OrdersController extends Controller
 
     public function show(Order $order): OrderResource
     {
-        $order->load(['client', 'quotation.addons']);
+        $order->load(['client', 'quotation.addons', 'documents']);
 
         return new OrderResource($order);
+    }
+
+    /**
+     * Issue an invoice or receipt for the order. Freezes a DocumentData snapshot
+     * (see DocumentIssuer) and assigns a derived number (INV-/RCP- + quote ref).
+     * Generate the invoice once a deposit/full payment lands; the receipt on
+     * full payment.
+     */
+    public function issueDocument(Request $request, Order $order): JsonResponse
+    {
+        $data = $request->validate([
+            'type' => ['required', 'in:invoice,receipt'],
+            'layout' => ['nullable', 'in:standard,detailed'],
+            'amountPaid' => ['nullable', 'numeric', 'min:0'],
+            'paymentRef' => ['nullable', 'string', 'max:120'],
+            'paymentMethod' => ['nullable', 'string', 'max:120'],
+            'statusLabel' => ['nullable', 'string', 'max:60'],
+            'status' => ['nullable', 'in:issued,paid,void'],
+            // Optional full DocumentData override from a customized builder.
+            'payload' => ['nullable', 'array'],
+        ]);
+
+        $order->loadMissing('quotation');
+        $document = DocumentIssuer::issue($order, $data['type'], $data);
+
+        return response()->json([
+            'message' => ucfirst($data['type']).' issued.',
+            'document' => $document,
+        ], 201);
     }
 
     public function updateStatus(Request $request, Order $order): JsonResponse

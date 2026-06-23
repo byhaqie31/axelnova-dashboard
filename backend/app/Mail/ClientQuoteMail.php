@@ -31,8 +31,11 @@ class ClientQuoteMail extends Mailable
             with: [
                 'quote' => $this->quote,
                 'validUntil' => now()->addDays($validForDays)->format('d F Y'),
-                'calendlyUrl' => config('services.admin.calendly_url')
-                    ?: env('ADMIN_CALENDLY_URL', ''),
+                'whatsappUrl' => config('services.admin.whatsapp_url')
+                    .'?text='.rawurlencode("Hi Qie, I'd like to chat about quote {$this->quote->reference_code}."),
+                'pdfUrl' => $this->quote->public_token
+                    ? rtrim((string) config('services.frontend.url'), '/')."/api/documents/{$this->quote->public_token}/pdf"
+                    : null,
             ],
         );
     }

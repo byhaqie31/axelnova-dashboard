@@ -3,6 +3,7 @@ definePageMeta({ layout: 'public' })
 
 import { useApiBase } from '~/composables/useApiBase'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
+import LikeButton from '~/components/shared/LikeButton.vue'
 
 interface ApiPackage {
   id: number
@@ -18,6 +19,7 @@ interface ApiPackage {
   features: string[]
   cta: string | null
   quote_key: { category: string, package: string } | null
+  likes_count: number
 }
 
 interface ApiCategory {
@@ -46,6 +48,8 @@ const serviceCategories = computed(() => {
     isDefault: c.is_default,
     packages: c.packages.map(p => ({
       id: p.slug,
+      dbId: p.id,
+      likes: p.likes_count ?? 0,
       name: p.name,
       tagline: p.tagline,
       priceMin: Number(p.price_min_myr),
@@ -435,6 +439,15 @@ useScrollReveal('.reveal')
             >
               Most popular
             </span>
+
+            <!-- Like -->
+            <LikeButton
+              v-if="pkg.dbId"
+              class="absolute top-4 right-4 z-10"
+              type="service_package"
+              :id="pkg.dbId"
+              :count="pkg.likes ?? 0"
+            />
 
             <!-- Name + tagline -->
             <h3 class="text-[20px] font-semibold tracking-tight mb-1" style="color: var(--color-text);">

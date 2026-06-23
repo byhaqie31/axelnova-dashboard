@@ -95,14 +95,11 @@ function fmtMyr(amount: string | number) {
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Orders</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Accepted quotations turned into active engagements.</p>
       </div>
-      <div class="flex items-center gap-3">
-        <span v-if="meta" class="text-[13px]" style="color: var(--color-text-secondary);">{{ meta.total }} total</span>
-      </div>
     </div>
 
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, order or reference…" />
-      <AdminStatusFilter v-model="filters.status" :options="statusOptions" class="ml-auto" />
+      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" class="ml-auto" />
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
@@ -118,12 +115,11 @@ function fmtMyr(amount: string | number) {
       </p>
     </div>
 
-    <div v-else class="hidden md:block rounded-2xl border overflow-hidden"
-      :style="{ borderColor: 'var(--color-border)' }">
+    <div v-else class="hidden md:block admin-table-card">
       <div class="overflow-x-auto">
       <table class="w-full text-left">
         <thead>
-          <tr style="border-bottom: 1px solid var(--color-border); background: var(--color-bg-secondary);">
+          <tr>
             <th v-for="h in ['Order', 'Client', 'Value', 'Status', 'Started', 'Created']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
@@ -132,8 +128,7 @@ function fmtMyr(amount: string | number) {
         </thead>
         <tbody>
           <tr v-for="o in orders" :key="o.id"
-            class="border-b cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
-            style="border-color: var(--color-border);"
+            class="admin-table-row"
             @click="navigateTo(`/admin/orders/${o.id}`)">
             <td class="px-4 py-3.5">
               <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ o.order_number }}</p>

@@ -18,6 +18,7 @@ class ProjectResource extends JsonResource
             'status' => $this->status,
             'url' => $this->url,
             'repo' => $this->repo,
+            'likes_count' => (int) ($this->likes_count ?? $this->likes()->count()),
             'tags' => $this->tags ?? [],
             'stack' => $this->stack ?? [],
             'featured' => $this->featured,

@@ -6,7 +6,7 @@ Portfolio + client platform for Ahmad Baihaqie / Axel Nova Ventures.
 - **Backend**: Laravel 11 API (Phase 3: public quote builder funnel)
 - **Database**: shared MySQL 8 from [axelnova-infra](../axelnova-infra/)
 
-All `.md` documentation is centralised under [docs/](./docs/) — `docs/global/` (repo-wide), `docs/frontend/` (Nuxt), `docs/backend/` (Laravel). Start with [docs/global/ARCHITECTURE.md](./docs/global/ARCHITECTURE.md) and [docs/global/QUOTE_BUILDER.md](./docs/global/QUOTE_BUILDER.md).
+All `.md` documentation is centralised under [docs/](./docs/) — `docs/global/` (repo-wide), `docs/frontend/` (Nuxt), `docs/backend/` (Laravel). Start with [docs/global/ARCHITECTURE.md](./docs/global/ARCHITECTURE.md), [docs/global/QUOTE_BUILDER.md](./docs/global/QUOTE_BUILDER.md), and [docs/global/DOCUMENT-GENERATION.md](./docs/global/DOCUMENT-GENERATION.md).
 
 ## Repo layout
 
@@ -20,7 +20,7 @@ axelnova-dashboard/
     docker-compose.yml        Production-only frontend deploy (ghcr image)
   docker-compose.dev.yml      Local dev orchestrator — boots both apps on axelnova-shared
   docs/
-    global/                   ARCHITECTURE.md, DEPLOY.md, QUOTE_BUILDER.md, README.md (mirror)
+    global/                   ARCHITECTURE.md, DEPLOY.md, QUOTE_BUILDER.md, DOCUMENT-GENERATION.md, README.md (mirror)
     frontend/                 UI-STANDARDS.md, *-COMPONENTS.md
     backend/                  README.md (Laravel-specific notes)
 ```

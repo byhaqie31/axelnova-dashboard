@@ -2,6 +2,7 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
+const toast = useAdminToast()
 
 interface Pkg {
   id: number
@@ -53,9 +54,10 @@ async function deleteCategory(c: Category) {
   try {
     await apiFetch(`/api/v1/admin/service-categories/${c.id}`, { method: 'DELETE' })
     await load()
+    toast.success('Category deleted', `“${c.name}” was removed.`)
   }
   catch {
-    error.value = `Failed to delete "${c.name}".`
+    toast.error('Couldn’t delete category', `Failed to delete “${c.name}”.`)
   }
 }
 
@@ -64,9 +66,10 @@ async function deletePackage(p: Pkg) {
   try {
     await apiFetch(`/api/v1/admin/service-packages/${p.id}`, { method: 'DELETE' })
     await load()
+    toast.success('Package deleted', `“${p.name}” was removed.`)
   }
   catch {
-    error.value = `Failed to delete "${p.name}".`
+    toast.error('Couldn’t delete package', `Failed to delete “${p.name}”.`)
   }
 }
 

@@ -12,6 +12,12 @@ Here's the estimate for your project, based on what you submitted on the quote b
 | **Estimated Timeline** | {{ $quote->eta_label }} |
 | **Valid Until** | {{ $validUntil }} |
 
+@if($pdfUrl)
+@component('mail::button', ['url' => $pdfUrl, 'color' => 'blue'])
+Download your quotation (PDF)
+@endcomponent
+@endif
+
 @php
     $breakdown = $quote->form_payload['breakdown'] ?? [];
 @endphp
@@ -32,11 +38,11 @@ Here's the estimate for your project, based on what you submitted on the quote b
 @endforeach
 @endif
 
-This is an indicative estimate based on your inputs. Final scope and price are confirmed during a discovery call — that's where I dig into the actual details and tighten the numbers.
+This is an indicative estimate based on your inputs. Final scope and price are confirmed after a quick chat — that's where I dig into the actual details and tighten the numbers.
 
-@if($calendlyUrl)
-@component('mail::button', ['url' => $calendlyUrl, 'color' => 'blue'])
-Book a Discovery Call
+@if($whatsappUrl)
+@component('mail::button', ['url' => $whatsappUrl, 'color' => 'green'])
+Chat on WhatsApp
 @endcomponent
 @endif
 

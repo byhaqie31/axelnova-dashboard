@@ -32,7 +32,6 @@ export default defineNuxtConfig({
       '/admin/**',
       '/portal/**',
       '/proposals/**',
-      '/quote/preview',
       '/quote/success',
       '/investor/**',
     ],
