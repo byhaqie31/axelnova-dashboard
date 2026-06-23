@@ -54,17 +54,30 @@ class OrderResource extends JsonResource
             'due_at' => $this->due_at?->toDateString(),
             'notes' => $this->notes,
             'created_at' => $this->created_at?->toISOString(),
-            'documents' => $this->whenLoaded('documents', fn () => $this->documents->map(fn ($d) => [
+            'invoices' => $this->whenLoaded('invoices', fn () => $this->invoices->map(fn ($d) => [
                 'id' => $d->id,
                 'type' => $d->type,
-                'number' => $d->number,
+                'number' => $d->invoice_number,
                 'status' => $d->status,
                 'amount_total' => $d->amount_total,
                 'amount_paid' => $d->amount_paid,
                 'payment_ref' => $d->payment_ref,
                 'payment_method' => $d->payment_method,
                 'issued_at' => $d->issued_at?->toISOString(),
+                'paid_at' => $d->paid_at?->toISOString(),
                 'pdf_path' => $d->pdf_path,
+            ])),
+            'receipts' => $this->whenLoaded('receipts', fn () => $this->receipts->map(fn ($r) => [
+                'id' => $r->id,
+                'number' => $r->receipt_number,
+                'invoice_id' => $r->invoice_id,
+                'invoice_number' => $r->invoice?->invoice_number,
+                'status' => $r->status,
+                'amount' => $r->amount,
+                'payment_ref' => $r->payment_ref,
+                'payment_method' => $r->payment_method,
+                'issued_at' => $r->issued_at?->toISOString(),
+                'pdf_path' => $r->pdf_path,
             ])),
         ];
     }

@@ -40,16 +40,31 @@ interface Order {
   quotation_document?: Record<string, any> | null
   quotation_scope?: Record<string, any> | null
   quotation_addons?: { key: string; label: string; amount_myr: string }[]
-  documents?: OrderDocument[]
+  invoices?: OrderInvoice[]
+  receipts?: OrderReceipt[]
 }
 
-interface OrderDocument {
+interface OrderInvoice {
   id: number
-  type: 'invoice' | 'receipt'
+  type: 'deposit' | 'partial' | 'final'
   number: string
   status: 'issued' | 'paid' | 'void'
   amount_total: string
   amount_paid: string | null
+  payment_ref: string | null
+  payment_method: string | null
+  issued_at: string | null
+  paid_at: string | null
+  pdf_path: string
+}
+
+interface OrderReceipt {
+  id: number
+  number: string
+  invoice_id: number | null
+  invoice_number: string | null
+  status: 'issued' | 'void'
+  amount: string
   payment_ref: string | null
   payment_method: string | null
   issued_at: string | null
@@ -61,34 +76,65 @@ const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
 
-const issuing = ref(false)
-const docForm = reactive({
-  type: 'invoice' as 'invoice' | 'receipt',
-  amountPaid: '' as string,
+const issuingInvoice = ref(false)
+const invoiceForm = reactive({
+  type: 'deposit' as 'deposit' | 'partial' | 'final',
+  status: 'issued' as 'issued' | 'paid',
+  amountPaid: '',
   paymentMethod: '',
   paymentRef: '',
 })
 
-async function issueDocument() {
+async function issueInvoice() {
   if (!order.value) return
-  const label = docForm.type === 'invoice' ? 'Invoice' : 'Receipt'
-  issuing.value = true
+  issuingInvoice.value = true
   try {
-    const body: Record<string, unknown> = { type: docForm.type }
-    if (docForm.amountPaid !== '') body.amountPaid = Number(docForm.amountPaid)
-    if (docForm.paymentMethod) body.paymentMethod = docForm.paymentMethod
-    if (docForm.paymentRef) body.paymentRef = docForm.paymentRef
+    const body: Record<string, unknown> = { type: 'invoice', invoiceType: invoiceForm.type, status: invoiceForm.status }
+    if (invoiceForm.amountPaid !== '') body.amountPaid = Number(invoiceForm.amountPaid)
+    if (invoiceForm.paymentMethod) body.paymentMethod = invoiceForm.paymentMethod
+    if (invoiceForm.paymentRef) body.paymentRef = invoiceForm.paymentRef
     await apiFetch(`/api/v1/admin/orders/${order.value.id}/documents`, { method: 'POST', body })
-    toast.success(`${label} issued`, 'The document is ready to view and share.')
-    docForm.paymentRef = ''
-    docForm.amountPaid = ''
+    toast.success('Invoice issued', 'Ready to view and share.')
+    invoiceForm.amountPaid = ''
+    invoiceForm.paymentRef = ''
     await fetchOrder()
   }
   catch {
-    toast.error(`Couldn’t issue ${label.toLowerCase()}`, 'Something went wrong. Please try again.')
+    toast.error('Couldn’t issue invoice', 'Something went wrong. Please try again.')
   }
   finally {
-    issuing.value = false
+    issuingInvoice.value = false
+  }
+}
+
+const issuingReceipt = ref(false)
+const receiptForm = reactive({
+  invoice_id: '',
+  amountPaid: '',
+  paymentMethod: '',
+  paymentRef: '',
+})
+
+async function issueReceipt() {
+  if (!order.value) return
+  issuingReceipt.value = true
+  try {
+    const body: Record<string, unknown> = { type: 'receipt' }
+    if (receiptForm.invoice_id) body.invoice_id = Number(receiptForm.invoice_id)
+    if (receiptForm.amountPaid !== '') body.amountPaid = Number(receiptForm.amountPaid)
+    if (receiptForm.paymentMethod) body.paymentMethod = receiptForm.paymentMethod
+    if (receiptForm.paymentRef) body.paymentRef = receiptForm.paymentRef
+    await apiFetch(`/api/v1/admin/orders/${order.value.id}/documents`, { method: 'POST', body })
+    toast.success('Receipt issued', 'Ready to view and share.')
+    receiptForm.amountPaid = ''
+    receiptForm.paymentRef = ''
+    await fetchOrder()
+  }
+  catch {
+    toast.error('Couldn’t issue receipt', 'Something went wrong. Please try again.')
+  }
+  finally {
+    issuingReceipt.value = false
   }
 }
 
@@ -496,23 +542,25 @@ const scopeFields = computed(() => {
           </div>
         </div>
 
-        <!-- Documents (invoices & receipts) -->
+        <!-- Invoices -->
         <div class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Documents</p>
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Invoices</p>
 
-          <div v-if="order.documents?.length" class="space-y-2 mb-5">
-            <div v-for="d in order.documents" :key="d.id"
+          <div v-if="order.invoices?.length" class="space-y-2 mb-5">
+            <div v-for="d in order.invoices" :key="d.id"
               class="flex items-center justify-between gap-3 rounded-xl border p-3"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ d.number }}</span>
                   <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                    :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">{{ d.type }}</span>
+                    :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ d.type }}</span>
+                  <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                    :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">{{ d.status }}</span>
                 </div>
                 <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
-                  {{ fmtMyr(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ fmtMyr(d.amount_paid) }}</span> · {{ d.status }} · {{ fmtDate(d.issued_at) }}
+                  {{ fmtMyr(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ fmtMyr(d.amount_paid) }}</span> · {{ fmtDate(d.issued_at) }}
                 </p>
               </div>
               <a :href="d.pdf_path" target="_blank" rel="noopener"
@@ -521,37 +569,96 @@ const scopeFields = computed(() => {
               </a>
             </div>
           </div>
-          <p v-else class="text-[13px] mb-5" style="color: var(--color-text-tertiary);">No documents issued yet.</p>
+          <p v-else class="text-[13px] mb-5" style="color: var(--color-text-tertiary);">No invoices issued yet.</p>
 
-          <!-- Issue form -->
+          <!-- Issue invoice -->
           <div class="pt-4 border-t space-y-3" style="border-color: var(--color-border);">
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Type</span>
-                <select v-model="docForm.type" class="doc-input mt-1">
-                  <option value="invoice">Invoice</option>
-                  <option value="receipt">Receipt</option>
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Invoice type</span>
+                <select v-model="invoiceForm.type" class="doc-input mt-1">
+                  <option value="deposit">Deposit</option>
+                  <option value="partial">Partial</option>
+                  <option value="final">Final</option>
                 </select>
               </label>
               <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">
-                  {{ docForm.type === 'receipt' ? 'Amount paid (full)' : 'Deposit received' }}
-                </span>
-                <input v-model="docForm.amountPaid" type="number" min="0" step="0.01" placeholder="e.g. 1250"
-                  class="doc-input mt-1">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Status</span>
+                <select v-model="invoiceForm.status" class="doc-input mt-1">
+                  <option value="issued">Issued</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount received</span>
+                <input v-model="invoiceForm.amountPaid" type="number" min="0" step="0.01" placeholder="optional" class="doc-input mt-1">
               </label>
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment method</span>
-                <input v-model="docForm.paymentMethod" type="text" placeholder="e.g. DuitNow QR (RHB)" class="doc-input mt-1">
+                <input v-model="invoiceForm.paymentMethod" type="text" placeholder="e.g. DuitNow QR (RHB)" class="doc-input mt-1">
+              </label>
+              <label class="block sm:col-span-2">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment ref</span>
+                <input v-model="invoiceForm.paymentRef" type="text" placeholder="optional" class="doc-input mt-1">
+              </label>
+            </div>
+            <p class="text-[11px]" style="color: var(--color-text-tertiary);">A recorded amount is added to the order’s paid total.</p>
+            <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
+              :class="{ 'opacity-50': issuingInvoice }" :disabled="issuingInvoice" @click="issueInvoice">
+              {{ issuingInvoice ? 'Issuing…' : 'Issue invoice' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Receipts -->
+        <div class="rounded-2xl border p-6"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Receipts</p>
+
+          <div v-if="order.receipts?.length" class="space-y-2 mb-5">
+            <div v-for="r in order.receipts" :key="r.id"
+              class="flex items-center justify-between gap-3 rounded-xl border p-3"
+              :style="{ borderColor: 'var(--color-border)' }">
+              <div class="min-w-0">
+                <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ r.number }}</span>
+                <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
+                  {{ fmtMyr(r.amount) }}<span v-if="r.invoice_number"> · for {{ r.invoice_number }}</span> · {{ fmtDate(r.issued_at) }}
+                </p>
+              </div>
+              <a :href="r.pdf_path" target="_blank" rel="noopener"
+                class="btn-pill btn-pill-ghost text-[12px] shrink-0" style="height: 32px; padding: 0 16px;">
+                View PDF
+              </a>
+            </div>
+          </div>
+          <p v-else class="text-[13px] mb-5" style="color: var(--color-text-tertiary);">No receipts issued yet.</p>
+
+          <!-- Issue receipt -->
+          <div class="pt-4 border-t space-y-3" style="border-color: var(--color-border);">
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">For invoice</span>
+                <select v-model="receiptForm.invoice_id" class="doc-input mt-1">
+                  <option value="">— none —</option>
+                  <option v-for="d in order.invoices ?? []" :key="d.id" :value="String(d.id)">{{ d.number }}</option>
+                </select>
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount paid</span>
+                <input v-model="receiptForm.amountPaid" type="number" min="0" step="0.01" placeholder="optional" class="doc-input mt-1">
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment method</span>
+                <input v-model="receiptForm.paymentMethod" type="text" placeholder="e.g. DuitNow QR (RHB)" class="doc-input mt-1">
               </label>
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment ref</span>
-                <input v-model="docForm.paymentRef" type="text" placeholder="optional" class="doc-input mt-1">
+                <input v-model="receiptForm.paymentRef" type="text" placeholder="optional" class="doc-input mt-1">
               </label>
             </div>
             <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
-              :class="{ 'opacity-50': issuing }" :disabled="issuing" @click="issueDocument">
-              {{ issuing ? 'Issuing…' : `Issue ${docForm.type}` }}
+              :class="{ 'opacity-50': issuingReceipt }" :disabled="issuingReceipt" @click="issueReceipt">
+              {{ issuingReceipt ? 'Issuing…' : 'Issue receipt' }}
             </button>
           </div>
         </div>
