@@ -13,10 +13,15 @@ interface Order {
   email: string | null
   value_min_myr: string
   value_max_myr: string
+  final_amount_myr: string
+  amount_paid_myr: string
+  remaining_myr: number
+  payment_status: 'unpaid' | 'deposit_paid' | 'paid'
   status: string
   started_at: string | null
   delivered_at: string | null
   completed_at: string | null
+  due_at: string | null
   created_at: string
 }
 
@@ -80,10 +85,17 @@ function fmtDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// Past its expected completion and still open → overdue (an SLA breach).
+function isOverdue(o: Order) {
+  if (!o.due_at || o.status === 'completed' || o.status === 'cancelled') return false
+  const due = new Date(o.due_at)
+  due.setHours(23, 59, 59, 999)
+  return due.getTime() < Date.now()
+}
+
+// Full amount, two decimals — accurate, transaction-style (e.g. RM 12,000.00).
 function fmtMyr(amount: string | number) {
-  const n = Number(amount)
-  if (n >= 1000) return `RM ${(n / 1000).toFixed(0)}k`
-  return `RM ${n.toLocaleString()}`
+  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 </script>
 
@@ -120,7 +132,7 @@ function fmtMyr(amount: string | number) {
       <table class="w-full text-left">
         <thead>
           <tr>
-            <th v-for="h in ['Order', 'Client', 'Value', 'Status', 'Started', 'Created']" :key="h"
+            <th v-for="h in ['Order', 'Client', 'Value', 'Status', 'Due', 'Started', 'Created']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
@@ -140,12 +152,20 @@ function fmtMyr(amount: string | number) {
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
-                {{ fmtMyr(o.value_min_myr) }} – {{ fmtMyr(o.value_max_myr) }}
+                {{ fmtMyr(o.final_amount_myr) }}
               </p>
-              <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.package_key ?? '—' }}</p>
+              <p class="text-[11px]" :style="{ color: Number(o.remaining_myr) > 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }">
+                {{ Number(o.remaining_myr) > 0 ? `${fmtMyr(o.remaining_myr)} remaining` : 'Paid in full' }}
+              </p>
             </td>
             <td class="px-4 py-3.5">
               <AdminStatusPill :status="o.status" />
+            </td>
+            <td class="px-4 py-3.5">
+              <p class="text-[12px]" :style="{ color: isOverdue(o) ? 'var(--color-danger)' : 'var(--color-text-secondary)' }">
+                {{ fmtDate(o.due_at) }}
+              </p>
+              <p v-if="isOverdue(o)" class="text-[10px] font-semibold" :style="{ color: 'var(--color-danger)' }">Overdue</p>
             </td>
             <td class="px-4 py-3.5 text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
               {{ fmtDate(o.started_at) }}
@@ -181,13 +201,17 @@ function fmtMyr(amount: string | number) {
         <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3">
             <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
-              {{ fmtMyr(o.value_min_myr) }} – {{ fmtMyr(o.value_max_myr) }}
+              {{ fmtMyr(o.final_amount_myr) }}
             </p>
-            <p class="text-[11px] font-mono" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.package_key ?? '—' }}</p>
+            <p class="text-[11px]" :style="{ color: Number(o.remaining_myr) > 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }">
+              {{ Number(o.remaining_myr) > 0 ? `${fmtMyr(o.remaining_myr)} remaining` : 'Paid in full' }}
+            </p>
           </div>
           <div class="flex items-center justify-between gap-3 text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">
+            <span :style="{ color: isOverdue(o) ? 'var(--color-danger)' : 'var(--color-text-secondary)' }">
+              Due {{ fmtDate(o.due_at) }}<span v-if="isOverdue(o)" class="font-semibold"> · Overdue</span>
+            </span>
             <span>Started {{ fmtDate(o.started_at) }}</span>
-            <span>Created {{ fmtDate(o.created_at) }}</span>
           </div>
         </div>
       </button>

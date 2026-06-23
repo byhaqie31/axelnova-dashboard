@@ -45,6 +45,77 @@ class OrdersController extends Controller
     }
 
     /**
+     * Money roll-up across the active book (everything not cancelled), summed
+     * in SQL so the dashboard never has to page through orders client-side.
+     */
+    public function stats(): JsonResponse
+    {
+        $row = Order::whereNot('status', 'cancelled')
+            ->selectRaw('COUNT(*) as active_count')
+            ->selectRaw('COALESCE(SUM(final_amount_myr), 0) as revenue')
+            ->selectRaw('COALESCE(SUM(amount_paid_myr), 0) as collected')
+            ->selectRaw('COALESCE(SUM(GREATEST(final_amount_myr - amount_paid_myr, 0)), 0) as pending')
+            ->first();
+
+        return response()->json([
+            'active_count' => (int) $row->active_count,
+            'revenue' => round((float) $row->revenue, 2),
+            'collected' => round((float) $row->collected, 2),
+            'pending' => round((float) $row->pending, 2),
+        ]);
+    }
+
+    /**
+     * Adjust the agreed total and record payments. Paid is clamped to
+     * [0, final] so the derived remaining balance can never go negative.
+     */
+    public function updatePayment(Request $request, Order $order): JsonResponse
+    {
+        $data = $request->validate([
+            'final_amount_myr' => ['nullable', 'numeric', 'min:0'],
+            'amount_paid_myr' => ['nullable', 'numeric', 'min:0'],
+            'deposit_pct' => ['nullable', 'integer', 'min:0', 'max:100'],
+        ]);
+
+        $final = array_key_exists('final_amount_myr', $data) && $data['final_amount_myr'] !== null
+            ? (float) $data['final_amount_myr']
+            : (float) $order->final_amount_myr;
+
+        $paid = array_key_exists('amount_paid_myr', $data) && $data['amount_paid_myr'] !== null
+            ? (float) $data['amount_paid_myr']
+            : (float) $order->amount_paid_myr;
+
+        $order->update([
+            'final_amount_myr' => $final,
+            'amount_paid_myr' => min(max($paid, 0), $final),
+            'deposit_pct' => $data['deposit_pct'] ?? $order->deposit_pct,
+        ]);
+
+        $order->load(['client', 'quotation']);
+
+        return response()->json([
+            'message' => 'Payment details updated.',
+            'order' => new OrderResource($order),
+        ]);
+    }
+
+    /** Set or clear the expected completion date (the order's SLA / deadline). */
+    public function updateSchedule(Request $request, Order $order): JsonResponse
+    {
+        $data = $request->validate([
+            'due_at' => ['nullable', 'date'],
+        ]);
+
+        $order->update(['due_at' => $data['due_at'] ?? null]);
+        $order->load(['client', 'quotation']);
+
+        return response()->json([
+            'message' => 'Expected completion updated.',
+            'order' => new OrderResource($order),
+        ]);
+    }
+
+    /**
      * Issue an invoice or receipt for the order. Freezes a DocumentData snapshot
      * (see DocumentIssuer) and assigns a derived number (INV-/RCP- + quote ref).
      * Generate the invoice once a deposit/full payment lands; the receipt on

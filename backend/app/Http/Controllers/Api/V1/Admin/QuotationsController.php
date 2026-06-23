@@ -173,6 +173,10 @@ class QuotationsController extends Controller
                 'client_id' => $quotation->client_id,
                 'value_min_myr' => $quotation->estimate_min_myr,
                 'value_max_myr' => $quotation->estimate_max_myr,
+                'final_amount_myr' => $quotation->finalAmount(),
+                'deposit_pct' => $quotation->depositPct(),
+                'amount_paid_myr' => 0,
+                'due_at' => $quotation->dueDateFrom(),
                 'status' => 'pending',
             ]);
         });

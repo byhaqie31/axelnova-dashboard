@@ -2,7 +2,18 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
+const { config, loadConfig } = usePricingEngine()
 const route = useRoute()
+
+// Resolve a package slug → its human name from the pricing config.
+function packageName(key: string | null): string | null {
+  if (!key || !config.value) return null
+  for (const c of config.value.categories) {
+    const p = c.packages.find(p => p.key === key)
+    if (p) return p.name
+  }
+  return null
+}
 
 interface Quotation {
   id: number
@@ -65,7 +76,10 @@ async function fetchQuotations() {
   }
 }
 
-onMounted(fetchQuotations)
+onMounted(() => {
+  fetchQuotations()
+  loadConfig()
+})
 
 let searchTimer: ReturnType<typeof setTimeout>
 watch(() => filters.search, () => {
@@ -149,7 +163,11 @@ onKeyStroke('Escape', () => { if (chooserOpen.value) chooserOpen.value = false }
               <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ q.email }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <span class="text-[12px] font-mono" style="color: var(--color-text-secondary);">{{ q.package_key ?? '—' }}</span>
+              <template v-if="packageName(q.package_key)">
+                <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ packageName(q.package_key) }}</p>
+                <p class="text-[11px] font-mono" style="color: var(--color-text-tertiary);">{{ q.package_key }}</p>
+              </template>
+              <span v-else class="text-[12px] font-mono" style="color: var(--color-text-secondary);">{{ q.package_key ?? '—' }}</span>
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-semibold" style="color: var(--color-text);">
@@ -189,7 +207,10 @@ onKeyStroke('Escape', () => { if (chooserOpen.value) chooserOpen.value = false }
             <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
               {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
             </p>
-            <p class="text-[11px] font-mono" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.package_key ?? '—' }}</p>
+            <p class="text-[11px] text-right" :style="{ color: 'var(--color-text-tertiary)' }">
+              <span v-if="packageName(q.package_key)" class="block font-medium" :style="{ color: 'var(--color-text-secondary)' }">{{ packageName(q.package_key) }}</span>
+              <span class="font-mono">{{ q.package_key ?? '—' }}</span>
+            </p>
           </div>
           <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">Submitted {{ fmtDate(q.submitted_at) }}</p>
         </div>

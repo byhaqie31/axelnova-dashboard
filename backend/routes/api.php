@@ -103,8 +103,12 @@ Route::middleware([
         Route::post('/quotations/{quotation}/accept', [QuotationsController::class, 'accept'])->name('quotations.accept');
 
         Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
+        // Money roll-up for the dashboard — must precede the {order} wildcard.
+        Route::get('/orders/stats', [OrdersController::class, 'stats'])->name('orders.stats');
         Route::get('/orders/{order}', [OrdersController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status', [OrdersController::class, 'updateStatus'])->name('orders.status');
+        Route::post('/orders/{order}/payment', [OrdersController::class, 'updatePayment'])->name('orders.payment');
+        Route::post('/orders/{order}/schedule', [OrdersController::class, 'updateSchedule'])->name('orders.schedule');
         // Issue an invoice/receipt for the order (freezes a document snapshot).
         Route::post('/orders/{order}/documents', [OrdersController::class, 'issueDocument'])->name('orders.documents.issue');
 
