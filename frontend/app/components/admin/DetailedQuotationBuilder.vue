@@ -296,7 +296,9 @@ const accepting = ref(false)
 const error = ref('')
 
 const clientValid = computed(() => !!client.client_id || (client.name.trim().length >= 2 && client.email.includes('@')))
-const canSave = computed(() => clientValid.value && !!scope.packageKey)
+// A detailed quote is priced by its composed sections, so the internal pricing
+// basis is optional — only the client is required to save.
+const canSave = computed(() => clientValid.value)
 
 function buildDocPayload() {
   const sections = doc.sections
@@ -376,7 +378,7 @@ function buildPayload() {
     email: client.email || null,
     phone: client.phone || null,
     company: client.company || null,
-    package_key: scope.packageKey,
+    package_key: scope.packageKey || null,
     modifiers: modifiers.value,
     addon_keys: scope.addonKeys,
     rush: scope.rush,
@@ -391,7 +393,7 @@ function buildPayload() {
 }
 
 async function persist(): Promise<number | null> {
-  if (!canSave.value) { error.value = 'Add a client and pick a package (pricing basis) first.'; return null }
+  if (!canSave.value) { error.value = 'Add a client first.'; return null }
   saving.value = true
   error.value = ''
   try {
@@ -547,8 +549,8 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
 
       <!-- Pricing basis -->
       <section class="rounded-2xl border p-6" :style="cardStyle">
-        <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Pricing basis (internal)</p>
-        <p class="text-[12px] mb-5" style="color: var(--color-text-tertiary);">Drives the internal estimate &amp; the order value. The client sees the composed document below, not this.</p>
+        <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Pricing basis (internal · optional)</p>
+        <p class="text-[12px] mb-5" style="color: var(--color-text-tertiary);">Optional — only sets an internal estimate for reference. The quote's value and the client's PDF come from the composed sections below, not this.</p>
         <QuoteScopeFields :state="scope" @update:estimate="estimate = $event" @update:modifiers="modifiers = $event" />
       </section>
 

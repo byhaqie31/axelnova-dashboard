@@ -29,7 +29,9 @@ class AdminQuotationRequest extends FormRequest
             'company' => ['nullable', 'string', 'max:200'],
 
             // Pricing inputs — re-priced server-side with the same engine as the funnel.
-            'package_key' => ['required', 'string', Rule::in($validPackageKeys)],
+            // A detailed quote is priced by its own composed sections, so the internal
+            // pricing-basis package is optional there; standard quotes still require one.
+            'package_key' => ['required_unless:document.layout,detailed', 'nullable', 'string', Rule::in($validPackageKeys)],
             'modifiers' => ['nullable', 'array'],
             'addon_keys' => ['nullable', 'array'],
             'addon_keys.*' => ['string', Rule::in($validAddonKeys)],

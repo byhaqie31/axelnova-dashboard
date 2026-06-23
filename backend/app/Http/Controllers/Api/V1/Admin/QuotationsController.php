@@ -10,6 +10,7 @@ use App\Models\Client;
 use App\Models\Inquiry;
 use App\Models\Order;
 use App\Models\Quotation;
+use App\Services\Quoting\EstimateResult;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
 use App\Support\DocumentType;
@@ -76,7 +77,7 @@ class QuotationsController extends Controller
         $quotation = DB::transaction(function () use ($data, $engine) {
             $client = $this->resolveClient($data);
             $input = $this->buildInput($client, $data);
-            $estimate = $engine->calculate($input);
+            $estimate = $input->packageKey ? $engine->calculate($input) : null;
 
             $quotation = Quotation::create(array_merge(
                 $this->pricedAttributes($client, $input, $engine, $estimate, $data),
@@ -114,7 +115,7 @@ class QuotationsController extends Controller
         DB::transaction(function () use ($data, $engine, $quotation) {
             $client = $this->resolveClient($data);
             $input = $this->buildInput($client, $data);
-            $estimate = $engine->calculate($input);
+            $estimate = $input->packageKey ? $engine->calculate($input) : null;
 
             $quotation->update($this->pricedAttributes($client, $input, $engine, $estimate, $data));
             $this->syncAddons($quotation, $input->addonKeys, $engine);
@@ -209,7 +210,7 @@ class QuotationsController extends Controller
             email: $client->email,
             phone: $client->phone ?? '',
             company: $client->company,
-            packageKey: $data['package_key'],
+            packageKey: $data['package_key'] ?? null,
             modifiers: $data['modifiers'] ?? [],
             addonKeys: $data['addon_keys'] ?? [],
             rush: (bool) ($data['rush'] ?? false),
@@ -217,28 +218,38 @@ class QuotationsController extends Controller
     }
 
     /** The shared attribute set written on both create and update (the re-priced quotation). */
-    private function pricedAttributes(Client $client, QuoteRequestInput $input, PricingEngine $engine, $estimate, array $data): array
+    private function pricedAttributes(Client $client, QuoteRequestInput $input, PricingEngine $engine, ?EstimateResult $estimate, array $data): array
     {
+        $document = $data['document'] ?? null;
+
+        // A detailed quote is priced by the sections the client actually sees, not
+        // the engine. Stamp the agreed total as the stored estimate (min == max)
+        // so the admin list, the order value, and the PDF all agree. Standard
+        // quotes (and detailed quotes with no priced sections) keep the engine range.
+        $detailedTotal = Quotation::sumDetailedSections($document);
+        $minMyr = $detailedTotal ?? ($estimate?->minMyr ?? 0);
+        $maxMyr = $detailedTotal ?? ($estimate?->maxMyr ?? 0);
+
         return [
             'client_id' => $client->id,
             'name' => $client->name,
             'email' => $client->email,
             'phone' => $client->phone,
             'company' => $client->company,
-            'package_key' => $input->packageKey,
+            'package_key' => $input->packageKey ?: null,
             'pricing_config_id' => $engine->getConfig()->id,
             'form_payload' => array_merge($data['form_payload'] ?? [], [
-                'package_key' => $input->packageKey,
+                'package_key' => $input->packageKey ?: null,
                 'modifiers' => $input->modifiers,
                 'addon_keys' => $input->addonKeys,
                 'rush' => $input->rush,
-                'breakdown' => $estimate->breakdown,
+                'breakdown' => $estimate?->breakdown ?? [],
             ]),
-            'document' => $data['document'] ?? null,
-            'estimate_min_myr' => $estimate->minMyr,
-            'estimate_max_myr' => $estimate->maxMyr,
-            'estimate_eta_value' => $estimate->etaValue,
-            'estimate_eta_unit' => $estimate->etaUnit,
+            'document' => $document,
+            'estimate_min_myr' => $minMyr,
+            'estimate_max_myr' => $maxMyr,
+            'estimate_eta_value' => $estimate?->etaValue ?? 0,
+            'estimate_eta_unit' => $estimate?->etaUnit ?? 'week',
         ];
     }
 
