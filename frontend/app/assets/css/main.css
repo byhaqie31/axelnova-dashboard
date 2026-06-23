@@ -3,6 +3,9 @@
 
 @theme static {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  /* Display face — Outfit. Used on signature headlines (.font-display). Falls
+     back to Inter so headings never render in a system face mid-swap. */
+  --font-display: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 :root {
@@ -213,10 +216,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 h1 { letter-spacing: -0.045em; }
 
+/* Display face only — weight/tracking are controlled by utilities at the call
+   site (e.g. the hero headline uses font-medium + tracking-tight). */
 .font-display {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  letter-spacing: -0.022em;
+  font-family: var(--font-display);
 }
 
 .eyebrow {
@@ -389,6 +392,36 @@ h1 { letter-spacing: -0.045em; }
 }
 .dark .btn-pill-accent:hover {
   box-shadow: 0 12px 32px rgba(41, 151, 255, 0.42);
+}
+
+/* Floating glass nav (hero quick-links pill). Uses the scrolled nav surface
+   token + heavy blur so it reads as frosted glass over media in both modes —
+   never bind these to colorMode in JS (FOUC). */
+.glass-nav {
+  border-radius: 9999px;
+  background: var(--nav-bg-scrolled);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* Shared chip surface — the hero nav "Get in touch" pill AND every marquee
+   logo card use this one rule (kept identical so the pill language reads as a
+   single system). Size/padding are set per call site with utilities. */
+.pill-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+.pill-chip:hover {
+  border-color: var(--color-border-strong);
 }
 
 /* Status pill — driven by data-status attribute, colors come from --status-{name}-fg/bg */

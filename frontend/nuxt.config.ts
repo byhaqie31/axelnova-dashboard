@@ -51,7 +51,8 @@ export default defineNuxtConfig({
 
   googleFonts: {
     families: {
-      'Inter': [400, 500, 600, 700, 800],
+      'Inter': [400, 500, 600, 700, 800], // body face
+      'Outfit': [400, 500, 600],          // display face (hero headline)
     },
     display: 'swap',
     download: true,
