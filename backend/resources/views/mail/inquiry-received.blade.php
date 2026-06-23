@@ -1,7 +1,7 @@
 @component('mail::message')
 # Thanks for reaching out, {{ $inquiry->name }}
 
-I've received your project inquiry and made a note of it. I'll review the details and get back to you with a tailored quote — usually within 1–2 business days.
+I've received your project inquiry and made a note of it. I'll review the details and get back to you with a tailored quote, usually within 1–2 business days.
 
 @php
     $hints = array_filter([
@@ -27,7 +27,7 @@ Chat on WhatsApp
 @endcomponent
 @endif
 
-In the meantime, just reply to this email with anything else that'll help me scope your project — I read every message personally.
+In the meantime, just reply to this email with anything else that'll help me scope your project. I read every message personally.
 
 Talk soon,
 

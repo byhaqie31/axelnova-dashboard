@@ -38,7 +38,7 @@ Download your quotation (PDF)
 @endforeach
 @endif
 
-This is an indicative estimate based on your inputs. Final scope and price are confirmed after a quick chat — that's where I dig into the actual details and tighten the numbers.
+This is an indicative estimate based on your inputs. Final scope and price are confirmed after a quick chat. That's where I dig into the actual details and tighten the numbers.
 
 @if($whatsappUrl)
 @component('mail::button', ['url' => $whatsappUrl, 'color' => 'green'])
@@ -46,7 +46,7 @@ Chat on WhatsApp
 @endcomponent
 @endif
 
-If you have any questions in the meantime, just reply to this email — I read every message personally.
+If you have any questions in the meantime, just reply to this email. I read every message personally.
 
 Looking forward to working together,
 
