@@ -110,7 +110,7 @@ const liveCount = computed(() => projects.value.filter(p => p.status === 'live')
 
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by name or slug…" />
-      <AdminStatusFilter v-model="filters.status" :options="statusOptions" class="ml-auto" />
+      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="projects.length" class="ml-auto" />
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
