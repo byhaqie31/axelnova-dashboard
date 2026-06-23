@@ -152,8 +152,10 @@ All buttons are 44pt tall (Apple HIG touch target), pill-shaped (`border-radius:
 | `.btn-pill-primary` | Solid `--color-text` on `--color-bg` (high contrast) |
 | `.btn-pill-ghost` | Transparent + `--color-border-strong` |
 | `.btn-pill-accent` | `--grad-cta` gradient + brand-tinted shadow + hover lift |
+| `.btn-pill-success` | Solid `--color-success` (green) + white text — WhatsApp / positive actions |
+| `.btn-pill-silver` | `--color-silver` metallic fill — neutral secondary actions (e.g. "Move back to draft") |
 
-**Rule:** one primary CTA per screen. Secondary actions are ghost.
+**Rule:** one primary CTA per screen. Secondary actions are ghost or silver; WhatsApp/positive actions use success green.
 
 ### 6.1 Glass nav & chip surfaces
 

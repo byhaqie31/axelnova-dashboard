@@ -74,8 +74,9 @@ function fmtDate(iso: string) {
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Clients</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Everyone who's inquired, been quoted, or ordered. Open one to see their full history.</p>
       </div>
-      <button type="button" class="btn-pill btn-pill-accent text-[13px]" @click="modalOpen = true">
-        <UIcon name="i-lucide-plus" class="size-4" /> New client
+      <button type="button" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5" @click="modalOpen = true">
+        <UIcon name="i-lucide-plus" class="size-3.5" />
+        New client
       </button>
     </div>
 

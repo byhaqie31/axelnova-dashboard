@@ -198,7 +198,7 @@ function fmtRm(n: string | number | null) {
           <a v-if="client.phone"
             :href="`https://wa.me/${client.phone.replace(/\D/g, '')}`"
             target="_blank" rel="noopener"
-            class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">WhatsApp</a>
+            class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
         </div>
       </div>
     </div>

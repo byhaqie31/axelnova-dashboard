@@ -35,6 +35,10 @@
   --color-warning: #FF9F0A;
   --color-danger:  #FF3B30;
 
+  /* Silver — neutral metallic fill for secondary actions */
+  --color-silver: #E2E2E7;
+  --color-silver-hover: #D6D6DB;
+
   /* Iridescent / aurora gradient stops */
   --grad-aurora-indigo: #6366F1;
   --grad-aurora-blue:   #0071E3;
@@ -125,6 +129,9 @@
   --color-accent-hover: #47A6FF;
   --color-accent-soft: rgba(41, 151, 255, 0.14);
   --color-success-soft: rgba(48, 209, 88, 0.18);
+
+  --color-silver: #3A3A3C;
+  --color-silver-hover: #48484A;
 
   --grad-text-premium: linear-gradient(135deg, #F5F5F7 0%, #86868B 100%);
   --grad-text-accent:  linear-gradient(135deg, #2997FF 0%, #C77DFF 100%);
@@ -392,6 +399,27 @@ h1 { letter-spacing: -0.045em; }
 }
 .dark .btn-pill-accent:hover {
   box-shadow: 0 12px 32px rgba(41, 151, 255, 0.42);
+}
+
+/* Success (green) — WhatsApp / positive actions */
+.btn-pill-success {
+  background: var(--color-success);
+  color: #fff;
+}
+.btn-pill-success:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 8px 24px var(--color-success-soft);
+  transform: translateY(-1px);
+}
+
+/* Silver — neutral metallic fill for secondary actions */
+.btn-pill-silver {
+  background: var(--color-silver);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.btn-pill-silver:hover {
+  background: var(--color-silver-hover);
 }
 
 /* Floating glass nav (hero quick-links pill). Uses the scrolled nav surface

@@ -117,7 +117,10 @@ onKeyStroke('Escape', () => { if (chooserOpen.value) chooserOpen.value = false }
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Drafts you're building plus quotes you've sent. Accepted quotations move to <NuxtLink to="/admin/orders" class="underline" :style="{ color: 'var(--color-accent)' }">Orders</NuxtLink>.</p>
       </div>
       <div class="flex items-center gap-3">
-        <button type="button" class="btn-pill btn-pill-accent text-[13px]" @click="chooserOpen = true">New quotation</button>
+        <button type="button" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5" @click="chooserOpen = true">
+          <UIcon name="i-lucide-plus" class="size-3.5" />
+          New quotation
+        </button>
       </div>
     </div>
 

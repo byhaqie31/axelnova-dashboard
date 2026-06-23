@@ -42,18 +42,24 @@ useHead(() => ({
   title: quotation.value ? `${quotation.value.reference_code} — Admin` : 'Quotation — Admin',
 }))
 
+// Sending fires two refreshes (a `saved` mid-send, then `sent`); guard so the
+// latest-issued fetch always wins and the page can't settle on a stale status.
+let fetchSeq = 0
 async function fetchQuotation() {
+  const seq = ++fetchSeq
   loading.value = true
   error.value = ''
   try {
     const res = await apiFetch<{ data: Quotation }>(`/api/v1/admin/quotations/${route.params.id}`)
+    if (seq !== fetchSeq) return
     quotation.value = res.data
   }
   catch {
+    if (seq !== fetchSeq) return
     error.value = 'Failed to load quotation.'
   }
   finally {
-    loading.value = false
+    if (seq === fetchSeq) loading.value = false
   }
 }
 
@@ -84,6 +90,20 @@ async function acceptQuotation() {
   }
   catch { toast.error('Couldn’t accept quotation', 'Something went wrong. Please try again.') }
   finally { acceptLoading.value = false }
+}
+
+// Re-open a sent/rejected/expired quote for editing. Flipping to draft swaps the
+// read view back to the builder (isDraft) and re-enables the edit endpoint.
+async function revertToDraft() {
+  if (!quotation.value) return
+  statusLoading.value = true
+  try {
+    await apiFetch(`/api/v1/admin/quotations/${quotation.value.id}/status`, { method: 'POST', body: { status: 'draft' } })
+    quotation.value.status = 'draft'
+    toast.success('Back to draft', 'Edit and re-send when you’re ready.')
+  }
+  catch { toast.error('Couldn’t move to draft', 'Something went wrong. Please try again.') }
+  finally { statusLoading.value = false }
 }
 
 function viewPdf() {
@@ -248,9 +268,12 @@ const scopeFields = computed(() => {
 
           <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Actions</p>
+            <button v-if="quotation.status !== 'accepted'" class="btn-pill btn-pill-silver w-full justify-center text-[13px]" :disabled="statusLoading" @click="revertToDraft">
+              {{ statusLoading ? 'Moving…' : 'Move back to draft' }}
+            </button>
             <a :href="`mailto:${quotation.email}?subject=Re: your quote ${quotation.reference_code}`" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">Reply by email</a>
             <a v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
-              target="_blank" rel="noopener" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">WhatsApp</a>
+              target="_blank" rel="noopener" class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
             <button v-if="quotation.status !== 'accepted'" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="acceptLoading" @click="acceptQuotation">
               {{ acceptLoading ? 'Accepting…' : 'Accept & create order' }}
             </button>

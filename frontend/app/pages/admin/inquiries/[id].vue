@@ -205,7 +205,7 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
           <a v-if="inquiry.phone"
             :href="`https://wa.me/${inquiry.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(inquiry.name)}%2C%20thanks%20for%20your%20project%20inquiry.`"
             target="_blank" rel="noopener"
-            class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
+            class="btn-pill btn-pill-success w-full justify-center text-[13px]">
             WhatsApp
           </a>
         </div>
