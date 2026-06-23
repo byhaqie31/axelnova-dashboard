@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\Quotation;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
+use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -80,7 +81,7 @@ class QuotationsController extends Controller
             $quotation = Quotation::create(array_merge(
                 $this->pricedAttributes($client, $input, $engine, $estimate, $data),
                 [
-                    'reference_code' => ReferenceCodeGenerator::generate(),
+                    'reference_code' => ReferenceCodeGenerator::generate(DocumentType::Quotation),
                     'source' => ! empty($data['inquiry_id']) ? 'inquiry' : 'admin',
                     'public_token' => Str::random(48),
                     'status' => 'draft',
@@ -168,7 +169,7 @@ class QuotationsController extends Controller
             $quotation->update(['status' => 'accepted']);
 
             return Order::create([
-                'order_number' => $this->generateOrderNumber(),
+                'order_number' => ReferenceCodeGenerator::generate(DocumentType::Order),
                 'quotation_id' => $quotation->id,
                 'client_id' => $quotation->client_id,
                 'value_min_myr' => $quotation->estimate_min_myr,
@@ -257,18 +258,4 @@ class QuotationsController extends Controller
         }
     }
 
-    private function generateOrderNumber(): string
-    {
-        return DB::transaction(function () {
-            $year = date('Y');
-            $latest = Order::where('order_number', 'like', "ORD-{$year}-%")
-                ->lockForUpdate()
-                ->orderByDesc('id')
-                ->value('order_number');
-
-            $next = $latest ? ((int) substr($latest, -4)) + 1 : 1;
-
-            return sprintf('ORD-%s-%04d', $year, $next);
-        });
-    }
 }

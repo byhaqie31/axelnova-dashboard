@@ -10,6 +10,7 @@ use App\Models\Client;
 use App\Models\Quotation;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
+use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ class QuoteRequestController extends Controller
         );
 
         $estimate = $engine->calculate($input);
-        $refCode = ReferenceCodeGenerator::generate();
+        $refCode = ReferenceCodeGenerator::generate(DocumentType::Quotation);
 
         $quotation = DB::transaction(function () use ($request, $input, $engine, $estimate, $refCode) {
             // Upsert Client by email so repeat customers stay deduplicated.

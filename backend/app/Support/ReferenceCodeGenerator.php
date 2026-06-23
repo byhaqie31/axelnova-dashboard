@@ -2,25 +2,51 @@
 
 namespace App\Support;
 
-use App\Models\Quotation;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 
+/**
+ * Mints the next code in the AXN document family — AXN-{TYPE}-{YYYY}-{NNNN}.
+ *
+ * The single source of truth for document identifiers. Each type keeps its own
+ * yearly counter, reset every year, and the next sequence is read under a
+ * row lock inside a transaction so concurrent mints can never collide.
+ */
 class ReferenceCodeGenerator
 {
-    public static function generate(): string
+    public static function generate(DocumentType $type, ?int $year = null): string
     {
-        return DB::transaction(function () {
-            $year = now()->year;
+        // now() resolves in APP_TIMEZONE (Asia/Kuala_Lumpur), so the yearly
+        // rollover flips at local midnight.
+        $year ??= now()->year;
 
-            $last = Quotation::withTrashed()
-                ->where('reference_code', 'like', "AXN-{$year}-%")
+        $table = $type->table();
+        $column = $type->column();
+
+        // Invoices are on the roadmap; their table isn't provisioned yet. Fail
+        // loudly rather than mint a code into a missing column.
+        if (! Schema::hasTable($table)) {
+            throw new RuntimeException(
+                "Cannot mint {$type->name} code: '{$table}' table not yet provisioned.",
+            );
+        }
+
+        $prefix = sprintf('AXN-%s-%d-', $type->value, $year);
+
+        return DB::transaction(function () use ($table, $column, $prefix) {
+            // Raw table query deliberately includes soft-deleted rows so a
+            // sequence is never reused after a delete. Same prefix + fixed
+            // zero-padded width means lexical desc == numeric desc.
+            $last = DB::table($table)
+                ->where($column, 'like', $prefix.'%')
                 ->lockForUpdate()
-                ->orderByDesc('reference_code')
-                ->value('reference_code');
+                ->orderByDesc($column)
+                ->value($column);
 
             $next = $last ? ((int) substr($last, -4)) + 1 : 1;
 
-            return sprintf('AXN-%d-%04d', $year, $next);
+            return $prefix.sprintf('%04d', $next);
         });
     }
 }
