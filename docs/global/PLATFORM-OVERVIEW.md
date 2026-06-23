@@ -45,7 +45,7 @@ The core business flow:
 ```
 Visitor builds a quote on /quote
    → POST /api/v1/quote-requests
-   → backend prices it (PricingEngine), generates AXN-Q-YYYY-NNNN code,
+   → backend prices it (PricingEngine), generates AXNQ-YYYY-NNNN code,
      creates a Client + Quotation, queues two emails
    → customer gets an inline HTML estimate; admin gets a lead notification
    → admin reviews in /admin/quotations, updates status, and "Accepts"
@@ -310,7 +310,7 @@ Three pages backed by `useQuoteForm()` shared state and the cached config endpoi
 
 **Step 3 — `/quote/success`** (`noindex`) — green checkmark, **reference code** (copy button), valid-until, "what happens next" 4-step list, "Book a discovery call →" (Calendly) and "Back to home".
 
-The **server** is the source of truth: on submit it re-prices with `PricingEngine`, generates the real `AXN-Q-YYYY-NNNN` code, upserts the Client, stores the Quotation + add-ons, and queues the two emails.
+The **server** is the source of truth: on submit it re-prices with `PricingEngine`, generates the real `AXNQ-YYYY-NNNN` code, upserts the Client, stores the Quotation + add-ons, and queues the two emails.
 
 ---
 
@@ -400,7 +400,7 @@ Overview with four **stat tiles**: Total quotations · New (unactioned) · Activ
 ### Services & support
 - **`Services/Quoting/PricingEngine.php`** — source-of-truth calculation (see [section 14](#14-the-pricing-engine)).
 - `Services/Quoting/EstimateResult.php` + `QuoteRequestInput.php` — typed value objects (`minMyr`, `maxMyr`, `etaValue`, `etaUnit`, `breakdown`).
-- **`Support/ReferenceCodeGenerator.php`** — atomic AXN document-family codes `AXN-{TYPE}-YYYY-NNNN` (type `Q`/`O`/`I` via the `DocumentType` enum) through a DB transaction with `lockForUpdate()`; each type's counter resets yearly.
+- **`Support/ReferenceCodeGenerator.php`** — atomic AXN document-family codes `AXN{TYPE}-YYYY-NNNN` (type `Q`/`O`/`I` fused into the prefix via the `DocumentType` enum) through a DB transaction with `lockForUpdate()`; each type's counter resets yearly.
 - **`Support/SortOrder.php`** — ordered-list helper (`placeNew` / `move` / `removeFromScope`) for the catalog sort_order columns; caller wraps in a transaction.
 
 ### Observers (`app/Observers/`)

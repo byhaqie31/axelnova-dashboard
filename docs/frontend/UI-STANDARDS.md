@@ -233,7 +233,7 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 
 - **`PriceTag`** — MYR-formatted (Intl `ms-MY`). Props: `min`, `max?`, `prefix?`, `compact?`. Renders ranges with en-dash, prefixed values with em-dash separator.
 - **`StatusPill`** — status badge with semantic tone mapping. Props: `status`, `type` (`lead` | `quotation` | `project` | `invoice` | `milestone`). Reads existing CSS tokens (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`); no new color tokens introduced.
-- **`ReferenceCode`** — monospace document-code display (e.g. `AXN-Q-2026-0012`) with click-to-copy via `useClipboard`. Renders any string; falls back to plain span when `copyable={false}`.
+- **`ReferenceCode`** — monospace document-code display (e.g. `AXNQ-2026-0012`) with click-to-copy via `useClipboard`. Renders any string; falls back to plain span when `copyable={false}`.
 - **`DateRange`** — Intl `en-MY` formatted dates. Formats: `short`, `long`, `relative`. Accepts optional `prefix` ("Valid until", "Issued").
 
 ### Filter pills

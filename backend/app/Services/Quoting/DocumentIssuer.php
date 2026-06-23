@@ -53,7 +53,7 @@ class DocumentIssuer
     }
 
     /**
-     * Derived number: e.g. INV-AXN-Q-2026-0011. A second document of the same type
+     * Derived number: e.g. INV-AXNQ-2026-0011. A second document of the same type
      * for the same order gets a -2, -3 … suffix. Locked for the transaction.
      */
     private static function nextNumber(Order $order, string $type): string

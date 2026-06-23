@@ -172,7 +172,7 @@ decisions:
    for financial/audit correctness. The PDF binary itself is *not* stored; it
    re-renders from the frozen payload.
 2. **Derived, atomic numbering.** `INV-` / `RCP-` + the order's quotation
-   reference, e.g. `INV-AXN-Q-2026-0006`. A second document of the same type for
+   reference, e.g. `INV-AXNQ-2026-0006`. A second document of the same type for
    the same order gets a `-2`, `-3` … suffix. Locked with `lockForUpdate()`
    inside a transaction (`DocumentIssuer::nextNumber`).
 

@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
 /**
- * Mints the next code in the AXN document family — AXN-{TYPE}-{YYYY}-{NNNN}.
+ * Mints the next code in the AXN document family — AXN{TYPE}-{YYYY}-{NNNN}
+ * (e.g. AXNQ-2026-0012). The type letter fuses into the prefix, leaving a clean
+ * numeric tail.
  *
  * The single source of truth for document identifiers. Each type keeps its own
  * yearly counter, reset every year, and the next sequence is read under a
@@ -32,12 +34,14 @@ class ReferenceCodeGenerator
             );
         }
 
-        $prefix = sprintf('AXN-%s-%d-', $type->value, $year);
+        // Type letter fuses into the prefix: AXNQ- / AXNO- / AXNI-.
+        $prefix = sprintf('AXN%s-%d-', $type->value, $year);
 
         return DB::transaction(function () use ($table, $column, $prefix) {
             // Raw table query deliberately includes soft-deleted rows so a
             // sequence is never reused after a delete. Same prefix + fixed
-            // zero-padded width means lexical desc == numeric desc.
+            // zero-padded width means lexical desc == numeric desc, and the
+            // trailing 4 digits are the sequence.
             $last = DB::table($table)
                 ->where($column, 'like', $prefix.'%')
                 ->lockForUpdate()

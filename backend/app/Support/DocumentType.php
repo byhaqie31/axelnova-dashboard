@@ -3,8 +3,8 @@
 namespace App\Support;
 
 /**
- * The AXN document family — one branded prefix, a one-letter type, then a
- * per-type yearly sequence: AXN-{TYPE}-{YYYY}-{NNNN}.
+ * The AXN document family — one branded prefix with the type letter fused in,
+ * then a per-type yearly sequence: AXN{TYPE}-{YYYY}-{NNNN} (e.g. AXNQ-2026-0012).
  *
  * Each case knows the table + column its sequence lives in, so the generator
  * stays the single source of truth for minting codes.
