@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInquiryRequest;
 use App\Mail\InquiryReceivedMail;
+use App\Models\Client;
 use App\Models\Inquiry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Mail;
@@ -13,7 +14,18 @@ class InquiryController extends Controller
 {
     public function store(StoreInquiryRequest $request): JsonResponse
     {
+        // Every inquiry lands under a customer — matched by email, created if new.
+        $client = Client::firstOrCreate(
+            ['email' => $request->input('email')],
+            [
+                'name' => $request->input('name'),
+                'phone' => $request->input('phone'),
+                'company' => $request->input('company'),
+            ],
+        );
+
         $inquiry = Inquiry::create([
+            'client_id' => $client->id,
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'phone' => $request->input('phone'),

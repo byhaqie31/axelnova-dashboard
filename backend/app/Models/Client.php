@@ -17,6 +17,11 @@ class Client extends Model
         return ['tags' => 'array'];
     }
 
+    public function inquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class);
+    }
+
     public function quotations(): HasMany
     {
         return $this->hasMany(Quotation::class);

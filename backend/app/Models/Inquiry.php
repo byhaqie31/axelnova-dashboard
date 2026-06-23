@@ -11,6 +11,7 @@ class Inquiry extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'client_id',
         'name',
         'email',
         'phone',
@@ -25,6 +26,11 @@ class Inquiry extends Model
         'ip_address',
         'user_agent',
     ];
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
 
     public function quotation(): BelongsTo
     {

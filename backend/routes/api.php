@@ -88,8 +88,11 @@ Route::middleware([
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/me', [AuthController::class, 'me'])->name('me');
 
-        // Client typeahead for the quotation builder
+        // Customers (clients) — typeahead for the builder + the Customers spine
         Route::get('/clients', [ClientsController::class, 'index'])->name('clients.index');
+        Route::post('/clients', [ClientsController::class, 'store'])->name('clients.store');
+        Route::get('/clients/{client}', [ClientsController::class, 'show'])->name('clients.show');
+        Route::put('/clients/{client}', [ClientsController::class, 'update'])->name('clients.update');
 
         // Analytics overview (traffic / engagement)
         Route::get('/analytics/overview', [AnalyticsController::class, 'overview'])->name('analytics.overview');
