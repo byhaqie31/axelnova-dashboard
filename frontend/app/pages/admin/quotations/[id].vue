@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
 import DetailedQuotationBuilder from '~/components/admin/DetailedQuotationBuilder.vue'
+import DetailedQuotationView from '~/components/admin/DetailedQuotationView.vue'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -206,6 +207,10 @@ const scopeFields = computed(() => {
             </div>
           </div>
 
+          <!-- Detailed → composed document view; standard → estimate + scope cards -->
+          <DetailedQuotationView v-if="isDetailed && quotation.document?.payload" :payload="quotation.document.payload" />
+
+          <template v-else>
           <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Estimate</p>
             <p class="text-[30px] font-bold tracking-tight mb-1" style="color: var(--color-text);">
@@ -246,6 +251,7 @@ const scopeFields = computed(() => {
               </div>
             </div>
           </div>
+          </template>
         </div>
 
         <div class="lg:sticky lg:top-20 space-y-4">
