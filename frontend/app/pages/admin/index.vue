@@ -20,7 +20,7 @@ interface Quotation {
 
 const recent = ref<Quotation[]>([])
 const totalQuotations = ref<number | null>(null)
-const newQuotations = ref<number | null>(null)
+const activeReferrals = ref<number | null>(null)
 const activeOrders = ref<number | null>(null)
 const openInquiries = ref<number | null>(null)
 const draftQuotations = ref<number | null>(null)
@@ -30,7 +30,7 @@ const error = ref('')
 
 // Displayed metric values — counted up briefly (dashboard register, ~0.9s)
 // when the real numbers arrive. Instant under reduced motion.
-const shown = reactive({ total: 0, newQ: 0, orders: 0, inq: 0, draft: 0, views: 0 })
+const shown = reactive({ total: 0, refs: 0, orders: 0, inq: 0, draft: 0, views: 0 })
 
 function countTo(key: keyof typeof shown, end: number) {
   if (!import.meta.client || motion.reduced) {
@@ -51,21 +51,24 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [recentRes, newRes, ordersRes, inqRes, draftRes] = await Promise.all([
+    const [recentRes, refsAllRes, refsRejRes, ordersRes, inqRes, draftRes] = await Promise.all([
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?include_accepted=1&page=1'),
-      apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?status=new&page=1'),
+      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/referrals?page=1'),
+      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/referrals?status=rejected&page=1'),
       apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/orders?page=1'),
       apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/inquiries?status=new&page=1'),
       apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/quotations?status=draft&page=1'),
     ])
+    // Active referrals = all referrals minus rejected.
+    const activeRefs = Math.max(0, refsAllRes.meta.total - refsRejRes.meta.total)
     recent.value = recentRes.data.slice(0, 5)
     totalQuotations.value = recentRes.meta.total
-    newQuotations.value = newRes.meta.total
+    activeReferrals.value = activeRefs
     activeOrders.value = ordersRes.meta.total
     openInquiries.value = inqRes.meta.total
     draftQuotations.value = draftRes.meta.total
     countTo('total', recentRes.meta.total)
-    countTo('newQ', newRes.meta.total)
+    countTo('refs', activeRefs)
     countTo('orders', ordersRes.meta.total)
     countTo('inq', inqRes.meta.total)
     countTo('draft', draftRes.meta.total)
@@ -151,12 +154,12 @@ const tiles = computed<StatTile[]>(() => [
     cta: 'View quotations',
   },
   {
-    label: 'New (unactioned)',
-    value: newQuotations.value === null ? '—' : String(shown.newQ),
-    hint: 'Status = new',
-    icon: 'i-lucide-inbox',
-    to: '/admin/quotations?status=new',
-    cta: 'View new',
+    label: 'Active referrals',
+    value: activeReferrals.value === null ? '—' : String(shown.refs),
+    hint: 'Excludes rejected',
+    icon: 'i-lucide-share-2',
+    to: '/admin/referrals',
+    cta: 'View referrals',
   },
   {
     label: 'Active orders',

@@ -231,10 +231,9 @@ tbody tr:last-child td{border-bottom:0;}
   font-size:13px;font-weight:600;color:var(--ink);}
 .tot-row.grand .v{font-size:14px;font-weight:500;color:var(--red-deep);}
 .deposit{margin-top:14px;border:1px solid var(--red);border-radius:9px;padding:15px 18px;}
+.deposit .val{font-family:'Geist Mono',monospace;font-size:22px;color:var(--red);}
 .deposit .label{font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--red);}
-.deposit .val{font-family:'Geist Mono',monospace;font-size:22px;margin-top:8px;
-  color:var(--red);}
+  text-transform:uppercase;color:var(--red);margin-top:6px;}
 .deposit .bal{font-size:10px;color:var(--muted);margin-top:9px;}
 
 /* ---- payment / acceptance (standard) ---- */
@@ -440,8 +439,8 @@ function renderStandard(data: DocumentData): string {
   const depositCard =
     (data.depositPct ?? 100) < 100
       ? `<div class="deposit">
-           <div class="label">Deposit to commence · ${data.depositPct}%</div>
            <div class="val">${money(t.deposit, cur, 2)}</div>
+           <div class="label">Deposit to commence · ${data.depositPct}%</div>
            <div class="bal">Balance on delivery&nbsp;&nbsp;${money(t.balance, cur, 2)}</div>
          </div>`
       : "";
