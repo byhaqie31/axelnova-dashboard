@@ -2,13 +2,14 @@
 
 namespace App\Services\Quoting;
 
-use App\Models\Document;
+use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\Receipt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Issues an invoice or receipt for an order: assigns a derived, atomic number,
+ * Issues invoices and receipts for an order: assigns a derived, atomic number,
  * freezes the DocumentData snapshot, and persists it. The PDF is never stored —
  * it renders on demand from the frozen `payload`.
  */
@@ -17,39 +18,88 @@ class DocumentIssuer
     private const PREFIX = ['invoice' => 'INV', 'receipt' => 'RCP'];
 
     /**
-     * @param  array  $input  number override, layout, amountPaid, paymentRef,
-     *                        paymentMethod, statusLabel, notes, payload override.
+     * Issue an invoice (deposit / partial / final). A recorded payment accrues
+     * onto the order's running paid total and stamps `paid_at` when fully paid.
+     *
+     * @param  array  $input  invoiceType, amountPaid, paymentRef, paymentMethod,
+     *                        status, issued, payload override.
      */
-    public static function issue(Order $order, string $type, array $input = []): Document
+    public static function issueInvoice(Order $order, array $input = []): Invoice
     {
-        if (! isset(self::PREFIX[$type])) {
-            throw new \InvalidArgumentException("Unknown document type: {$type}");
-        }
+        return DB::transaction(function () use ($order, $input) {
+            $number = self::nextNumber($order, 'invoice');
 
-        return DB::transaction(function () use ($order, $type, $input) {
-            $number = self::nextNumber($order, $type);
-
-            $payload = DocumentMapper::forOrder($order, $type, array_merge($input, [
+            $payload = DocumentMapper::forOrder($order, 'invoice', array_merge($input, [
                 'number' => $number,
                 'issued' => $input['issued'] ?? now()->format('d F Y'),
             ]));
 
-            $total = self::payloadTotal($payload);
+            $amountPaid = isset($input['amountPaid']) ? (float) $input['amountPaid'] : null;
+            $status = $input['status'] ?? 'issued';
 
-            return Document::create([
+            $invoice = Invoice::create([
                 'order_id' => $order->id,
-                'type' => $type,
-                'number' => $number,
+                'invoice_number' => $number,
                 'public_token' => Str::random(48),
+                'type' => $input['invoiceType'] ?? 'deposit',
                 'payload' => $payload,
-                'amount_total' => $total,
-                'amount_paid' => isset($input['amountPaid']) ? (float) $input['amountPaid'] : null,
+                'amount_total' => self::payloadTotal($payload),
+                'amount_paid' => $amountPaid,
                 'payment_ref' => $input['paymentRef'] ?? null,
                 'payment_method' => $input['paymentMethod'] ?? null,
-                'status' => $input['status'] ?? 'issued',
+                'status' => $status,
+                'issued_at' => now(),
+                'paid_at' => $status === 'paid' ? now() : null,
+            ]);
+
+            if ($amountPaid !== null && $amountPaid > 0) {
+                self::accruePayment($order, $amountPaid);
+            }
+
+            return $invoice;
+        });
+    }
+
+    /**
+     * Issue a receipt confirming a settled payment, optionally tied to the
+     * invoice it settles.
+     *
+     * @param  array  $input  invoice_id, amountPaid, paymentRef, paymentMethod,
+     *                        issued, payload override.
+     */
+    public static function issueReceipt(Order $order, array $input = []): Receipt
+    {
+        return DB::transaction(function () use ($order, $input) {
+            $number = self::nextNumber($order, 'receipt');
+
+            $payload = DocumentMapper::forOrder($order, 'receipt', array_merge($input, [
+                'number' => $number,
+                'issued' => $input['issued'] ?? now()->format('d F Y'),
+            ]));
+
+            return Receipt::create([
+                'order_id' => $order->id,
+                'invoice_id' => $input['invoice_id'] ?? null,
+                'receipt_number' => $number,
+                'public_token' => Str::random(48),
+                'payload' => $payload,
+                'amount' => isset($input['amountPaid']) ? (float) $input['amountPaid'] : self::payloadTotal($payload),
+                'payment_ref' => $input['paymentRef'] ?? null,
+                'payment_method' => $input['paymentMethod'] ?? null,
+                'status' => 'issued',
                 'issued_at' => now(),
             ]);
         });
+    }
+
+    /** Add a payment to the order's running paid total, clamped to the agreed total. */
+    private static function accruePayment(Order $order, float $amount): void
+    {
+        $final = (float) $order->final_amount_myr;
+        $paid = (float) $order->amount_paid_myr + $amount;
+        $order->update([
+            'amount_paid_myr' => $final > 0 ? min($paid, $final) : max($paid, 0),
+        ]);
     }
 
     /**
@@ -62,11 +112,9 @@ class DocumentIssuer
         $base = $order->quotation?->reference_code ?? $order->order_number;
         $root = "{$prefix}-{$base}";
 
-        $taken = Document::withTrashed()
-            ->where('number', 'like', "{$root}%")
-            ->lockForUpdate()
-            ->pluck('number')
-            ->all();
+        $taken = $type === 'invoice'
+            ? Invoice::withTrashed()->where('invoice_number', 'like', "{$root}%")->lockForUpdate()->pluck('invoice_number')->all()
+            : Receipt::withTrashed()->where('receipt_number', 'like', "{$root}%")->lockForUpdate()->pluck('receipt_number')->all();
 
         if (! in_array($root, $taken, true)) {
             return $root;

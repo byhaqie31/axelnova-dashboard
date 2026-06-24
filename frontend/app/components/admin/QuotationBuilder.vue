@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import QuoteScopeFields from '~/components/shared/QuoteScopeFields.vue'
+import DetailedProposalFields from '~/components/admin/DetailedProposalFields.vue'
 import type { QuoteScopeState } from '~/composables/quoteScope'
 import type { EstimateResult } from '~/composables/usePricingEngine'
 import { defaultQuoteScope, scopeToPayload } from '~/composables/quoteScope'
@@ -15,6 +16,7 @@ interface QuotationLike {
   phone: string | null
   company: string | null
   package_key: string | null
+  expires_at?: string | null
   form_payload: Record<string, any> | null
   document: Record<string, any> | null
 }
@@ -26,7 +28,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   saved: [id: number]
-  sent: []
+  sent: [quotation: Record<string, any>]
   accepted: [orderId: number]
 }>()
 
@@ -98,6 +100,19 @@ const scope = reactive<QuoteScopeState>(defaultQuoteScope())
 const estimate = ref<EstimateResult | null>(null)
 const modifiers = ref<Record<string, boolean | number>>({})
 
+// ── Detailed proposal (optional inline upgrade) ──────────────────────────────
+// When on, the quote saves as layout:'detailed' — the line items become the
+// "Scope of work" section and the extra blocks (What's included / option cards /
+// care plan) from the child are merged in. Removing it keeps the quote standard.
+const detailed = ref(false)
+const detailedInitial = ref<Record<string, any> | null>(null)
+const detailedRef = ref<InstanceType<typeof DetailedProposalFields> | null>(null)
+// Bumped on revert to force the detailed child to remount + re-hydrate from the
+// restored payload (it reads its initial state once, on mount).
+const detailedKey = ref(0)
+function enableDetailed() { detailed.value = true }
+function disableDetailed() { detailed.value = false; detailedInitial.value = null }
+
 // ── Document ────────────────────────────────────────────────────────────────
 interface LineItem { title: string; desc: string; qty: number; unit: string; rate: number }
 const doc = reactive({
@@ -107,6 +122,10 @@ const doc = reactive({
   termsText: '',
   deposit_pct: 50,
 })
+
+// Optional custom validity date (YYYY-MM-DD). Blank → send() defaults it to
+// valid_for_days after sending.
+const validUntil = ref('')
 
 const defaultTerms = [
   '50% deposit to commence; balance due on delivery before handover.',
@@ -177,19 +196,37 @@ function hydrateScope(fp: Record<string, any>, packageKey: string | null) {
   })
 }
 
-onMounted(async () => {
-  await loadConfig()
-
-  if (props.quotation) {
-    const q = props.quotation
-    client.mode = q.client_id ? 'search' : 'new'
-    client.client_id = q.client_id
-    client.name = q.name
-    client.email = q.email
-    client.phone = q.phone ?? ''
-    client.company = q.company ?? ''
-    hydrateScope(q.form_payload ?? {}, q.package_key)
-    const d = q.document ?? {}
+// Hydrate the whole form from a saved quotation — used on mount and on revert.
+function loadFromQuotation(q: QuotationLike) {
+  client.mode = q.client_id ? 'search' : 'new'
+  client.client_id = q.client_id
+  client.name = q.name
+  client.email = q.email
+  client.phone = q.phone ?? ''
+  client.company = q.company ?? ''
+  validUntil.value = q.expires_at ? q.expires_at.slice(0, 10) : ''
+  hydrateScope(q.form_payload ?? {}, q.package_key)
+  const d = q.document ?? {}
+  if (d.layout === 'detailed' && d.payload) {
+    // Detailed quote: flatten the scope sections back into editable line items
+    // (one line per row — section grouping isn't represented in the merged
+    // builder) and hand the extra blocks to the child via `detailedInitial`.
+    const p = d.payload
+    doc.project = p.project ?? ''
+    doc.intro = p.intro ?? ''
+    const items: LineItem[] = []
+    for (const s of (p.sections ?? [])) {
+      for (const r of (s.rows ?? [])) {
+        items.push({ title: r.title ?? '', desc: r.detail ?? '', qty: 1, unit: '', rate: Number(r.price) || 0 })
+      }
+    }
+    doc.items = items
+    doc.termsText = (p.paymentTerms?.items ?? defaultTerms).join('\n')
+    doc.deposit_pct = d.deposit_pct ?? 50
+    detailedInitial.value = p
+    detailed.value = true
+  }
+  else {
     doc.project = d.project ?? ''
     doc.intro = d.intro ?? ''
     doc.items = (d.items ?? []).map((it: any) => ({
@@ -197,6 +234,16 @@ onMounted(async () => {
     }))
     doc.termsText = (d.terms ?? defaultTerms).join('\n')
     doc.deposit_pct = d.deposit_pct ?? 50
+    detailedInitial.value = null
+    detailed.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadConfig()
+
+  if (props.quotation) {
+    loadFromQuotation(props.quotation)
   }
   else {
     doc.termsText = defaultTerms.join('\n')
@@ -215,6 +262,12 @@ onMounted(async () => {
       catch { /* prefill is best-effort */ }
     }
   }
+
+  // Wait for the detailed child (if any) to mount + hydrate so its blocks are part
+  // of the snapshot — otherwise an existing detailed quote would read as dirty.
+  await nextTick()
+  // Snapshot the loaded form so the Save button can detect real edits (`dirty`).
+  baseline.value = formFingerprint()
 })
 
 // ── Actions ─────────────────────────────────────────────────────────────────
@@ -223,37 +276,156 @@ const sending = ref(false)
 const accepting = ref(false)
 const error = ref('')
 
-const clientValid = computed(() => !!client.client_id || (client.name.trim().length >= 2 && client.email.includes('@')))
-const canSave = computed(() => clientValid.value && !!scope.packageKey)
+// ── Required-field validation ────────────────────────────────────────────────
+// Mirrors the server rules (AdminQuotationRequest): a client (an existing one, or
+// name + email) is always required; a package is required for standard quotes
+// (optional for detailed); every line item needs a title. These messages drive the
+// inline errors + red field highlights; validate() also scrolls to the first miss.
+const errors = reactive<{ name: string; email: string; client: string; package: string; items: Record<number, string> }>({
+  name: '', email: '', client: '', package: '', items: {},
+})
+
+function clearErrors() {
+  errors.name = ''; errors.email = ''; errors.client = ''; errors.package = ''; errors.items = {}
+}
+
+function scrollToField(id: string) {
+  nextTick(() => {
+    const el = document.getElementById(id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (el instanceof HTMLInputElement) el.focus({ preventScroll: true })
+  })
+}
+
+function validate(): boolean {
+  clearErrors()
+  let firstId = ''
+  if (!client.client_id) {
+    if (client.mode === 'search') {
+      errors.client = 'Select an existing client, or switch to New to add one.'
+      firstId ||= 'qb-client'
+    }
+    else {
+      if (client.name.trim().length < 2) { errors.name = 'Client name is required.'; firstId ||= 'qb-name' }
+      if (!client.email.includes('@')) { errors.email = 'A valid email is required.'; firstId ||= 'qb-email' }
+    }
+  }
+  if (!detailed.value && !scope.packageKey) { errors.package = 'Pick a package.'; firstId ||= 'qb-package' }
+  doc.items.forEach((it, i) => {
+    if (!it.title.trim()) { errors.items[i] = 'Title is required.'; firstId ||= `qb-item-${i}` }
+  })
+  if (firstId) scrollToField(firstId)
+  return !firstId
+}
+
+// Reflect Laravel 422 field errors back onto the inputs (best-effort key mapping).
+function mapServerErrors(se?: Record<string, string[]>) {
+  if (!se) return
+  const name = se.name?.[0]
+  const email = se.email?.[0]
+  const pkg = se.package_key?.[0]
+  if (name) errors.name = name
+  if (email) errors.email = email
+  if (pkg) errors.package = pkg
+  for (const k of Object.keys(se)) {
+    const m = k.match(/^document\.items\.(\d+)\.title$/)
+    const msg = se[k]?.[0]
+    if (m && msg) errors.items[Number(m[1])] = msg
+  }
+}
+
+// Clear a field's error as soon as the user addresses it.
+watch(() => [client.name, client.email, client.client_id, client.mode], () => { errors.name = ''; errors.email = ''; errors.client = '' })
+watch(() => scope.packageKey, () => { errors.package = '' })
+watch(() => doc.items.map(i => i.title), () => { errors.items = {} })
 
 function buildPayload() {
-  return {
+  const terms = doc.termsText.split('\n').map(t => t.trim()).filter(Boolean)
+  const base = {
     client_id: client.client_id,
     name: client.name || null,
     email: client.email || null,
     phone: client.phone || null,
     company: client.company || null,
-    package_key: scope.packageKey,
+    package_key: scope.packageKey || null,
     modifiers: modifiers.value,
     addon_keys: scope.addonKeys,
     rush: scope.rush,
+    expires_at: validUntil.value || null,
     form_payload: { ...scopeToPayload(scope), category_key: scope.categoryKey },
+    inquiry_id: props.inquiryId ?? null,
+  }
+
+  if (detailed.value) {
+    // Line items → a single "Scope of work" section; the rest of the proposal
+    // (included / options / care / subtitle / attn) comes from the child.
+    const scopeTotal = grandTotal.value
+    const rows = doc.items.map(i => ({
+      title: i.title,
+      detail: i.desc || '',
+      price: (Number(i.qty) || 0) * (Number(i.rate) || 0),
+    }))
+    const sections = rows.length
+      ? [{ title: 'Scope of work', rows, totalLabel: 'Scope of work total', total: scopeTotal }]
+      : []
+    const depositPct = Number(doc.deposit_pct) || 0
+    const summaryRows: Record<string, any>[] = sections.map(s => ({ label: s.title, price: s.total }))
+    summaryRows.push({ label: 'Project total', price: scopeTotal, total: true, red: true })
+    const panels: Record<string, any>[] = []
+    if (depositPct > 0 && scopeTotal > 0) {
+      const dep = Math.round(scopeTotal * depositPct / 100)
+      panels.push({ label: `Deposit (${depositPct}%)`, value: dep, note: 'Payable to commence work.' })
+      panels.push({ label: 'Balance on completion', value: scopeTotal - dep, accent: true, note: 'Due before handover.' })
+    }
+    const blocks = detailedRef.value?.buildBlocks() ?? {}
+    return {
+      ...base,
+      document: {
+        layout: 'detailed',
+        payload: {
+          project: doc.project || null,
+          intro: doc.intro || null,
+          ...blocks,
+          sections,
+          summary: { rows: summaryRows },
+          ...(panels.length ? { panels } : {}),
+          ...(terms.length ? { paymentTerms: { items: terms } } : {}),
+        },
+        deposit_pct: depositPct,
+      },
+    }
+  }
+
+  return {
+    ...base,
     document: {
       project: doc.project || null,
       intro: doc.intro || null,
       items: doc.items.map(i => ({ title: i.title, desc: i.desc || null, qty: Number(i.qty) || 0, unit: i.unit || null, rate: Number(i.rate) || 0 })),
-      terms: doc.termsText.split('\n').map(t => t.trim()).filter(Boolean),
+      terms,
       deposit_pct: Number(doc.deposit_pct) || 0,
       tax_rate: 0,
     },
-    inquiry_id: props.inquiryId ?? null,
   }
 }
 
+// Dirty tracking — in edit mode the "Save changes" button only surfaces once the
+// loaded draft is actually modified. The fingerprint omits `modifiers` (emitted
+// asynchronously by the scope child after mount, and derived from scope anyway)
+// so it never trips a false dirty.
+const baseline = ref('')
+function formFingerprint(): string {
+  return JSON.stringify({ ...buildPayload(), modifiers: undefined })
+}
+const dirty = computed(() => formFingerprint() !== baseline.value)
+
 // Persist without UI feedback — shared by the Save button and the send flow
-// so sending doesn't fire two toasts ("saved" then "sent").
-async function persist(): Promise<number | null> {
-  if (!canSave.value) { error.value = 'Add a client and pick a package first.'; return null }
+// so sending doesn't fire two toasts ("saved" then "sent"). `silent` skips the
+// `saved` emit so the send flow doesn't trigger a parent refetch that would race
+// the fresh quotation `sent` delivers.
+async function persist(opts: { silent?: boolean } = {}): Promise<number | null> {
+  if (!validate()) { error.value = 'Please complete the required fields highlighted.'; return null }
   saving.value = true
   error.value = ''
   try {
@@ -262,10 +434,12 @@ async function persist(): Promise<number | null> {
       ? await apiFetch<{ data: any }>(`/api/v1/admin/quotations/${props.quotation!.id}`, { method: 'PUT', body: payload })
       : await apiFetch<{ data: any }>('/api/v1/admin/quotations', { method: 'POST', body: payload })
     const id = res.data.id
-    emit('saved', id)
+    baseline.value = formFingerprint()
+    if (!opts.silent) emit('saved', id)
     return id
   }
   catch (e: any) {
+    mapServerErrors(e?.data?.errors)
     const errs = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
     error.value = errs || e?.data?.message || 'Failed to save quotation.'
     return null
@@ -282,16 +456,30 @@ async function save(): Promise<number | null> {
   return id
 }
 
-async function sendToClient() {
+const sendMenuOpen = ref(false)
+
+// Deliver the quote: email it to the client, or just generate + open the PDF to
+// share manually. Both save first and mark the quote sent.
+async function deliver(channel: 'email' | 'download') {
   if (!isEdit.value) return
+  sendMenuOpen.value = false
   sending.value = true
   error.value = ''
   try {
-    const id = await persist()
+    // Silent so the parent doesn't refetch on `saved` — `sent` hands it the fresh
+    // quotation directly, switching the page to the sent view with no refresh.
+    const id = await persist({ silent: true })
     if (!id) { toast.error('Couldn’t send quotation', error.value || 'Save failed.'); return }
-    await apiFetch(`/api/v1/admin/quotations/${id}/send`, { method: 'POST' })
-    emit('sent')
-    toast.success('Quotation sent', `PDF emailed to ${client.email || 'the client'}.`)
+    const res = await apiFetch<{ data: any }>(`/api/v1/admin/quotations/${id}/send`, { method: 'POST', body: { email: channel === 'email' } })
+    emit('sent', res.data)
+    if (channel === 'download') {
+      const token = res.data?.public_token ?? props.quotation?.public_token
+      if (token) window.open(`${window.location.origin}/documents/${token}/pdf`, '_blank', 'noopener')
+      toast.success('Marked as sent', 'PDF opened — download and share it with the client.')
+    }
+    else {
+      toast.success('Quotation sent', `PDF emailed to ${client.email || 'the client'}.`)
+    }
   }
   catch (e: any) {
     error.value = e?.data?.message || 'Failed to send quotation.'
@@ -323,6 +511,17 @@ async function accept() {
 function viewPdf() {
   if (!props.quotation?.public_token) return
   window.open(`${window.location.origin}/documents/${props.quotation.public_token}/pdf`, '_blank', 'noopener')
+}
+
+// Discard unsaved edits and restore the last-saved quotation.
+async function revert() {
+  if (!props.quotation) return
+  loadFromQuotation(props.quotation)
+  detailedKey.value++
+  clearErrors()
+  error.value = ''
+  await nextTick()
+  baseline.value = formFingerprint()
 }
 </script>
 
@@ -358,8 +557,9 @@ function viewPdf() {
             <button type="button" class="text-[12px]" style="color: var(--color-accent);" @click="clearClient">Change</button>
           </div>
           <div v-else class="relative">
-            <input v-model="clientSearch" type="text" placeholder="Search clients by name or email…" class="contact-input w-full"
-              :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <input id="qb-client" v-model="clientSearch" type="text" placeholder="Search clients by name or email…" class="contact-input w-full"
+              :style="{ borderColor: errors.client ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <p v-if="errors.client" class="text-[11px] mt-1.5" style="color: var(--color-danger);">{{ errors.client }}</p>
             <ul v-if="clientResults.length" class="absolute z-20 left-0 right-0 mt-1.5 rounded-xl border p-1 max-h-60 overflow-y-auto"
               :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }">
               <li v-for="c in clientResults" :key="c.id">
@@ -376,12 +576,14 @@ function viewPdf() {
         <!-- New client fields -->
         <div v-else class="grid sm:grid-cols-2 gap-4">
           <div class="space-y-1.5">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Name *</label>
-            <input v-model="client.name" type="text" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Name <span style="color: var(--color-danger);">*</span></label>
+            <input id="qb-name" v-model="client.name" type="text" class="contact-input w-full" :style="{ borderColor: errors.name ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <p v-if="errors.name" class="text-[11px]" style="color: var(--color-danger);">{{ errors.name }}</p>
           </div>
           <div class="space-y-1.5">
-            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email *</label>
-            <input v-model="client.email" type="email" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email <span style="color: var(--color-danger);">*</span></label>
+            <input id="qb-email" v-model="client.email" type="email" class="contact-input w-full" :style="{ borderColor: errors.email ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <p v-if="errors.email" class="text-[11px]" style="color: var(--color-danger);">{{ errors.email }}</p>
           </div>
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Phone</label>
@@ -395,9 +597,9 @@ function viewPdf() {
       </section>
 
       <!-- Package & scope -->
-      <section class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+      <section id="qb-package" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Package &amp; scope</p>
-        <QuoteScopeFields :state="scope" @update:estimate="estimate = $event" @update:modifiers="modifiers = $event" />
+        <QuoteScopeFields :state="scope" :require-package="!detailed" :package-error="errors.package" @update:estimate="estimate = $event" @update:modifiers="modifiers = $event" />
       </section>
 
       <!-- Quotation document -->
@@ -428,7 +630,11 @@ function viewPdf() {
             No line items yet. Click <strong>Seed line items from scope</strong> or <strong>+ Add line</strong>.
           </div>
           <div v-for="(it, i) in doc.items" :key="i" class="rounded-xl border p-3 mb-2 space-y-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-            <input v-model="it.title" type="text" placeholder="Title" class="contact-input w-full text-[13px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+            <div>
+              <span class="line-label">Title <span style="color: var(--color-danger);">*</span></span>
+              <input :id="`qb-item-${i}`" v-model="it.title" type="text" placeholder="Title" class="contact-input w-full text-[13px]" :style="{ borderColor: errors.items[i] ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+              <p v-if="errors.items[i]" class="text-[11px] mt-1" style="color: var(--color-danger);">{{ errors.items[i] }}</p>
+            </div>
             <input v-model="it.desc" type="text" placeholder="Description (optional)" class="contact-input w-full text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-elevated)' }" />
             <div class="flex flex-wrap items-end gap-x-2 gap-y-3">
               <div class="w-16">
@@ -466,6 +672,38 @@ function viewPdf() {
         </div>
 
         <AdminQuoteTermsDeposit v-model:terms="doc.termsText" v-model:depositPct="doc.deposit_pct" />
+
+        <div class="space-y-1.5 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
+          <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
+            Valid until <span class="font-normal" style="color: var(--color-text-tertiary);">(optional)</span>
+          </label>
+          <input v-model="validUntil" type="date" class="contact-input w-full sm:w-56" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <p class="text-[11px]" style="color: var(--color-text-tertiary);">Leave blank to default to {{ config?.valid_for_days ?? 30 }} days after sending.</p>
+        </div>
+      </section>
+
+      <!-- Detailed proposal (optional inline upgrade) -->
+      <section v-if="!detailed" class="rounded-2xl border border-dashed p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" :style="{ borderColor: 'var(--color-border)' }">
+        <div>
+          <p class="text-[13px] font-semibold" style="color: var(--color-text);">Want a richer proposal?</p>
+          <p class="text-[12px] mt-0.5 max-w-md" style="color: var(--color-text-secondary);">Add “What's included”, option cards, and a care plan. Your line items become the scope. Remove it anytime to keep the quote standard.</p>
+        </div>
+        <button type="button" class="btn-pill btn-pill-warning shrink-0 gap-1.5 text-[13px]" @click="enableDetailed">
+          Expand to detailed
+          <UIcon name="i-lucide-arrow-down" class="size-3.5" />
+        </button>
+      </section>
+      <section v-else class="rounded-2xl border p-6 space-y-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Detailed proposal</p>
+            <p class="text-[12px] mt-1 max-w-md" style="color: var(--color-text-secondary);">Optional blocks added to the client PDF. Saving with these makes it a detailed proposal; the line items above are the scope.</p>
+          </div>
+          <button type="button" class="inline-flex items-center gap-1.5 text-[12px] font-medium shrink-0 transition-opacity hover:opacity-70" :style="{ color: 'var(--color-danger)' }" @click="disableDetailed">
+            <UIcon name="i-lucide-trash-2" class="size-3.5" /> Remove (keep standard)
+          </button>
+        </div>
+        <DetailedProposalFields ref="detailedRef" :key="detailedKey" :initial="detailedInitial" />
       </section>
     </div>
 
@@ -487,19 +725,40 @@ function viewPdf() {
       </div>
 
       <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <button type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="!canSave || saving" @click="save">
-          {{ saving ? 'Saving…' : isEdit ? 'Save changes' : 'Save draft' }}
+        <button v-if="!isEdit" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="saving" @click="save">
+          {{ saving ? 'Saving…' : 'Save draft' }}
         </button>
 
         <template v-if="isEdit">
-          <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :disabled="!quotation?.public_token" @click="viewPdf">
+          <!-- Unsaved edits → revert (red) sits where the save button used to be. -->
+          <button v-if="dirty" type="button" class="btn-pill btn-pill-danger w-full justify-center gap-1.5 text-[13px]" :disabled="saving" @click="revert">
+            <UIcon name="i-lucide-undo-2" class="size-3.5" /> Revert changes
+          </button>
+
+          <button v-if="!dirty" type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :disabled="!quotation?.public_token" @click="viewPdf">
             View PDF
           </button>
-          <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]" :disabled="sending || saving" @click="sendToClient">
-            {{ sending ? 'Sending…' : 'Send to client' }}
+          <div v-if="!dirty" class="relative">
+            <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]" :disabled="sending || saving" @click="sendMenuOpen = !sendMenuOpen">
+              {{ sending ? 'Sending…' : 'Send to client' }}
+            </button>
+            <div v-if="sendMenuOpen" class="fixed inset-0 z-10" @click="sendMenuOpen = false" />
+            <div v-if="sendMenuOpen" class="absolute left-0 right-0 mt-2 z-20 rounded-xl border p-1.5 space-y-1"
+              :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }">
+              <button type="button" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text);" @click="deliver('email')">
+                <UIcon name="i-lucide-mail" class="size-4" /> Email to client
+              </button>
+              <button type="button" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text);" @click="deliver('download')">
+                <UIcon name="i-lucide-download" class="size-4" /> Download PDF
+              </button>
+            </div>
+          </div>
+          <!-- Save replaces Proceed while there are unsaved edits — you must save first. -->
+          <button v-if="dirty" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="saving" @click="save">
+            {{ saving ? 'Saving…' : 'Save changes' }}
           </button>
-          <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
-            {{ accepting ? 'Accepting…' : 'Accept & create order' }}
+          <button v-else type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
+            {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
           </button>
         </template>
       </div>

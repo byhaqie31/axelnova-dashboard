@@ -78,7 +78,19 @@ class Order extends Model
         return $this->belongsTo(Client::class);
     }
 
-    /** Issued invoices and receipts (frozen snapshots). */
+    /** Issued invoices (deposit / partial / final), frozen snapshots. */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->latest('issued_at');
+    }
+
+    /** Issued receipts (settled payments), frozen snapshots. */
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(Receipt::class)->latest('issued_at');
+    }
+
+    /** Legacy combined documents (pre invoices/receipts split). */
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class)->latest('issued_at');

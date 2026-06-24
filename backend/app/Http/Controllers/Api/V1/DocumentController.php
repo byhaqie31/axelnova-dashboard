@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Models\Invoice;
 use App\Models\Quotation;
+use App\Models\Receipt;
 use App\Services\Quoting\DocumentMapper;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -21,6 +23,17 @@ class DocumentController extends Controller
      */
     public function show(string $token): JsonResponse
     {
+        $invoice = Invoice::where('public_token', $token)->first();
+        if ($invoice) {
+            return response()->json($invoice->payload);
+        }
+
+        $receipt = Receipt::where('public_token', $token)->first();
+        if ($receipt) {
+            return response()->json($receipt->payload);
+        }
+
+        // Legacy combined documents (pre-split) still resolve by token.
         $document = Document::where('public_token', $token)->first();
         if ($document) {
             return response()->json($document->payload);
@@ -30,6 +43,11 @@ class DocumentController extends Controller
             ->where('public_token', $token)
             ->first();
         if ($quotation) {
+            // A client opening an overdue quote also triggers lazy expiry.
+            if ($quotation->isOverdue()) {
+                $quotation->update(['status' => 'expired']);
+            }
+
             return response()->json(DocumentMapper::toDocumentData($quotation));
         }
 

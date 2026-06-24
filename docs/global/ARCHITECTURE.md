@@ -50,7 +50,7 @@ axelnova-dashboard/
 | Table | Purpose |
 |-------|---------|
 | `page_views` | Append-only public page-view log (hashed IP, path, referrer, UA). Bots dropped on write |
-| `entity_likes` | Anonymous likes per entity (`project` / `service_package`), deduped by hashed IP + optional cookie id |
+| `entity_likes` | Anonymous likes per entity (`project` / `service_package`), deduped per browser by `cookie_id` (hashed IP recorded for abuse/analytics) |
 
 ## API routes
 

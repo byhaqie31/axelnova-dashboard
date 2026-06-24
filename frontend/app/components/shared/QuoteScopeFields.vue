@@ -6,7 +6,13 @@ import { deriveModifiers } from '~/composables/quoteScope'
 // `state` is a reactive object owned by the parent; this component mutates its
 // fields in place (same ergonomics as the legacy public quote form) and emits
 // the derived modifiers + live estimate so the parent can re-price / show a sidebar.
-const props = defineProps<{ state: QuoteScopeState }>()
+const props = defineProps<{
+  state: QuoteScopeState
+  /** Show the red required-asterisk on the package label (standard quotes). */
+  requirePackage?: boolean
+  /** Validation message to surface under the package picker, set by the parent. */
+  packageError?: string
+}>()
 const emit = defineEmits<{
   'update:estimate': [value: EstimateResult | null]
   'update:modifiers': [value: Record<string, boolean | number>]
@@ -70,6 +76,7 @@ function toggleInArray(arr: string[], value: string) {
           </button>
         </div>
 
+        <p class="quote-label mb-3">Package <span v-if="requirePackage" style="color: var(--color-danger);">*</span></p>
         <Transition name="tab" mode="out-in">
           <div v-if="currentCategory" :key="state.categoryKey" class="grid sm:grid-cols-3 gap-3">
             <button v-for="pkg in currentCategory.packages" :key="pkg.key" type="button"
@@ -90,6 +97,8 @@ function toggleInArray(arr: string[], value: string) {
             </button>
           </div>
         </Transition>
+        <p v-if="!currentCategory" class="text-[12px] mt-1" style="color: var(--color-text-tertiary);">Pick a category above to see packages.</p>
+        <p v-if="packageError" class="text-[12px] mt-3" style="color: var(--color-danger);">{{ packageError }}</p>
       </section>
 
       <!-- Scope details (per category) -->

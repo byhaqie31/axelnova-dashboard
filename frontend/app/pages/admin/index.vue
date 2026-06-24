@@ -6,19 +6,24 @@ import { MOTION } from '~/utils/motion'
 const { apiFetch } = useAdminAuth()
 const motion = useMotion()
 
-interface Quotation {
+interface Inquiry {
   id: number
-  reference_code: string
   name: string
   email: string
-  package_key: string | null
-  estimate_min_myr: string
-  estimate_max_myr: string
+  company: string | null
+  project_type: string | null
   status: string
-  submitted_at: string
+  created_at: string
 }
 
-const recent = ref<Quotation[]>([])
+const recentInquiries = ref<Inquiry[]>([])
+const inquiriesLoading = ref(true)
+const range = ref<'today' | '7d' | '30d'>('today')
+const ranges = [
+  { value: 'today' as const, label: 'Today' },
+  { value: '7d' as const, label: 'Last 7 days' },
+  { value: '30d' as const, label: 'Last 30 days' },
+]
 const totalQuotations = ref<number | null>(null)
 const activeReferrals = ref<number | null>(null)
 const activeOrders = ref<number | null>(null)
@@ -55,16 +60,15 @@ async function load() {
   error.value = ''
   try {
     const [recentRes, refsAllRes, refsRejRes, ordersRes, inqRes, draftRes] = await Promise.all([
-      apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/quotations?include_accepted=1&page=1'),
+      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/quotations?include_accepted=1&page=1'),
       apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/referrals?page=1'),
       apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/referrals?status=rejected&page=1'),
-      apiFetch<{ data: Quotation[]; meta: { total: number } }>('/api/v1/admin/orders?page=1'),
+      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/orders?page=1'),
       apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/inquiries?status=new&page=1'),
       apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/quotations?status=draft&page=1'),
     ])
     // Active referrals = all referrals minus rejected.
     const activeRefs = Math.max(0, refsAllRes.meta.total - refsRejRes.meta.total)
-    recent.value = recentRes.data.slice(0, 5)
     totalQuotations.value = recentRes.meta.total
     activeReferrals.value = activeRefs
     activeOrders.value = ordersRes.meta.total
@@ -104,10 +108,36 @@ async function load() {
   }
 }
 
+// Recent inquiries feed — Today / Last 7 days / Last 30 days (quotations keep to
+// their own page; the dashboard surfaces fresh inquiries to action).
+function rangeDateFrom(): string {
+  const d = new Date()
+  if (range.value === '7d') d.setDate(d.getDate() - 7)
+  else if (range.value === '30d') d.setDate(d.getDate() - 30)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+async function fetchInquiries() {
+  inquiriesLoading.value = true
+  try {
+    const res = await apiFetch<{ data: Inquiry[] }>(`/api/v1/admin/inquiries?date_from=${rangeDateFrom()}&page=1`)
+    recentInquiries.value = res.data.slice(0, 8)
+  }
+  catch {
+    recentInquiries.value = []
+  }
+  finally {
+    inquiriesLoading.value = false
+  }
+}
+
+watch(range, fetchInquiries)
+
 const tilesGrid = ref<HTMLElement | null>(null)
 
 onMounted(() => {
   load()
+  fetchInquiries()
 
   // Staggered tile entrance — once per navigation, dashboard register.
   const { gsap, reduced } = motion
@@ -125,12 +155,6 @@ onMounted(() => {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
-}
-
-function fmtMyr(amount: string | number) {
-  const n = Number(amount)
-  if (n >= 1000) return `RM ${(n / 1000).toFixed(0)}k`
-  return `RM ${n.toLocaleString()}`
 }
 
 // Full ringgit with separators — for the headline orders figures.
@@ -210,7 +234,7 @@ const tiles = computed<StatTile[]>(() => [
   <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <div class="mb-8">
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Dashboard</h1>
-      <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Overview of quotations, orders, and traffic.</p>
+      <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Fresh inquiries, orders, and traffic at a glance.</p>
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
@@ -288,27 +312,33 @@ const tiles = computed<StatTile[]>(() => [
       </NuxtLink>
     </div>
 
-    <!-- Recent quotations -->
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-[18px] font-semibold tracking-tight" style="color: var(--color-text);">Recent quotations</h2>
-      <NuxtLink
-        to="/admin/quotations"
-        class="text-[12px] font-medium inline-flex items-center gap-1 hover:underline"
-        :style="{ color: 'var(--color-accent)' }"
-      >
-        View all
-        <UIcon name="i-lucide-arrow-right" class="size-3.5" />
-      </NuxtLink>
+    <!-- Recent inquiries -->
+    <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+      <h2 class="text-[18px] font-semibold tracking-tight" style="color: var(--color-text);">Recent inquiries</h2>
+      <div class="inline-flex rounded-full border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+        <button
+          v-for="r in ranges"
+          :key="r.value"
+          type="button"
+          class="px-3 py-1 rounded-full text-[12px] font-medium transition-colors"
+          :style="range === r.value
+            ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+            : { color: 'var(--color-text-secondary)', background: 'transparent' }"
+          @click="range = r.value"
+        >
+          {{ r.label }}
+        </button>
+      </div>
     </div>
 
-    <div v-if="loading" class="text-center py-10 text-[13px]" style="color: var(--color-text-secondary);">Loading…</div>
+    <div v-if="inquiriesLoading" class="text-center py-10 text-[13px]" style="color: var(--color-text-secondary);">Loading…</div>
 
     <div
-      v-else-if="!recent.length"
+      v-else-if="!recentInquiries.length"
       class="rounded-2xl border p-10 text-center text-[13px]"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
     >
-      No quotations yet.
+      No inquiries in this period.
     </div>
 
     <!-- Desktop: table -->
@@ -320,7 +350,7 @@ const tiles = computed<StatTile[]>(() => [
       <table class="w-full text-left">
         <thead>
           <tr>
-            <th v-for="h in ['Reference', 'Name', 'Estimate', 'Status', 'Submitted']" :key="h"
+            <th v-for="h in ['Name', 'Project type', 'Status', 'Received']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
@@ -328,28 +358,23 @@ const tiles = computed<StatTile[]>(() => [
         </thead>
         <tbody>
           <tr
-            v-for="q in recent"
-            :key="q.id"
+            v-for="i in recentInquiries"
+            :key="i.id"
             class="admin-table-row"
-            @click="navigateTo(`/admin/quotations/${q.id}`)"
+            @click="navigateTo(`/admin/inquiries/${i.id}`)"
           >
             <td class="px-4 py-3.5">
-              <span class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ q.reference_code }}</span>
+              <p class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">{{ i.name }}</p>
+              <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ i.email }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <p class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">{{ q.name }}</p>
-              <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
+              <span class="text-[13px]" :style="{ color: 'var(--color-text-secondary)' }">{{ i.project_type ?? '—' }}</span>
             </td>
             <td class="px-4 py-3.5">
-              <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
-                {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
-              </p>
-            </td>
-            <td class="px-4 py-3.5">
-              <AdminStatusPill :status="q.status" />
+              <AdminStatusPill :status="i.status" />
             </td>
             <td class="px-4 py-3.5 text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
-              {{ fmtDate(q.submitted_at) }}
+              {{ fmtDate(i.created_at) }}
             </td>
           </tr>
         </tbody>
@@ -358,26 +383,23 @@ const tiles = computed<StatTile[]>(() => [
     </div>
 
     <!-- Mobile: cards -->
-    <div v-if="recent.length" class="md:hidden space-y-2.5">
+    <div v-if="!inquiriesLoading && recentInquiries.length" class="md:hidden space-y-2.5">
       <button
-        v-for="q in recent"
-        :key="q.id"
+        v-for="i in recentInquiries"
+        :key="i.id"
         type="button"
         class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
-        @click="navigateTo(`/admin/quotations/${q.id}`)"
+        @click="navigateTo(`/admin/inquiries/${i.id}`)"
       >
-        <div class="flex items-start justify-between gap-3 mb-2">
-          <span class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ q.reference_code }}</span>
-          <AdminStatusPill :status="q.status" />
+        <div class="flex items-start justify-between gap-3 mb-1">
+          <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ i.name }}</p>
+          <AdminStatusPill :status="i.status" />
         </div>
-        <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ q.name }}</p>
-        <p class="text-[11px] mb-2" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
+        <p class="text-[11px] mb-2" :style="{ color: 'var(--color-text-tertiary)' }">{{ i.email }}</p>
         <div class="flex items-center justify-between gap-3 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
-            {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
-          </p>
-          <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(q.submitted_at) }}</p>
+          <p class="text-[13px]" :style="{ color: 'var(--color-text-secondary)' }">{{ i.project_type ?? '—' }}</p>
+          <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(i.created_at) }}</p>
         </div>
       </button>
     </div>

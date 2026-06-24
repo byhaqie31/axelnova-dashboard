@@ -10,6 +10,7 @@ use App\Models\Client;
 use App\Models\Inquiry;
 use App\Models\Order;
 use App\Models\Quotation;
+use App\Services\Quoting\EstimateResult;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
 use App\Support\DocumentType;
@@ -17,6 +18,7 @@ use App\Support\ReferenceCodeGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -24,16 +26,26 @@ class QuotationsController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
+        // Self-heal overdue sent quotes before listing, so 'expired' is accurate
+        // (and filterable) without a scheduler.
+        Quotation::expireOverdue();
+
         $query = Quotation::with('addons')->latest('submitted_at');
 
-        // Quotations view excludes 'accepted' by default — accepted ones produced an order
-        // and live on the Orders page. Caller can pass ?include_accepted=1 or ?status=accepted.
-        if (! $request->boolean('include_accepted') && ! $request->filled('status')) {
-            $query->where('status', '!=', 'accepted');
-        }
+        // `status` accepts one value or a comma-separated list (e.g. ?status=draft,sent)
+        // to back the multi-select filter on the listing.
+        $statuses = collect(explode(',', (string) $request->query('status', '')))
+            ->map(fn ($s) => trim($s))
+            ->filter()
+            ->values();
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($statuses->isNotEmpty()) {
+            $query->whereIn('status', $statuses);
+        }
+        // No status filter: exclude 'accepted' by default (those produced an order and
+        // live on the Orders page). Pass ?include_accepted=1 — the "All" filter — to see them.
+        elseif (! $request->boolean('include_accepted')) {
+            $query->where('status', '!=', 'accepted');
         }
 
         if ($request->filled('search')) {
@@ -58,12 +70,12 @@ class QuotationsController extends Controller
 
     public function show(Quotation $quotation): QuotationResource
     {
-        $quotation->load('addons', 'order');
-
-        // Auto-mark legacy self-serve leads as viewed; admin drafts keep their status.
-        if (! $quotation->viewed_at && $quotation->status === 'new') {
-            $quotation->update(['viewed_at' => now(), 'status' => 'viewed']);
+        // Lazy expiry for this one record (the list sweep won't have run on a deep link).
+        if ($quotation->isOverdue()) {
+            $quotation->update(['status' => 'expired']);
         }
+
+        $quotation->load('addons', 'order');
 
         return new QuotationResource($quotation);
     }
@@ -76,7 +88,7 @@ class QuotationsController extends Controller
         $quotation = DB::transaction(function () use ($data, $engine) {
             $client = $this->resolveClient($data);
             $input = $this->buildInput($client, $data);
-            $estimate = $engine->calculate($input);
+            $estimate = $input->packageKey ? $engine->calculate($input) : null;
 
             $quotation = Quotation::create(array_merge(
                 $this->pricedAttributes($client, $input, $engine, $estimate, $data),
@@ -114,7 +126,7 @@ class QuotationsController extends Controller
         DB::transaction(function () use ($data, $engine, $quotation) {
             $client = $this->resolveClient($data);
             $input = $this->buildInput($client, $data);
-            $estimate = $engine->calculate($input);
+            $estimate = $input->packageKey ? $engine->calculate($input) : null;
 
             $quotation->update($this->pricedAttributes($client, $input, $engine, $estimate, $data));
             $this->syncAddons($quotation, $input->addonKeys, $engine);
@@ -123,16 +135,26 @@ class QuotationsController extends Controller
         return new QuotationResource($quotation->load('addons', 'order'));
     }
 
-    public function send(Quotation $quotation): JsonResponse
+    public function send(Request $request, Quotation $quotation): JsonResponse
     {
         if (! $quotation->public_token) {
             $quotation->public_token = Str::random(48);
         }
         $quotation->status = 'sent';
         $quotation->sent_at = now();
+        // Keep a custom validity date if the builder set one; otherwise default to
+        // sent_at + valid_for_days. Drives lazy auto-expiry and the PDF "valid until".
+        if (! $quotation->expires_at) {
+            $validForDays = (int) ($quotation->pricingConfig?->config['valid_for_days'] ?? 30);
+            $quotation->expires_at = now()->addDays($validForDays);
+        }
         $quotation->save();
 
-        SendClientQuoteEmail::dispatch($quotation->id);
+        // Email delivery is the default; the "download PDF" channel marks the
+        // quote sent without emailing (the admin delivers the file themselves).
+        if ($request->boolean('email', true)) {
+            SendClientQuoteEmail::dispatch($quotation->id);
+        }
 
         Inquiry::where('quotation_id', $quotation->id)
             ->where('status', '!=', 'quoted')
@@ -147,12 +169,39 @@ class QuotationsController extends Controller
     public function updateStatus(Request $request, Quotation $quotation): JsonResponse
     {
         $request->validate([
-            'status' => ['required', 'in:new,viewed,contacted,rejected,spam,draft,sent,declined,expired'],
+            'status' => ['required', 'in:draft,sent,accepted,rejected,expired'],
         ]);
 
         $quotation->update(['status' => $request->status]);
 
         return response()->json(['message' => 'Status updated.', 'status' => $quotation->status]);
+    }
+
+    /**
+     * Set (or clear) a custom validity date on a sent/expired quote. Extending into
+     * the future re-activates an expired quote; pulling it into the past expires a
+     * sent one — so status and date stay in agreement after a manual change.
+     */
+    public function setExpiry(Request $request, Quotation $quotation): JsonResponse
+    {
+        $request->validate(['expires_at' => ['nullable', 'date']]);
+
+        $expiresAt = $request->date('expires_at')?->endOfDay();
+        $quotation->expires_at = $expiresAt;
+
+        if ($quotation->status === 'expired' && ($expiresAt === null || $expiresAt->isFuture())) {
+            $quotation->status = 'sent';
+        }
+        elseif ($quotation->status === 'sent' && $expiresAt !== null && $expiresAt->isPast()) {
+            $quotation->status = 'expired';
+        }
+
+        $quotation->save();
+
+        return response()->json([
+            'message' => 'Expiry updated.',
+            'data' => new QuotationResource($quotation->load('addons', 'order')),
+        ]);
     }
 
     public function accept(Request $request, Quotation $quotation): JsonResponse
@@ -209,7 +258,7 @@ class QuotationsController extends Controller
             email: $client->email,
             phone: $client->phone ?? '',
             company: $client->company,
-            packageKey: $data['package_key'],
+            packageKey: $data['package_key'] ?? null,
             modifiers: $data['modifiers'] ?? [],
             addonKeys: $data['addon_keys'] ?? [],
             rush: (bool) ($data['rush'] ?? false),
@@ -217,28 +266,41 @@ class QuotationsController extends Controller
     }
 
     /** The shared attribute set written on both create and update (the re-priced quotation). */
-    private function pricedAttributes(Client $client, QuoteRequestInput $input, PricingEngine $engine, $estimate, array $data): array
+    private function pricedAttributes(Client $client, QuoteRequestInput $input, PricingEngine $engine, ?EstimateResult $estimate, array $data): array
     {
+        $document = $data['document'] ?? null;
+
+        // A detailed quote is priced by the sections the client actually sees, not
+        // the engine. Stamp the agreed total as the stored estimate (min == max)
+        // so the admin list, the order value, and the PDF all agree. Standard
+        // quotes (and detailed quotes with no priced sections) keep the engine range.
+        $detailedTotal = Quotation::sumDetailedSections($document);
+        $minMyr = $detailedTotal ?? ($estimate?->minMyr ?? 0);
+        $maxMyr = $detailedTotal ?? ($estimate?->maxMyr ?? 0);
+
         return [
             'client_id' => $client->id,
             'name' => $client->name,
             'email' => $client->email,
             'phone' => $client->phone,
             'company' => $client->company,
-            'package_key' => $input->packageKey,
+            'package_key' => $input->packageKey ?: null,
             'pricing_config_id' => $engine->getConfig()->id,
             'form_payload' => array_merge($data['form_payload'] ?? [], [
-                'package_key' => $input->packageKey,
+                'package_key' => $input->packageKey ?: null,
                 'modifiers' => $input->modifiers,
                 'addon_keys' => $input->addonKeys,
                 'rush' => $input->rush,
-                'breakdown' => $estimate->breakdown,
+                'breakdown' => $estimate?->breakdown ?? [],
             ]),
-            'document' => $data['document'] ?? null,
-            'estimate_min_myr' => $estimate->minMyr,
-            'estimate_max_myr' => $estimate->maxMyr,
-            'estimate_eta_value' => $estimate->etaValue,
-            'estimate_eta_unit' => $estimate->etaUnit,
+            'document' => $document,
+            'estimate_min_myr' => $minMyr,
+            'estimate_max_myr' => $maxMyr,
+            'estimate_eta_value' => $estimate?->etaValue ?? 0,
+            'estimate_eta_unit' => $estimate?->etaUnit ?? 'week',
+            // Custom validity date (optional). Normalised to end-of-day so the quote
+            // stays valid through the whole chosen date, not until its midnight.
+            'expires_at' => isset($data['expires_at']) ? Carbon::parse($data['expires_at'])->endOfDay() : null,
         ];
     }
 

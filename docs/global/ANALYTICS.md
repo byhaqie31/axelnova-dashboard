@@ -17,12 +17,15 @@ Two append-only-ish tables (migration `2026_05_08_010004_create_analytics_tables
 - **`page_views`** — `path`, `ip_hash`, `user_agent`, `referrer`, `viewed_at`.
   One row per public page view. No `updated_at` (cheap inserts).
 - **`entity_likes`** — `entity_type` (`project` | `service_package`), `entity_id`,
-  `ip_hash`, `cookie_id?`, `created_at`. Unique on
-  `(entity_type, entity_id, ip_hash)` → one like per visitor per entity.
+  `ip_hash`, `cookie_id`, `created_at`. Unique on
+  `(entity_type, entity_id, cookie_id)` → one like per browser per entity
+  (migration `2026_06_24_000005`; was hashed-IP, which collapsed everyone behind a
+  shared public IP into one identity — see Privacy). `ip_hash` is still recorded
+  for abuse/analytics but no longer gates the count.
 
 **IP hashing** — [`App\Support\AnalyticsHash::forIp`](../../backend/app/Support/AnalyticsHash.php)
-returns `sha256(ip + app key)`. Stable (so unique-visitor counts and the like
-constraint work over time) and one-way (raw IP never persisted).
+returns `sha256(ip + app key)`. Stable (so unique-visitor page-view counts work
+over time) and one-way (raw IP never persisted).
 
 ---
 
@@ -58,8 +61,9 @@ best-effort (a failure leaves the tile as `—`, never breaks the dashboard).
 
 **Toggle.** [`LikesController::toggle`](../../backend/app/Http/Controllers/Api/V1/LikesController.php)
 — `POST /api/v1/likes/{type}/{id}` (public, throttled). Type allowlist
-`project` / `service_package`; 404 if the entity doesn't exist. Deletes the
-existing like for this `ip_hash` or creates one; returns `{ liked, count }`.
+`project` / `service_package`; 404 if the entity doesn't exist. `cookie_id` is
+required. Deletes the existing like for this `cookie_id` or creates one; returns
+`{ liked, count }`.
 
 **Counts.** `Project` + `ServicePackage` expose a `likes()` `hasMany` (scoped to
 their entity type); the public controllers `withCount('likes')` and the resources
@@ -69,10 +73,10 @@ extra request.
 **UI.** [`frontend/app/components/shared/LikeButton.vue`](../../frontend/app/components/shared/LikeButton.vue)
 — heart + count pill, optimistic toggle reconciled with the server response. The
 `liked` state is mirrored in `localStorage` (`axn_likes` map + an `axn_like_cookie`
-id) so the filled heart persists across visits without a lookup; the server's
-hashed-IP constraint is the real dedupe. SSR-safe (starts unliked, hydrates on
-mount). Placed on `ProjectCard` (home + registry, top-right), the project detail
-CTA row, and each service package card.
+id) so the filled heart persists across visits without a lookup. That same
+`axn_like_cookie` id is sent as `cookie_id` and is the server's dedupe key. SSR-safe
+(starts unliked, hydrates on mount). Placed on `ProjectCard` (home + registry,
+top-right), the project detail CTA row, and each service package card.
 
 **Admin.** Overview adds an all-time `topLikedProjects` leaderboard, rendered as
 "Most-liked projects" on the analytics page.
@@ -82,8 +86,11 @@ CTA row, and each service package card.
 ## Privacy
 
 - No raw IP stored — only `sha256(ip + app key)`.
-- Page views need no cookie. Likes use a client-generated `cookie_id` (localStorage)
-  purely for the visitor's own UI continuity; dedupe is server-side by hashed IP.
+- Page views need no cookie. Likes use a client-generated `cookie_id` (localStorage,
+  a random UUID — not tied to identity) for both the visitor's own UI continuity and
+  server-side dedupe. Per-browser dedupe is intentionally chosen over hashed-IP so
+  people sharing a public IP (home WiFi, office NAT, mobile CGNAT) each get their
+  own like instead of toggling each other's off.
 - Bots are filtered on write so counts reflect humans.
 - Fits the existing `/legal/cookies` + privacy pages.
 

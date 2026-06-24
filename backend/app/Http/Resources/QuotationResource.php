@@ -31,6 +31,7 @@ class QuotationResource extends JsonResource
             'submitted_at' => $this->submitted_at?->toISOString(),
             'viewed_at' => $this->viewed_at?->toISOString(),
             'sent_at' => $this->sent_at?->toISOString(),
+            'expires_at' => $this->expires_at?->toISOString(),
             'order_id' => $this->whenLoaded('order', fn () => $this->order?->id),
             'order_number' => $this->whenLoaded('order', fn () => $this->order?->order_number),
             'public_token' => $this->when(! $listRoute, $this->public_token),

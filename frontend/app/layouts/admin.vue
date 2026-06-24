@@ -7,6 +7,10 @@ useSeoMeta({ robots: 'noindex, nofollow' })
 const mobileNavOpen = ref(false)
 const profileOpen = ref(false)
 
+// Desktop sidebar collapse → icon-only rail. Cookie-backed so it's resolved during
+// SSR and the rail doesn't flash from expanded → collapsed on reload.
+const sidebarCollapsed = useCookie<boolean>('axn_admin_sidebar_collapsed', { default: () => false })
+
 const route = useRoute()
 const { logout, apiFetch } = useAdminAuth()
 
@@ -46,14 +50,25 @@ useHead({ title: 'Admin Portal' })
       }"
     >
       <div class="h-full px-4 md:px-6 flex items-center justify-between">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
+          <!-- Mobile: open the slide-in drawer -->
           <button
-            class="md:hidden inline-flex items-center justify-center size-8 rounded-md"
+            class="md:hidden inline-flex items-center justify-center size-8 rounded-md transition-colors hover:bg-(--color-bg-secondary)"
             :style="{ color: 'var(--color-text)' }"
             aria-label="Toggle navigation"
             @click="mobileNavOpen = !mobileNavOpen"
           >
             <UIcon :name="mobileNavOpen ? 'i-fluent-dismiss-24-regular' : 'i-fluent-line-horizontal-3-24-regular'" class="size-5" />
+          </button>
+          <!-- Desktop: collapse the sidebar to an icon-only rail -->
+          <button
+            class="hidden md:inline-flex items-center justify-center size-8 rounded-md transition-colors hover:bg-(--color-bg-secondary)"
+            :style="{ color: 'var(--color-text)' }"
+            :aria-pressed="sidebarCollapsed"
+            :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            @click="sidebarCollapsed = !sidebarCollapsed"
+          >
+            <UIcon name="i-fluent-line-horizontal-3-24-regular" class="size-5" />
           </button>
           <BrandMark to="/admin" wordmark="Admin Portal" />
         </div>
@@ -127,23 +142,25 @@ useHead({ title: 'Admin Portal' })
       <aside
         class="hidden md:flex flex-col border-r self-start sticky"
         :style="{
-          width: '248px',
+          width: sidebarCollapsed ? '68px' : '248px',
           top: '3.5rem',
           height: 'calc(100vh - 3.5rem)',
           background: 'var(--color-bg)',
           borderColor: 'var(--color-border)',
         }"
       >
-        <nav class="p-3 flex flex-col gap-1.5 overflow-y-auto">
+        <nav class="p-3 flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden">
           <NuxtLink
             v-for="item in adminNav"
             :key="item.to"
             :to="item.to"
             class="admin-nav-item"
+            :style="sidebarCollapsed ? { justifyContent: 'center', paddingLeft: 0, paddingRight: 0, width: '100%' } : undefined"
             :data-active="isAdminNavActive(item, route.path)"
+            :title="sidebarCollapsed ? item.label : undefined"
           >
             <UIcon :name="item.icon" class="size-4.5 shrink-0" />
-            <span>{{ item.label }}</span>
+            <span v-if="!sidebarCollapsed">{{ item.label }}</span>
           </NuxtLink>
         </nav>
       </aside>

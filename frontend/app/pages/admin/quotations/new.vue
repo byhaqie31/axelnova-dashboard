@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
-import DetailedQuotationBuilder from '~/components/admin/DetailedQuotationBuilder.vue'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -11,7 +10,6 @@ const inquiryId = computed(() => {
   const q = route.query.inquiry
   return typeof q === 'string' && q ? Number(q) : null
 })
-const isDetailed = computed(() => route.query.layout === 'detailed')
 
 function onSaved(id: number) {
   navigateTo(`/admin/quotations/${id}`)
@@ -26,15 +24,12 @@ function onSaved(id: number) {
     </NuxtLink>
 
     <div class="mb-8">
-      <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">New {{ isDetailed ? 'detailed ' : '' }}quotation</h1>
+      <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">New quotation</h1>
       <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
-        {{ isDetailed
-          ? 'Compose a customized, sectioned proposal — scope sections, options, care plan. Saving creates a draft you can preview and send.'
-          : 'Build a priced quotation. Saving creates a draft you can preview as a PDF and send.' }}
+        Build a priced quotation. Add the optional detailed-proposal section if you need a richer document. Saving creates a draft you can preview and send.
       </p>
     </div>
 
-    <DetailedQuotationBuilder v-if="isDetailed" :inquiry-id="inquiryId" @saved="onSaved" />
-    <QuotationBuilder v-else :inquiry-id="inquiryId" @saved="onSaved" />
+    <QuotationBuilder :inquiry-id="inquiryId" @saved="onSaved" />
   </div>
 </template>

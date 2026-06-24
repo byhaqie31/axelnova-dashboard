@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
-import DetailedQuotationBuilder from '~/components/admin/DetailedQuotationBuilder.vue'
+import DetailedQuotationView from '~/components/admin/DetailedQuotationView.vue'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -26,6 +26,7 @@ interface Quotation {
   submitted_at: string
   viewed_at: string | null
   sent_at: string | null
+  expires_at: string | null
   public_token: string | null
   form_payload: Record<string, any> | null
   document: Record<string, any> | null
@@ -42,35 +43,37 @@ useHead(() => ({
   title: quotation.value ? `${quotation.value.reference_code} — Admin` : 'Quotation — Admin',
 }))
 
-async function fetchQuotation() {
-  loading.value = true
+// A `seq` guard keeps the latest-issued fetch authoritative. `quiet` refreshes in
+// the background (after a builder save) without the full-page loading flash.
+let fetchSeq = 0
+async function fetchQuotation(quiet = false) {
+  const seq = ++fetchSeq
+  if (!quiet) loading.value = true
   error.value = ''
   try {
     const res = await apiFetch<{ data: Quotation }>(`/api/v1/admin/quotations/${route.params.id}`)
+    if (seq !== fetchSeq) return
     quotation.value = res.data
   }
   catch {
-    error.value = 'Failed to load quotation.'
+    if (seq !== fetchSeq) return
+    if (!quiet) error.value = 'Failed to load quotation.'
   }
   finally {
-    loading.value = false
+    if (seq === fetchSeq && !quiet) loading.value = false
   }
+}
+
+// Apply a fresh quotation the server already handed back (e.g. the send response)
+// instead of refetching — instant, and invalidates any in-flight fetch.
+function applyQuotation(data: Record<string, any>) {
+  fetchSeq++
+  quotation.value = data as Quotation
+  loading.value = false
 }
 
 const isDraft = computed(() => quotation.value?.status === 'draft')
 const isDetailed = computed(() => quotation.value?.document?.layout === 'detailed')
-
-async function updateStatus(status: string) {
-  if (!quotation.value) return
-  statusLoading.value = true
-  try {
-    await apiFetch(`/api/v1/admin/quotations/${quotation.value.id}/status`, { method: 'POST', body: { status } })
-    quotation.value.status = status
-    toast.success('Status updated', `Quotation set to ${statusLabels[status] ?? status}.`)
-  }
-  catch { toast.error('Couldn’t update status', 'Something went wrong. Please try again.') }
-  finally { statusLoading.value = false }
-}
 
 async function acceptQuotation() {
   if (!quotation.value) return
@@ -84,6 +87,20 @@ async function acceptQuotation() {
   }
   catch { toast.error('Couldn’t accept quotation', 'Something went wrong. Please try again.') }
   finally { acceptLoading.value = false }
+}
+
+// Re-open a sent/rejected/expired quote for editing. Flipping to draft swaps the
+// read view back to the builder (isDraft) and re-enables the edit endpoint.
+async function revertToDraft() {
+  if (!quotation.value) return
+  statusLoading.value = true
+  try {
+    await apiFetch(`/api/v1/admin/quotations/${quotation.value.id}/status`, { method: 'POST', body: { status: 'draft' } })
+    quotation.value.status = 'draft'
+    toast.success('Back to draft', 'Edit and re-send when you’re ready.')
+  }
+  catch { toast.error('Couldn’t move to draft', 'Something went wrong. Please try again.') }
+  finally { statusLoading.value = false }
 }
 
 function viewPdf() {
@@ -102,24 +119,47 @@ function fmtDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// Manual transitions; draft/sent/accepted are driven by the builder flow.
-const statusOptions = ['new', 'viewed', 'contacted', 'declined', 'expired', 'rejected', 'spam']
-const statusLabels: Record<string, string> = {
-  new: 'New', viewed: 'Viewed', contacted: 'Contacted', declined: 'Declined',
-  expired: 'Expired', rejected: 'Rejected', spam: 'Spam',
+// The lifecycle is driven by actions, not a status picker: draft/sent/accepted by
+// the builder + accept flow, rejected by the Reject action below, and expired
+// automatically once a sent quote passes its expiry date.
+const rejectLoading = ref(false)
+async function rejectQuotation() {
+  if (!quotation.value) return
+  rejectLoading.value = true
+  try {
+    await apiFetch(`/api/v1/admin/quotations/${quotation.value.id}/status`, { method: 'POST', body: { status: 'rejected' } })
+    quotation.value.status = 'rejected'
+    toast.success('Quotation rejected', 'Moved to rejected. You can still re-open it as a draft.')
+  }
+  catch { toast.error('Couldn’t reject quotation', 'Something went wrong. Please try again.') }
+  finally { rejectLoading.value = false }
 }
 
-const scopeFields = computed(() => {
-  if (!quotation.value?.form_payload) return []
-  const p = quotation.value.form_payload
-  const rows: { label: string; value: unknown }[] = []
-  const skip = new Set(['package_key', 'modifiers', 'addon_keys', 'rush', 'breakdown', 'category_key'])
-  for (const [k, v] of Object.entries(p)) {
-    if (skip.has(k) || v === '' || v === null || (Array.isArray(v) && !v.length)) continue
-    rows.push({ label: k.replace(/_/g, ' '), value: v })
+// Custom validity date — editable on sent/expired quotes. Extending an expired
+// quote re-activates it; the server keeps status and date in agreement.
+const canEditExpiry = computed(() => ['sent', 'expired'].includes(quotation.value?.status ?? ''))
+const expiryEditing = ref(false)
+const expiryDraft = ref('')
+const expiryLoading = ref(false)
+function startEditExpiry() {
+  expiryDraft.value = quotation.value?.expires_at ? quotation.value.expires_at.slice(0, 10) : ''
+  expiryEditing.value = true
+}
+async function saveExpiry() {
+  if (!quotation.value) return
+  expiryLoading.value = true
+  try {
+    const res = await apiFetch<{ data: Record<string, any> }>(
+      `/api/v1/admin/quotations/${quotation.value.id}/expiry`, { method: 'POST', body: { expires_at: expiryDraft.value || null } },
+    )
+    applyQuotation(res.data)
+    expiryEditing.value = false
+    toast.success('Validity updated', expiryDraft.value ? 'New expiry date saved.' : 'Expiry cleared — this quote no longer expires.')
   }
-  return rows
-})
+  catch { toast.error('Couldn’t update validity', 'Something went wrong. Please try again.') }
+  finally { expiryLoading.value = false }
+}
+
 </script>
 
 <template>
@@ -143,18 +183,10 @@ const scopeFields = computed(() => {
           </div>
           <AdminStatusPill :status="quotation.status" size="md" />
         </div>
-        <DetailedQuotationBuilder
-          v-if="isDetailed"
-          :quotation="quotation"
-          @saved="fetchQuotation"
-          @sent="fetchQuotation"
-          @accepted="(orderId) => navigateTo(`/admin/orders/${orderId}`)"
-        />
         <QuotationBuilder
-          v-else
           :quotation="quotation"
-          @saved="fetchQuotation"
-          @sent="fetchQuotation"
+          @saved="() => fetchQuotation(true)"
+          @sent="applyQuotation"
           @accepted="(orderId) => navigateTo(`/admin/orders/${orderId}`)"
         />
       </template>
@@ -184,9 +216,31 @@ const scopeFields = computed(() => {
                 <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Sent</p>
                 <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(quotation.sent_at) }}</p>
               </div>
+              <div v-if="quotation.expires_at || canEditExpiry">
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1 flex items-center gap-1.5" style="color: var(--color-text-tertiary);">
+                  {{ quotation.status === 'expired' ? 'Expired' : 'Valid until' }}
+                  <button v-if="canEditExpiry && !expiryEditing" type="button" class="inline-flex transition-opacity hover:opacity-60" :style="{ color: 'var(--color-accent)' }" aria-label="Edit validity date" @click="startEditExpiry">
+                    <UIcon name="i-lucide-pencil" class="size-3" />
+                  </button>
+                </p>
+                <div v-if="expiryEditing" class="flex items-center gap-1.5">
+                  <input v-model="expiryDraft" type="date" class="contact-input text-[12px] py-1 px-2" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+                  <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors" :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }" :disabled="expiryLoading" aria-label="Save validity date" @click="saveExpiry">
+                    <UIcon :name="expiryLoading ? 'i-lucide-loader-circle' : 'i-lucide-check'" class="size-3.5" :class="{ 'animate-spin': expiryLoading }" />
+                  </button>
+                  <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-text-tertiary)' }" aria-label="Cancel" @click="expiryEditing = false">
+                    <UIcon name="i-lucide-x" class="size-3.5" />
+                  </button>
+                </div>
+                <p v-else class="text-[13px]" :style="{ color: quotation.status === 'expired' ? 'var(--color-danger)' : 'var(--color-text)' }">{{ quotation.expires_at ? fmtDate(quotation.expires_at) : 'No expiry' }}</p>
+              </div>
             </div>
           </div>
 
+          <!-- Detailed → composed document view; standard → estimate + scope cards -->
+          <DetailedQuotationView v-if="isDetailed && quotation.document?.payload" :payload="quotation.document.payload" />
+
+          <template v-else>
           <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Estimate</p>
             <p class="text-[30px] font-bold tracking-tight mb-1" style="color: var(--color-text);">
@@ -218,15 +272,8 @@ const scopeFields = computed(() => {
             </div>
           </div>
 
-          <div v-if="scopeFields.length" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-            <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Scope details</p>
-            <div class="grid sm:grid-cols-2 gap-x-8 gap-y-3">
-              <div v-for="row in scopeFields" :key="row.label">
-                <p class="text-[11px] capitalize mb-0.5" style="color: var(--color-text-tertiary);">{{ row.label }}</p>
-                <p class="text-[13px]" style="color: var(--color-text);">{{ Array.isArray(row.value) ? row.value.join(', ') : String(row.value) }}</p>
-              </div>
-            </div>
-          </div>
+          <AdminScopeDetails :scope="quotation.form_payload" variant="card" />
+          </template>
         </div>
 
         <div class="lg:sticky lg:top-20 space-y-4">
@@ -235,26 +282,27 @@ const scopeFields = computed(() => {
             <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" @click="viewPdf">View PDF</button>
           </div>
 
-          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-            <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Update status</p>
-            <div class="flex flex-wrap gap-2">
-              <button v-for="s in statusOptions" :key="s" type="button"
-                class="status-pill status-pill-button" :class="{ 'opacity-50': statusLoading }"
-                :data-status="quotation.status === s ? s : ''" :data-active="quotation.status === s"
-                :disabled="statusLoading || quotation.status === s" @click="updateStatus(s)">
-                {{ statusLabels[s] }}
-              </button>
-            </div>
-          </div>
-
           <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Actions</p>
-            <a :href="`mailto:${quotation.email}?subject=Re: your quote ${quotation.reference_code}`" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">Reply by email</a>
-            <a v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
-              target="_blank" rel="noopener" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">WhatsApp</a>
-            <button v-if="quotation.status !== 'accepted'" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="acceptLoading" @click="acceptQuotation">
-              {{ acceptLoading ? 'Accepting…' : 'Accept & create order' }}
+
+            <!-- Outcomes for a live sent quote: accept (→ order) or reject. Expiry is automatic. -->
+            <template v-if="quotation.status === 'sent'">
+              <button class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="acceptLoading || rejectLoading" @click="acceptQuotation">
+                {{ acceptLoading ? 'Creating order…' : 'Proceed & Create Order' }}
+              </button>
+              <button class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :style="{ color: 'var(--color-danger)' }" :disabled="acceptLoading || rejectLoading" @click="rejectQuotation">
+                {{ rejectLoading ? 'Rejecting…' : 'Reject Quotation' }}
+              </button>
+            </template>
+
+            <!-- Re-open a sent / rejected / expired quote for editing. -->
+            <button v-if="quotation.status !== 'accepted'" class="btn-pill btn-pill-silver w-full justify-center text-[13px]" :disabled="statusLoading" @click="revertToDraft">
+              {{ statusLoading ? 'Editing…' : 'Mark as Draft' }}
             </button>
+
+            <a :href="`mailto:${quotation.email}?subject=Re: your quote ${quotation.reference_code}`" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">Email Client</a>
+            <a v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
+              target="_blank" rel="noopener" class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
           </div>
         </div>
       </div>

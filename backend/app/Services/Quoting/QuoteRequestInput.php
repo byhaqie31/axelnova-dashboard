@@ -11,7 +11,7 @@ class QuoteRequestInput extends Data
         public readonly string $email,
         public readonly string $phone,
         public readonly ?string $company,
-        public readonly string $packageKey,
+        public readonly ?string $packageKey,
         public readonly array $modifiers,
         public readonly array $addonKeys,
         public readonly bool $rush,

@@ -88,8 +88,11 @@ Route::middleware([
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/me', [AuthController::class, 'me'])->name('me');
 
-        // Client typeahead for the quotation builder
+        // Customers (clients) — typeahead for the builder + the Customers spine
         Route::get('/clients', [ClientsController::class, 'index'])->name('clients.index');
+        Route::post('/clients', [ClientsController::class, 'store'])->name('clients.store');
+        Route::get('/clients/{client}', [ClientsController::class, 'show'])->name('clients.show');
+        Route::put('/clients/{client}', [ClientsController::class, 'update'])->name('clients.update');
 
         // Analytics overview (traffic / engagement)
         Route::get('/analytics/overview', [AnalyticsController::class, 'overview'])->name('analytics.overview');
@@ -99,6 +102,7 @@ Route::middleware([
         Route::get('/quotations/{quotation}', [QuotationsController::class, 'show'])->name('quotations.show');
         Route::put('/quotations/{quotation}', [QuotationsController::class, 'update'])->name('quotations.update');
         Route::post('/quotations/{quotation}/status', [QuotationsController::class, 'updateStatus'])->name('quotations.status');
+        Route::post('/quotations/{quotation}/expiry', [QuotationsController::class, 'setExpiry'])->name('quotations.expiry');
         Route::post('/quotations/{quotation}/send', [QuotationsController::class, 'send'])->name('quotations.send');
         Route::post('/quotations/{quotation}/accept', [QuotationsController::class, 'accept'])->name('quotations.accept');
 

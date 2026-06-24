@@ -39,7 +39,7 @@ class OrdersController extends Controller
 
     public function show(Order $order): OrderResource
     {
-        $order->load(['client', 'quotation.addons', 'documents']);
+        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice']);
 
         return new OrderResource($order);
     }
@@ -118,29 +118,44 @@ class OrdersController extends Controller
     /**
      * Issue an invoice or receipt for the order. Freezes a DocumentData snapshot
      * (see DocumentIssuer) and assigns a derived number (INV-/RCP- + quote ref).
-     * Generate the invoice once a deposit/full payment lands; the receipt on
-     * full payment.
+     * An invoice is a deposit / partial / final bill; recording a payment on it
+     * accrues onto the order. A receipt confirms a settled payment (and may tie
+     * to the invoice it settles).
      */
     public function issueDocument(Request $request, Order $order): JsonResponse
     {
         $data = $request->validate([
             'type' => ['required', 'in:invoice,receipt'],
-            'layout' => ['nullable', 'in:standard,detailed'],
+            'invoiceType' => ['nullable', 'in:deposit,partial,final'],
+            'invoice_id' => ['nullable', 'integer', 'exists:invoices,id'],
             'amountPaid' => ['nullable', 'numeric', 'min:0'],
             'paymentRef' => ['nullable', 'string', 'max:120'],
             'paymentMethod' => ['nullable', 'string', 'max:120'],
-            'statusLabel' => ['nullable', 'string', 'max:60'],
             'status' => ['nullable', 'in:issued,paid,void'],
+            // Billing-time reductions off the agreed value: a negotiated discount
+            // and/or a promo code, each a fixed amount or a percentage.
+            'discountType' => ['nullable', 'in:amount,percent'],
+            'discountValue' => ['nullable', 'numeric', 'min:0'],
+            'discountLabel' => ['nullable', 'string', 'max:60'],
+            'promoCode' => ['nullable', 'string', 'max:40'],
+            'promoType' => ['nullable', 'in:amount,percent'],
+            'promoValue' => ['nullable', 'numeric', 'min:0'],
             // Optional full DocumentData override from a customized builder.
             'payload' => ['nullable', 'array'],
         ]);
 
         $order->loadMissing('quotation');
-        $document = DocumentIssuer::issue($order, $data['type'], $data);
+
+        $document = $data['type'] === 'invoice'
+            ? DocumentIssuer::issueInvoice($order, $data)
+            : DocumentIssuer::issueReceipt($order, $data);
+
+        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice']);
 
         return response()->json([
             'message' => ucfirst($data['type']).' issued.',
             'document' => $document,
+            'order' => new OrderResource($order),
         ], 201);
     }
 

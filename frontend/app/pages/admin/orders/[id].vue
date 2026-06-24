@@ -40,16 +40,31 @@ interface Order {
   quotation_document?: Record<string, any> | null
   quotation_scope?: Record<string, any> | null
   quotation_addons?: { key: string; label: string; amount_myr: string }[]
-  documents?: OrderDocument[]
+  invoices?: OrderInvoice[]
+  receipts?: OrderReceipt[]
 }
 
-interface OrderDocument {
+interface OrderInvoice {
   id: number
-  type: 'invoice' | 'receipt'
+  type: 'deposit' | 'partial' | 'final'
   number: string
   status: 'issued' | 'paid' | 'void'
   amount_total: string
   amount_paid: string | null
+  payment_ref: string | null
+  payment_method: string | null
+  issued_at: string | null
+  paid_at: string | null
+  pdf_path: string
+}
+
+interface OrderReceipt {
+  id: number
+  number: string
+  invoice_id: number | null
+  invoice_number: string | null
+  status: 'issued' | 'void'
+  amount: string
   payment_ref: string | null
   payment_method: string | null
   issued_at: string | null
@@ -61,34 +76,97 @@ const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
 
-const issuing = ref(false)
-const docForm = reactive({
-  type: 'invoice' as 'invoice' | 'receipt',
-  amountPaid: '' as string,
+const issuingInvoice = ref(false)
+const invoiceForm = reactive({
+  type: 'deposit' as 'deposit' | 'partial' | 'final',
+  status: 'issued' as 'issued' | 'paid',
+  amountPaid: '',
+  paymentMethod: '',
+  paymentRef: '',
+  discountValue: '',
+  discountType: 'amount' as 'amount' | 'percent',
+  discountLabel: '',
+  promoValue: '',
+  promoType: 'amount' as 'amount' | 'percent',
+  promoCode: '',
+})
+
+// Live preview of the invoice total. Mirrors the server: percentage adjustments
+// come off the agreed subtotal (sum of line items), amounts are taken as-is.
+const invoiceSubtotal = computed(() => lineItems.value.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.rate) || 0), 0))
+function adjAmount(type: 'amount' | 'percent', value: string, base: number) {
+  const v = Number(value) || 0
+  if (v <= 0) return 0
+  return type === 'percent' ? Math.round(base * Math.min(v, 100) / 100 * 100) / 100 : v
+}
+const invoiceDiscountAmt = computed(() => adjAmount(invoiceForm.discountType, invoiceForm.discountValue, invoiceSubtotal.value))
+const invoicePromoAmt = computed(() => adjAmount(invoiceForm.promoType, invoiceForm.promoValue, invoiceSubtotal.value))
+const invoiceTotal = computed(() => Math.max(invoiceSubtotal.value - invoiceDiscountAmt.value - invoicePromoAmt.value, 0))
+
+async function issueInvoice() {
+  if (!order.value) return
+  issuingInvoice.value = true
+  try {
+    const body: Record<string, unknown> = { type: 'invoice', invoiceType: invoiceForm.type, status: invoiceForm.status }
+    if (invoiceForm.amountPaid !== '') body.amountPaid = Number(invoiceForm.amountPaid)
+    if (invoiceForm.paymentMethod) body.paymentMethod = invoiceForm.paymentMethod
+    if (invoiceForm.paymentRef) body.paymentRef = invoiceForm.paymentRef
+    if (Number(invoiceForm.discountValue) > 0) {
+      body.discountType = invoiceForm.discountType
+      body.discountValue = Number(invoiceForm.discountValue)
+      if (invoiceForm.discountLabel) body.discountLabel = invoiceForm.discountLabel
+    }
+    if (Number(invoiceForm.promoValue) > 0) {
+      body.promoType = invoiceForm.promoType
+      body.promoValue = Number(invoiceForm.promoValue)
+      if (invoiceForm.promoCode) body.promoCode = invoiceForm.promoCode
+    }
+    await apiFetch(`/api/v1/admin/orders/${order.value.id}/documents`, { method: 'POST', body })
+    toast.success('Invoice issued', 'Ready to view and share.')
+    invoiceForm.amountPaid = ''
+    invoiceForm.paymentRef = ''
+    invoiceForm.discountValue = ''
+    invoiceForm.discountLabel = ''
+    invoiceForm.promoValue = ''
+    invoiceForm.promoCode = ''
+    await fetchOrder()
+  }
+  catch {
+    toast.error('Couldn’t issue invoice', 'Something went wrong. Please try again.')
+  }
+  finally {
+    issuingInvoice.value = false
+  }
+}
+
+const issuingReceipt = ref(false)
+const receiptForm = reactive({
+  invoice_id: '',
+  amountPaid: '',
   paymentMethod: '',
   paymentRef: '',
 })
 
-async function issueDocument() {
+async function issueReceipt() {
   if (!order.value) return
-  const label = docForm.type === 'invoice' ? 'Invoice' : 'Receipt'
-  issuing.value = true
+  issuingReceipt.value = true
   try {
-    const body: Record<string, unknown> = { type: docForm.type }
-    if (docForm.amountPaid !== '') body.amountPaid = Number(docForm.amountPaid)
-    if (docForm.paymentMethod) body.paymentMethod = docForm.paymentMethod
-    if (docForm.paymentRef) body.paymentRef = docForm.paymentRef
+    const body: Record<string, unknown> = { type: 'receipt' }
+    if (receiptForm.invoice_id) body.invoice_id = Number(receiptForm.invoice_id)
+    if (receiptForm.amountPaid !== '') body.amountPaid = Number(receiptForm.amountPaid)
+    if (receiptForm.paymentMethod) body.paymentMethod = receiptForm.paymentMethod
+    if (receiptForm.paymentRef) body.paymentRef = receiptForm.paymentRef
     await apiFetch(`/api/v1/admin/orders/${order.value.id}/documents`, { method: 'POST', body })
-    toast.success(`${label} issued`, 'The document is ready to view and share.')
-    docForm.paymentRef = ''
-    docForm.amountPaid = ''
+    toast.success('Receipt issued', 'Ready to view and share.')
+    receiptForm.amountPaid = ''
+    receiptForm.paymentRef = ''
     await fetchOrder()
   }
   catch {
-    toast.error(`Couldn’t issue ${label.toLowerCase()}`, 'Something went wrong. Please try again.')
+    toast.error('Couldn’t issue receipt', 'Something went wrong. Please try again.')
   }
   finally {
-    issuing.value = false
+    issuingReceipt.value = false
   }
 }
 
@@ -292,18 +370,6 @@ const lineItems = computed(() => {
   return Array.isArray(items) ? items : []
 })
 
-// Scope inputs captured on the quotation, minus the pricing-control keys.
-const scopeFields = computed(() => {
-  const p = order.value?.quotation_scope
-  if (!p) return [] as { label: string; value: unknown }[]
-  const skip = new Set(['package_key', 'modifiers', 'addon_keys', 'rush', 'breakdown', 'category_key'])
-  const rows: { label: string; value: unknown }[] = []
-  for (const [k, v] of Object.entries(p)) {
-    if (skip.has(k) || v === '' || v === null || (Array.isArray(v) && !v.length)) continue
-    rows.push({ label: k.replace(/_/g, ' '), value: v })
-  }
-  return rows
-})
 </script>
 
 <template>
@@ -389,15 +455,7 @@ const scopeFields = computed(() => {
             </div>
           </div>
 
-          <div v-if="scopeFields.length" class="mt-4 pt-4 border-t" style="border-color: var(--color-border);">
-            <p class="text-[11px] font-medium uppercase tracking-wider mb-3" style="color: var(--color-text-tertiary);">Scope details</p>
-            <div class="grid sm:grid-cols-2 gap-x-6 gap-y-3">
-              <div v-for="row in scopeFields" :key="row.label">
-                <p class="text-[11px] capitalize mb-0.5" style="color: var(--color-text-tertiary);">{{ row.label }}</p>
-                <p class="text-[13px]" style="color: var(--color-text);">{{ Array.isArray(row.value) ? row.value.join(', ') : String(row.value) }}</p>
-              </div>
-            </div>
-          </div>
+          <AdminScopeDetails :scope="order.quotation_scope" variant="section" />
 
           <p class="text-[12px] mt-4 pt-4 border-t" style="color: var(--color-text-tertiary); border-color: var(--color-border);">
             Source quotation
@@ -496,23 +554,25 @@ const scopeFields = computed(() => {
           </div>
         </div>
 
-        <!-- Documents (invoices & receipts) -->
+        <!-- Invoices -->
         <div class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Documents</p>
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Invoices</p>
 
-          <div v-if="order.documents?.length" class="space-y-2 mb-5">
-            <div v-for="d in order.documents" :key="d.id"
+          <div v-if="order.invoices?.length" class="space-y-2 mb-5">
+            <div v-for="d in order.invoices" :key="d.id"
               class="flex items-center justify-between gap-3 rounded-xl border p-3"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ d.number }}</span>
                   <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                    :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">{{ d.type }}</span>
+                    :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ d.type }}</span>
+                  <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                    :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">{{ d.status }}</span>
                 </div>
                 <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
-                  {{ fmtMyr(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ fmtMyr(d.amount_paid) }}</span> · {{ d.status }} · {{ fmtDate(d.issued_at) }}
+                  {{ fmtMyr(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ fmtMyr(d.amount_paid) }}</span> · {{ fmtDate(d.issued_at) }}
                 </p>
               </div>
               <a :href="d.pdf_path" target="_blank" rel="noopener"
@@ -521,37 +581,139 @@ const scopeFields = computed(() => {
               </a>
             </div>
           </div>
-          <p v-else class="text-[13px] mb-5" style="color: var(--color-text-tertiary);">No documents issued yet.</p>
+          <p v-else class="text-[13px] mb-5" style="color: var(--color-text-tertiary);">No invoices issued yet.</p>
 
-          <!-- Issue form -->
+          <!-- Issue invoice -->
           <div class="pt-4 border-t space-y-3" style="border-color: var(--color-border);">
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Type</span>
-                <select v-model="docForm.type" class="doc-input mt-1">
-                  <option value="invoice">Invoice</option>
-                  <option value="receipt">Receipt</option>
-                </select>
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Invoice type</span>
+                <AdminSelect v-model="invoiceForm.type" class="mt-1" :items="[{ label: 'Deposit', value: 'deposit' }, { label: 'Partial', value: 'partial' }, { label: 'Final', value: 'final' }]" />
               </label>
               <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">
-                  {{ docForm.type === 'receipt' ? 'Amount paid (full)' : 'Deposit received' }}
-                </span>
-                <input v-model="docForm.amountPaid" type="number" min="0" step="0.01" placeholder="e.g. 1250"
-                  class="doc-input mt-1">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Status</span>
+                <AdminSelect v-model="invoiceForm.status" class="mt-1" :items="[{ label: 'Issued', value: 'issued' }, { label: 'Paid', value: 'paid' }]" />
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount received</span>
+                <input v-model="invoiceForm.amountPaid" type="number" min="0" step="0.01" placeholder="optional" class="doc-input mt-1">
               </label>
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment method</span>
-                <input v-model="docForm.paymentMethod" type="text" placeholder="e.g. DuitNow QR (RHB)" class="doc-input mt-1">
+                <input v-model="invoiceForm.paymentMethod" type="text" placeholder="e.g. DuitNow QR (RHB)" class="doc-input mt-1">
+              </label>
+              <label class="block sm:col-span-2">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment ref</span>
+                <input v-model="invoiceForm.paymentRef" type="text" placeholder="optional" class="doc-input mt-1">
+              </label>
+            </div>
+
+            <!-- Discount & promo — reductions off the agreed value at billing time -->
+            <div class="pt-3 border-t space-y-3" style="border-color: var(--color-border);">
+              <p class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">
+                Discount &amp; promo <span class="normal-case font-normal">(optional)</span>
+              </p>
+              <div class="grid sm:grid-cols-2 gap-3">
+                <label class="block">
+                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Discount</span>
+                  <div class="flex gap-2 mt-1">
+                    <AdminRateToggle v-model="invoiceForm.discountType" />
+                    <input v-model="invoiceForm.discountValue" type="number" min="0" :max="invoiceForm.discountType === 'percent' ? 100 : undefined" :step="invoiceForm.discountType === 'percent' ? 1 : 0.01" placeholder="0" class="doc-input flex-1">
+                  </div>
+                </label>
+                <label class="block">
+                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Discount label</span>
+                  <input v-model="invoiceForm.discountLabel" type="text" placeholder="e.g. Loyalty discount" class="doc-input mt-1">
+                </label>
+                <label class="block">
+                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Promo code</span>
+                  <input v-model="invoiceForm.promoCode" type="text" placeholder="e.g. RAYA2026" class="doc-input mt-1">
+                </label>
+                <label class="block">
+                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Promo amount</span>
+                  <div class="flex gap-2 mt-1">
+                    <AdminRateToggle v-model="invoiceForm.promoType" />
+                    <input v-model="invoiceForm.promoValue" type="number" min="0" :max="invoiceForm.promoType === 'percent' ? 100 : undefined" :step="invoiceForm.promoType === 'percent' ? 1 : 0.01" placeholder="0" class="doc-input flex-1">
+                  </div>
+                </label>
+              </div>
+
+              <!-- Live total preview -->
+              <div v-if="invoiceDiscountAmt > 0 || invoicePromoAmt > 0" class="rounded-xl border p-3 text-[12px] space-y-1.5"
+                :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+                <div class="flex items-center justify-between">
+                  <span style="color: var(--color-text-secondary);">Subtotal</span>
+                  <span class="tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(invoiceSubtotal) }}</span>
+                </div>
+                <div v-if="invoiceDiscountAmt > 0" class="flex items-center justify-between">
+                  <span style="color: var(--color-text-secondary);">{{ invoiceForm.discountLabel || 'Discount' }}<span v-if="invoiceForm.discountType === 'percent'" style="color: var(--color-text-tertiary);"> ({{ Number(invoiceForm.discountValue) }}%)</span></span>
+                  <span class="tabular-nums" style="color: var(--color-text);">−{{ fmtMyrExact(invoiceDiscountAmt) }}</span>
+                </div>
+                <div v-if="invoicePromoAmt > 0" class="flex items-center justify-between">
+                  <span style="color: var(--color-text-secondary);">Promo<span v-if="invoiceForm.promoCode" style="color: var(--color-text-tertiary);"> ({{ invoiceForm.promoCode }})</span><span v-else-if="invoiceForm.promoType === 'percent'" style="color: var(--color-text-tertiary);"> ({{ Number(invoiceForm.promoValue) }}%)</span></span>
+                  <span class="tabular-nums" style="color: var(--color-text);">−{{ fmtMyrExact(invoicePromoAmt) }}</span>
+                </div>
+                <div class="flex items-center justify-between pt-1.5 border-t font-semibold" style="border-color: var(--color-border);">
+                  <span style="color: var(--color-text);">Total due</span>
+                  <span class="tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(invoiceTotal) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-[11px]" style="color: var(--color-text-tertiary);">A recorded amount is added to the order’s paid total. Discounts apply to the agreed subtotal.</p>
+            <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
+              :class="{ 'opacity-50': issuingInvoice }" :disabled="issuingInvoice" @click="issueInvoice">
+              {{ issuingInvoice ? 'Issuing…' : 'Issue invoice' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Receipts -->
+        <div class="rounded-2xl border p-6"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Receipts</p>
+
+          <div v-if="order.receipts?.length" class="space-y-2 mb-5">
+            <div v-for="r in order.receipts" :key="r.id"
+              class="flex items-center justify-between gap-3 rounded-xl border p-3"
+              :style="{ borderColor: 'var(--color-border)' }">
+              <div class="min-w-0">
+                <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ r.number }}</span>
+                <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
+                  {{ fmtMyr(r.amount) }}<span v-if="r.invoice_number"> · for {{ r.invoice_number }}</span> · {{ fmtDate(r.issued_at) }}
+                </p>
+              </div>
+              <a :href="r.pdf_path" target="_blank" rel="noopener"
+                class="btn-pill btn-pill-ghost text-[12px] shrink-0" style="height: 32px; padding: 0 16px;">
+                View PDF
+              </a>
+            </div>
+          </div>
+          <p v-else class="text-[13px] mb-5" style="color: var(--color-text-tertiary);">No receipts issued yet.</p>
+
+          <!-- Issue receipt -->
+          <div class="pt-4 border-t space-y-3" style="border-color: var(--color-border);">
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">For invoice</span>
+                <AdminSelect v-model="receiptForm.invoice_id" class="mt-1" :items="[{ label: '— none —', value: '' }, ...(order.invoices ?? []).map(d => ({ label: d.number, value: String(d.id) }))]" />
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount paid</span>
+                <input v-model="receiptForm.amountPaid" type="number" min="0" step="0.01" placeholder="optional" class="doc-input mt-1">
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment method</span>
+                <input v-model="receiptForm.paymentMethod" type="text" placeholder="e.g. DuitNow QR (RHB)" class="doc-input mt-1">
               </label>
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment ref</span>
-                <input v-model="docForm.paymentRef" type="text" placeholder="optional" class="doc-input mt-1">
+                <input v-model="receiptForm.paymentRef" type="text" placeholder="optional" class="doc-input mt-1">
               </label>
             </div>
             <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
-              :class="{ 'opacity-50': issuing }" :disabled="issuing" @click="issueDocument">
-              {{ issuing ? 'Issuing…' : `Issue ${docForm.type}` }}
+              :class="{ 'opacity-50': issuingReceipt }" :disabled="issuingReceipt" @click="issueReceipt">
+              {{ issuingReceipt ? 'Issuing…' : 'Issue receipt' }}
             </button>
           </div>
         </div>

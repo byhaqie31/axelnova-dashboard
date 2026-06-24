@@ -36,6 +36,7 @@ class Quotation extends Model
         'submitted_at',
         'viewed_at',
         'sent_at',
+        'expires_at',
     ];
 
     protected function casts(): array
@@ -49,7 +50,30 @@ class Quotation extends Model
             'submitted_at' => 'datetime',
             'viewed_at' => 'datetime',
             'sent_at' => 'datetime',
+            'expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Lazy expiry: flip every overdue sent quotation to 'expired'. Called on read
+     * (admin list, public document view) so the lifecycle stays correct without a
+     * scheduler. Cheap, indexed, and a no-op when nothing is overdue.
+     */
+    public static function expireOverdue(): void
+    {
+        static::query()
+            ->where('status', 'sent')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<', now())
+            ->update(['status' => 'expired']);
+    }
+
+    /** True when this is a sent quote already past its expiry date. */
+    public function isOverdue(): bool
+    {
+        return $this->status === 'sent'
+            && $this->expires_at !== null
+            && $this->expires_at->isPast();
     }
 
     public function client(): BelongsTo
@@ -78,12 +102,20 @@ class Quotation extends Model
     }
 
     /**
-     * The single agreed price for this quotation. For a detailed (admin-built)
-     * quote it's the document line-item total (+ tax if any); otherwise it
-     * falls back to the top of the estimate range. Used when an order is born.
+     * The single agreed price for this quotation. Priced from the document the
+     * client actually sees — the detailed builder's composed section totals
+     * first, then the standard builder's line items (+ tax), and only as a last
+     * resort the top of the engine estimate range. Used when an order is born.
      */
     public function finalAmount(): float
     {
+        // Detailed (admin-composed) layout — the client-facing total is the sum
+        // of the document's own priced sections, not the engine estimate.
+        $detailed = self::sumDetailedSections($this->document);
+        if ($detailed !== null) {
+            return $detailed;
+        }
+
         $doc = $this->document;
 
         if (is_array($doc) && ! empty($doc['items']) && is_array($doc['items'])) {
@@ -97,6 +129,29 @@ class Quotation extends Model
         }
 
         return (float) $this->estimate_max_myr;
+    }
+
+    /**
+     * Sum the priced sections of a detailed-layout document, or null when the
+     * document isn't a detailed build (or carries no priced sections). This is
+     * the single source of truth for "what a detailed quote is worth" — shared
+     * by finalAmount() and the controller when it stamps the stored estimate.
+     */
+    public static function sumDetailedSections(?array $document): ?float
+    {
+        if (! is_array($document) || ($document['layout'] ?? null) !== 'detailed') {
+            return null;
+        }
+
+        $sections = $document['payload']['sections'] ?? null;
+        if (! is_array($sections) || $sections === []) {
+            return null;
+        }
+
+        return (float) array_sum(array_map(
+            fn ($s) => (float) ($s['total'] ?? 0),
+            $sections,
+        ));
     }
 
     /**
