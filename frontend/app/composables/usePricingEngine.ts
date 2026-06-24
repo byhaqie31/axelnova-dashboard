@@ -9,7 +9,7 @@ export interface QuoteCategory {
 
 export interface PricingConfig {
   version: string
-  base_packages: Record<string, { min: number; max: number; eta_value: number; eta_unit: EtaUnit }>
+  base_packages: Record<string, { min: number; max: number; eta_value: number; eta_unit: EtaUnit; name?: string }>
   categories: QuoteCategory[]
   modifiers: Record<string, {
     amount: number
@@ -75,7 +75,8 @@ export function usePricingEngine() {
     let max = base.max
     let etaValue = base.eta_value
     const etaUnit = base.eta_unit
-    const breakdown: [string, number, number][] = [[`Base: ${packageKey}`, min, max]]
+    // Label with the catalog name (DB), never the slug — mirrors PricingEngine.php.
+    const breakdown: [string, number, number][] = [[`Base: ${base.name ?? packageKey}`, min, max]]
 
     for (const [key, value] of Object.entries(modifiers)) {
       const def = cfg.modifiers[key]
@@ -90,7 +91,7 @@ export function usePricingEngine() {
           const extra = (count - def.applies_after) * def.amount
           min += extra
           max += extra
-          breakdown.push([`+${count - def.applies_after} ${key.replace('_', ' ')}`, extra, extra])
+          breakdown.push([`+${count - def.applies_after} ${key.replace(/_/g, ' ')}`, extra, extra])
         }
       }
       else if (value === true || value === 1) {

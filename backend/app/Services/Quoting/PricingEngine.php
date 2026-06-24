@@ -6,6 +6,7 @@ use App\Models\PricingConfig;
 use App\Models\ServiceCategory;
 use App\Models\ServicePackage;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 final class PricingEngine
@@ -14,6 +15,9 @@ final class PricingEngine
 
     /** Rush time-reduction only makes sense for these units. */
     private const RUSH_UNITS = ['week', 'month'];
+
+    /** Memoised merged catalog — built once per instance (calculate + config + name lookups). */
+    private ?array $basePackages = null;
 
     public function __construct(private readonly PricingConfig $config) {}
 
@@ -43,6 +47,17 @@ final class PricingEngine
         return $this->config;
     }
 
+    /**
+     * Human-readable package name from the merged catalog (admin-managed
+     * service_packages name; humanised key for legacy JSON-only entries). Used
+     * wherever a package would otherwise surface as a raw slug — breakdown lines,
+     * document line items, customer email.
+     */
+    public function packageName(string $key): string
+    {
+        return $this->buildBasePackages()[$key]['name'] ?? Str::headline($key);
+    }
+
     public function calculate(QuoteRequestInput $input): EstimateResult
     {
         $cfg = $this->config->config;
@@ -60,7 +75,9 @@ final class PricingEngine
         $max = (float) $base['max'];
         $etaValue = (int) $base['eta_value'];
         $etaUnit = (string) $base['eta_unit'];
-        $breakdown = [["Base: {$input->packageKey}", $min, $max]];
+        // Label with the catalog name (not the slug) — this breakdown is shown to
+        // the client in the email and the PDF fallback line items.
+        $breakdown = [['Base: '.($base['name'] ?? $input->packageKey), $min, $max]];
 
         foreach ($input->modifiers as $key => $value) {
             if (!isset($modifierDefs[$key])) {
@@ -81,13 +98,14 @@ final class PricingEngine
                     $extra = ($count - $threshold) * (float) $def['amount'];
                     $min += $extra;
                     $max += $extra;
-                    $breakdown[] = ['+'.($count - $threshold)." {$key}", $extra, $extra];
+                    // De-slug the modifier key for the client-facing breakdown.
+                    $breakdown[] = ['+'.($count - $threshold).' '.str_replace('_', ' ', $key), $extra, $extra];
                 }
             } elseif ($value === true || $value === 1 || $value === '1' || $value === 'true') {
                 $extra = (float) $def['amount'];
                 $min += $extra;
                 $max += $extra;
-                $breakdown[] = ["+{$key}", $extra, $extra];
+                $breakdown[] = ['+'.str_replace('_', ' ', $key), $extra, $extra];
             }
         }
 
@@ -147,11 +165,17 @@ final class PricingEngine
      * Merge admin-managed service_packages on top of the pricing_configs JSON.
      * DB rows win where present; legacy JSON-only keys still resolve.
      *
-     * Each entry is normalised to: ['min' => float, 'max' => float, 'eta_value' => int, 'eta_unit' => string].
+     * Each entry is normalised to: ['min' => float, 'max' => float, 'eta_value' => int, 'eta_unit' => string, 'name' => string].
+     * `name` is the catalog name (DB) or a humanised key (legacy JSON-only); it
+     * de-slugs the package everywhere it surfaces to the client.
      * Legacy JSON entries with `weeks` are translated to {eta_value: weeks, eta_unit: 'week'}.
      */
     private function buildBasePackages(): array
     {
+        if ($this->basePackages !== null) {
+            return $this->basePackages;
+        }
+
         $merged = [];
         foreach ($this->config->config['base_packages'] ?? [] as $key => $entry) {
             $merged[$key] = [
@@ -159,6 +183,7 @@ final class PricingEngine
                 'max' => (float) ($entry['max'] ?? 0),
                 'eta_value' => (int) ($entry['eta_value'] ?? $entry['weeks'] ?? 4),
                 'eta_unit' => (string) ($entry['eta_unit'] ?? 'week'),
+                'name' => (string) ($entry['name'] ?? Str::headline($key)),
             ];
         }
 
@@ -177,10 +202,11 @@ final class PricingEngine
                 'max' => (float) $p->price_max_myr,
                 'eta_value' => (int) ($p->eta_value ?: 4),
                 'eta_unit' => in_array($p->eta_unit, self::ETA_UNITS, true) ? $p->eta_unit : 'week',
+                'name' => $p->name,
             ];
         }
 
-        return $merged;
+        return $this->basePackages = $merged;
     }
 
     /**
