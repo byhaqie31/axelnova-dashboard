@@ -91,28 +91,6 @@ export function deriveModifiers(s: QuoteScopeState): Record<string, boolean | nu
   return m
 }
 
-/**
- * In-memory handoff when an admin upgrades a standard quote to the detailed
- * layout — carries the client, the pricing scope, and a detailed-document
- * `payload` seeded from the standard line items. Passed from <QuotationBuilder>
- * up to the page, then down into <DetailedQuotationBuilder> as its `seed` prop so
- * nothing has to be re-entered. See the "seed & switch" expand flow.
- */
-export interface QuoteExpandSeed {
-  client: {
-    mode: 'search' | 'new'
-    client_id: number | null
-    name: string
-    email: string
-    phone: string
-    company: string
-  }
-  form_payload: Record<string, unknown>
-  package_key: string | null
-  depositPct: number
-  payload: Record<string, any>
-}
-
 /** Flatten the scope state into the form_payload shape the backend stores. */
 export function scopeToPayload(s: QuoteScopeState): Record<string, unknown> {
   return {

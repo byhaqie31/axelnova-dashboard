@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
-import DetailedQuotationBuilder from '~/components/admin/DetailedQuotationBuilder.vue'
-import type { QuoteExpandSeed } from '~/composables/quoteScope'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -12,17 +10,6 @@ const inquiryId = computed(() => {
   const q = route.query.inquiry
   return typeof q === 'string' && q ? Number(q) : null
 })
-
-// Start standard; the builder can upgrade itself to detailed in place, seeding the
-// detailed sections from the line items. A ?layout=detailed deep-link still opens
-// straight into the detailed builder.
-const layout = ref<'standard' | 'detailed'>(route.query.layout === 'detailed' ? 'detailed' : 'standard')
-const seed = ref<QuoteExpandSeed | null>(null)
-
-function expandToDetailed(s: QuoteExpandSeed) {
-  seed.value = s
-  layout.value = 'detailed'
-}
 
 function onSaved(id: number) {
   navigateTo(`/admin/quotations/${id}`)
@@ -37,25 +24,12 @@ function onSaved(id: number) {
     </NuxtLink>
 
     <div class="mb-8">
-      <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">New {{ layout === 'detailed' ? 'detailed ' : '' }}quotation</h1>
+      <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">New quotation</h1>
       <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
-        {{ layout === 'detailed'
-          ? 'Compose a customized, sectioned proposal — scope sections, options, care plan. Saving creates a draft you can preview and send.'
-          : 'Build a priced quotation. Need a richer proposal? Hit “Expand to detailed” once your scope is set. Saving creates a draft you can preview and send.' }}
+        Build a priced quotation. Add the optional detailed-proposal section if you need a richer document. Saving creates a draft you can preview and send.
       </p>
     </div>
 
-    <DetailedQuotationBuilder
-      v-if="layout === 'detailed'"
-      :inquiry-id="inquiryId"
-      :seed="seed"
-      @saved="onSaved"
-    />
-    <QuotationBuilder
-      v-else
-      :inquiry-id="inquiryId"
-      @saved="onSaved"
-      @expand="expandToDetailed"
-    />
+    <QuotationBuilder :inquiry-id="inquiryId" @saved="onSaved" />
   </div>
 </template>

@@ -30,24 +30,29 @@ default to `detailed`.
 
 ### Choosing a quotation layout (admin)
 
-There's no upfront Standard-vs-Detailed choice. **Quotations → New quotation** always
-starts in the **standard** builder ([`QuotationBuilder.vue`](../../frontend/app/components/admin/QuotationBuilder.vue) — package-priced, scope → line items → totals).
-An **"Expand to detailed"** action upgrades that same quote, in place, to the
-**detailed** proposal ([`DetailedQuotationBuilder.vue`](../../frontend/app/components/admin/DetailedQuotationBuilder.vue): scope sections, "what's included", option cards, care plan;
-auto summary + deposit/balance panels). Expanding seeds the detailed sections from
-the standard line items (a "Scope of work" section) so nothing is re-entered —
-"seed & switch". The switch is coordinated at the page level (`new.vue`, `[id].vue`):
-the standard builder emits an `expand` event carrying a `QuoteExpandSeed`, and the
-detailed builder hydrates from it via its `seed` prop. `/admin/quotations/new?layout=detailed`
-still deep-links straight into the detailed builder.
+There's one builder and no upfront choice. **Quotations → New quotation** always
+opens [`QuotationBuilder.vue`](../../frontend/app/components/admin/QuotationBuilder.vue) — package-priced, scope → line items → totals (the **standard** layout).
+Below the line items sits an **"Expand to detailed"** section: clicking it reveals
+[`DetailedProposalFields.vue`](../../frontend/app/components/admin/DetailedProposalFields.vue) inline — "what's included" groups, option cards, a care plan,
+plus subtitle / attn-address. Saving with that section open writes the **detailed**
+layout; the line items become a single "Scope of work" section and the auto summary +
+deposit/balance panels are generated. "Remove (keep standard)" collapses it and the
+quote saves standard again. No screen swap, one record.
+
+> Note: the merged builder represents the scope as the flat line-items list, so a
+> detailed quote has one "Scope of work" section. Multi-section scope grouping (a
+> capability of the old separate detailed builder) isn't offered here; editing a
+> legacy multi-section detailed quote flattens its rows into line items (amounts
+> preserved, section titles dropped).
 
 The record remembers its layout via `document.layout`, and `/admin/quotations/[id]`
-reopens a draft in the matching builder. Standard quotations created from inquiries
-/ the public quote form are unaffected. A detailed quote still captures a package &
-scope as the **internal pricing basis** (it drives `estimate_*` and the order value);
-the client-facing PDF renders the composed `document.payload`, not that estimate.
+reopens a draft in the same builder (which auto-detects detailed from `document.layout`).
+Standard quotations created from inquiries / the public quote form are unaffected. A
+detailed quote still captures a package & scope as the **internal pricing basis** (it
+drives `estimate_*` and the order value); the client-facing PDF renders the composed
+`document.payload`, not that estimate.
 
-**Storage / mapping.** The detailed builder writes `document = { layout: 'detailed',
+**Storage / mapping.** A detailed save writes `document = { layout: 'detailed',
 payload: {…full content…} }`. `DocumentMapper::toDocumentData` passes `payload`
 straight through (stamping studio / reference number / issued / client), mirroring
 the order override path. `AdminQuotationRequest` validates `document.payload` loosely
@@ -259,12 +264,13 @@ fit before reflowing spacing.
 
 ## Roadmap
 
-- ✅ **Customized detailed-quotation builder UI** — shipped as
-  [`DetailedQuotationBuilder.vue`](../../frontend/app/components/admin/DetailedQuotationBuilder.vue),
-  reached via "Expand to detailed" from the standard builder. Covers scope sections, "what's included",
+- ✅ **Customized detailed-quotation builder UI** — shipped as the inline
+  [`DetailedProposalFields.vue`](../../frontend/app/components/admin/DetailedProposalFields.vue)
+  section inside [`QuotationBuilder.vue`](../../frontend/app/components/admin/QuotationBuilder.vue),
+  revealed via "Expand to detailed". Covers "what's included",
   option cards, care plan, auto summary + deposit/balance panels. Future polish:
-  editable summary rows, `provide` / `notIncluded` / `timeline` / `notes` blocks
-  (the renderer already supports them — just no editor yet).
+  multi-section scope grouping, editable summary rows, `provide` / `notIncluded` /
+  `timeline` / `notes` blocks (the renderer already supports them — just no editor yet).
 - **"Draft with AI"** (not yet built) — Claude (server-side, structured output →
   `DocumentData`) to draft the customized quotation prose. Own PR; never for
   invoices/receipts, which stay deterministic.

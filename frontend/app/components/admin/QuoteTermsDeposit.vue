@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Shared "Deposit % + Terms (one per line)" block, used by BOTH quotation builders
-// (standard QuotationBuilder + DetailedQuotationBuilder) so the two never drift.
-// Each builder binds its own state via v-model; markup lives here only.
+// Shared "Deposit % + Terms (one per line)" block used by the QuotationBuilder
+// (and its inline detailed-proposal section). Binds its state via v-model; markup
+// lives here only so the terms/deposit UI never drifts.
 withDefaults(defineProps<{
   /** Adds the top divider used when this sits inside a multi-section card (detailed builder). */
   separated?: boolean
