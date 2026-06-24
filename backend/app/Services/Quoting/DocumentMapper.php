@@ -144,21 +144,36 @@ class DocumentMapper
             fn ($it) => (float) ($it['qty'] ?? 1) * (float) ($it['rate'] ?? 0),
             $items,
         ));
-        $discount = (float) ($doc['discount'] ?? 0);
-        $total = $subtotal - $discount;
+        // Quotation-level discount (legacy, rarely set) plus per-invoice discount and
+        // promo applied at billing time off the agreed subtotal. Each can be a fixed
+        // amount or a percentage; all three reduce the total.
+        $baseDiscount = (float) ($doc['discount'] ?? 0);
+        [$discountAmt, $discountLabel] = self::billingAdjustment(
+            $input['discountType'] ?? null, $input['discountValue'] ?? null, $subtotal, $input['discountLabel'] ?? 'Discount',
+        );
+        [$promoAmt, $promoLabel] = self::billingAdjustment(
+            $input['promoType'] ?? null, $input['promoValue'] ?? null, $subtotal, 'Promo', $input['promoCode'] ?? null,
+        );
+        $total = max($subtotal - $baseDiscount - $discountAmt - $promoAmt, 0);
 
         $amountPaid = isset($input['amountPaid']) ? (float) $input['amountPaid'] : null;
         $balance = $amountPaid !== null ? max($total - $amountPaid, 0) : $total;
 
-        // Line items → summary rows, then subtotal / discount / total.
+        // Line items → summary rows, then subtotal, discounts/promo, and the total.
         $rows = array_map(fn ($it) => [
             'label' => (string) ($it['title'] ?? 'Item')
                 . (! empty($it['desc']) ? " ({$it['desc']})" : ''),
             'price' => (float) ($it['qty'] ?? 1) * (float) ($it['rate'] ?? 0),
         ], $items);
         $rows[] = ['label' => 'Subtotal', 'price' => $subtotal];
-        if ($discount > 0) {
-            $rows[] = ['label' => 'Discount', 'price' => $discount, 'negative' => true];
+        if ($baseDiscount > 0) {
+            $rows[] = ['label' => 'Discount', 'price' => $baseDiscount, 'negative' => true];
+        }
+        if ($discountAmt > 0) {
+            $rows[] = ['label' => $discountLabel, 'price' => $discountAmt, 'negative' => true];
+        }
+        if ($promoAmt > 0) {
+            $rows[] = ['label' => $promoLabel, 'price' => $promoAmt, 'negative' => true];
         }
         $rows[] = ['label' => $type === 'receipt' ? 'Total paid' : 'Total due',
             'price' => $total, 'total' => true, 'red' => true];
@@ -228,6 +243,29 @@ class DocumentMapper
         return $quotation->company
             ? "{$quotation->company} — project quotation"
             : 'Project quotation';
+    }
+
+    /**
+     * Resolve a billing-time discount or promo into a [amount, label] pair. A
+     * 'percent' value is applied to the agreed subtotal (capped at 100%); 'amount'
+     * is taken as-is. Returns [0, null] when there's nothing to apply.
+     *
+     * @return array{0: float, 1: ?string}
+     */
+    private static function billingAdjustment(?string $type, mixed $value, float $base, string $fallbackLabel, ?string $code = null): array
+    {
+        $v = (float) ($value ?? 0);
+        if ($v <= 0) {
+            return [0.0, null];
+        }
+
+        $amount = $type === 'percent' ? round($base * min($v, 100) / 100, 2) : $v;
+        $label = $code ?: $fallbackLabel;
+        if ($type === 'percent') {
+            $label .= ' (' . rtrim(rtrim(number_format($v, 2), '0'), '.') . '%)';
+        }
+
+        return [$amount, $label];
     }
 
     /**

@@ -160,40 +160,6 @@ async function saveExpiry() {
   finally { expiryLoading.value = false }
 }
 
-// Human labels for known scope keys; anything unmapped falls back to a tidy
-// title-case so new fields still read correctly without a code change.
-const SCOPE_LABELS: Record<string, string> = {
-  cms: 'CMS', pages: 'Pages', modules: 'Modules', testing: 'Testing',
-  languages: 'Languages', prototype: 'Prototype', real_time: 'Real-time',
-  user_roles: 'User roles', pages_count: 'Pages', admin_portal: 'Admin portal',
-  booking_flow: 'Booking flow', design_system: 'Design system',
-  screens_count: 'Screens', components_count: 'Components',
-  state_management: 'State management', charts_complexity: 'Charts complexity',
-  auth_methods: 'Auth methods', payment_method: 'Payment method', core_features: 'Core features',
-}
-function humanizeScope(key: string) {
-  return SCOPE_LABELS[key] ?? key.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
-}
-
-type ScopeKind = 'bool' | 'number' | 'text'
-interface ScopeField { key: string; label: string; kind: ScopeKind; value: string; on: boolean }
-
-// Specs (numbers / text) lead; feature toggles (Yes/No) group together after them,
-// so the badges line up as one scannable block rather than scattered through the grid.
-const scopeFields = computed<ScopeField[]>(() => {
-  if (!quotation.value?.form_payload) return []
-  const p = quotation.value.form_payload
-  const skip = new Set(['package_key', 'modifiers', 'addon_keys', 'rush', 'breakdown', 'category_key'])
-  const fields: ScopeField[] = []
-  for (const [k, v] of Object.entries(p)) {
-    if (skip.has(k) || v === '' || v === null || (Array.isArray(v) && !v.length)) continue
-    const label = humanizeScope(k)
-    if (typeof v === 'boolean') fields.push({ key: k, label, kind: 'bool', value: v ? 'Yes' : 'No', on: v })
-    else if (typeof v === 'number') fields.push({ key: k, label, kind: 'number', value: String(v), on: false })
-    else fields.push({ key: k, label, kind: 'text', value: Array.isArray(v) ? v.join(', ') : String(v), on: false })
-  }
-  return fields.sort((a, b) => Number(a.kind === 'bool') - Number(b.kind === 'bool'))
-})
 </script>
 
 <template>
@@ -306,30 +272,7 @@ const scopeFields = computed<ScopeField[]>(() => {
             </div>
           </div>
 
-          <div v-if="scopeFields.length" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-            <div class="flex items-center gap-2 mb-1">
-              <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Scope details</p>
-              <span class="text-[11px] font-medium tabular-nums rounded-full px-1.5 py-px" :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-tertiary)' }">{{ scopeFields.length }}</span>
-            </div>
-            <!-- Ruled spec grid: label-left / value-right. Booleans read as Yes/No badges
-                 (Yes pops in accent, No recedes), numbers are emphasised, text wraps. -->
-            <div class="grid sm:grid-cols-2 sm:gap-x-10">
-              <div v-for="field in scopeFields" :key="field.key"
-                class="flex items-center justify-between gap-3 py-2.5 border-b" :style="{ borderColor: 'var(--color-border)' }">
-                <span class="text-[12.5px]" style="color: var(--color-text-secondary);">{{ field.label }}</span>
-
-                <span v-if="field.kind === 'bool'" class="inline-flex items-center gap-1 rounded-full pl-1.5 pr-2 py-0.5 text-[11px] font-semibold shrink-0"
-                  :style="field.on
-                    ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-                    : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-tertiary)' }">
-                  <UIcon :name="field.on ? 'i-lucide-check' : 'i-lucide-minus'" class="size-3" />
-                  {{ field.value }}
-                </span>
-                <span v-else-if="field.kind === 'number'" class="text-[14px] font-semibold tabular-nums shrink-0" style="color: var(--color-text);">{{ field.value }}</span>
-                <span v-else class="text-[13px] text-right" style="color: var(--color-text);">{{ field.value }}</span>
-              </div>
-            </div>
-          </div>
+          <AdminScopeDetails :scope="quotation.form_payload" variant="card" />
           </template>
         </div>
 

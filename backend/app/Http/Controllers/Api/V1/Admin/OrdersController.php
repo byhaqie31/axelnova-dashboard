@@ -132,6 +132,14 @@ class OrdersController extends Controller
             'paymentRef' => ['nullable', 'string', 'max:120'],
             'paymentMethod' => ['nullable', 'string', 'max:120'],
             'status' => ['nullable', 'in:issued,paid,void'],
+            // Billing-time reductions off the agreed value: a negotiated discount
+            // and/or a promo code, each a fixed amount or a percentage.
+            'discountType' => ['nullable', 'in:amount,percent'],
+            'discountValue' => ['nullable', 'numeric', 'min:0'],
+            'discountLabel' => ['nullable', 'string', 'max:60'],
+            'promoCode' => ['nullable', 'string', 'max:40'],
+            'promoType' => ['nullable', 'in:amount,percent'],
+            'promoValue' => ['nullable', 'numeric', 'min:0'],
             // Optional full DocumentData override from a customized builder.
             'payload' => ['nullable', 'array'],
         ]);
