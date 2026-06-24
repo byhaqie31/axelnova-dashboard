@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import QuoteScopeFields from '~/components/shared/QuoteScopeFields.vue'
-import type { QuoteScopeState } from '~/composables/quoteScope'
+import type { QuoteScopeState, QuoteExpandSeed } from '~/composables/quoteScope'
 import type { EstimateResult } from '~/composables/usePricingEngine'
 import { defaultQuoteScope, scopeToPayload } from '~/composables/quoteScope'
 
@@ -22,6 +22,8 @@ interface QuotationLike {
 const props = defineProps<{
   quotation?: QuotationLike | null
   inquiryId?: number | null
+  /** In-memory handoff when a standard quote is upgraded to detailed in place. */
+  seed?: QuoteExpandSeed | null
 }>()
 
 const emit = defineEmits<{
@@ -257,7 +259,17 @@ function hydrateDoc(payload: Record<string, any>) {
 onMounted(async () => {
   await loadConfig()
 
-  if (props.quotation) {
+  if (props.seed) {
+    // Upgraded from a standard quote — hydrate from the in-memory handoff. The
+    // stored record is still standard, so this starts dirty (see baseline below).
+    const s = props.seed
+    Object.assign(client, s.client)
+    hydrateScope(s.form_payload ?? {}, s.package_key ?? null)
+    hydrateDoc(s.payload ?? {})
+    doc.depositPct = s.depositPct || doc.depositPct
+    if (!doc.termsText) doc.termsText = defaultTerms.join('\n')
+  }
+  else if (props.quotation) {
     const q = props.quotation
     client.mode = q.client_id ? 'search' : 'new'
     client.client_id = q.client_id
@@ -287,6 +299,11 @@ onMounted(async () => {
       catch { /* prefill is best-effort */ }
     }
   }
+
+  // Snapshot the loaded form so the Save button can detect real edits (`dirty`).
+  // Expanded-from-standard quotes intentionally start dirty: the stored record is
+  // still the standard version and the conversion has to be saved.
+  baseline.value = props.seed ? '' : formFingerprint()
 })
 
 // ── Build + actions ──────────────────────────────────────────────────────────
@@ -392,6 +409,16 @@ function buildPayload() {
   }
 }
 
+// Dirty tracking — in edit mode the "Save changes" button only surfaces once the
+// loaded draft is actually modified. The fingerprint omits `modifiers` (emitted
+// asynchronously by the scope child after mount, and derived from scope anyway)
+// so it never trips a false dirty.
+const baseline = ref('')
+function formFingerprint(): string {
+  return JSON.stringify({ ...buildPayload(), modifiers: undefined })
+}
+const dirty = computed(() => formFingerprint() !== baseline.value)
+
 async function persist(): Promise<number | null> {
   if (!canSave.value) { error.value = 'Add a client first.'; return null }
   saving.value = true
@@ -402,6 +429,7 @@ async function persist(): Promise<number | null> {
       ? await apiFetch<{ data: any }>(`/api/v1/admin/quotations/${props.quotation!.id}`, { method: 'PUT', body: payload })
       : await apiFetch<{ data: any }>('/api/v1/admin/quotations', { method: 'POST', body: payload })
     const id = res.data.id
+    baseline.value = formFingerprint()
     emit('saved', id)
     return id
   }
@@ -795,7 +823,7 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
       </div>
 
       <div class="rounded-2xl border p-5 space-y-3" :style="cardStyle">
-        <button type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="!canSave || saving" @click="save">
+        <button v-if="!isEdit || dirty" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="!canSave || saving" @click="save">
           {{ saving ? 'Saving…' : isEdit ? 'Save changes' : 'Save draft' }}
         </button>
 
@@ -818,8 +846,8 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
               </button>
             </div>
           </div>
-          <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
-            {{ accepting ? 'Accepting…' : 'Accept & create order' }}
+          <button type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
+            {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
           </button>
         </template>
       </div>

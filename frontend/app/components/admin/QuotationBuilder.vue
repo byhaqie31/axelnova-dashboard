@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import QuoteScopeFields from '~/components/shared/QuoteScopeFields.vue'
-import type { QuoteScopeState } from '~/composables/quoteScope'
+import type { QuoteScopeState, QuoteExpandSeed } from '~/composables/quoteScope'
 import type { EstimateResult } from '~/composables/usePricingEngine'
 import { defaultQuoteScope, scopeToPayload } from '~/composables/quoteScope'
 
@@ -28,6 +28,7 @@ const emit = defineEmits<{
   saved: [id: number]
   sent: []
   accepted: [orderId: number]
+  expand: [seed: QuoteExpandSeed]
 }>()
 
 const { apiFetch } = useAdminAuth()
@@ -215,6 +216,9 @@ onMounted(async () => {
       catch { /* prefill is best-effort */ }
     }
   }
+
+  // Snapshot the loaded form so the Save button can detect real edits (`dirty`).
+  baseline.value = formFingerprint()
 })
 
 // ── Actions ─────────────────────────────────────────────────────────────────
@@ -250,6 +254,16 @@ function buildPayload() {
   }
 }
 
+// Dirty tracking — in edit mode the "Save changes" button only surfaces once the
+// loaded draft is actually modified. The fingerprint omits `modifiers` (emitted
+// asynchronously by the scope child after mount, and derived from scope anyway)
+// so it never trips a false dirty.
+const baseline = ref('')
+function formFingerprint(): string {
+  return JSON.stringify({ ...buildPayload(), modifiers: undefined })
+}
+const dirty = computed(() => formFingerprint() !== baseline.value)
+
 // Persist without UI feedback — shared by the Save button and the send flow
 // so sending doesn't fire two toasts ("saved" then "sent").
 async function persist(): Promise<number | null> {
@@ -262,6 +276,7 @@ async function persist(): Promise<number | null> {
       ? await apiFetch<{ data: any }>(`/api/v1/admin/quotations/${props.quotation!.id}`, { method: 'PUT', body: payload })
       : await apiFetch<{ data: any }>('/api/v1/admin/quotations', { method: 'POST', body: payload })
     const id = res.data.id
+    baseline.value = formFingerprint()
     emit('saved', id)
     return id
   }
@@ -335,6 +350,35 @@ async function accept() {
 function viewPdf() {
   if (!props.quotation?.public_token) return
   window.open(`${window.location.origin}/documents/${props.quotation.public_token}/pdf`, '_blank', 'noopener')
+}
+
+// Upgrade this quote to the detailed proposal layout, in place. We hand the page a
+// snapshot of the current form — client, scope, and a detailed-document payload
+// seeded from the line items — so the detailed builder continues without re-entry.
+// The same quotation record is reused; saving there flips it to layout:'detailed'.
+function expandToDetailed() {
+  emit('expand', {
+    client: { ...client },
+    form_payload: { ...scopeToPayload(scope), category_key: scope.categoryKey },
+    package_key: scope.packageKey || null,
+    depositPct: Number(doc.deposit_pct) || 50,
+    payload: {
+      project: doc.project || null,
+      subtitle: 'Website quotation',
+      intro: doc.intro || null,
+      sections: doc.items.length
+        ? [{
+            title: 'Scope of work',
+            rows: doc.items.map(i => ({
+              title: i.title,
+              detail: i.desc || '',
+              price: (Number(i.qty) || 0) * (Number(i.rate) || 0),
+            })),
+          }]
+        : [],
+      paymentTerms: { items: doc.termsText.split('\n').map(t => t.trim()).filter(Boolean) },
+    },
+  })
 }
 </script>
 
@@ -499,8 +543,13 @@ function viewPdf() {
       </div>
 
       <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <button type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="!canSave || saving" @click="save">
+        <button v-if="!isEdit || dirty" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="!canSave || saving" @click="save">
           {{ saving ? 'Saving…' : isEdit ? 'Save changes' : 'Save draft' }}
+        </button>
+
+        <button type="button" class="btn-pill btn-pill-warning w-full justify-center gap-1.5 text-[13px]" @click="expandToDetailed">
+          Expand to detailed
+          <UIcon name="i-lucide-arrow-right" class="size-3.5" />
         </button>
 
         <template v-if="isEdit">
@@ -522,8 +571,8 @@ function viewPdf() {
               </button>
             </div>
           </div>
-          <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
-            {{ accepting ? 'Accepting…' : 'Accept & create order' }}
+          <button type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
+            {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
           </button>
         </template>
       </div>

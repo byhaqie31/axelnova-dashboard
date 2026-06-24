@@ -29,6 +29,7 @@
   --color-accent-hover: #0077ED;
   --color-accent-soft: rgba(0, 113, 227, 0.10);
   --color-success-soft: rgba(48, 209, 88, 0.12);
+  --color-warning-soft: rgba(255, 159, 10, 0.16);
 
   /* Status */
   --color-success: #30D158;
@@ -129,6 +130,8 @@
   --color-accent-hover: #47A6FF;
   --color-accent-soft: rgba(41, 151, 255, 0.14);
   --color-success-soft: rgba(48, 209, 88, 0.18);
+  --color-warning: #FFB340;
+  --color-warning-soft: rgba(255, 179, 64, 0.22);
 
   --color-silver: #3A3A3C;
   --color-silver-hover: #48484A;
@@ -409,6 +412,18 @@ h1 { letter-spacing: -0.045em; }
 .btn-pill-success:hover {
   filter: brightness(1.05);
   box-shadow: 0 8px 24px var(--color-success-soft);
+  transform: translateY(-1px);
+}
+
+/* Warning (orange) — convert / upgrade actions (e.g. "Expand to detailed"). Dark
+   label, since the orange stays light in both modes and white-on-orange is illegible. */
+.btn-pill-warning {
+  background: var(--color-warning);
+  color: #1d1d1f;
+}
+.btn-pill-warning:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 8px 24px var(--color-warning-soft);
   transform: translateY(-1px);
 }
 

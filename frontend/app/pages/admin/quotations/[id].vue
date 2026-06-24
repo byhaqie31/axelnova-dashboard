@@ -2,6 +2,7 @@
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
 import DetailedQuotationBuilder from '~/components/admin/DetailedQuotationBuilder.vue'
 import DetailedQuotationView from '~/components/admin/DetailedQuotationView.vue'
+import type { QuoteExpandSeed } from '~/composables/quoteScope'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -66,6 +67,23 @@ async function fetchQuotation() {
 
 const isDraft = computed(() => quotation.value?.status === 'draft')
 const isDetailed = computed(() => quotation.value?.document?.layout === 'detailed')
+
+// In-place upgrade: while editing a standard draft, the admin can switch to the
+// detailed builder (seeded from the line items) without leaving the page. The
+// override wins until the next refetch, after which document.layout reflects the
+// saved choice and keeps the detailed builder mounted on its own.
+const layoutOverride = ref<'detailed' | null>(null)
+const expandSeed = ref<QuoteExpandSeed | null>(null)
+const showDetailedBuilder = computed(() => layoutOverride.value === 'detailed' || isDetailed.value)
+function onExpandToDetailed(s: QuoteExpandSeed) {
+  expandSeed.value = s
+  layoutOverride.value = 'detailed'
+}
+function onBuilderSaved() {
+  layoutOverride.value = null
+  expandSeed.value = null
+  fetchQuotation()
+}
 
 async function updateStatus(status: string) {
   if (!quotation.value) return
@@ -159,14 +177,15 @@ const scopeFields = computed(() => {
         <div class="mb-8 flex items-center justify-between flex-wrap gap-3">
           <div>
             <p class="font-mono text-[18px] font-bold" style="color: var(--color-accent);">{{ quotation.reference_code }}</p>
-            <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Edit {{ isDetailed ? 'detailed ' : '' }}draft quotation</h1>
+            <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Edit {{ showDetailedBuilder ? 'detailed ' : '' }}draft quotation</h1>
           </div>
           <AdminStatusPill :status="quotation.status" size="md" />
         </div>
         <DetailedQuotationBuilder
-          v-if="isDetailed"
+          v-if="showDetailedBuilder"
           :quotation="quotation"
-          @saved="fetchQuotation"
+          :seed="expandSeed"
+          @saved="onBuilderSaved"
           @sent="fetchQuotation"
           @accepted="(orderId) => navigateTo(`/admin/orders/${orderId}`)"
         />
@@ -176,6 +195,7 @@ const scopeFields = computed(() => {
           @saved="fetchQuotation"
           @sent="fetchQuotation"
           @accepted="(orderId) => navigateTo(`/admin/orders/${orderId}`)"
+          @expand="onExpandToDetailed"
         />
       </template>
 
@@ -281,7 +301,7 @@ const scopeFields = computed(() => {
             <a v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
               target="_blank" rel="noopener" class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
             <button v-if="quotation.status !== 'accepted'" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="acceptLoading" @click="acceptQuotation">
-              {{ acceptLoading ? 'Accepting…' : 'Accept & create order' }}
+              {{ acceptLoading ? 'Creating order…' : 'Proceed & Create Order' }}
             </button>
           </div>
         </div>
