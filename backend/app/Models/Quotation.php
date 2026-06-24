@@ -36,6 +36,7 @@ class Quotation extends Model
         'submitted_at',
         'viewed_at',
         'sent_at',
+        'expires_at',
     ];
 
     protected function casts(): array
@@ -49,7 +50,30 @@ class Quotation extends Model
             'submitted_at' => 'datetime',
             'viewed_at' => 'datetime',
             'sent_at' => 'datetime',
+            'expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Lazy expiry: flip every overdue sent quotation to 'expired'. Called on read
+     * (admin list, public document view) so the lifecycle stays correct without a
+     * scheduler. Cheap, indexed, and a no-op when nothing is overdue.
+     */
+    public static function expireOverdue(): void
+    {
+        static::query()
+            ->where('status', 'sent')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<', now())
+            ->update(['status' => 'expired']);
+    }
+
+    /** True when this is a sent quote already past its expiry date. */
+    public function isOverdue(): bool
+    {
+        return $this->status === 'sent'
+            && $this->expires_at !== null
+            && $this->expires_at->isPast();
     }
 
     public function client(): BelongsTo

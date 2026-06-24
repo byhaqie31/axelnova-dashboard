@@ -43,6 +43,11 @@ class DocumentController extends Controller
             ->where('public_token', $token)
             ->first();
         if ($quotation) {
+            // A client opening an overdue quote also triggers lazy expiry.
+            if ($quotation->isOverdue()) {
+                $quotation->update(['status' => 'expired']);
+            }
+
             return response()->json(DocumentMapper::toDocumentData($quotation));
         }
 

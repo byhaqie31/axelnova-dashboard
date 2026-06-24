@@ -43,7 +43,10 @@ class DocumentMapper
         $validForDays = (int) ($quotation->pricingConfig?->config['valid_for_days'] ?? 30);
 
         $issuedAt = $quotation->sent_at ?? $quotation->created_at ?? now();
-        $validUntil = ($quotation->created_at ?? now())->copy()->addDays($validForDays);
+        // Prefer the stored expiry (set when the quote was sent) so the PDF's
+        // "valid until" matches the lifecycle; fall back for self-serve/unsent rows.
+        $validUntil = $quotation->expires_at
+            ?? ($quotation->created_at ?? now())->copy()->addDays($validForDays);
 
         $terms = ! empty($doc['terms']) && is_array($doc['terms'])
             ? array_values(array_filter($doc['terms']))

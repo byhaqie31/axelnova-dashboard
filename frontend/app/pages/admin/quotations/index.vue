@@ -37,15 +37,22 @@ const error = ref('')
 
 const filters = reactive({
   search: '',
-  status: typeof route.query.status === 'string' ? route.query.status : '',
+  // Multi-select status filter; [] means "All" (show everything, incl. accepted).
+  // Honour a ?status=draft,sent deep link (e.g. the dashboard "Draft quotations"
+  // tile); otherwise default to the working set you act on day-to-day.
+  statuses: typeof route.query.status === 'string' && route.query.status
+    ? route.query.status.split(',').filter(Boolean)
+    : ['draft', 'sent'],
   page: 1,
 })
 
-// 'accepted' is intentionally absent — accepted quotations live on the Orders page.
+// Options match the quotation enum (draft → sent → accepted, plus rejected /
+// expired). The filter renders its own "All" row, so there's no empty option here;
+// "All" maps to ?include_accepted=1 (accepted quotes otherwise live on Orders).
 const statusOptions = [
-  { value: '', label: 'Active' },
   { value: 'draft', label: 'Draft' },
   { value: 'sent', label: 'Sent' },
+  { value: 'accepted', label: 'Accepted' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'expired', label: 'Expired' },
 ]
@@ -56,7 +63,8 @@ async function fetchQuotations() {
   try {
     const params = new URLSearchParams()
     if (filters.search) params.set('search', filters.search)
-    if (filters.status) params.set('status', filters.status)
+    if (filters.statuses.length) params.set('status', filters.statuses.join(','))
+    else params.set('include_accepted', '1') // "All" — surface accepted (they live on Orders)
     params.set('page', String(filters.page))
 
     const res = await apiFetch<{ data: Quotation[]; meta: any }>(`/api/v1/admin/quotations?${params}`)
@@ -82,10 +90,10 @@ watch(() => filters.search, () => {
   searchTimer = setTimeout(() => { filters.page = 1; fetchQuotations() }, 400)
 })
 
-watch(() => filters.status, () => {
+watch(() => filters.statuses, () => {
   if (filters.page !== 1) filters.page = 1
   else fetchQuotations()
-})
+}, { deep: true })
 watch(() => filters.page, () => fetchQuotations())
 
 function fmtDate(iso: string) {
@@ -122,7 +130,7 @@ function fmtMyr(amount: string | number) {
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, reference…" />
-      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" class="ml-auto" />
+      <AdminStatusFilter v-model="filters.statuses" :options="statusOptions" multiple :total="meta?.total ?? null" class="ml-auto" />
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>

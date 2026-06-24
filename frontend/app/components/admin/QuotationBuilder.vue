@@ -27,7 +27,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   saved: [id: number]
-  sent: []
+  sent: [quotation: Record<string, any>]
   accepted: [orderId: number]
 }>()
 
@@ -414,8 +414,10 @@ function formFingerprint(): string {
 const dirty = computed(() => formFingerprint() !== baseline.value)
 
 // Persist without UI feedback — shared by the Save button and the send flow
-// so sending doesn't fire two toasts ("saved" then "sent").
-async function persist(): Promise<number | null> {
+// so sending doesn't fire two toasts ("saved" then "sent"). `silent` skips the
+// `saved` emit so the send flow doesn't trigger a parent refetch that would race
+// the fresh quotation `sent` delivers.
+async function persist(opts: { silent?: boolean } = {}): Promise<number | null> {
   if (!validate()) { error.value = 'Please complete the required fields highlighted.'; return null }
   saving.value = true
   error.value = ''
@@ -426,7 +428,7 @@ async function persist(): Promise<number | null> {
       : await apiFetch<{ data: any }>('/api/v1/admin/quotations', { method: 'POST', body: payload })
     const id = res.data.id
     baseline.value = formFingerprint()
-    emit('saved', id)
+    if (!opts.silent) emit('saved', id)
     return id
   }
   catch (e: any) {
@@ -457,12 +459,14 @@ async function deliver(channel: 'email' | 'download') {
   sending.value = true
   error.value = ''
   try {
-    const id = await persist()
+    // Silent so the parent doesn't refetch on `saved` — `sent` hands it the fresh
+    // quotation directly, switching the page to the sent view with no refresh.
+    const id = await persist({ silent: true })
     if (!id) { toast.error('Couldn’t send quotation', error.value || 'Save failed.'); return }
-    await apiFetch(`/api/v1/admin/quotations/${id}/send`, { method: 'POST', body: { email: channel === 'email' } })
-    emit('sent')
+    const res = await apiFetch<{ data: any }>(`/api/v1/admin/quotations/${id}/send`, { method: 'POST', body: { email: channel === 'email' } })
+    emit('sent', res.data)
     if (channel === 'download') {
-      const token = props.quotation?.public_token
+      const token = res.data?.public_token ?? props.quotation?.public_token
       if (token) window.open(`${window.location.origin}/documents/${token}/pdf`, '_blank', 'noopener')
       toast.success('Marked as sent', 'PDF opened — download and share it with the client.')
     }

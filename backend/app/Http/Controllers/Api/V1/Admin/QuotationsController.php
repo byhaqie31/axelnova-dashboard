@@ -25,16 +25,26 @@ class QuotationsController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
+        // Self-heal overdue sent quotes before listing, so 'expired' is accurate
+        // (and filterable) without a scheduler.
+        Quotation::expireOverdue();
+
         $query = Quotation::with('addons')->latest('submitted_at');
 
-        // Quotations view excludes 'accepted' by default — accepted ones produced an order
-        // and live on the Orders page. Caller can pass ?include_accepted=1 or ?status=accepted.
-        if (! $request->boolean('include_accepted') && ! $request->filled('status')) {
-            $query->where('status', '!=', 'accepted');
-        }
+        // `status` accepts one value or a comma-separated list (e.g. ?status=draft,sent)
+        // to back the multi-select filter on the listing.
+        $statuses = collect(explode(',', (string) $request->query('status', '')))
+            ->map(fn ($s) => trim($s))
+            ->filter()
+            ->values();
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($statuses->isNotEmpty()) {
+            $query->whereIn('status', $statuses);
+        }
+        // No status filter: exclude 'accepted' by default (those produced an order and
+        // live on the Orders page). Pass ?include_accepted=1 — the "All" filter — to see them.
+        elseif (! $request->boolean('include_accepted')) {
+            $query->where('status', '!=', 'accepted');
         }
 
         if ($request->filled('search')) {
@@ -59,6 +69,11 @@ class QuotationsController extends Controller
 
     public function show(Quotation $quotation): QuotationResource
     {
+        // Lazy expiry for this one record (the list sweep won't have run on a deep link).
+        if ($quotation->isOverdue()) {
+            $quotation->update(['status' => 'expired']);
+        }
+
         $quotation->load('addons', 'order');
 
         return new QuotationResource($quotation);
@@ -126,6 +141,9 @@ class QuotationsController extends Controller
         }
         $quotation->status = 'sent';
         $quotation->sent_at = now();
+        // Validity window starts now — drives lazy auto-expiry and the PDF "valid until".
+        $validForDays = (int) ($quotation->pricingConfig?->config['valid_for_days'] ?? 30);
+        $quotation->expires_at = now()->addDays($validForDays);
         $quotation->save();
 
         // Email delivery is the default; the "download PDF" channel marks the
