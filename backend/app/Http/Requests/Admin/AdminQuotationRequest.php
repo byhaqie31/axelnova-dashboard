@@ -2,9 +2,8 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Models\PricingConfig;
+use App\Services\Quoting\PricingEngine;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class AdminQuotationRequest extends FormRequest
@@ -16,9 +15,12 @@ class AdminQuotationRequest extends FormRequest
 
     public function rules(): array
     {
-        $activeCfg = Cache::remember('active_pricing_config', 3600, fn () => PricingConfig::getActive());
-        $validAddonKeys = array_keys($activeCfg->config['addons'] ?? []);
-        $validPackageKeys = array_keys($activeCfg->config['base_packages'] ?? []);
+        // Validate against the merged builder config (pricing JSON + admin-managed
+        // service_packages) — the exact catalog the builder offered — so DB-managed
+        // packages (e.g. the Admin portal tiers) aren't rejected as "invalid".
+        $config = PricingEngine::cachedFrontendConfig();
+        $validAddonKeys = array_keys($config['addons'] ?? []);
+        $validPackageKeys = array_keys($config['base_packages'] ?? []);
 
         return [
             // Client — either an existing id, or enough to upsert a new one.

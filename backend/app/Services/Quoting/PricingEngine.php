@@ -5,6 +5,7 @@ namespace App\Services\Quoting;
 use App\Models\PricingConfig;
 use App\Models\ServiceCategory;
 use App\Models\ServicePackage;
+use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 
 final class PricingEngine
@@ -19,6 +20,22 @@ final class PricingEngine
     public static function active(): self
     {
         return new self(PricingConfig::getActive());
+    }
+
+    /**
+     * The merged quote-builder config (pricing JSON + admin-managed catalog),
+     * cached for 1h under a key the Pricing/ServiceCategory/ServicePackage
+     * observers invalidate on every catalog edit. This is the single source of
+     * truth shared by the config endpoint and the server-side validators, so
+     * they accept exactly the package / addon keys the builder offered.
+     */
+    public static function cachedFrontendConfig(): array
+    {
+        return Cache::remember(
+            'quote_builder_config_v1',
+            3600,
+            fn () => self::active()->configForFrontend(),
+        );
     }
 
     public function getConfig(): PricingConfig
