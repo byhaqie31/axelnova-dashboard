@@ -633,7 +633,13 @@ export function renderDocumentHTML(data: DocumentData): string {
     .join("  ·  ");
   const rootVar = `:root{--pgfoot-l:"${cssStr(pgfootL)}";}`;
 
-  return `<!doctype html><html><head><meta charset="utf-8"><style>
+  // Document <title> → becomes the PDF's /Title metadata (Chromium embeds the page
+  // title when printing). Without it the page renders as about:blank and the PDF
+  // viewer/tab shows "about:blank". e.g. "AXNQ-2026-0007 · One Malaysia Taxi".
+  const docName = data.project || data.client?.name || data.studio.name;
+  const docTitle = [data.number, docName].filter(Boolean).join(" · ") || data.studio.name;
+
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(docTitle)}</title><style>
 ${FONT_FACES}
 ${CSS}
 ${rootVar}
