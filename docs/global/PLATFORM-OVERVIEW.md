@@ -427,7 +427,7 @@ Sanctum personal access tokens (no expiry, manually revoked). A custom `role:adm
 | `service_packages` | service_category_id (FK), slug, name, tagline, price_min/max_myr, unit, duration_text, revisions, **eta_value/eta_unit**, featured, features (JSON), cta, **quote_key** (JSON), sort_order, active · unique(category, slug) |
 | `projects` | slug (unique), name, description (≤500), long_description, status (live/soon/wip/planning), url, repo, tags (JSON), stack (JSON), featured, sort_order, cover_image_url, active |
 | `page_views` | path, ip_hash (SHA-256), user_agent, referrer, viewed_at *(append-only; analytics Phase B)* |
-| `entity_likes` | entity_type, entity_id, ip_hash, cookie_id · unique(type, id, ip_hash) *(Phase B)* |
+| `entity_likes` | entity_type, entity_id, ip_hash, cookie_id · unique(type, id, cookie_id) — per-browser dedupe *(Phase B)* |
 
 Plus Laravel stock tables: `password_reset_tokens`, `sessions`, `cache`, `jobs`, `failed_jobs`, `personal_access_tokens`.
 

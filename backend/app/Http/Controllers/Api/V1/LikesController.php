@@ -19,9 +19,10 @@ class LikesController extends Controller
     ];
 
     /**
-     * Toggle an anonymous like for an entity. Deduped per visitor by hashed IP
-     * (the table's unique constraint), with an optional client cookie_id for
-     * cross-session continuity. Returns the new liked state + fresh count.
+     * Toggle an anonymous like for an entity. Deduped per browser by cookie_id
+     * (the table's unique constraint) so visitors sharing a public IP each get
+     * their own like; ip_hash is still recorded for analytics/abuse signals.
+     * Returns the new liked state + fresh count.
      */
     public function toggle(Request $request, string $type, int $id): JsonResponse
     {
@@ -34,12 +35,13 @@ class LikesController extends Controller
             abort(404);
         }
 
-        $request->validate(['cookie_id' => ['nullable', 'string', 'max:64']]);
+        $validated = $request->validate(['cookie_id' => ['required', 'string', 'max:36']]);
+        $cookieId = $validated['cookie_id'];
         $ipHash = AnalyticsHash::forIp($request->ip());
 
         $existing = EntityLike::where('entity_type', $type)
             ->where('entity_id', $id)
-            ->where('ip_hash', $ipHash)
+            ->where('cookie_id', $cookieId)
             ->first();
 
         if ($existing) {
@@ -50,7 +52,7 @@ class LikesController extends Controller
                 'entity_type' => $type,
                 'entity_id' => $id,
                 'ip_hash' => $ipHash,
-                'cookie_id' => $request->input('cookie_id'),
+                'cookie_id' => $cookieId,
             ]);
             $liked = true;
         }
