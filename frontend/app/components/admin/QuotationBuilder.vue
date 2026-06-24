@@ -16,6 +16,7 @@ interface QuotationLike {
   phone: string | null
   company: string | null
   package_key: string | null
+  expires_at?: string | null
   form_payload: Record<string, any> | null
   document: Record<string, any> | null
 }
@@ -122,6 +123,10 @@ const doc = reactive({
   deposit_pct: 50,
 })
 
+// Optional custom validity date (YYYY-MM-DD). Blank → send() defaults it to
+// valid_for_days after sending.
+const validUntil = ref('')
+
 const defaultTerms = [
   '50% deposit to commence; balance due on delivery before handover.',
   'Revisions are included as scoped per phase; further rounds are quoted separately.',
@@ -199,6 +204,7 @@ function loadFromQuotation(q: QuotationLike) {
   client.email = q.email
   client.phone = q.phone ?? ''
   client.company = q.company ?? ''
+  validUntil.value = q.expires_at ? q.expires_at.slice(0, 10) : ''
   hydrateScope(q.form_payload ?? {}, q.package_key)
   const d = q.document ?? {}
   if (d.layout === 'detailed' && d.payload) {
@@ -346,6 +352,7 @@ function buildPayload() {
     modifiers: modifiers.value,
     addon_keys: scope.addonKeys,
     rush: scope.rush,
+    expires_at: validUntil.value || null,
     form_payload: { ...scopeToPayload(scope), category_key: scope.categoryKey },
     inquiry_id: props.inquiryId ?? null,
   }
@@ -665,6 +672,14 @@ async function revert() {
         </div>
 
         <AdminQuoteTermsDeposit v-model:terms="doc.termsText" v-model:depositPct="doc.deposit_pct" />
+
+        <div class="space-y-1.5 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
+          <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
+            Valid until <span class="font-normal" style="color: var(--color-text-tertiary);">(optional)</span>
+          </label>
+          <input v-model="validUntil" type="date" class="contact-input w-full sm:w-56" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <p class="text-[11px]" style="color: var(--color-text-tertiary);">Leave blank to default to {{ config?.valid_for_days ?? 30 }} days after sending.</p>
+        </div>
       </section>
 
       <!-- Detailed proposal (optional inline upgrade) -->

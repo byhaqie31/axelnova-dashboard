@@ -135,16 +135,64 @@ async function rejectQuotation() {
   finally { rejectLoading.value = false }
 }
 
-const scopeFields = computed(() => {
+// Custom validity date — editable on sent/expired quotes. Extending an expired
+// quote re-activates it; the server keeps status and date in agreement.
+const canEditExpiry = computed(() => ['sent', 'expired'].includes(quotation.value?.status ?? ''))
+const expiryEditing = ref(false)
+const expiryDraft = ref('')
+const expiryLoading = ref(false)
+function startEditExpiry() {
+  expiryDraft.value = quotation.value?.expires_at ? quotation.value.expires_at.slice(0, 10) : ''
+  expiryEditing.value = true
+}
+async function saveExpiry() {
+  if (!quotation.value) return
+  expiryLoading.value = true
+  try {
+    const res = await apiFetch<{ data: Record<string, any> }>(
+      `/api/v1/admin/quotations/${quotation.value.id}/expiry`, { method: 'POST', body: { expires_at: expiryDraft.value || null } },
+    )
+    applyQuotation(res.data)
+    expiryEditing.value = false
+    toast.success('Validity updated', expiryDraft.value ? 'New expiry date saved.' : 'Expiry cleared — this quote no longer expires.')
+  }
+  catch { toast.error('Couldn’t update validity', 'Something went wrong. Please try again.') }
+  finally { expiryLoading.value = false }
+}
+
+// Human labels for known scope keys; anything unmapped falls back to a tidy
+// title-case so new fields still read correctly without a code change.
+const SCOPE_LABELS: Record<string, string> = {
+  cms: 'CMS', pages: 'Pages', modules: 'Modules', testing: 'Testing',
+  languages: 'Languages', prototype: 'Prototype', real_time: 'Real-time',
+  user_roles: 'User roles', pages_count: 'Pages', admin_portal: 'Admin portal',
+  booking_flow: 'Booking flow', design_system: 'Design system',
+  screens_count: 'Screens', components_count: 'Components',
+  state_management: 'State management', charts_complexity: 'Charts complexity',
+  auth_methods: 'Auth methods', payment_method: 'Payment method', core_features: 'Core features',
+}
+function humanizeScope(key: string) {
+  return SCOPE_LABELS[key] ?? key.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
+}
+
+type ScopeKind = 'bool' | 'number' | 'text'
+interface ScopeField { key: string; label: string; kind: ScopeKind; value: string; on: boolean }
+
+// Specs (numbers / text) lead; feature toggles (Yes/No) group together after them,
+// so the badges line up as one scannable block rather than scattered through the grid.
+const scopeFields = computed<ScopeField[]>(() => {
   if (!quotation.value?.form_payload) return []
   const p = quotation.value.form_payload
-  const rows: { label: string; value: unknown }[] = []
   const skip = new Set(['package_key', 'modifiers', 'addon_keys', 'rush', 'breakdown', 'category_key'])
+  const fields: ScopeField[] = []
   for (const [k, v] of Object.entries(p)) {
     if (skip.has(k) || v === '' || v === null || (Array.isArray(v) && !v.length)) continue
-    rows.push({ label: k.replace(/_/g, ' '), value: v })
+    const label = humanizeScope(k)
+    if (typeof v === 'boolean') fields.push({ key: k, label, kind: 'bool', value: v ? 'Yes' : 'No', on: v })
+    else if (typeof v === 'number') fields.push({ key: k, label, kind: 'number', value: String(v), on: false })
+    else fields.push({ key: k, label, kind: 'text', value: Array.isArray(v) ? v.join(', ') : String(v), on: false })
   }
-  return rows
+  return fields.sort((a, b) => Number(a.kind === 'bool') - Number(b.kind === 'bool'))
 })
 </script>
 
@@ -202,9 +250,23 @@ const scopeFields = computed(() => {
                 <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Sent</p>
                 <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(quotation.sent_at) }}</p>
               </div>
-              <div v-if="quotation.expires_at">
-                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">{{ quotation.status === 'expired' ? 'Expired' : 'Valid until' }}</p>
-                <p class="text-[13px]" :style="{ color: quotation.status === 'expired' ? 'var(--color-danger)' : 'var(--color-text)' }">{{ fmtDate(quotation.expires_at) }}</p>
+              <div v-if="quotation.expires_at || canEditExpiry">
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1 flex items-center gap-1.5" style="color: var(--color-text-tertiary);">
+                  {{ quotation.status === 'expired' ? 'Expired' : 'Valid until' }}
+                  <button v-if="canEditExpiry && !expiryEditing" type="button" class="inline-flex transition-opacity hover:opacity-60" :style="{ color: 'var(--color-accent)' }" aria-label="Edit validity date" @click="startEditExpiry">
+                    <UIcon name="i-lucide-pencil" class="size-3" />
+                  </button>
+                </p>
+                <div v-if="expiryEditing" class="flex items-center gap-1.5">
+                  <input v-model="expiryDraft" type="date" class="contact-input text-[12px] py-1 px-2" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+                  <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors" :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }" :disabled="expiryLoading" aria-label="Save validity date" @click="saveExpiry">
+                    <UIcon :name="expiryLoading ? 'i-lucide-loader-circle' : 'i-lucide-check'" class="size-3.5" :class="{ 'animate-spin': expiryLoading }" />
+                  </button>
+                  <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-text-tertiary)' }" aria-label="Cancel" @click="expiryEditing = false">
+                    <UIcon name="i-lucide-x" class="size-3.5" />
+                  </button>
+                </div>
+                <p v-else class="text-[13px]" :style="{ color: quotation.status === 'expired' ? 'var(--color-danger)' : 'var(--color-text)' }">{{ quotation.expires_at ? fmtDate(quotation.expires_at) : 'No expiry' }}</p>
               </div>
             </div>
           </div>
@@ -245,11 +307,26 @@ const scopeFields = computed(() => {
           </div>
 
           <div v-if="scopeFields.length" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-            <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Scope details</p>
-            <div class="grid sm:grid-cols-2 gap-x-8 gap-y-3">
-              <div v-for="row in scopeFields" :key="row.label">
-                <p class="text-[11px] capitalize mb-0.5" style="color: var(--color-text-tertiary);">{{ row.label }}</p>
-                <p class="text-[13px]" style="color: var(--color-text);">{{ Array.isArray(row.value) ? row.value.join(', ') : String(row.value) }}</p>
+            <div class="flex items-center gap-2 mb-1">
+              <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Scope details</p>
+              <span class="text-[11px] font-medium tabular-nums rounded-full px-1.5 py-px" :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-tertiary)' }">{{ scopeFields.length }}</span>
+            </div>
+            <!-- Ruled spec grid: label-left / value-right. Booleans read as Yes/No badges
+                 (Yes pops in accent, No recedes), numbers are emphasised, text wraps. -->
+            <div class="grid sm:grid-cols-2 sm:gap-x-10">
+              <div v-for="field in scopeFields" :key="field.key"
+                class="flex items-center justify-between gap-3 py-2.5 border-b" :style="{ borderColor: 'var(--color-border)' }">
+                <span class="text-[12.5px]" style="color: var(--color-text-secondary);">{{ field.label }}</span>
+
+                <span v-if="field.kind === 'bool'" class="inline-flex items-center gap-1 rounded-full pl-1.5 pr-2 py-0.5 text-[11px] font-semibold shrink-0"
+                  :style="field.on
+                    ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+                    : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-tertiary)' }">
+                  <UIcon :name="field.on ? 'i-lucide-check' : 'i-lucide-minus'" class="size-3" />
+                  {{ field.value }}
+                </span>
+                <span v-else-if="field.kind === 'number'" class="text-[14px] font-semibold tabular-nums shrink-0" style="color: var(--color-text);">{{ field.value }}</span>
+                <span v-else class="text-[13px] text-right" style="color: var(--color-text);">{{ field.value }}</span>
               </div>
             </div>
           </div>
@@ -277,7 +354,7 @@ const scopeFields = computed(() => {
 
             <!-- Re-open a sent / rejected / expired quote for editing. -->
             <button v-if="quotation.status !== 'accepted'" class="btn-pill btn-pill-silver w-full justify-center text-[13px]" :disabled="statusLoading" @click="revertToDraft">
-              {{ statusLoading ? 'Editing…' : 'Edit Quotation' }}
+              {{ statusLoading ? 'Editing…' : 'Mark as Draft' }}
             </button>
 
             <a :href="`mailto:${quotation.email}?subject=Re: your quote ${quotation.reference_code}`" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">Email Client</a>

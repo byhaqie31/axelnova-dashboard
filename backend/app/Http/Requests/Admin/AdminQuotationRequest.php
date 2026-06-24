@@ -38,6 +38,10 @@ class AdminQuotationRequest extends FormRequest
             'rush' => ['boolean'],
             'form_payload' => ['nullable', 'array'],
 
+            // Optional custom validity date. When unset, send() defaults it to
+            // sent_at + valid_for_days; when set, that custom date is kept.
+            'expires_at' => ['nullable', 'date'],
+
             // Presentable document (line items + terms) for the PDF.
             'document' => ['nullable', 'array'],
             'document.project' => ['nullable', 'string', 'max:200'],

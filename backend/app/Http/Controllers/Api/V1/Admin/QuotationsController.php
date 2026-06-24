@@ -18,6 +18,7 @@ use App\Support\ReferenceCodeGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -141,9 +142,12 @@ class QuotationsController extends Controller
         }
         $quotation->status = 'sent';
         $quotation->sent_at = now();
-        // Validity window starts now — drives lazy auto-expiry and the PDF "valid until".
-        $validForDays = (int) ($quotation->pricingConfig?->config['valid_for_days'] ?? 30);
-        $quotation->expires_at = now()->addDays($validForDays);
+        // Keep a custom validity date if the builder set one; otherwise default to
+        // sent_at + valid_for_days. Drives lazy auto-expiry and the PDF "valid until".
+        if (! $quotation->expires_at) {
+            $validForDays = (int) ($quotation->pricingConfig?->config['valid_for_days'] ?? 30);
+            $quotation->expires_at = now()->addDays($validForDays);
+        }
         $quotation->save();
 
         // Email delivery is the default; the "download PDF" channel marks the
@@ -171,6 +175,33 @@ class QuotationsController extends Controller
         $quotation->update(['status' => $request->status]);
 
         return response()->json(['message' => 'Status updated.', 'status' => $quotation->status]);
+    }
+
+    /**
+     * Set (or clear) a custom validity date on a sent/expired quote. Extending into
+     * the future re-activates an expired quote; pulling it into the past expires a
+     * sent one — so status and date stay in agreement after a manual change.
+     */
+    public function setExpiry(Request $request, Quotation $quotation): JsonResponse
+    {
+        $request->validate(['expires_at' => ['nullable', 'date']]);
+
+        $expiresAt = $request->date('expires_at')?->endOfDay();
+        $quotation->expires_at = $expiresAt;
+
+        if ($quotation->status === 'expired' && ($expiresAt === null || $expiresAt->isFuture())) {
+            $quotation->status = 'sent';
+        }
+        elseif ($quotation->status === 'sent' && $expiresAt !== null && $expiresAt->isPast()) {
+            $quotation->status = 'expired';
+        }
+
+        $quotation->save();
+
+        return response()->json([
+            'message' => 'Expiry updated.',
+            'data' => new QuotationResource($quotation->load('addons', 'order')),
+        ]);
     }
 
     public function accept(Request $request, Quotation $quotation): JsonResponse
@@ -267,6 +298,9 @@ class QuotationsController extends Controller
             'estimate_max_myr' => $maxMyr,
             'estimate_eta_value' => $estimate?->etaValue ?? 0,
             'estimate_eta_unit' => $estimate?->etaUnit ?? 'week',
+            // Custom validity date (optional). Normalised to end-of-day so the quote
+            // stays valid through the whole chosen date, not until its midnight.
+            'expires_at' => isset($data['expires_at']) ? Carbon::parse($data['expires_at'])->endOfDay() : null,
         ];
     }
 

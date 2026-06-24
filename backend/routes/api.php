@@ -102,6 +102,7 @@ Route::middleware([
         Route::get('/quotations/{quotation}', [QuotationsController::class, 'show'])->name('quotations.show');
         Route::put('/quotations/{quotation}', [QuotationsController::class, 'update'])->name('quotations.update');
         Route::post('/quotations/{quotation}/status', [QuotationsController::class, 'updateStatus'])->name('quotations.status');
+        Route::post('/quotations/{quotation}/expiry', [QuotationsController::class, 'setExpiry'])->name('quotations.expiry');
         Route::post('/quotations/{quotation}/send', [QuotationsController::class, 'send'])->name('quotations.send');
         Route::post('/quotations/{quotation}/accept', [QuotationsController::class, 'accept'])->name('quotations.accept');
 
