@@ -316,12 +316,16 @@ function validate(): boolean {
 // Reflect Laravel 422 field errors back onto the inputs (best-effort key mapping).
 function mapServerErrors(se?: Record<string, string[]>) {
   if (!se) return
-  if (se.name) errors.name = se.name[0]
-  if (se.email) errors.email = se.email[0]
-  if (se.package_key) errors.package = se.package_key[0]
+  const name = se.name?.[0]
+  const email = se.email?.[0]
+  const pkg = se.package_key?.[0]
+  if (name) errors.name = name
+  if (email) errors.email = email
+  if (pkg) errors.package = pkg
   for (const k of Object.keys(se)) {
     const m = k.match(/^document\.items\.(\d+)\.title$/)
-    if (m) errors.items[Number(m[1])] = se[k][0]
+    const msg = se[k]?.[0]
+    if (m && msg) errors.items[Number(m[1])] = msg
   }
 }
 
@@ -412,7 +416,7 @@ const dirty = computed(() => formFingerprint() !== baseline.value)
 // Persist without UI feedback — shared by the Save button and the send flow
 // so sending doesn't fire two toasts ("saved" then "sent").
 async function persist(): Promise<number | null> {
-  if (!validate()) { error.value = 'Please complete the required fields highlighted below.'; return null }
+  if (!validate()) { error.value = 'Please complete the required fields highlighted.'; return null }
   saving.value = true
   error.value = ''
   try {

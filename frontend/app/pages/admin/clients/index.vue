@@ -114,17 +114,22 @@ function fmtDate(iso: string) {
 
     <!-- Grid view — 3-column cards with activity counts -->
     <div v-else-if="view === 'grid'" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      <button
+      <div
         v-for="c in clients"
         :key="c.id"
-        type="button"
-        class="text-left rounded-2xl border p-5 transition-colors hover:bg-(--color-bg-secondary)"
+        role="button"
+        tabindex="0"
+        class="text-left rounded-2xl border p-5 cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="navigateTo(`/admin/clients/${c.id}`)"
+        @keydown.enter="navigateTo(`/admin/clients/${c.id}`)"
+        @keydown.space.prevent="navigateTo(`/admin/clients/${c.id}`)"
       >
         <p class="text-[15px] font-semibold tracking-tight truncate" style="color: var(--color-text);">{{ c.name }}</p>
-        <p class="text-[12px] mt-0.5 truncate" style="color: var(--color-text-tertiary);">{{ c.email }}</p>
-        <p v-if="c.company" class="text-[12px] mt-0.5 truncate" style="color: var(--color-text-secondary);">{{ c.company }}</p>
+        <div class="flex items-center gap-1.5 mt-0.5 min-w-0">
+          <p class="text-[12px] truncate" style="color: var(--color-text-tertiary);">{{ c.email }}</p>
+          <AdminCopyButton :value="c.email" :label="`Copy ${c.email}`" />
+        </div>
         <div class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t" style="border-color: var(--color-border);">
           <div class="text-center">
             <p class="text-[18px] font-bold tabular-nums leading-none" style="color: var(--color-text);">{{ c.inquiries_count }}</p>
@@ -139,7 +144,7 @@ function fmtDate(iso: string) {
             <p class="text-[10px] uppercase tracking-wide mt-1" style="color: var(--color-text-tertiary);">Orders</p>
           </div>
         </div>
-      </button>
+      </div>
     </div>
 
     <!-- List view -->
@@ -150,7 +155,7 @@ function fmtDate(iso: string) {
           <table class="w-full text-left">
             <thead>
               <tr>
-                <th v-for="h in ['Client', 'Company', 'Inquiries', 'Quotations', 'Orders', 'Since']" :key="h"
+                <th v-for="h in ['Name', 'Email', 'Inquiries', 'Quotations', 'Orders', 'Since']" :key="h"
                   class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
                   {{ h }}
                 </th>
@@ -161,11 +166,13 @@ function fmtDate(iso: string) {
                 class="admin-table-row"
                 @click="navigateTo(`/admin/clients/${c.id}`)">
                 <td class="px-4 py-3.5">
-                  <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ c.name }}</p>
-                  <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ c.email }}</p>
+                  <span class="text-[13px] font-medium" style="color: var(--color-text);">{{ c.name }}</span>
                 </td>
                 <td class="px-4 py-3.5">
-                  <span class="text-[13px]" style="color: var(--color-text-secondary);">{{ c.company ?? '—' }}</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[13px]" style="color: var(--color-text-secondary);">{{ c.email }}</span>
+                    <AdminCopyButton :value="c.email" :label="`Copy ${c.email}`" />
+                  </div>
                 </td>
                 <td class="px-4 py-3.5 text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ c.inquiries_count }}</td>
                 <td class="px-4 py-3.5 text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ c.quotations_count }}</td>
@@ -179,25 +186,31 @@ function fmtDate(iso: string) {
 
       <!-- Mobile: cards -->
       <div class="md:hidden space-y-2.5">
-        <button
+        <div
           v-for="c in clients"
           :key="c.id"
-          type="button"
-          class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+          role="button"
+          tabindex="0"
+          class="w-full text-left rounded-xl border p-4 cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
           :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
           @click="navigateTo(`/admin/clients/${c.id}`)"
+          @keydown.enter="navigateTo(`/admin/clients/${c.id}`)"
+          @keydown.space.prevent="navigateTo(`/admin/clients/${c.id}`)"
         >
           <div class="flex items-start justify-between gap-3 mb-1">
             <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ c.name }}</span>
             <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ fmtDate(c.created_at) }}</span>
           </div>
-          <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ c.email }}<span v-if="c.company"> · {{ c.company }}</span></p>
+          <div class="flex items-center gap-1.5 mb-3 min-w-0">
+            <p class="text-[11px] truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ c.email }}</p>
+            <AdminCopyButton :value="c.email" :label="`Copy ${c.email}`" />
+          </div>
           <div class="pt-2 border-t flex items-center gap-4 text-[11px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
             <span>{{ c.inquiries_count }} inquiries</span>
             <span>{{ c.quotations_count }} quotes</span>
             <span>{{ c.orders_count }} orders</span>
           </div>
-        </button>
+        </div>
       </div>
     </template>
 

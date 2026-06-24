@@ -84,7 +84,6 @@ function fmtRm(n: string | number | null) {
           <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
             <div>
               <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ client.name }}</p>
-              <p v-if="client.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ client.company }}</p>
               <div v-if="client.tags.length" class="flex flex-wrap gap-1.5 mt-2.5">
                 <span v-for="t in client.tags" :key="t" class="text-[11px] px-2 py-0.5 rounded-full"
                   :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ t }}</span>
@@ -102,6 +101,10 @@ function fmtRm(n: string | number | null) {
             <div v-if="client.phone">
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Phone</p>
               <a :href="`tel:${client.phone}`" class="text-[13px] font-medium" style="color: var(--color-text);">{{ client.phone }}</a>
+            </div>
+            <div v-if="client.company">
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Company</p>
+              <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ client.company }}</p>
             </div>
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Client since</p>

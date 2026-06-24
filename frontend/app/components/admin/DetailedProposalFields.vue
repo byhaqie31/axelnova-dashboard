@@ -151,7 +151,14 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
       <div v-for="(g, gi) in included" :key="gi" class="rounded-xl border p-3 space-y-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <div class="flex items-center gap-2">
           <input v-model="g.eyebrow" type="text" placeholder="Eyebrow (optional, e.g. BASIC SEO)" class="contact-input flex-1 min-w-0 text-[12px]" :style="fieldStyle">
-          <AdminSelect v-model="g.columns" :items="[{ label: '1 column', value: 1 }, { label: '2 columns', value: 2 }]" class="shrink-0 w-28" />
+          <div class="inline-flex shrink-0 items-center rounded-lg border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+            <button type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
+              :style="g.columns === 1 ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-secondary)' }"
+              @click="g.columns = 1">1 col</button>
+            <button type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
+              :style="g.columns === 2 ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-secondary)' }"
+              @click="g.columns = 2">2 col</button>
+          </div>
           <button type="button" class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove group" @click="removeIncluded(gi)">
             <UIcon name="i-lucide-trash-2" class="size-4" />
           </button>
