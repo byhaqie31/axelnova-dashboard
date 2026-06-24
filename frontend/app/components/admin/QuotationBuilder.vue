@@ -106,6 +106,9 @@ const modifiers = ref<Record<string, boolean | number>>({})
 const detailed = ref(false)
 const detailedInitial = ref<Record<string, any> | null>(null)
 const detailedRef = ref<InstanceType<typeof DetailedProposalFields> | null>(null)
+// Bumped on revert to force the detailed child to remount + re-hydrate from the
+// restored payload (it reads its initial state once, on mount).
+const detailedKey = ref(0)
 function enableDetailed() { detailed.value = true }
 function disableDetailed() { detailed.value = false; detailedInitial.value = null }
 
@@ -188,47 +191,53 @@ function hydrateScope(fp: Record<string, any>, packageKey: string | null) {
   })
 }
 
+// Hydrate the whole form from a saved quotation — used on mount and on revert.
+function loadFromQuotation(q: QuotationLike) {
+  client.mode = q.client_id ? 'search' : 'new'
+  client.client_id = q.client_id
+  client.name = q.name
+  client.email = q.email
+  client.phone = q.phone ?? ''
+  client.company = q.company ?? ''
+  hydrateScope(q.form_payload ?? {}, q.package_key)
+  const d = q.document ?? {}
+  if (d.layout === 'detailed' && d.payload) {
+    // Detailed quote: flatten the scope sections back into editable line items
+    // (one line per row — section grouping isn't represented in the merged
+    // builder) and hand the extra blocks to the child via `detailedInitial`.
+    const p = d.payload
+    doc.project = p.project ?? ''
+    doc.intro = p.intro ?? ''
+    const items: LineItem[] = []
+    for (const s of (p.sections ?? [])) {
+      for (const r of (s.rows ?? [])) {
+        items.push({ title: r.title ?? '', desc: r.detail ?? '', qty: 1, unit: '', rate: Number(r.price) || 0 })
+      }
+    }
+    doc.items = items
+    doc.termsText = (p.paymentTerms?.items ?? defaultTerms).join('\n')
+    doc.deposit_pct = d.deposit_pct ?? 50
+    detailedInitial.value = p
+    detailed.value = true
+  }
+  else {
+    doc.project = d.project ?? ''
+    doc.intro = d.intro ?? ''
+    doc.items = (d.items ?? []).map((it: any) => ({
+      title: it.title ?? '', desc: it.desc ?? '', qty: Number(it.qty ?? 1), unit: it.unit ?? '', rate: Number(it.rate ?? 0),
+    }))
+    doc.termsText = (d.terms ?? defaultTerms).join('\n')
+    doc.deposit_pct = d.deposit_pct ?? 50
+    detailedInitial.value = null
+    detailed.value = false
+  }
+}
+
 onMounted(async () => {
   await loadConfig()
 
   if (props.quotation) {
-    const q = props.quotation
-    client.mode = q.client_id ? 'search' : 'new'
-    client.client_id = q.client_id
-    client.name = q.name
-    client.email = q.email
-    client.phone = q.phone ?? ''
-    client.company = q.company ?? ''
-    hydrateScope(q.form_payload ?? {}, q.package_key)
-    const d = q.document ?? {}
-    if (d.layout === 'detailed' && d.payload) {
-      // Detailed quote: flatten the scope sections back into editable line items
-      // (one line per row — section grouping isn't represented in the merged
-      // builder) and hand the extra blocks to the child via `detailedInitial`.
-      const p = d.payload
-      doc.project = p.project ?? ''
-      doc.intro = p.intro ?? ''
-      const items: LineItem[] = []
-      for (const s of (p.sections ?? [])) {
-        for (const r of (s.rows ?? [])) {
-          items.push({ title: r.title ?? '', desc: r.detail ?? '', qty: 1, unit: '', rate: Number(r.price) || 0 })
-        }
-      }
-      doc.items = items
-      doc.termsText = (p.paymentTerms?.items ?? defaultTerms).join('\n')
-      doc.deposit_pct = d.deposit_pct ?? 50
-      detailedInitial.value = p
-      detailed.value = true
-    }
-    else {
-      doc.project = d.project ?? ''
-      doc.intro = d.intro ?? ''
-      doc.items = (d.items ?? []).map((it: any) => ({
-        title: it.title ?? '', desc: it.desc ?? '', qty: Number(it.qty ?? 1), unit: it.unit ?? '', rate: Number(it.rate ?? 0),
-      }))
-      doc.termsText = (d.terms ?? defaultTerms).join('\n')
-      doc.deposit_pct = d.deposit_pct ?? 50
-    }
+    loadFromQuotation(props.quotation)
   }
   else {
     doc.termsText = defaultTerms.join('\n')
@@ -488,6 +497,17 @@ function viewPdf() {
   if (!props.quotation?.public_token) return
   window.open(`${window.location.origin}/documents/${props.quotation.public_token}/pdf`, '_blank', 'noopener')
 }
+
+// Discard unsaved edits and restore the last-saved quotation.
+async function revert() {
+  if (!props.quotation) return
+  loadFromQuotation(props.quotation)
+  detailedKey.value++
+  clearErrors()
+  error.value = ''
+  await nextTick()
+  baseline.value = formFingerprint()
+}
 </script>
 
 <template>
@@ -660,7 +680,7 @@ function viewPdf() {
             <UIcon name="i-lucide-trash-2" class="size-3.5" /> Remove (keep standard)
           </button>
         </div>
-        <DetailedProposalFields ref="detailedRef" :initial="detailedInitial" />
+        <DetailedProposalFields ref="detailedRef" :key="detailedKey" :initial="detailedInitial" />
       </section>
     </div>
 
@@ -682,15 +702,20 @@ function viewPdf() {
       </div>
 
       <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <button v-if="!isEdit || dirty" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="saving" @click="save">
-          {{ saving ? 'Saving…' : isEdit ? 'Save changes' : 'Save draft' }}
+        <button v-if="!isEdit" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="saving" @click="save">
+          {{ saving ? 'Saving…' : 'Save draft' }}
         </button>
 
         <template v-if="isEdit">
-          <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :disabled="!quotation?.public_token" @click="viewPdf">
+          <!-- Unsaved edits → revert (red) sits where the save button used to be. -->
+          <button v-if="dirty" type="button" class="btn-pill btn-pill-danger w-full justify-center gap-1.5 text-[13px]" :disabled="saving" @click="revert">
+            <UIcon name="i-lucide-undo-2" class="size-3.5" /> Revert changes
+          </button>
+
+          <button v-if="!dirty" type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :disabled="!quotation?.public_token" @click="viewPdf">
             View PDF
           </button>
-          <div class="relative">
+          <div v-if="!dirty" class="relative">
             <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]" :disabled="sending || saving" @click="sendMenuOpen = !sendMenuOpen">
               {{ sending ? 'Sending…' : 'Send to client' }}
             </button>
@@ -705,7 +730,11 @@ function viewPdf() {
               </button>
             </div>
           </div>
-          <button type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
+          <!-- Save replaces Proceed while there are unsaved edits — you must save first. -->
+          <button v-if="dirty" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="saving" @click="save">
+            {{ saving ? 'Saving…' : 'Save changes' }}
+          </button>
+          <button v-else type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
             {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
           </button>
         </template>

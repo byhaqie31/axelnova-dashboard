@@ -47,7 +47,7 @@ function pick(value: string) {
       type="button"
       :aria-expanded="open"
       aria-haspopup="listbox"
-      class="inline-flex items-center gap-2 text-[12px] px-3.5 py-1.5 rounded-full border transition-all duration-200 min-w-32"
+      class="inline-flex items-center gap-2 text-[12px] px-3.5 h-9 rounded-full border transition-all duration-200 min-w-32"
       :style="{
         borderColor: open ? 'var(--color-accent)' : 'var(--color-border-strong)',
         background: open ? 'var(--color-accent-soft)' : 'var(--color-bg-elevated)',

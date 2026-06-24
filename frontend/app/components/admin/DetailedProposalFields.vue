@@ -151,10 +151,7 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
       <div v-for="(g, gi) in included" :key="gi" class="rounded-xl border p-3 space-y-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <div class="flex items-center gap-2">
           <input v-model="g.eyebrow" type="text" placeholder="Eyebrow (optional, e.g. BASIC SEO)" class="contact-input flex-1 min-w-0 text-[12px]" :style="fieldStyle">
-          <select v-model.number="g.columns" class="contact-input shrink-0 text-[12px]" :style="{ ...fieldStyle, width: '7rem' }">
-            <option :value="1">1 column</option>
-            <option :value="2">2 columns</option>
-          </select>
+          <AdminSelect v-model="g.columns" :items="[{ label: '1 column', value: 1 }, { label: '2 columns', value: 2 }]" class="shrink-0 w-28" />
           <button type="button" class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove group" @click="removeIncluded(gi)">
             <UIcon name="i-lucide-trash-2" class="size-4" />
           </button>
@@ -252,11 +249,7 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
         </div>
         <div class="w-24">
           <span class="d-label">Per</span>
-          <select v-model="r.period" class="contact-input w-full text-[12px]" :style="fieldStyle">
-            <option value="">—</option>
-            <option value="month">month</option>
-            <option value="year">year</option>
-          </select>
+          <AdminSelect v-model="r.period" :items="[{ label: '—', value: '' }, { label: 'month', value: 'month' }, { label: 'year', value: 'year' }]" class="w-full" />
         </div>
         <button type="button" class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove plan row" @click="removeCare(ri)">
           <UIcon name="i-lucide-x" class="size-4" />

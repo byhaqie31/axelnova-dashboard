@@ -576,18 +576,11 @@ const scopeFields = computed(() => {
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Invoice type</span>
-                <select v-model="invoiceForm.type" class="doc-input mt-1">
-                  <option value="deposit">Deposit</option>
-                  <option value="partial">Partial</option>
-                  <option value="final">Final</option>
-                </select>
+                <AdminSelect v-model="invoiceForm.type" class="mt-1" :items="[{ label: 'Deposit', value: 'deposit' }, { label: 'Partial', value: 'partial' }, { label: 'Final', value: 'final' }]" />
               </label>
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Status</span>
-                <select v-model="invoiceForm.status" class="doc-input mt-1">
-                  <option value="issued">Issued</option>
-                  <option value="paid">Paid</option>
-                </select>
+                <AdminSelect v-model="invoiceForm.status" class="mt-1" :items="[{ label: 'Issued', value: 'issued' }, { label: 'Paid', value: 'paid' }]" />
               </label>
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount received</span>
@@ -638,10 +631,7 @@ const scopeFields = computed(() => {
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">For invoice</span>
-                <select v-model="receiptForm.invoice_id" class="doc-input mt-1">
-                  <option value="">— none —</option>
-                  <option v-for="d in order.invoices ?? []" :key="d.id" :value="String(d.id)">{{ d.number }}</option>
-                </select>
+                <AdminSelect v-model="receiptForm.invoice_id" class="mt-1" :items="[{ label: '— none —', value: '' }, ...(order.invoices ?? []).map(d => ({ label: d.number, value: String(d.id) }))]" />
               </label>
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount paid</span>

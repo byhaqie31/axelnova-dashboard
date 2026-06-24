@@ -30,6 +30,7 @@
   --color-accent-soft: rgba(0, 113, 227, 0.10);
   --color-success-soft: rgba(48, 209, 88, 0.12);
   --color-warning-soft: rgba(255, 159, 10, 0.16);
+  --color-danger-soft: rgba(255, 59, 48, 0.14);
 
   /* Status */
   --color-success: #30D158;
@@ -132,6 +133,7 @@
   --color-success-soft: rgba(48, 209, 88, 0.18);
   --color-warning: #FFB340;
   --color-warning-soft: rgba(255, 179, 64, 0.22);
+  --color-danger-soft: rgba(255, 69, 58, 0.24);
 
   --color-silver: #3A3A3C;
   --color-silver-hover: #48484A;
@@ -424,6 +426,17 @@ h1 { letter-spacing: -0.045em; }
 .btn-pill-warning:hover {
   filter: brightness(1.03);
   box-shadow: 0 8px 24px var(--color-warning-soft);
+  transform: translateY(-1px);
+}
+
+/* Danger (red) — destructive actions (e.g. revert / discard changes) */
+.btn-pill-danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+.btn-pill-danger:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 8px 24px var(--color-danger-soft);
   transform: translateY(-1px);
 }
 
