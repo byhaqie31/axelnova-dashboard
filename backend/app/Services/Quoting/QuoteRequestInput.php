@@ -15,5 +15,7 @@ class QuoteRequestInput extends Data
         public readonly array $modifiers,
         public readonly array $addonKeys,
         public readonly bool $rush,
+        /** Admin-managed scope-field values, keyed by field_key. Supersedes $modifiers. */
+        public readonly array $scopeValues = [],
     ) {}
 }

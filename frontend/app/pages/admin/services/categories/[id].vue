@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { serviceIcons } from '~/data/serviceIcons'
+import ScopeFieldModal from '~/components/admin/ScopeFieldModal.vue'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -56,6 +57,76 @@ async function loadSiblings() {
   }
 }
 
+// ── Scope fields (this category's quote-builder inputs) ─────────────────────
+interface ScopeFieldRow {
+  id: number
+  field_key: string
+  label: string
+  type: 'slider' | 'select' | 'toggle'
+  applies_to: string[]
+  config: Record<string, any>
+  sort_order: number
+  active: boolean
+}
+const scopeFields = ref<ScopeFieldRow[]>([])
+
+async function loadScopeFields() {
+  if (isNew.value) return
+  try {
+    const res = await apiFetch<{ data: ScopeFieldRow[] }>(`/api/v1/admin/service-scope-fields?service_category_id=${route.params.id}`)
+    scopeFields.value = res.data
+  }
+  catch {
+    scopeFields.value = []
+  }
+}
+
+async function toggleFieldActive(f: ScopeFieldRow) {
+  try {
+    await apiFetch(`/api/v1/admin/service-scope-fields/${f.id}`, {
+      method: 'PUT',
+      body: { ...f, service_category_id: Number(route.params.id), active: !f.active },
+    })
+    await loadScopeFields()
+  }
+  catch {
+    toast.error('Couldn’t update', `Failed to toggle “${f.label}”.`)
+  }
+}
+
+async function deleteField(f: ScopeFieldRow) {
+  if (!confirm(`Delete scope field "${f.label}"? Existing quotes keep their stored values.`)) return
+  try {
+    await apiFetch(`/api/v1/admin/service-scope-fields/${f.id}`, { method: 'DELETE' })
+    await loadScopeFields()
+    toast.success('Scope field deleted', `“${f.label}” was removed.`)
+  }
+  catch {
+    toast.error('Couldn’t delete', `Failed to delete “${f.label}”.`)
+  }
+}
+
+function fieldPriceSummary(f: ScopeFieldRow): string {
+  const rm = (n: number) => `+RM ${Math.round(n).toLocaleString('en-US')}`
+  if (f.type === 'slider') {
+    const p = Number(f.config.price_per_unit || 0)
+    return p > 0 ? `${rm(p)} / ${f.config.unit || 'unit'} over ${f.config.free_threshold ?? 0}` : 'No charge'
+  }
+  if (f.type === 'toggle') {
+    const a = Number(f.config.amount || 0)
+    return a > 0 ? rm(a) : 'No charge'
+  }
+  const amounts = (f.config.options || []).map((o: any) => Number(o.amount || 0))
+  const max = amounts.length ? Math.max(...amounts) : 0
+  return max > 0 ? `up to ${rm(max)}` : 'No charge'
+}
+
+// Editor drawer
+const modalOpen = ref(false)
+const editingField = ref<ScopeFieldRow | null>(null)
+function openNewField() { editingField.value = null; modalOpen.value = true }
+function openEditField(f: ScopeFieldRow) { editingField.value = f; modalOpen.value = true }
+
 async function fetchCategory() {
   if (isNew.value) return
   loading.value = true
@@ -98,6 +169,7 @@ async function save() {
 onMounted(async () => {
   await fetchCategory()
   await loadSiblings()
+  await loadScopeFields()
 })
 </script>
 
@@ -109,10 +181,16 @@ onMounted(async () => {
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All services
     </NuxtLink>
 
-    <div class="mb-6">
+    <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
         {{ isNew ? 'New category' : 'Edit category' }}
       </h1>
+      <div v-if="!loading" class="flex items-center gap-2 shrink-0">
+        <NuxtLink to="/admin/services" class="btn-pill btn-pill-ghost text-[13px]">Cancel</NuxtLink>
+        <button type="button" @click="save" :disabled="saving" class="btn-pill btn-pill-accent text-[13px]">
+          {{ saving ? 'Saving…' : isNew ? 'Create category' : 'Save changes' }}
+        </button>
+      </div>
     </div>
 
     <p v-if="message" class="mb-4 text-[13px]" :style="{ color: 'var(--color-danger)' }">{{ message }}</p>
@@ -255,15 +333,67 @@ onMounted(async () => {
           </span>
         </button>
       </div>
-
-      <div class="flex items-center gap-3 pt-2">
-        <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
-          {{ saving ? 'Saving…' : isNew ? 'Create category' : 'Save changes' }}
-        </button>
-        <NuxtLink to="/admin/services" class="btn-pill btn-pill-ghost text-[13px]">Cancel</NuxtLink>
-      </div>
     </form>
 
-    <div v-else class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
+    <!-- New category: scope fields attach to a saved category, so they appear after creating it. -->
+    <p v-if="!loading && isNew" class="mt-6 rounded-2xl border border-dashed p-6 text-center text-[12px]"
+      :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }">
+      <UIcon name="i-lucide-sliders-horizontal" class="size-4 inline-block mb-1" /><br>
+      Scope fields (the quote-builder inputs for this category) can be added once you’ve created it — save first, then they’ll appear here.
+    </p>
+
+    <!-- Scope fields — the quote-builder inputs + pricing for this category. -->
+    <section v-if="!loading && !isNew" class="mt-6 rounded-2xl border p-6"
+      :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+      <div class="mb-4">
+        <h2 class="text-[15px] font-semibold" :style="{ color: 'var(--color-text)' }">Scope fields</h2>
+        <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
+          Quote-builder inputs for this category — sliders, toggles & selects, each with its own pricing.
+        </p>
+      </div>
+
+      <p v-if="!scopeFields.length" class="text-[12px] py-6 text-center" :style="{ color: 'var(--color-text-tertiary)' }">
+        No scope fields yet. Add one to capture project scope + pricing in the quote builder.
+      </p>
+
+      <ul v-else class="rounded-xl border overflow-hidden" :style="{ borderColor: 'var(--color-border)' }">
+        <li v-for="f in scopeFields" :key="f.id"
+          class="flex items-center gap-3 px-4 py-3 border-b last:border-b-0" :style="{ borderColor: 'var(--color-border)' }">
+          <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
+            :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">{{ f.type }}</span>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">{{ f.label }}</p>
+              <span v-if="!f.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Off</span>
+            </div>
+            <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">
+              <code>{{ f.field_key }}</code> · {{ fieldPriceSummary(f) }}
+            </p>
+          </div>
+          <button type="button" @click="toggleFieldActive(f)"
+            class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">{{ f.active ? 'Disable' : 'Enable' }}</button>
+          <button type="button" @click="openEditField(f)"
+            class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">Edit</button>
+          <button type="button" @click="deleteField(f)"
+            class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }">Delete</button>
+        </li>
+      </ul>
+
+      <div class="flex justify-end mt-3">
+        <button type="button" @click="openNewField"
+          class="btn-pill btn-pill-ghost text-[12px] inline-flex items-center gap-1.5">
+          <UIcon name="i-lucide-plus" class="size-3.5" /> New scope field
+        </button>
+      </div>
+    </section>
+
+    <div v-else-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
+
+    <ScopeFieldModal :open="modalOpen" :field="editingField" :category-id="Number(route.params.id)"
+      @close="modalOpen = false" @saved="loadScopeFields" />
   </div>
 </template>

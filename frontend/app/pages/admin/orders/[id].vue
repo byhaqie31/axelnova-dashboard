@@ -572,7 +572,7 @@ const lineItems = computed(() => {
                     :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">{{ d.status }}</span>
                 </div>
                 <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
-                  {{ fmtMyr(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ fmtMyr(d.amount_paid) }}</span> · {{ fmtDate(d.issued_at) }}
+                  {{ fmtMyrExact(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ fmtMyrExact(d.amount_paid) }}</span> · {{ fmtDate(d.issued_at) }}
                 </p>
               </div>
               <a :href="d.pdf_path" target="_blank" rel="noopener"
@@ -680,7 +680,7 @@ const lineItems = computed(() => {
               <div class="min-w-0">
                 <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ r.number }}</span>
                 <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
-                  {{ fmtMyr(r.amount) }}<span v-if="r.invoice_number"> · for {{ r.invoice_number }}</span> · {{ fmtDate(r.issued_at) }}
+                  {{ fmtMyrExact(r.amount) }}<span v-if="r.invoice_number"> · for {{ r.invoice_number }}</span> · {{ fmtDate(r.issued_at) }}
                 </p>
               </div>
               <a :href="r.pdf_path" target="_blank" rel="noopener"

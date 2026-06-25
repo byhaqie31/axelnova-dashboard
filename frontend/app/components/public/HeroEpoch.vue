@@ -19,21 +19,41 @@ const { build: buildHeadline } = useSplitTextReveal(heroHeadline)
 
 useMagnetic(heroCta)
 
-// Stack logos hotlinked from svgl.app (brand-coloured marks — never inverted, so
-// they read on both light and dark cards). TODO: self-host to /public/logos/
-// before shipping, same as the hero video below.
-const logos = [
-  { src: 'https://svgl.app/library/vue.svg',         alt: 'Vue' },
-  { src: 'https://svgl.app/library/nuxt.svg',        alt: 'Nuxt' },
-  { src: 'https://svgl.app/library/laravel.svg',     alt: 'Laravel' },
-  { src: 'https://svgl.app/library/tailwindcss.svg', alt: 'Tailwind CSS' },
-  { src: 'https://svgl.app/library/typescript.svg',  alt: 'TypeScript' },
-  { src: 'https://svgl.app/library/stripe.svg',      alt: 'Stripe' },
-  { src: 'https://svgl.app/library/cloudflare.svg',  alt: 'Cloudflare' },
-  { src: 'https://svgl.app/library/docker.svg',      alt: 'Docker' },
+// Stack logos hotlinked from svgl.app (+ Simple Icons for GSAP). Brand-coloured
+// marks read on both light and dark cards via a single `src`. Monochrome marks
+// (GitHub, Three.js, React) would vanish on one card colour, so they ship a
+// per-mode `light`/`dark` pair — the right one is shown via the `.dark` class
+// (svgl convention: `*-light` = dark mark for light backgrounds, `*-dark` =
+// light mark for dark backgrounds). TODO: self-host to /public/logos/ before
+// shipping, same as the hero video below.
+type StackLogo =
+  | { alt: string; src: string }
+  | { alt: string; light: string; dark: string }
+
+const logos: StackLogo[] = [
+  { src: 'https://svgl.app/library/vue.svg',          alt: 'Vue' },
+  { src: 'https://svgl.app/library/nuxt.svg',         alt: 'Nuxt' },
+  { light: 'https://svgl.app/library/react_light.svg',  dark: 'https://svgl.app/library/react_dark.svg',  alt: 'React' },
+  { light: 'https://svgl.app/library/threejs-light.svg', dark: 'https://svgl.app/library/threejs-dark.svg', alt: 'Three.js' },
+  { src: 'https://cdn.simpleicons.org/gsap/0AE448',   alt: 'GSAP' },
+  { src: 'https://svgl.app/library/laravel.svg',      alt: 'Laravel' },
+  { src: 'https://svgl.app/library/tailwindcss.svg',  alt: 'Tailwind CSS' },
+  { src: 'https://svgl.app/library/typescript.svg',   alt: 'TypeScript' },
+  { src: 'https://svgl.app/library/stripe.svg',       alt: 'Stripe' },
+  { src: 'https://svgl.app/library/cloudflare.svg',   alt: 'Cloudflare' },
+  { src: 'https://svgl.app/library/docker.svg',       alt: 'Docker' },
+  { light: 'https://svgl.app/library/github_light.svg', dark: 'https://svgl.app/library/github_dark.svg', alt: 'GitHub' },
+  { src: 'https://svgl.app/library/gitlab.svg',       alt: 'GitLab' },
 ]
-// Rendered twice so the -50% keyframe loops seamlessly.
-const marqueeLogos = [...logos, ...logos]
+
+// Normalise to a uniform shape (always light + dark) so the template never
+// branches on optional fields; `themed` marks render both variants and let CSS
+// pick. Rendered twice so the -50% keyframe loops seamlessly.
+const marqueeLogos = [...logos, ...logos].map(l =>
+  'src' in l
+    ? { alt: l.alt, themed: false, light: l.src, dark: l.src }
+    : { alt: l.alt, themed: true, light: l.light, dark: l.dark },
+)
 
 let heroTl: gsap.core.Timeline | null = null
 let safetyTimer: number | undefined
@@ -208,11 +228,26 @@ onUnmounted(() => {
         >
           <span class="epoch-logo-wash" />
           <img
-            :src="logo.src"
+            v-if="!logo.themed"
+            :src="logo.light"
             :alt="logo.alt"
             loading="lazy"
             class="relative h-5.5 w-auto max-w-[64%] object-contain"
           >
+          <template v-else>
+            <img
+              :src="logo.light"
+              :alt="logo.alt"
+              loading="lazy"
+              class="epoch-mark epoch-mark-light relative h-5.5 w-auto max-w-[64%] object-contain"
+            >
+            <img
+              :src="logo.dark"
+              :alt="logo.alt"
+              loading="lazy"
+              class="epoch-mark epoch-mark-dark relative h-5.5 w-auto max-w-[64%] object-contain"
+            >
+          </template>
         </div>
       </div>
     </div>
@@ -275,6 +310,13 @@ onUnmounted(() => {
   opacity: 0.14;
   transform: scale(1);
 }
+
+/* Monochrome marks (GitHub, Three.js, React) ship a variant per card colour;
+   show the one that reads against the active theme. FOUC-safe — the .dark class
+   is applied before paint (see the FOUC rule), so there's no flash. */
+.epoch-mark-dark { display: none; }
+.dark .epoch-mark-light { display: none; }
+.dark .epoch-mark-dark { display: block; }
 
 @media (prefers-reduced-motion: reduce) {
   .epoch-marquee-track { animation: none; }

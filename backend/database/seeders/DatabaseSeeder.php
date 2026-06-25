@@ -12,6 +12,8 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             PricingConfigSeeder::class,
             ServiceCategoriesSeeder::class,
+            ServiceAddonsSeeder::class,
+            ServiceScopeFieldsSeeder::class,
             ProjectsSeeder::class,
         ]);
     }

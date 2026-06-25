@@ -301,7 +301,10 @@ class DocumentMapper
 
         if (empty($items)) {
             $items[] = [
-                'title' => $quotation->package_key ?: 'Project',
+                // Resolve the catalog name from the DB; never show the raw slug.
+                'title' => $quotation->package_key
+                    ? PricingEngine::active()->packageName($quotation->package_key)
+                    : 'Project',
                 'qty' => 1,
                 'rate' => (float) $quotation->estimate_max_myr,
             ];

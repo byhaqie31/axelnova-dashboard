@@ -262,6 +262,7 @@ class QuotationsController extends Controller
             modifiers: $data['modifiers'] ?? [],
             addonKeys: $data['addon_keys'] ?? [],
             rush: (bool) ($data['rush'] ?? false),
+            scopeValues: $data['scope_values'] ?? [],
         );
     }
 
@@ -289,6 +290,7 @@ class QuotationsController extends Controller
             'form_payload' => array_merge($data['form_payload'] ?? [], [
                 'package_key' => $input->packageKey ?: null,
                 'modifiers' => $input->modifiers,
+                'scope_values' => $input->scopeValues,
                 'addon_keys' => $input->addonKeys,
                 'rush' => $input->rush,
                 'breakdown' => $estimate?->breakdown ?? [],
@@ -307,7 +309,7 @@ class QuotationsController extends Controller
     private function syncAddons(Quotation $quotation, array $addonKeys, PricingEngine $engine): void
     {
         $quotation->addons()->delete();
-        $addonDefs = $engine->getConfig()->config['addons'] ?? [];
+        $addonDefs = $engine->addons();
 
         foreach ($addonKeys as $key) {
             if (isset($addonDefs[$key])) {

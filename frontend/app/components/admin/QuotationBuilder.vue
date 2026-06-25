@@ -3,7 +3,7 @@ import QuoteScopeFields from '~/components/shared/QuoteScopeFields.vue'
 import DetailedProposalFields from '~/components/admin/DetailedProposalFields.vue'
 import type { QuoteScopeState } from '~/composables/quoteScope'
 import type { EstimateResult } from '~/composables/usePricingEngine'
-import { defaultQuoteScope, scopeToPayload } from '~/composables/quoteScope'
+import { defaultQuoteScope, scopeToPayload, legacyToScopeValues } from '~/composables/quoteScope'
 
 interface QuotationLike {
   id: number
@@ -33,7 +33,11 @@ const emit = defineEmits<{
 }>()
 
 const { apiFetch } = useAdminAuth()
-const { config, loadConfig, fmtMyr, formatEta } = usePricingEngine()
+const { config, loadConfig, invalidateConfig, fmtMyr, formatEta } = usePricingEngine()
+// The builder is the authoring surface — always reflect the current catalog
+// (package / add-on prices edited in /admin/services). Drop the session cache in
+// setup, before the scope child mounts and refetches, so it's one fresh fetch.
+invalidateConfig()
 const toast = useAdminToast()
 
 const isEdit = computed(() => !!props.quotation)
@@ -98,7 +102,7 @@ function clearClient() {
 // ── Scope + estimate ────────────────────────────────────────────────────────
 const scope = reactive<QuoteScopeState>(defaultQuoteScope())
 const estimate = ref<EstimateResult | null>(null)
-const modifiers = ref<Record<string, boolean | number>>({})
+// scope.scopeValues is the source of truth — <QuoteScopeFields> mutates it in place.
 
 // ── Detailed proposal (optional inline upgrade) ──────────────────────────────
 // When on, the quote saves as layout:'detailed' — the line items become the
@@ -137,6 +141,15 @@ const grandTotal = computed(() =>
   doc.items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.rate) || 0), 0),
 )
 
+// Estimate breakdown lines (each scope field + add-on on top of the base package)
+// for the sidebar summary. The base is the headline range, so it's skipped here.
+const estimateLines = computed(() =>
+  (estimate.value?.breakdown ?? []).slice(1).map(([label, , max]) => ({
+    label: label.replace(/^\+\s*/, ''),
+    price: max as number,
+  })),
+)
+
 function packageMeta(key: string): { name: string; tagline: string } {
   for (const c of config.value?.categories ?? []) {
     const p = c.packages.find(p => p.key === key)
@@ -145,20 +158,37 @@ function packageMeta(key: string): { name: string; tagline: string } {
   return { name: key, tagline: '' }
 }
 
+// JSON of doc.items right after a seed — lets us detect whether the admin has
+// since edited the lines (so we don't clobber manual edits when auto-syncing).
+const seedSnapshot = ref('')
+
+// Build line items from the live estimate breakdown (base + each scope field +
+// add-ons), so the document mirrors the scope. Rush is a multiplier, not a line.
 function seedItems() {
-  if (!config.value || !scope.packageKey) return
+  if (!config.value || !scope.packageKey || !estimate.value) return
   const items: LineItem[] = []
-  const base = config.value.base_packages[scope.packageKey]
-  if (base) {
-    const meta = packageMeta(scope.packageKey)
-    items.push({ title: meta.name, desc: meta.tagline, qty: 1, unit: 'project', rate: base.max })
-  }
-  for (const k of scope.addonKeys) {
-    const a = config.value.addons[k]
-    if (a) items.push({ title: a.label, desc: '', qty: 1, unit: '', rate: a.amount })
+  for (const [label, , max] of estimate.value.breakdown) {
+    if (label.startsWith('Rush ')) continue
+    if (label.startsWith('Base: ')) {
+      const meta = packageMeta(scope.packageKey)
+      items.push({ title: meta.name, desc: meta.tagline, qty: 1, unit: 'project', rate: max })
+      continue
+    }
+    if (max <= 0) continue
+    items.push({ title: label.replace(/^\+\s*/, ''), desc: '', qty: 1, unit: '', rate: max })
   }
   doc.items = items
+  seedSnapshot.value = JSON.stringify(items)
 }
+
+// Keep the document in lock-step with the scope WHILE it's still a pristine seed.
+// Once the admin hand-edits a line (items ≠ snapshot), we stop auto-syncing so we
+// never overwrite their work; re-clicking "Seed line items from scope" resumes it.
+watch(estimate, () => {
+  if (!detailed.value && seedSnapshot.value && JSON.stringify(doc.items) === seedSnapshot.value) {
+    seedItems()
+  }
+})
 
 function addItem() {
   doc.items.push({ title: '', desc: '', qty: 1, unit: '', rate: 0 })
@@ -172,25 +202,8 @@ function hydrateScope(fp: Record<string, any>, packageKey: string | null) {
   Object.assign(scope, defaultQuoteScope(), {
     categoryKey: fp.category_key ?? '',
     packageKey: packageKey ?? '',
-    pages: fp.pages ?? scope.pages,
-    languages: fp.languages ?? [],
-    cms: fp.cms ?? false,
-    bookingFlow: fp.booking_flow ?? false,
-    modules: fp.modules ?? scope.modules,
-    userRoles: fp.user_roles ?? scope.userRoles,
-    realTime: fp.real_time ?? false,
-    chartsComplexity: fp.charts_complexity ?? 'basic',
-    screensCount: fp.screens_count ?? scope.screensCount,
-    designSystem: fp.design_system ?? false,
-    prototype: fp.prototype ?? false,
-    componentsCount: fp.components_count ?? scope.componentsCount,
-    pagesCount: fp.pages_count ?? scope.pagesCount,
-    stateManagement: fp.state_management ?? false,
-    testing: fp.testing ?? false,
-    coreFeatures: fp.core_features ?? '',
-    authMethods: fp.auth_methods ?? [],
-    paymentMethod: fp.payment_method ?? '',
-    adminPortal: fp.admin_portal ?? false,
+    // New drafts store scope_values; older drafts stored flat fields — map them.
+    scopeValues: fp.scope_values ?? legacyToScopeValues(fp),
     addonKeys: fp.addon_keys ?? [],
     rush: fp.rush ?? false,
   })
@@ -349,7 +362,7 @@ function buildPayload() {
     phone: client.phone || null,
     company: client.company || null,
     package_key: scope.packageKey || null,
-    modifiers: modifiers.value,
+    scope_values: scope.scopeValues,
     addon_keys: scope.addonKeys,
     rush: scope.rush,
     expires_at: validUntil.value || null,
@@ -411,12 +424,12 @@ function buildPayload() {
 }
 
 // Dirty tracking — in edit mode the "Save changes" button only surfaces once the
-// loaded draft is actually modified. The fingerprint omits `modifiers` (emitted
-// asynchronously by the scope child after mount, and derived from scope anyway)
-// so it never trips a false dirty.
+// loaded draft is actually modified. scope_values defaults are seeded after config
+// loads, but the baseline is snapshotted post-nextTick (in onMounted) so that
+// seeding never trips a false dirty.
 const baseline = ref('')
 function formFingerprint(): string {
-  return JSON.stringify({ ...buildPayload(), modifiers: undefined })
+  return JSON.stringify(buildPayload())
 }
 const dirty = computed(() => formFingerprint() !== baseline.value)
 
@@ -599,7 +612,7 @@ async function revert() {
       <!-- Package & scope -->
       <section id="qb-package" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Package &amp; scope</p>
-        <QuoteScopeFields :state="scope" :require-package="!detailed" :package-error="errors.package" @update:estimate="estimate = $event" @update:modifiers="modifiers = $event" />
+        <QuoteScopeFields :state="scope" :require-package="!detailed" :package-error="errors.package" @update:estimate="estimate = $event" />
       </section>
 
       <!-- Quotation document -->
@@ -716,6 +729,15 @@ async function revert() {
             {{ fmtMyr(estimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ fmtMyr(estimate.maxMyr) }}
           </p>
           <p class="text-[12px]" style="color: var(--color-text-secondary);">{{ formatEta(estimate.etaValue, estimate.etaUnit) }} · engine estimate</p>
+
+          <!-- Per-scope / add-on contributions driving the estimate. -->
+          <div v-if="estimateLines.length" class="mt-3 pt-3 border-t space-y-1.5" style="border-color: var(--color-border);">
+            <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Scope &amp; add-ons</p>
+            <div v-for="(line, i) in estimateLines" :key="i" class="flex items-center justify-between gap-3 text-[12px]">
+              <span class="truncate" style="color: var(--color-text-secondary);">{{ line.label }}</span>
+              <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ line.price > 0 ? `+RM ${line.price.toLocaleString()}` : '—' }}</span>
+            </div>
+          </div>
         </div>
         <p v-else class="text-[13px]" style="color: var(--color-text-secondary);">Pick a package to see the engine estimate.</p>
         <div class="mt-4 pt-4 border-t flex items-center justify-between" style="border-color: var(--color-border);">

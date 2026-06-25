@@ -30,6 +30,7 @@ class QuoteRequestController extends Controller
             modifiers: $request->input('modifiers', []),
             addonKeys: $request->input('addon_keys', []),
             rush: (bool) $request->input('rush', false),
+            scopeValues: $request->input('scope_values', []),
         );
 
         $estimate = $engine->calculate($input);
@@ -58,6 +59,7 @@ class QuoteRequestController extends Controller
                 'form_payload' => array_merge($request->input('form_payload', []), [
                     'package_key' => $input->packageKey,
                     'modifiers' => $input->modifiers,
+                    'scope_values' => $input->scopeValues,
                     'addon_keys' => $input->addonKeys,
                     'rush' => $input->rush,
                     'breakdown' => $estimate->breakdown,
@@ -74,7 +76,7 @@ class QuoteRequestController extends Controller
                 'submitted_at' => now(),
             ]);
 
-            $addonDefs = $engine->getConfig()->config['addons'] ?? [];
+            $addonDefs = $engine->addons();
             foreach ($input->addonKeys as $key) {
                 if (isset($addonDefs[$key])) {
                     $quotation->addons()->create([

@@ -7,7 +7,9 @@ use App\Http\Controllers\Api\V1\Admin\OrdersController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
+use App\Http\Controllers\Api\V1\Admin\ServiceAddonsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
+use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\InquiryController;
@@ -141,6 +143,20 @@ Route::middleware([
         Route::get('/service-packages/{servicePackage}', [ServicePackagesController::class, 'show'])->name('service-packages.show');
         Route::put('/service-packages/{servicePackage}', [ServicePackagesController::class, 'update'])->name('service-packages.update');
         Route::delete('/service-packages/{servicePackage}', [ServicePackagesController::class, 'destroy'])->name('service-packages.destroy');
+
+        // CMS — Service add-ons (quote builder extras)
+        Route::get('/service-addons', [ServiceAddonsController::class, 'index'])->name('service-addons.index');
+        Route::post('/service-addons', [ServiceAddonsController::class, 'store'])->name('service-addons.store');
+        Route::get('/service-addons/{serviceAddon}', [ServiceAddonsController::class, 'show'])->name('service-addons.show');
+        Route::put('/service-addons/{serviceAddon}', [ServiceAddonsController::class, 'update'])->name('service-addons.update');
+        Route::delete('/service-addons/{serviceAddon}', [ServiceAddonsController::class, 'destroy'])->name('service-addons.destroy');
+
+        // CMS — Scope fields (quote builder per-category inputs + pricing)
+        Route::get('/service-scope-fields', [ServiceScopeFieldsController::class, 'index'])->name('service-scope-fields.index');
+        Route::post('/service-scope-fields', [ServiceScopeFieldsController::class, 'store'])->name('service-scope-fields.store');
+        Route::get('/service-scope-fields/{serviceScopeField}', [ServiceScopeFieldsController::class, 'show'])->name('service-scope-fields.show');
+        Route::put('/service-scope-fields/{serviceScopeField}', [ServiceScopeFieldsController::class, 'update'])->name('service-scope-fields.update');
+        Route::delete('/service-scope-fields/{serviceScopeField}', [ServiceScopeFieldsController::class, 'destroy'])->name('service-scope-fields.destroy');
 
         // CMS — Projects
         Route::get('/projects', [ProjectsController::class, 'index'])->name('projects.index');
