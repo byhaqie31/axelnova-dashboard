@@ -95,10 +95,16 @@ function fmtPrice(min: string | number, max: string | number | null) {
           {{ categories.length }} categories · {{ totalPackages }} packages · {{ featuredPackages }} featured
         </p>
       </div>
-      <NuxtLink to="/admin/services/categories/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5">
-        <UIcon name="i-lucide-plus" class="size-3.5" />
-        New category
-      </NuxtLink>
+      <div class="flex items-center gap-2">
+        <NuxtLink to="/admin/services/addons" class="btn-pill btn-pill-ghost text-[12px] inline-flex items-center gap-1.5">
+          <UIcon name="i-lucide-puzzle" class="size-3.5" />
+          Add-ons
+        </NuxtLink>
+        <NuxtLink to="/admin/services/categories/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5">
+          <UIcon name="i-lucide-plus" class="size-3.5" />
+          New category
+        </NuxtLink>
+      </div>
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>

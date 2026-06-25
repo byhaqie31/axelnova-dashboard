@@ -33,7 +33,11 @@ const emit = defineEmits<{
 }>()
 
 const { apiFetch } = useAdminAuth()
-const { config, loadConfig, fmtMyr, formatEta } = usePricingEngine()
+const { config, loadConfig, invalidateConfig, fmtMyr, formatEta } = usePricingEngine()
+// The builder is the authoring surface — always reflect the current catalog
+// (package / add-on prices edited in /admin/services). Drop the session cache in
+// setup, before the scope child mounts and refetches, so it's one fresh fetch.
+invalidateConfig()
 const toast = useAdminToast()
 
 const isEdit = computed(() => !!props.quotation)

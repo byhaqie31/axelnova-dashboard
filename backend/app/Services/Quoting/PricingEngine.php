@@ -3,6 +3,7 @@
 namespace App\Services\Quoting;
 
 use App\Models\PricingConfig;
+use App\Models\ServiceAddon;
 use App\Models\ServiceCategory;
 use App\Models\ServicePackage;
 use Illuminate\Support\Facades\Cache;
@@ -18,6 +19,9 @@ final class PricingEngine
 
     /** Memoised merged catalog — built once per instance (calculate + config + name lookups). */
     private ?array $basePackages = null;
+
+    /** Memoised merged add-ons (admin-managed service_addons over pricing JSON). */
+    private ?array $addons = null;
 
     public function __construct(private readonly PricingConfig $config) {}
 
@@ -58,12 +62,23 @@ final class PricingEngine
         return $this->buildBasePackages()[$key]['name'] ?? Str::headline($key);
     }
 
+    /**
+     * Merged add-on definitions (admin-managed service_addons over the legacy
+     * pricing JSON), keyed by addon_key → ['amount' => float, 'label' => string].
+     * Shared by calculate(), the config endpoint, and the quote consumers so the
+     * builder, the price, and the stored line all agree.
+     */
+    public function addons(): array
+    {
+        return $this->buildAddons();
+    }
+
     public function calculate(QuoteRequestInput $input): EstimateResult
     {
         $cfg = $this->config->config;
         $packages = $this->buildBasePackages();
         $modifierDefs = $cfg['modifiers'] ?? [];
-        $addonDefs = $cfg['addons'] ?? [];
+        $addonDefs = $this->buildAddons();
         $rushMultiplier = (float) ($cfg['rush_multiplier'] ?? 1.20);
 
         if (!isset($packages[$input->packageKey])) {
@@ -153,7 +168,7 @@ final class PricingEngine
             'base_packages' => $this->buildBasePackages(),
             'categories' => $this->buildCategories(),
             'modifiers' => $cfg['modifiers'] ?? [],
-            'addons' => $cfg['addons'] ?? [],
+            'addons' => $this->buildAddons(),
             'rush_multiplier' => $cfg['rush_multiplier'] ?? 1.20,
             'rush_units' => self::RUSH_UNITS,
             'currency' => $cfg['currency'] ?? 'MYR',
@@ -207,6 +222,46 @@ final class PricingEngine
         }
 
         return $this->basePackages = $merged;
+    }
+
+    /**
+     * Merge admin-managed service_addons on top of the pricing_configs JSON.
+     *
+     * A DB row claims its key: active rows appear (in sort_order); a row that
+     * exists but is inactive removes the key entirely — so deactivating a seeded
+     * add-on actually hides it instead of falling back to the JSON copy. Legacy
+     * JSON keys with no DB row still resolve. Output: addon_key → ['amount', 'label'].
+     */
+    private function buildAddons(): array
+    {
+        if ($this->addons !== null) {
+            return $this->addons;
+        }
+
+        $dbAddons = ServiceAddon::orderBy('sort_order')->get();
+        $claimed = $dbAddons->pluck('addon_key')->all();
+
+        $merged = [];
+        // Legacy JSON add-ons that no DB row has taken over.
+        foreach ($this->config->config['addons'] ?? [] as $key => $entry) {
+            if (!in_array($key, $claimed, true)) {
+                $merged[$key] = [
+                    'amount' => (float) ($entry['amount'] ?? 0),
+                    'label' => (string) ($entry['label'] ?? Str::headline($key)),
+                ];
+            }
+        }
+        // Admin-managed add-ons, in sort order; inactive ones stay excluded.
+        foreach ($dbAddons as $a) {
+            if ($a->active) {
+                $merged[$a->addon_key] = [
+                    'amount' => (float) $a->amount_myr,
+                    'label' => $a->label,
+                ];
+            }
+        }
+
+        return $this->addons = $merged;
     }
 
     /**

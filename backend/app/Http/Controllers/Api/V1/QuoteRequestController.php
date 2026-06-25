@@ -74,7 +74,7 @@ class QuoteRequestController extends Controller
                 'submitted_at' => now(),
             ]);
 
-            $addonDefs = $engine->getConfig()->config['addons'] ?? [];
+            $addonDefs = $engine->addons();
             foreach ($input->addonKeys as $key) {
                 if (isset($addonDefs[$key])) {
                     $quotation->addons()->create([

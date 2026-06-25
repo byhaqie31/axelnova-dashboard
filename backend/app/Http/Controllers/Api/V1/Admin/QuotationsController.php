@@ -307,7 +307,7 @@ class QuotationsController extends Controller
     private function syncAddons(Quotation $quotation, array $addonKeys, PricingEngine $engine): void
     {
         $quotation->addons()->delete();
-        $addonDefs = $engine->getConfig()->config['addons'] ?? [];
+        $addonDefs = $engine->addons();
 
         foreach ($addonKeys as $key) {
             if (isset($addonDefs[$key])) {

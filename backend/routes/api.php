@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Admin\OrdersController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
+use App\Http\Controllers\Api\V1\Admin\ServiceAddonsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
 use App\Http\Controllers\Api\V1\DocumentController;
@@ -141,6 +142,13 @@ Route::middleware([
         Route::get('/service-packages/{servicePackage}', [ServicePackagesController::class, 'show'])->name('service-packages.show');
         Route::put('/service-packages/{servicePackage}', [ServicePackagesController::class, 'update'])->name('service-packages.update');
         Route::delete('/service-packages/{servicePackage}', [ServicePackagesController::class, 'destroy'])->name('service-packages.destroy');
+
+        // CMS — Service add-ons (quote builder extras)
+        Route::get('/service-addons', [ServiceAddonsController::class, 'index'])->name('service-addons.index');
+        Route::post('/service-addons', [ServiceAddonsController::class, 'store'])->name('service-addons.store');
+        Route::get('/service-addons/{serviceAddon}', [ServiceAddonsController::class, 'show'])->name('service-addons.show');
+        Route::put('/service-addons/{serviceAddon}', [ServiceAddonsController::class, 'update'])->name('service-addons.update');
+        Route::delete('/service-addons/{serviceAddon}', [ServiceAddonsController::class, 'destroy'])->name('service-addons.destroy');
 
         // CMS — Projects
         Route::get('/projects', [ProjectsController::class, 'index'])->name('projects.index');

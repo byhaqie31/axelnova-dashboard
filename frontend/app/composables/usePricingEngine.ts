@@ -40,6 +40,13 @@ export function usePricingEngine() {
   const configLoading = ref(false)
   const configError = ref('')
 
+  // Drop the session-cached config so the next loadConfig() refetches. Call after
+  // a catalog edit (package/add-on/category) so the quote builder reflects it
+  // without a hard refresh.
+  function invalidateConfig() {
+    config.value = null
+  }
+
   async function loadConfig() {
     if (config.value) return
     configLoading.value = true
@@ -130,5 +137,5 @@ export function usePricingEngine() {
     return `RM ${amount.toLocaleString()}`
   }
 
-  return { config, configLoading, configError, loadConfig, calculate, fmtMyr, formatEta }
+  return { config, configLoading, configError, loadConfig, invalidateConfig, calculate, fmtMyr, formatEta }
 }

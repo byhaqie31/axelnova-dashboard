@@ -10,14 +10,15 @@ There are two sources of truth, by design:
 
 | Layer | Storage | Owns | Managed by |
 |---|---|---|---|
-| **Catalog** (admin-managed) | `service_categories` + `service_packages` tables | Categories, package names, taglines, prices, ETA, features, CTA, deep-link `quote_key` | Admin UI under `/admin/services` |
-| **Pricing rules** (engineered config) | `pricing_configs.config` JSON (one active row) | `modifiers` (extra page, CMS, …), `addons` (SEO, logo, …), `rush_multiplier`, `currency`, `valid_for_days`, plus a fallback `base_packages` map for any legacy keys | SQL insert + auto cache-clear |
+| **Catalog** (admin-managed) | `service_categories` + `service_packages` + `service_addons` tables | Categories, package names, taglines, prices, ETA, features, CTA, deep-link `quote_key`; add-on labels + prices | Admin UI under `/admin/services` (categories, packages, add-ons) |
+| **Pricing rules** (engineered config) | `pricing_configs.config` JSON (one active row) | `modifiers` (extra page, CMS, …), `rush_multiplier`, `currency`, `valid_for_days`, plus fallback `base_packages` / `addons` maps for any legacy keys | SQL insert + auto cache-clear |
 
 The `PricingEngine` merges these at request time:
 
 1. Start with `pricing_configs.active.config.base_packages` (legacy / fallback entries).
 2. Layer admin-managed `service_packages` on top, keyed by `quote_key.package`. DB rows override any matching JSON entry.
-3. Modifiers / addons / rush stay in `pricing_configs.config` (no admin UI yet).
+3. Add-ons merge the same way: `service_addons` rows over the JSON `addons` map. A DB row *claims* its key — an **active** row appears (in `sort_order`), an **inactive** row removes the key entirely (no JSON fallback), and a JSON key with no DB row still resolves. See `PricingEngine::buildAddons()`.
+4. Modifiers / rush stay in `pricing_configs.config` (no admin UI yet).
 
 A `service_packages` row counts as "quotable" only if it has both a non-null `quote_key` **and** a non-null `price_max_myr`. Custom-quote and retainer rows (null `quote_key`) appear on the public services page but never in the quote builder.
 
@@ -166,10 +167,13 @@ These need both a JSON edit and (for category-specific modifiers) a frontend for
 "extra_integration": { "amount": 500, "applies_after": 2, "applies_to": "all" }
 ```
 
-**Add-on** (the `/quote` page reads add-ons dynamically from the config API, no frontend changes needed):
-```json
-"video": { "amount": 2500, "label": "Product demo video" }
-```
+**Add-on** — now admin-managed. Add or edit one under **`/admin/services` → Add-ons** (or `/admin/services/addons`): set a snake_case `key`, label, price, order, and active toggle. The builder and both validators pick it up immediately (cache auto-clears via `ServiceAddonObserver`). No JSON edit, no deploy.
+
+> Legacy add-ons can still live in `pricing_configs.config.addons` as a fallback for any key without a `service_addons` row:
+> ```json
+> "video": { "amount": 2500, "label": "Product demo video" }
+> ```
+> Creating a `service_addons` row with the same key takes over (and lets you deactivate it).
 
 For category-specific modifiers, also add the form field to the right scope section in `frontend/app/pages/public/quote/index.vue` and wire it into the `modifiers` object passed to `calculate()`.
 
@@ -188,7 +192,10 @@ These are pre-existing inconsistencies, not regressions from the hybrid wiring:
 ## File map
 
 - Backend
-  - `app/Services/Quoting/PricingEngine.php` — merge logic, calculation
+  - `app/Services/Quoting/PricingEngine.php` — merge logic (packages + add-ons), calculation, `packageName()`/`addons()`
+  - `app/Models/ServiceAddon.php` + `app/Observers/ServiceAddonObserver.php` — admin-managed add-ons, cache invalidation
+  - `app/Http/Controllers/Api/V1/Admin/ServiceAddonsController.php` — add-on CRUD
+  - `database/seeders/ServiceAddonsSeeder.php` — seeds the original 5 add-ons into `service_addons`
   - `app/Services/Quoting/EstimateResult.php` — DTO (`etaValue`, `etaUnit`)
   - `app/Models/ServicePackage.php` — eta columns, observer wired
   - `app/Models/Quotation.php` — stores `estimate_eta_value`, `estimate_eta_unit`; has `eta_label` accessor for emails
@@ -198,3 +205,4 @@ These are pre-existing inconsistencies, not regressions from the hybrid wiring:
   - `app/composables/usePricingEngine.ts` — TS port of PricingEngine + `formatEta` helper
   - `app/pages/public/quote/index.vue` — categories now from `config.categories`
   - `app/pages/admin/services/packages/[id].vue` — admin form with eta value + unit inputs
+  - `app/pages/admin/services/addons/index.vue` + `[id].vue` — add-on list + editor
