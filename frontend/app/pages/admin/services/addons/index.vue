@@ -48,9 +48,9 @@ onMounted(load)
 
 const activeCount = computed(() => addons.value.filter(a => a.active).length)
 
+// Add-on prices are exact — always precise, never the "k" range shorthand.
 function fmtPrice(n: string | number) {
-  const v = Number(n)
-  return v >= 1000 ? `+RM ${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `+RM ${v}`
+  return `+RM ${Math.round(Number(n) || 0).toLocaleString('en-US')}`
 }
 </script>
 

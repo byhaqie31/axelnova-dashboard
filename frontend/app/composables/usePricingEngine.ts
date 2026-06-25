@@ -35,6 +35,12 @@ export function formatEta(value: number, unit: EtaUnit): string {
   return `${value} ${value === 1 ? unit : `${unit}s`}`
 }
 
+// Shared across every composable instance on the client (loadConfig only runs in
+// onMounted, so this never leaks across SSR requests). Dedupes concurrent loads —
+// the builder and its scope child both call loadConfig() on mount, and before this
+// the second call fired a second request because config.value wasn't set yet.
+let configRequest: Promise<void> | null = null
+
 export function usePricingEngine() {
   const config = useState<PricingConfig | null>('pricingConfig', () => null)
   const configLoading = ref(false)
@@ -49,21 +55,27 @@ export function usePricingEngine() {
 
   async function loadConfig() {
     if (config.value) return
+    // Join an in-flight request instead of starting a second one.
+    if (configRequest) return configRequest
     configLoading.value = true
     configError.value = ''
-    try {
-      const runtimeConfig = useRuntimeConfig()
-      const res = await $fetch<{ data: PricingConfig }>(
-        `${runtimeConfig.public.apiBase}/api/v1/quote-builder/config`
-      )
-      config.value = res.data
-    }
-    catch {
-      configError.value = 'Could not load pricing config. Please refresh.'
-    }
-    finally {
-      configLoading.value = false
-    }
+    configRequest = (async () => {
+      try {
+        const runtimeConfig = useRuntimeConfig()
+        const res = await $fetch<{ data: PricingConfig }>(
+          `${runtimeConfig.public.apiBase}/api/v1/quote-builder/config`
+        )
+        config.value = res.data
+      }
+      catch {
+        configError.value = 'Could not load pricing config. Please refresh.'
+      }
+      finally {
+        configLoading.value = false
+        configRequest = null
+      }
+    })()
+    return configRequest
   }
 
   function calculate(
@@ -132,10 +144,17 @@ export function usePricingEngine() {
     return { minMyr: min, maxMyr: max, etaValue, etaUnit, breakdown }
   }
 
+  // Rounded "k" shorthand — ONLY for min–max range estimates (e.g. "RM 7k – RM 10k").
   function fmtMyr(amount: number): string {
     if (amount >= 1000) return `RM ${(amount / 1000).toFixed(0)}k`
     return `RM ${amount.toLocaleString()}`
   }
 
-  return { config, configLoading, configError, loadConfig, invalidateConfig, calculate, fmtMyr, formatEta }
+  // Precise whole-RM — for any single exact value (add-on price, fixed fee). Never
+  // rounds (RM 1,500 stays RM 1,500, not "RM 2k").
+  function fmtMyrExact(amount: number | string): string {
+    return `RM ${Math.round(Number(amount) || 0).toLocaleString('en-US')}`
+  }
+
+  return { config, configLoading, configError, loadConfig, invalidateConfig, calculate, fmtMyr, fmtMyrExact, formatEta }
 }

@@ -18,7 +18,7 @@ const emit = defineEmits<{
   'update:modifiers': [value: Record<string, boolean | number>]
 }>()
 
-const { config, configLoading, configError, loadConfig, calculate, fmtMyr } = usePricingEngine()
+const { config, configLoading, configError, loadConfig, calculate, fmtMyrExact } = usePricingEngine()
 
 onMounted(loadConfig)
 
@@ -92,7 +92,7 @@ function toggleInArray(arr: string[], value: string) {
               </p>
               <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ pkg.tagline }}</p>
               <p v-if="config && config.base_packages[pkg.key]" class="text-[11px] mt-2 font-medium" style="color: var(--color-text-secondary);">
-                from {{ fmtMyr(config.base_packages[pkg.key]?.min ?? 0) }}
+                from {{ fmtMyrExact(config.base_packages[pkg.key]?.min ?? 0) }}
               </p>
             </button>
           </div>
@@ -106,23 +106,25 @@ function toggleInArray(arr: string[], value: string) {
         <section v-if="state.categoryKey && state.packageKey" :key="`scope-${state.categoryKey}`">
           <p class="quote-label mb-4">Scope details</p>
 
-          <!-- Web -->
+          <!-- Web — sliders left, switches right; chip pickers full-width below. -->
           <div v-if="state.categoryKey === 'web'" class="space-y-6">
-            <div class="space-y-2">
-              <label class="quote-label">Number of pages: <strong style="color:var(--color-text)">{{ state.pages }}</strong></label>
-              <input v-model.number="state.pages" type="range" min="1" max="20" class="quote-range w-full" />
-            </div>
-            <div class="flex flex-wrap gap-4">
-              <label class="quote-toggle">
-                <input v-model="state.cms" type="checkbox" class="sr-only" />
-                <span class="quote-toggle-track" :class="{ active: state.cms }"></span>
-                <span class="text-[13px]" style="color: var(--color-text);">CMS / editable content</span>
-              </label>
-              <label class="quote-toggle">
-                <input v-model="state.bookingFlow" type="checkbox" class="sr-only" />
-                <span class="quote-toggle-track" :class="{ active: state.bookingFlow }"></span>
-                <span class="text-[13px]" style="color: var(--color-text);">Booking / enquiry flow</span>
-              </label>
+            <div class="grid sm:grid-cols-2 gap-x-10 gap-y-6 items-start">
+              <div class="space-y-2">
+                <label class="quote-label">Number of pages: <strong style="color:var(--color-text)">{{ state.pages }}</strong></label>
+                <input v-model.number="state.pages" type="range" min="1" max="20" class="quote-range w-full" />
+              </div>
+              <div class="space-y-4 sm:pt-1">
+                <label class="quote-toggle">
+                  <input v-model="state.cms" type="checkbox" class="sr-only" />
+                  <span class="quote-toggle-track" :class="{ active: state.cms }"></span>
+                  <span class="text-[13px]" style="color: var(--color-text);">CMS / editable content</span>
+                </label>
+                <label class="quote-toggle">
+                  <input v-model="state.bookingFlow" type="checkbox" class="sr-only" />
+                  <span class="quote-toggle-track" :class="{ active: state.bookingFlow }"></span>
+                  <span class="text-[13px]" style="color: var(--color-text);">Booking / enquiry flow</span>
+                </label>
+              </div>
             </div>
             <div class="space-y-1.5">
               <label class="quote-label">Languages needed</label>
@@ -141,21 +143,27 @@ function toggleInArray(arr: string[], value: string) {
             </div>
           </div>
 
-          <!-- Dashboard -->
+          <!-- Dashboard — sliders left, switches right; chip pickers full-width below. -->
           <div v-else-if="state.categoryKey === 'dashboard'" class="space-y-6">
-            <div class="space-y-2">
-              <label class="quote-label">Number of modules: <strong style="color:var(--color-text)">{{ state.modules }}</strong></label>
-              <input v-model.number="state.modules" type="range" min="1" max="15" class="quote-range w-full" />
+            <div class="grid sm:grid-cols-2 gap-x-10 gap-y-6 items-start">
+              <div class="space-y-5">
+                <div class="space-y-2">
+                  <label class="quote-label">Number of modules: <strong style="color:var(--color-text)">{{ state.modules }}</strong></label>
+                  <input v-model.number="state.modules" type="range" min="1" max="15" class="quote-range w-full" />
+                </div>
+                <div class="space-y-2">
+                  <label class="quote-label">User roles: <strong style="color:var(--color-text)">{{ state.userRoles }}</strong></label>
+                  <input v-model.number="state.userRoles" type="range" min="1" max="6" class="quote-range w-full" />
+                </div>
+              </div>
+              <div class="space-y-4 sm:pt-1">
+                <label class="quote-toggle">
+                  <input v-model="state.realTime" type="checkbox" class="sr-only" />
+                  <span class="quote-toggle-track" :class="{ active: state.realTime }"></span>
+                  <span class="text-[13px]" style="color: var(--color-text);">Real-time updates (WebSocket)</span>
+                </label>
+              </div>
             </div>
-            <div class="space-y-2">
-              <label class="quote-label">User roles: <strong style="color:var(--color-text)">{{ state.userRoles }}</strong></label>
-              <input v-model.number="state.userRoles" type="range" min="1" max="6" class="quote-range w-full" />
-            </div>
-            <label class="quote-toggle">
-              <input v-model="state.realTime" type="checkbox" class="sr-only" />
-              <span class="quote-toggle-track" :class="{ active: state.realTime }"></span>
-              <span class="text-[13px]" style="color: var(--color-text);">Real-time updates (WebSocket)</span>
-            </label>
             <div class="space-y-1.5">
               <label class="quote-label">Charts complexity</label>
               <div class="flex flex-wrap gap-2">
@@ -175,12 +183,23 @@ function toggleInArray(arr: string[], value: string) {
           </div>
 
           <!-- Design & Frontend (combined `design-frontend` category — fixes the legacy data-drift) -->
-          <div v-else-if="state.categoryKey === 'design-frontend'" class="space-y-6">
-            <div class="space-y-2">
-              <label class="quote-label">Number of screens: <strong style="color:var(--color-text)">{{ state.screensCount }}</strong></label>
-              <input v-model.number="state.screensCount" type="range" min="1" max="40" class="quote-range w-full" />
+          <!-- Sliders left, switches right — grouped by input type for a calmer layout. -->
+          <div v-else-if="state.categoryKey === 'design-frontend'" class="grid sm:grid-cols-2 gap-x-10 gap-y-6 items-start">
+            <div class="space-y-5">
+              <div class="space-y-2">
+                <label class="quote-label">Number of screens: <strong style="color:var(--color-text)">{{ state.screensCount }}</strong></label>
+                <input v-model.number="state.screensCount" type="range" min="1" max="40" class="quote-range w-full" />
+              </div>
+              <div class="space-y-2">
+                <label class="quote-label">Front-end components: <strong style="color:var(--color-text)">{{ state.componentsCount }}</strong></label>
+                <input v-model.number="state.componentsCount" type="range" min="1" max="50" class="quote-range w-full" />
+              </div>
+              <div class="space-y-2">
+                <label class="quote-label">Pages built: <strong style="color:var(--color-text)">{{ state.pagesCount }}</strong></label>
+                <input v-model.number="state.pagesCount" type="range" min="1" max="30" class="quote-range w-full" />
+              </div>
             </div>
-            <div class="flex flex-wrap gap-4">
+            <div class="space-y-4 sm:pt-1">
               <label class="quote-toggle">
                 <input v-model="state.designSystem" type="checkbox" class="sr-only" />
                 <span class="quote-toggle-track" :class="{ active: state.designSystem }"></span>
@@ -191,18 +210,6 @@ function toggleInArray(arr: string[], value: string) {
                 <span class="quote-toggle-track" :class="{ active: state.prototype }"></span>
                 <span class="text-[13px]" style="color: var(--color-text);">Interactive prototype</span>
               </label>
-            </div>
-            <div class="grid sm:grid-cols-2 gap-5">
-              <div class="space-y-2">
-                <label class="quote-label">Front-end components: <strong style="color:var(--color-text)">{{ state.componentsCount }}</strong></label>
-                <input v-model.number="state.componentsCount" type="range" min="1" max="50" class="quote-range w-full" />
-              </div>
-              <div class="space-y-2">
-                <label class="quote-label">Pages built: <strong style="color:var(--color-text)">{{ state.pagesCount }}</strong></label>
-                <input v-model.number="state.pagesCount" type="range" min="1" max="30" class="quote-range w-full" />
-              </div>
-            </div>
-            <div class="flex flex-wrap gap-4">
               <label class="quote-toggle">
                 <input v-model="state.stateManagement" type="checkbox" class="sr-only" />
                 <span class="quote-toggle-track" :class="{ active: state.stateManagement }"></span>
@@ -279,7 +286,7 @@ function toggleInArray(arr: string[], value: string) {
             </p>
             <p class="text-[12px] font-semibold shrink-0 ml-3"
               :style="{ color: state.addonKeys.includes(key) ? 'var(--color-accent)' : 'var(--color-text-secondary)' }">
-              +{{ fmtMyr(addon.amount) }}
+              +{{ fmtMyrExact(addon.amount) }}
             </p>
           </button>
         </div>

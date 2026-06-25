@@ -110,9 +110,14 @@ function viewPdf() {
 
 onMounted(fetchQuotation)
 
+// `k` shorthand for the min–max estimate range only.
 function fmtMyr(amount: string | number) {
   const n = Number(amount)
   return n >= 1000 ? `RM ${(n / 1000).toFixed(0)}k` : `RM ${n.toLocaleString()}`
+}
+// Precise — for exact single values (e.g. an add-on price).
+function fmtMyrExact(amount: string | number) {
+  return `RM ${Math.round(Number(amount) || 0).toLocaleString('en-US')}`
 }
 function fmtDate(iso?: string | null) {
   if (!iso) return '—'
@@ -267,7 +272,7 @@ async function saveExpiry() {
             <div class="space-y-2">
               <div v-for="addon in quotation.addons" :key="addon.key" class="flex justify-between items-center">
                 <span class="text-[13px]" style="color: var(--color-text);">{{ addon.label }}</span>
-                <span class="text-[13px] font-semibold" style="color: var(--color-text);">{{ fmtMyr(addon.amount_myr) }}</span>
+                <span class="text-[13px] font-semibold" style="color: var(--color-text);">{{ fmtMyrExact(addon.amount_myr) }}</span>
               </div>
             </div>
           </div>
