@@ -141,6 +141,15 @@ const grandTotal = computed(() =>
   doc.items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.rate) || 0), 0),
 )
 
+// Estimate breakdown lines (each scope field + add-on on top of the base package)
+// for the sidebar summary. The base is the headline range, so it's skipped here.
+const estimateLines = computed(() =>
+  (estimate.value?.breakdown ?? []).slice(1).map(([label, , max]) => ({
+    label: label.replace(/^\+\s*/, ''),
+    price: max as number,
+  })),
+)
+
 function packageMeta(key: string): { name: string; tagline: string } {
   for (const c of config.value?.categories ?? []) {
     const p = c.packages.find(p => p.key === key)
@@ -149,20 +158,37 @@ function packageMeta(key: string): { name: string; tagline: string } {
   return { name: key, tagline: '' }
 }
 
+// JSON of doc.items right after a seed — lets us detect whether the admin has
+// since edited the lines (so we don't clobber manual edits when auto-syncing).
+const seedSnapshot = ref('')
+
+// Build line items from the live estimate breakdown (base + each scope field +
+// add-ons), so the document mirrors the scope. Rush is a multiplier, not a line.
 function seedItems() {
-  if (!config.value || !scope.packageKey) return
+  if (!config.value || !scope.packageKey || !estimate.value) return
   const items: LineItem[] = []
-  const base = config.value.base_packages[scope.packageKey]
-  if (base) {
-    const meta = packageMeta(scope.packageKey)
-    items.push({ title: meta.name, desc: meta.tagline, qty: 1, unit: 'project', rate: base.max })
-  }
-  for (const k of scope.addonKeys) {
-    const a = config.value.addons[k]
-    if (a) items.push({ title: a.label, desc: '', qty: 1, unit: '', rate: a.amount })
+  for (const [label, , max] of estimate.value.breakdown) {
+    if (label.startsWith('Rush ')) continue
+    if (label.startsWith('Base: ')) {
+      const meta = packageMeta(scope.packageKey)
+      items.push({ title: meta.name, desc: meta.tagline, qty: 1, unit: 'project', rate: max })
+      continue
+    }
+    if (max <= 0) continue
+    items.push({ title: label.replace(/^\+\s*/, ''), desc: '', qty: 1, unit: '', rate: max })
   }
   doc.items = items
+  seedSnapshot.value = JSON.stringify(items)
 }
+
+// Keep the document in lock-step with the scope WHILE it's still a pristine seed.
+// Once the admin hand-edits a line (items ≠ snapshot), we stop auto-syncing so we
+// never overwrite their work; re-clicking "Seed line items from scope" resumes it.
+watch(estimate, () => {
+  if (!detailed.value && seedSnapshot.value && JSON.stringify(doc.items) === seedSnapshot.value) {
+    seedItems()
+  }
+})
 
 function addItem() {
   doc.items.push({ title: '', desc: '', qty: 1, unit: '', rate: 0 })
@@ -703,6 +729,15 @@ async function revert() {
             {{ fmtMyr(estimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ fmtMyr(estimate.maxMyr) }}
           </p>
           <p class="text-[12px]" style="color: var(--color-text-secondary);">{{ formatEta(estimate.etaValue, estimate.etaUnit) }} · engine estimate</p>
+
+          <!-- Per-scope / add-on contributions driving the estimate. -->
+          <div v-if="estimateLines.length" class="mt-3 pt-3 border-t space-y-1.5" style="border-color: var(--color-border);">
+            <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Scope &amp; add-ons</p>
+            <div v-for="(line, i) in estimateLines" :key="i" class="flex items-center justify-between gap-3 text-[12px]">
+              <span class="truncate" style="color: var(--color-text-secondary);">{{ line.label }}</span>
+              <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ line.price > 0 ? `+RM ${line.price.toLocaleString()}` : '—' }}</span>
+            </div>
+          </div>
         </div>
         <p v-else class="text-[13px]" style="color: var(--color-text-secondary);">Pick a package to see the engine estimate.</p>
         <div class="mt-4 pt-4 border-t flex items-center justify-between" style="border-color: var(--color-border);">
