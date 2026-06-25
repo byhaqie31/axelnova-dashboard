@@ -3,7 +3,7 @@ import QuoteScopeFields from '~/components/shared/QuoteScopeFields.vue'
 import DetailedProposalFields from '~/components/admin/DetailedProposalFields.vue'
 import type { QuoteScopeState } from '~/composables/quoteScope'
 import type { EstimateResult } from '~/composables/usePricingEngine'
-import { defaultQuoteScope, scopeToPayload } from '~/composables/quoteScope'
+import { defaultQuoteScope, scopeToPayload, legacyToScopeValues } from '~/composables/quoteScope'
 
 interface QuotationLike {
   id: number
@@ -102,7 +102,7 @@ function clearClient() {
 // ── Scope + estimate ────────────────────────────────────────────────────────
 const scope = reactive<QuoteScopeState>(defaultQuoteScope())
 const estimate = ref<EstimateResult | null>(null)
-const modifiers = ref<Record<string, boolean | number>>({})
+// scope.scopeValues is the source of truth — <QuoteScopeFields> mutates it in place.
 
 // ── Detailed proposal (optional inline upgrade) ──────────────────────────────
 // When on, the quote saves as layout:'detailed' — the line items become the
@@ -176,25 +176,8 @@ function hydrateScope(fp: Record<string, any>, packageKey: string | null) {
   Object.assign(scope, defaultQuoteScope(), {
     categoryKey: fp.category_key ?? '',
     packageKey: packageKey ?? '',
-    pages: fp.pages ?? scope.pages,
-    languages: fp.languages ?? [],
-    cms: fp.cms ?? false,
-    bookingFlow: fp.booking_flow ?? false,
-    modules: fp.modules ?? scope.modules,
-    userRoles: fp.user_roles ?? scope.userRoles,
-    realTime: fp.real_time ?? false,
-    chartsComplexity: fp.charts_complexity ?? 'basic',
-    screensCount: fp.screens_count ?? scope.screensCount,
-    designSystem: fp.design_system ?? false,
-    prototype: fp.prototype ?? false,
-    componentsCount: fp.components_count ?? scope.componentsCount,
-    pagesCount: fp.pages_count ?? scope.pagesCount,
-    stateManagement: fp.state_management ?? false,
-    testing: fp.testing ?? false,
-    coreFeatures: fp.core_features ?? '',
-    authMethods: fp.auth_methods ?? [],
-    paymentMethod: fp.payment_method ?? '',
-    adminPortal: fp.admin_portal ?? false,
+    // New drafts store scope_values; older drafts stored flat fields — map them.
+    scopeValues: fp.scope_values ?? legacyToScopeValues(fp),
     addonKeys: fp.addon_keys ?? [],
     rush: fp.rush ?? false,
   })
@@ -353,7 +336,7 @@ function buildPayload() {
     phone: client.phone || null,
     company: client.company || null,
     package_key: scope.packageKey || null,
-    modifiers: modifiers.value,
+    scope_values: scope.scopeValues,
     addon_keys: scope.addonKeys,
     rush: scope.rush,
     expires_at: validUntil.value || null,
@@ -415,12 +398,12 @@ function buildPayload() {
 }
 
 // Dirty tracking — in edit mode the "Save changes" button only surfaces once the
-// loaded draft is actually modified. The fingerprint omits `modifiers` (emitted
-// asynchronously by the scope child after mount, and derived from scope anyway)
-// so it never trips a false dirty.
+// loaded draft is actually modified. scope_values defaults are seeded after config
+// loads, but the baseline is snapshotted post-nextTick (in onMounted) so that
+// seeding never trips a false dirty.
 const baseline = ref('')
 function formFingerprint(): string {
-  return JSON.stringify({ ...buildPayload(), modifiers: undefined })
+  return JSON.stringify(buildPayload())
 }
 const dirty = computed(() => formFingerprint() !== baseline.value)
 
@@ -603,7 +586,7 @@ async function revert() {
       <!-- Package & scope -->
       <section id="qb-package" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Package &amp; scope</p>
-        <QuoteScopeFields :state="scope" :require-package="!detailed" :package-error="errors.package" @update:estimate="estimate = $event" @update:modifiers="modifiers = $event" />
+        <QuoteScopeFields :state="scope" :require-package="!detailed" :package-error="errors.package" @update:estimate="estimate = $event" />
       </section>
 
       <!-- Quotation document -->

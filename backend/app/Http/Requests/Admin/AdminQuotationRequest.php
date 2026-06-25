@@ -35,6 +35,9 @@ class AdminQuotationRequest extends FormRequest
             // pricing-basis package is optional there; standard quotes still require one.
             'package_key' => ['required_unless:document.layout,detailed', 'nullable', 'string', Rule::in($validPackageKeys)],
             'modifiers' => ['nullable', 'array'],
+            // Scope-field values keyed by field_key — loose (the engine gates each
+            // key by applies_to, same as modifiers).
+            'scope_values' => ['nullable', 'array'],
             'addon_keys' => ['nullable', 'array'],
             'addon_keys.*' => ['string', Rule::in($validAddonKeys)],
             'rush' => ['boolean'],

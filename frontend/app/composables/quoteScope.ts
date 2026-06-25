@@ -1,39 +1,17 @@
 // Shared scope model for the pricing engine — consumed by the admin quotation
-// builder via <QuoteScopeFields>. The pricing-relevant subset of the old public
-// quote form: category + package + per-category scope inputs + add-ons + rush.
+// builder via <QuoteScopeFields>. Scope inputs are now data-driven (admin-managed
+// `service_scope_fields`): the builder holds a flat `scopeValues` dict keyed by
+// each field's `field_key`; the engine prices them. No per-category hardcoding.
+
+import type { ScopeField } from '~/composables/usePricingEngine'
+
+export type ScopeValue = number | boolean | string
 
 export interface QuoteScopeState {
   categoryKey: string
   packageKey: string
-
-  // web
-  pages: number
-  languages: string[]
-  cms: boolean
-  bookingFlow: boolean
-
-  // dashboard
-  modules: number
-  userRoles: number
-  realTime: boolean
-  chartsComplexity: 'none' | 'basic' | 'advanced'
-
-  // design & frontend (the combined `design-frontend` category)
-  screensCount: number
-  designSystem: boolean
-  prototype: boolean
-  componentsCount: number
-  pagesCount: number
-  stateManagement: boolean
-  testing: boolean
-
-  // saas
-  coreFeatures: string
-  authMethods: string[]
-  paymentMethod: string
-  adminPortal: boolean
-
-  // shared
+  /** Values keyed by scope-field `field_key` (e.g. { extra_page: 7, cms: true }). */
+  scopeValues: Record<string, ScopeValue>
   addonKeys: string[]
   rush: boolean
 }
@@ -42,76 +20,63 @@ export function defaultQuoteScope(): QuoteScopeState {
   return {
     categoryKey: '',
     packageKey: '',
-    pages: 5,
-    languages: [],
-    cms: false,
-    bookingFlow: false,
-    modules: 5,
-    userRoles: 2,
-    realTime: false,
-    chartsComplexity: 'basic',
-    screensCount: 10,
-    designSystem: false,
-    prototype: false,
-    componentsCount: 10,
-    pagesCount: 5,
-    stateManagement: false,
-    testing: false,
-    coreFeatures: '',
-    authMethods: [],
-    paymentMethod: '',
-    adminPortal: false,
+    scopeValues: {},
     addonKeys: [],
     rush: false,
   }
 }
 
-/**
- * Derive the pricing-engine modifiers from the scope state — the single source
- * of truth shared by the live estimate and the server re-price payload. Only the
- * web + dashboard categories carry priced modifiers in the config; design-frontend
- * and saas scope inputs are captured for context but don't move the estimate.
- * (Mirrors the legacy public-quote mapping exactly to keep client/server in sync.)
- */
-export function deriveModifiers(s: QuoteScopeState): Record<string, boolean | number> {
-  const m: Record<string, boolean | number> = {}
-
-  if (s.categoryKey === 'web') {
-    if (s.pages > 5) m.extra_page = s.pages
-    if (s.cms) m.cms = true
-    if (s.bookingFlow) m.booking_flow = true
-    if (s.languages.length > 1) m.extra_language = s.languages.length - 1
-  }
-  else if (s.categoryKey === 'dashboard') {
-    if (s.modules > 5) m.extra_module = s.modules
-    if (s.realTime) m.real_time_features = true
-    if (s.chartsComplexity === 'advanced') m.advanced_charts = true
-  }
-
-  return m
-}
-
 /** Flatten the scope state into the form_payload shape the backend stores. */
 export function scopeToPayload(s: QuoteScopeState): Record<string, unknown> {
-  return {
-    pages: s.pages,
-    languages: s.languages,
-    cms: s.cms,
-    booking_flow: s.bookingFlow,
-    modules: s.modules,
-    user_roles: s.userRoles,
-    real_time: s.realTime,
-    charts_complexity: s.chartsComplexity,
-    screens_count: s.screensCount,
-    design_system: s.designSystem,
-    prototype: s.prototype,
-    components_count: s.componentsCount,
-    pages_count: s.pagesCount,
-    state_management: s.stateManagement,
-    testing: s.testing,
-    core_features: s.coreFeatures,
-    auth_methods: s.authMethods,
-    payment_method: s.paymentMethod,
-    admin_portal: s.adminPortal,
+  return { scope_values: s.scopeValues }
+}
+
+/**
+ * Fill any missing scope values with their field default (called when the
+ * category's fields are known / change), so sliders start at their default and
+ * the estimate is correct immediately. Existing values are left untouched.
+ */
+export function seedScopeDefaults(
+  fields: ScopeField[],
+  current: Record<string, ScopeValue>,
+): Record<string, ScopeValue> {
+  const next = { ...current }
+  for (const f of fields) {
+    if (next[f.field_key] === undefined && f.config.default !== undefined) {
+      next[f.field_key] = f.config.default as ScopeValue
+    }
   }
+  return next
+}
+
+/**
+ * Hydrate a pre–scope-builder draft (stored flat fields, no `scope_values`) into
+ * the new `scopeValues` dict so legacy drafts stay editable. Keys mirror the
+ * seeded scope fields. Unmapped legacy context (core_features, auth_methods) is
+ * dropped — it was never priced.
+ */
+export function legacyToScopeValues(fp: Record<string, any>): Record<string, ScopeValue> {
+  const v: Record<string, ScopeValue> = {}
+  const num = (x: any) => Number(x)
+  const bool = (x: any) => !!x
+
+  if (fp.pages != null) v.extra_page = num(fp.pages)
+  if (fp.cms != null) v.cms = bool(fp.cms)
+  if (fp.booking_flow != null) v.booking_flow = bool(fp.booking_flow)
+  if (Array.isArray(fp.languages)) v.extra_language = fp.languages.length || 1
+  if (fp.modules != null) v.extra_module = num(fp.modules)
+  if (fp.user_roles != null) v.user_roles = num(fp.user_roles)
+  if (fp.real_time != null) v.real_time_features = bool(fp.real_time)
+  if (fp.charts_complexity != null) v.charts_complexity = String(fp.charts_complexity)
+  if (fp.screens_count != null) v.screens_count = num(fp.screens_count)
+  if (fp.components_count != null) v.components_count = num(fp.components_count)
+  if (fp.pages_count != null) v.pages_count = num(fp.pages_count)
+  if (fp.design_system != null) v.design_system = bool(fp.design_system)
+  if (fp.prototype != null) v.prototype = bool(fp.prototype)
+  if (fp.state_management != null) v.state_management = bool(fp.state_management)
+  if (fp.testing != null) v.testing = bool(fp.testing)
+  if (fp.payment_method != null) v.payment_method = String(fp.payment_method)
+  if (fp.admin_portal != null) v.admin_portal = bool(fp.admin_portal)
+
+  return v
 }

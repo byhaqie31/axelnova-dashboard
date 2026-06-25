@@ -29,6 +29,7 @@ class StoreQuoteRequestRequest extends FormRequest
             'company' => ['nullable', 'string', 'max:200'],
             'package_key' => ['required', 'string', Rule::in($validPackageKeys)],
             'modifiers' => ['nullable', 'array'],
+            'scope_values' => ['nullable', 'array'],
             'addon_keys' => ['nullable', 'array'],
             'addon_keys.*' => ['string', Rule::in($validAddonKeys)],
             'rush' => ['boolean'],

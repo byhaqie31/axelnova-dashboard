@@ -10,15 +10,16 @@ There are two sources of truth, by design:
 
 | Layer | Storage | Owns | Managed by |
 |---|---|---|---|
-| **Catalog** (admin-managed) | `service_categories` + `service_packages` + `service_addons` tables | Categories, package names, taglines, prices, ETA, features, CTA, deep-link `quote_key`; add-on labels + prices | Admin UI under `/admin/services` (categories, packages, add-ons) |
-| **Pricing rules** (engineered config) | `pricing_configs.config` JSON (one active row) | `modifiers` (extra page, CMS, …), `rush_multiplier`, `currency`, `valid_for_days`, plus fallback `base_packages` / `addons` maps for any legacy keys | SQL insert + auto cache-clear |
+| **Catalog** (admin-managed) | `service_categories` + `service_packages` + `service_addons` + `service_scope_fields` tables | Categories, package names, taglines, prices, ETA, features, CTA, deep-link `quote_key`; add-on labels + prices; **per-category scope fields (slider/select/toggle) + their pricing** | Admin UI under `/admin/services` (categories, packages, add-ons, scope fields) |
+| **Pricing rules** (engineered config) | `pricing_configs.config` JSON (one active row) | `rush_multiplier`, `currency`, `valid_for_days`, plus fallback `base_packages` / `addons` / `modifiers` maps for any legacy keys | SQL insert + auto cache-clear |
 
 The `PricingEngine` merges these at request time:
 
 1. Start with `pricing_configs.active.config.base_packages` (legacy / fallback entries).
 2. Layer admin-managed `service_packages` on top, keyed by `quote_key.package`. DB rows override any matching JSON entry.
 3. Add-ons merge the same way: `service_addons` rows over the JSON `addons` map. A DB row *claims* its key — an **active** row appears (in `sort_order`), an **inactive** row removes the key entirely (no JSON fallback), and a JSON key with no DB row still resolves. See `PricingEngine::buildAddons()`.
-4. Modifiers / rush stay in `pricing_configs.config` (no admin UI yet).
+4. **Scope fields** (`service_scope_fields`) define both the builder's per-category inputs and their pricing — superseding the JSON `modifiers` map. `calculate()` evaluates the selected package's category fields (gated by `applies_to`); `buildScopeFields()` groups them by category slug for the config endpoint. The JSON `modifiers` loop is kept as a one-release fallback for legacy `modifiers` payloads. See **Scope fields** below.
+5. Rush stays in `pricing_configs.config`.
 
 A `service_packages` row counts as "quotable" only if it has both a non-null `quote_key` **and** a non-null `price_max_myr`. Custom-quote and retainer rows (null `quote_key`) appear on the public services page but never in the quote builder.
 
@@ -153,21 +154,23 @@ The `PricingConfigObserver` deactivates older rows and clears cache.
 
 ---
 
-## Adding a modifier or add-on
+## Scope fields (per-category builder inputs + pricing) — admin-managed
 
-These need both a JSON edit and (for category-specific modifiers) a frontend form input edit.
+Each category's "Scope details" in the quote builder is driven by `service_scope_fields` rows — no hardcoded UI. A field has a `type`, per-package `applies_to`, and a type-specific `config` that defines BOTH how it renders and how it prices:
 
-**Toggle modifier** (on/off checkbox):
-```json
-"multilingual_cms": { "amount": 1800, "applies_to": ["web_business", "web_premium"] }
-```
+- **slider** — `{min, max, default, unit, free_threshold, price_per_unit}`. Price = `max(0, value − free_threshold) × price_per_unit`. (Generalises the legacy `extra_page` "applies_after + amount" modifier. Set `price_per_unit: 0` to capture scope without charging.)
+- **toggle** — `{amount, default}`. Price = `amount` when on.
+- **select** — `{default, options:[{value,label,amount}]}`. Price = the chosen option's `amount`.
 
-**Numeric modifier** (slider/stepper):
-```json
-"extra_integration": { "amount": 500, "applies_after": 2, "applies_to": "all" }
-```
+`applies_to` is an array of `quote_key.package` strings; **empty = all packages in the category**. The builder renders sliders left, toggles right, selects full-width; the engine (`PricingEngine::calculate()`) and the TS port (`usePricingEngine.ts`) evaluate them identically — **keep the two in sync**.
 
-**Add-on** — now admin-managed. Add or edit one under **`/admin/services` → Add-ons** (or `/admin/services/addons`): set a snake_case `key`, label, price, order, and active toggle. The builder and both validators pick it up immediately (cache auto-clears via `ServiceAddonObserver`). No JSON edit, no deploy.
+**To add/edit:** open a category under `/admin/services`, scroll to **Scope fields**, **+ New scope field** (or Edit), pick the type, set the pricing, tick which packages it applies to. Cache auto-clears via `ServiceScopeFieldObserver`; the builder reflects it on next open. No JSON edit, no deploy.
+
+Stored on the quote as `form_payload.scope_values` (`{field_key: value}`). The legacy JSON `modifiers` map + the engine's modifier loop remain as a one-release fallback for any pre-migration `modifiers` payload; old drafts hydrate via `legacyToScopeValues()`.
+
+## Adding an add-on
+
+**Add-on** — admin-managed. Add or edit one under **`/admin/services` → Add-ons** (or `/admin/services/addons`): set a snake_case `key`, label, price, order, and active toggle. The builder and both validators pick it up immediately (cache auto-clears via `ServiceAddonObserver`). No JSON edit, no deploy.
 
 > Legacy add-ons can still live in `pricing_configs.config.addons` as a fallback for any key without a `service_addons` row:
 > ```json
@@ -175,15 +178,12 @@ These need both a JSON edit and (for category-specific modifiers) a frontend for
 > ```
 > Creating a `service_addons` row with the same key takes over (and lets you deactivate it).
 
-For category-specific modifiers, also add the form field to the right scope section in `frontend/app/pages/public/quote/index.vue` and wire it into the `modifiers` object passed to `calculate()`.
-
 ---
 
 ## Known data-drift to clean up
 
 These are pre-existing inconsistencies, not regressions from the hybrid wiring:
 
-- The seeder uses category slug `design-frontend` (combined), but the quote page has hardcoded modifier UI for separate `design` and `frontend` slugs. Categories with non-matching slugs render in the quote builder *without* scope-input UI. Fix by either splitting the seeded category or adding a `design-frontend` scope block.
 - `frontend_components`, `frontend_pages`, `frontend_full` exist only in `pricing_configs` JSON, not in `service_packages`. They still work via the JSON fallback, but admin can't edit them yet.
 - The "Not sure yet" UX option in the saas category is no longer present — categories now load from DB and there's no `not_sure` row. Visitors who don't know what they want can use the contact form instead.
 
@@ -192,17 +192,21 @@ These are pre-existing inconsistencies, not regressions from the hybrid wiring:
 ## File map
 
 - Backend
-  - `app/Services/Quoting/PricingEngine.php` — merge logic (packages + add-ons), calculation, `packageName()`/`addons()`
+  - `app/Services/Quoting/PricingEngine.php` — merge logic (packages + add-ons + scope fields), calculation, `packageName()`/`addons()`/`buildScopeFields()`
   - `app/Models/ServiceAddon.php` + `app/Observers/ServiceAddonObserver.php` — admin-managed add-ons, cache invalidation
+  - `app/Models/ServiceScopeField.php` + `app/Observers/ServiceScopeFieldObserver.php` — admin-managed scope fields, cache invalidation
   - `app/Http/Controllers/Api/V1/Admin/ServiceAddonsController.php` — add-on CRUD
-  - `database/seeders/ServiceAddonsSeeder.php` — seeds the original 5 add-ons into `service_addons`
+  - `app/Http/Controllers/Api/V1/Admin/ServiceScopeFieldsController.php` + `app/Http/Requests/Admin/ServiceScopeFieldRequest.php` — scope-field CRUD (type-conditional validation)
+  - `database/seeders/ServiceAddonsSeeder.php` / `ServiceScopeFieldsSeeder.php` — seed the original add-ons + scope fields
   - `app/Services/Quoting/EstimateResult.php` — DTO (`etaValue`, `etaUnit`)
   - `app/Models/ServicePackage.php` — eta columns, observer wired
   - `app/Models/Quotation.php` — stores `estimate_eta_value`, `estimate_eta_unit`; has `eta_label` accessor for emails
   - `app/Observers/{Pricing,ServicePackage,ServiceCategory}Observer.php` — cache invalidation
   - `app/Http/Controllers/Api/V1/QuoteBuilderConfigController.php` — cached endpoint
 - Frontend
-  - `app/composables/usePricingEngine.ts` — TS port of PricingEngine + `formatEta` helper
-  - `app/pages/public/quote/index.vue` — categories now from `config.categories`
+  - `app/composables/usePricingEngine.ts` — TS port of PricingEngine (scope-field eval) + `formatEta` helper
+  - `app/composables/quoteScope.ts` — `QuoteScopeState` (`scopeValues` dict), `seedScopeDefaults()`, `legacyToScopeValues()`
+  - `app/components/shared/QuoteScopeFields.vue` — generic slider/toggle/select renderer (admin builder only)
   - `app/pages/admin/services/packages/[id].vue` — admin form with eta value + unit inputs
   - `app/pages/admin/services/addons/index.vue` + `[id].vue` — add-on list + editor
+  - `app/pages/admin/services/categories/[id].vue` (scope-fields section) + `app/components/admin/ScopeFieldModal.vue` — right-side drawer to create/edit a scope field

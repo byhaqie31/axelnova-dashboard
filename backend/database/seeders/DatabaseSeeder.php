@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             PricingConfigSeeder::class,
             ServiceCategoriesSeeder::class,
             ServiceAddonsSeeder::class,
+            ServiceScopeFieldsSeeder::class,
             ProjectsSeeder::class,
         ]);
     }

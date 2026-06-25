@@ -7,6 +7,26 @@ export interface QuoteCategory {
   packages: { key: string; name: string; tagline: string }[]
 }
 
+export type ScopeFieldType = 'slider' | 'toggle' | 'select'
+
+export interface ScopeFieldConfig {
+  // slider
+  min?: number; max?: number; default?: number | boolean | string; unit?: string
+  free_threshold?: number; price_per_unit?: number
+  // toggle
+  amount?: number
+  // select
+  options?: { value: string; label: string; amount: number }[]
+}
+
+export interface ScopeField {
+  field_key: string
+  label: string
+  type: ScopeFieldType
+  applies_to: string[] | 'all'
+  config: ScopeFieldConfig
+}
+
 export interface PricingConfig {
   version: string
   base_packages: Record<string, { min: number; max: number; eta_value: number; eta_unit: EtaUnit; name?: string }>
@@ -17,6 +37,7 @@ export interface PricingConfig {
     applies_to: string[] | 'all'
   }>
   addons: Record<string, { amount: number; label: string }>
+  scope_fields: Record<string, ScopeField[]>   // category slug → fields
   rush_multiplier: number
   rush_units: EtaUnit[]
   currency: string
@@ -80,7 +101,7 @@ export function usePricingEngine() {
 
   function calculate(
     packageKey: string,
-    modifiers: Record<string, boolean | number>,
+    scopeValues: Record<string, number | boolean | string>,
     addonKeys: string[],
     rush: boolean,
   ): EstimateResult | null {
@@ -97,26 +118,43 @@ export function usePricingEngine() {
     // Label with the catalog name (DB), never the slug — mirrors PricingEngine.php.
     const breakdown: [string, number, number][] = [[`Base: ${base.name ?? packageKey}`, min, max]]
 
-    for (const [key, value] of Object.entries(modifiers)) {
-      const def = cfg.modifiers[key]
-      if (!def) continue
-
-      const appliesTo = def.applies_to
+    // Data-driven scope fields — MUST stay byte-for-byte in sync with
+    // PricingEngine::calculate() (the repo's two-engines invariant).
+    const categorySlug = cfg.categories.find(c => c.packages.some(p => p.key === packageKey))?.key
+    const fields = (categorySlug && cfg.scope_fields?.[categorySlug]) || []
+    for (const field of fields) {
+      const appliesTo = field.applies_to
       if (appliesTo !== 'all' && Array.isArray(appliesTo) && !appliesTo.includes(packageKey)) continue
 
-      if (typeof def.applies_after === 'number') {
-        const count = typeof value === 'number' ? value : 0
-        if (count > def.applies_after) {
-          const extra = (count - def.applies_after) * def.amount
-          min += extra
-          max += extra
-          breakdown.push([`+${count - def.applies_after} ${key.replace(/_/g, ' ')}`, extra, extra])
+      const fc = field.config
+      const value = scopeValues[field.field_key] ?? fc.default
+      let extra = 0
+      let label = ''
+
+      if (field.type === 'slider') {
+        const over = Math.max(0, Math.trunc(Number(value) || 0) - (fc.free_threshold ?? 0))
+        extra = over * (fc.price_per_unit ?? 0)
+        const unit = fc.unit ?? field.field_key.replace(/_/g, ' ')
+        label = `+${over} ${unit}`
+      }
+      else if (field.type === 'toggle') {
+        if (value === true || value === 1 || value === '1' || value === 'true') {
+          extra = fc.amount ?? 0
+          label = `+${field.label}`
         }
       }
-      else if (value === true || value === 1) {
-        min += def.amount
-        max += def.amount
-        breakdown.push([`+${key.replace(/_/g, ' ')}`, def.amount, def.amount])
+      else if (field.type === 'select') {
+        const opt = (fc.options ?? []).find(o => String(o.value) === String(value))
+        if (opt) {
+          extra = opt.amount ?? 0
+          label = `${field.label}: ${opt.label ?? opt.value}`
+        }
+      }
+
+      if (extra > 0) {
+        min += extra
+        max += extra
+        breakdown.push([label, extra, extra])
       }
     }
 

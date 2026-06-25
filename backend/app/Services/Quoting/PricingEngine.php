@@ -6,6 +6,7 @@ use App\Models\PricingConfig;
 use App\Models\ServiceAddon;
 use App\Models\ServiceCategory;
 use App\Models\ServicePackage;
+use App\Models\ServiceScopeField;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -22,6 +23,12 @@ final class PricingEngine
 
     /** Memoised merged add-ons (admin-managed service_addons over pricing JSON). */
     private ?array $addons = null;
+
+    /** Memoised active scope fields, grouped by category slug. */
+    private ?array $scopeFields = null;
+
+    /** Memoised packageKey (quote_key.package) → category slug map. */
+    private ?array $packageCategory = null;
 
     public function __construct(private readonly PricingConfig $config) {}
 
@@ -124,6 +131,47 @@ final class PricingEngine
             }
         }
 
+        // Data-driven scope fields (admin-managed; supersede the JSON modifiers
+        // above). Evaluate the selected package's category fields gated by applies_to.
+        // MUST stay in sync with usePricingEngine.ts calculate().
+        $catSlug = $this->packageCategories()[$input->packageKey] ?? null;
+        foreach ($this->buildScopeFields()[$catSlug] ?? [] as $field) {
+            $appliesTo = $field['applies_to'];
+            if ($appliesTo !== 'all' && !in_array($input->packageKey, (array) $appliesTo, true)) {
+                continue;
+            }
+            $fc = $field['config'];
+            $value = $input->scopeValues[$field['field_key']] ?? ($fc['default'] ?? null);
+            $extra = 0.0;
+            $label = '';
+
+            if ($field['type'] === 'slider') {
+                $over = max(0, (int) $value - (int) ($fc['free_threshold'] ?? 0));
+                $extra = $over * (float) ($fc['price_per_unit'] ?? 0);
+                $unit = $fc['unit'] ?? str_replace('_', ' ', $field['field_key']);
+                $label = '+'.$over.' '.$unit;
+            } elseif ($field['type'] === 'toggle') {
+                if ($value === true || $value === 1 || $value === '1' || $value === 'true') {
+                    $extra = (float) ($fc['amount'] ?? 0);
+                    $label = '+'.$field['label'];
+                }
+            } elseif ($field['type'] === 'select') {
+                foreach ($fc['options'] ?? [] as $opt) {
+                    if ((string) ($opt['value'] ?? '') === (string) $value) {
+                        $extra = (float) ($opt['amount'] ?? 0);
+                        $label = $field['label'].': '.($opt['label'] ?? $opt['value'] ?? '');
+                        break;
+                    }
+                }
+            }
+
+            if ($extra > 0) {
+                $min += $extra;
+                $max += $extra;
+                $breakdown[] = [$label, $extra, $extra];
+            }
+        }
+
         foreach ($input->addonKeys as $addonKey) {
             if (!isset($addonDefs[$addonKey])) {
                 continue;
@@ -169,6 +217,7 @@ final class PricingEngine
             'categories' => $this->buildCategories(),
             'modifiers' => $cfg['modifiers'] ?? [],
             'addons' => $this->buildAddons(),
+            'scope_fields' => $this->buildScopeFields(),
             'rush_multiplier' => $cfg['rush_multiplier'] ?? 1.20,
             'rush_units' => self::RUSH_UNITS,
             'currency' => $cfg['currency'] ?? 'MYR',
@@ -262,6 +311,64 @@ final class PricingEngine
         }
 
         return $this->addons = $merged;
+    }
+
+    /**
+     * Active scope fields grouped by category slug, normalised for the builder +
+     * the engine: ['<slug>' => [ ['field_key','label','type','applies_to','config'], … ]].
+     * `applies_to` is emitted as 'all' for an empty array so the TS union stays
+     * `string[] | 'all'` (matching the legacy modifier shape).
+     */
+    private function buildScopeFields(): array
+    {
+        if ($this->scopeFields !== null) {
+            return $this->scopeFields;
+        }
+
+        $rows = ServiceScopeField::where('active', true)
+            ->with('category:id,slug')
+            ->orderBy('service_category_id')
+            ->orderBy('sort_order')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $f) {
+            $slug = $f->category?->slug;
+            if (!$slug) {
+                continue;
+            }
+            $map[$slug][] = [
+                'field_key' => $f->field_key,
+                'label' => $f->label,
+                'type' => $f->type,
+                'applies_to' => !empty($f->applies_to) ? $f->applies_to : 'all',
+                'config' => $f->config ?? [],
+            ];
+        }
+
+        return $this->scopeFields = $map;
+    }
+
+    /**
+     * Map each quotable packageKey (quote_key.package) to its category slug — needed
+     * to resolve which scope fields apply (a field's category, not its quote_key).
+     */
+    private function packageCategories(): array
+    {
+        if ($this->packageCategory !== null) {
+            return $this->packageCategory;
+        }
+
+        $map = [];
+        $packages = ServicePackage::whereNotNull('quote_key')->with('category:id,slug')->get();
+        foreach ($packages as $p) {
+            $key = $p->quote_key['package'] ?? null;
+            if ($key && $p->category) {
+                $map[$key] = $p->category->slug;
+            }
+        }
+
+        return $this->packageCategory = $map;
     }
 
     /**
