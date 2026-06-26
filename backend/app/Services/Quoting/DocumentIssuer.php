@@ -4,6 +4,7 @@ namespace App\Services\Quoting;
 
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Receipt;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
@@ -88,6 +89,44 @@ class DocumentIssuer
                 'amount' => isset($input['amountPaid']) ? (float) $input['amountPaid'] : self::payloadTotal($payload),
                 'payment_ref' => $input['paymentRef'] ?? null,
                 'payment_method' => $input['paymentMethod'] ?? null,
+                'status' => 'issued',
+                'issued_at' => now(),
+            ]);
+        });
+    }
+
+    /**
+     * Issue a receipt for a succeeded payment — the ledger-anchored path. Works
+     * even when the payment has no invoice (a deposit paid before any invoice was
+     * issued still gets a receipt). The frozen snapshot is built from the
+     * payment → its invoice (if any) → order, with amount / ref / method taken
+     * from the payment itself.
+     */
+    public static function receiptForPayment(Payment $payment): Receipt
+    {
+        return DB::transaction(function () use ($payment) {
+            $payment->loadMissing('order.quotation');
+            $order = $payment->order;
+            $number = ReferenceCodeGenerator::generate(DocumentType::Receipt);
+
+            $payload = DocumentMapper::forOrder($order, 'receipt', [
+                'number' => $number,
+                'issued' => now()->format('d F Y'),
+                'amountPaid' => (float) $payment->amount_myr,
+                'paymentRef' => $payment->reference,
+                'paymentMethod' => $payment->method->value,
+            ]);
+
+            return Receipt::create([
+                'order_id' => $order->id,
+                'invoice_id' => $payment->invoice_id,
+                'payment_id' => $payment->id,
+                'receipt_number' => $number,
+                'public_token' => Str::random(48),
+                'payload' => $payload,
+                'amount' => (float) $payment->amount_myr,
+                'payment_ref' => $payment->reference,
+                'payment_method' => $payment->method->value,
                 'status' => 'issued',
                 'issued_at' => now(),
             ]);

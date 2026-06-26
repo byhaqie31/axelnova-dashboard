@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Admin\ClientsController;
 use App\Http\Controllers\Api\V1\Admin\InquiriesController;
 use App\Http\Controllers\Api\V1\Admin\InvoicesController;
 use App\Http\Controllers\Api\V1\Admin\OrdersController;
+use App\Http\Controllers\Api\V1\Admin\PaymentsController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
@@ -122,6 +123,13 @@ Route::middleware([
         // Invoices — cross-order list + detail (the standalone Invoices module).
         Route::get('/invoices', [InvoicesController::class, 'index'])->name('invoices.index');
         Route::get('/invoices/{invoice}', [InvoicesController::class, 'show'])->name('invoices.show');
+
+        // Payments — the money ledger. Record/refund/issue-receipt flow through here.
+        Route::get('/payments', [PaymentsController::class, 'index'])->name('payments.index');
+        Route::get('/payments/{payment}', [PaymentsController::class, 'show'])->name('payments.show');
+        Route::post('/orders/{order}/payments', [PaymentsController::class, 'store'])->name('orders.payments.store');
+        Route::post('/payments/{payment}/refund', [PaymentsController::class, 'refund'])->name('payments.refund');
+        Route::post('/payments/{payment}/receipt', [PaymentsController::class, 'issueReceipt'])->name('payments.receipt');
 
         // Partner referrals
         Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');

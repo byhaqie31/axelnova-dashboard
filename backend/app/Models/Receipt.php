@@ -18,6 +18,7 @@ class Receipt extends Model
     protected $fillable = [
         'order_id',
         'invoice_id',
+        'payment_id',
         'receipt_number',
         'public_token',
         'payload',

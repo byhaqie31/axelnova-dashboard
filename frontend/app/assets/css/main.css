@@ -118,6 +118,12 @@
   --status-paid-bg:       rgba(48, 209, 88, 0.12);
   --status-void-fg:       #86868B;
   --status-void-bg:       rgba(134, 134, 139, 0.14);
+  --status-succeeded-fg:  #30D158;
+  --status-succeeded-bg:  rgba(48, 209, 88, 0.12);
+  --status-refunded-fg:   #FF9F0A;
+  --status-refunded-bg:   rgba(255, 159, 10, 0.12);
+  --status-failed-fg:     #FF3B30;
+  --status-failed-bg:     rgba(255, 59, 48, 0.10);
 }
 
 .dark {
@@ -208,6 +214,12 @@
   --status-paid-bg:       rgba(93, 227, 140, 0.16);
   --status-void-fg:       #A1A1A6;
   --status-void-bg:       rgba(161, 161, 166, 0.18);
+  --status-succeeded-fg:  #5DE38C;
+  --status-succeeded-bg:  rgba(93, 227, 140, 0.16);
+  --status-refunded-fg:   #FFB340;
+  --status-refunded-bg:   rgba(255, 179, 64, 0.16);
+  --status-failed-fg:     #FF6961;
+  --status-failed-bg:     rgba(255, 105, 97, 0.16);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -530,6 +542,9 @@ h1 { letter-spacing: -0.045em; }
 .status-pill[data-status="issued"]      { color: var(--status-issued-fg);     background: var(--status-issued-bg); }
 .status-pill[data-status="paid"]        { color: var(--status-paid-fg);       background: var(--status-paid-bg); }
 .status-pill[data-status="void"]        { color: var(--status-void-fg);       background: var(--status-void-bg); }
+.status-pill[data-status="succeeded"]   { color: var(--status-succeeded-fg);  background: var(--status-succeeded-bg); }
+.status-pill[data-status="refunded"]    { color: var(--status-refunded-fg);   background: var(--status-refunded-bg); }
+.status-pill[data-status="failed"]      { color: var(--status-failed-fg);     background: var(--status-failed-bg); }
 
 /* Status pill — selectable button variant (used in detail pages for status changes) */
 .status-pill-button {

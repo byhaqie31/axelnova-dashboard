@@ -141,7 +141,7 @@ function fmtMyr(amount: string | number) {
         <tbody>
           <tr v-for="i in invoices" :key="i.id"
             class="admin-table-row"
-            @click="navigateTo(`/admin/orders/${i.order_id}`)">
+            @click="navigateTo(`/admin/invoices/${i.id}`)">
             <td class="px-4 py-3.5">
               <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ i.invoice_number }}</p>
               <p v-if="i.order_number" class="font-mono text-[10px]" :style="{ color: 'var(--color-text-tertiary)' }">on {{ i.order_number }}</p>
@@ -186,7 +186,7 @@ function fmtMyr(amount: string | number) {
         type="button"
         class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
-        @click="navigateTo(`/admin/orders/${i.order_id}`)"
+        @click="navigateTo(`/admin/invoices/${i.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-2">
           <div class="min-w-0">

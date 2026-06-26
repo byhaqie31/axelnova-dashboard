@@ -32,6 +32,17 @@ class InvoiceResource extends JsonResource
             // Issued and past its due date — an unpaid bill that's late.
             'is_overdue' => $this->status === 'issued' && $this->due_at && $this->due_at->lt(today()),
             'pdf_path' => $this->pdf_path,
+            // Detail view only — the ledger rows allocated to this invoice.
+            'payments' => $this->whenLoaded('payments', fn () => $this->payments->map(fn ($p) => [
+                'id' => $p->id,
+                'payment_number' => $p->payment_number,
+                'type' => $p->type->value,
+                'method' => $p->method->value,
+                'status' => $p->status->value,
+                'amount_myr' => $p->amount_myr,
+                'reference' => $p->reference,
+                'paid_at' => $p->paid_at?->toISOString(),
+            ])),
         ];
     }
 }
