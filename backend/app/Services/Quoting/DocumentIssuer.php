@@ -4,6 +4,7 @@ namespace App\Services\Quoting;
 
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Receipt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ use Illuminate\Support\Str;
  */
 class DocumentIssuer
 {
-    private const PREFIX = ['invoice' => 'INV', 'receipt' => 'RCP'];
+    private const PREFIX = ['invoice' => 'INV', 'receipt' => 'RCP', 'payment' => 'PAY'];
 
     /**
      * Issue an invoice (deposit / partial / final). A recorded payment accrues
@@ -92,6 +93,16 @@ class DocumentIssuer
         });
     }
 
+    /**
+     * Derived payment number: PAY-AXNQ-2026-0006 (-2, -3 … on repeat). Mirrors the
+     * INV-/RCP- derivation and shares the same row lock. Self-contained transaction
+     * so it can be called when minting a standalone ledger row.
+     */
+    public static function nextPaymentNumber(Order $order): string
+    {
+        return DB::transaction(fn () => self::nextNumber($order, 'payment'));
+    }
+
     /** Add a payment to the order's running paid total, clamped to the agreed total. */
     private static function accruePayment(Order $order, float $amount): void
     {
@@ -112,9 +123,17 @@ class DocumentIssuer
         $base = $order->quotation?->reference_code ?? $order->order_number;
         $root = "{$prefix}-{$base}";
 
-        $taken = $type === 'invoice'
-            ? Invoice::withTrashed()->where('invoice_number', 'like', "{$root}%")->lockForUpdate()->pluck('invoice_number')->all()
-            : Receipt::withTrashed()->where('receipt_number', 'like', "{$root}%")->lockForUpdate()->pluck('receipt_number')->all();
+        [$model, $column] = match ($type) {
+            'invoice' => [Invoice::class, 'invoice_number'],
+            'receipt' => [Receipt::class, 'receipt_number'],
+            'payment' => [Payment::class, 'payment_number'],
+        };
+
+        $taken = $model::withTrashed()
+            ->where($column, 'like', "{$root}%")
+            ->lockForUpdate()
+            ->pluck($column)
+            ->all();
 
         if (! in_array($root, $taken, true)) {
             return $root;

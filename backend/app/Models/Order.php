@@ -90,6 +90,12 @@ class Order extends Model
         return $this->hasMany(Receipt::class)->latest('issued_at');
     }
 
+    /** The money ledger for this order — every movement, refunds included. */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->latest('paid_at');
+    }
+
     /** Legacy combined documents (pre invoices/receipts split). */
     public function documents(): HasMany
     {

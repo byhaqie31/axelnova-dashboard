@@ -50,6 +50,12 @@ class Receipt extends Model
         return $this->belongsTo(Invoice::class);
     }
 
+    /** The payment that produced this receipt (1 payment : 1 receipt). */
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
+    }
+
     public function getPdfPathAttribute(): string
     {
         return "/documents/{$this->public_token}/pdf";

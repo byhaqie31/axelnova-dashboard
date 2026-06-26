@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -55,8 +56,26 @@ class Invoice extends Model
         return $this->hasMany(Receipt::class);
     }
 
+    /** Payments allocated to this invoice (succeeded + refunds), the ledger view. */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     public function getPdfPathAttribute(): string
     {
         return "/documents/{$this->public_token}/pdf";
+    }
+
+    /**
+     * Live paid total from the ledger — succeeded payments allocated here, net of
+     * refunds. Distinct from the observer-maintained `amount_paid` cache column;
+     * use this for display where the ledger is the intended source.
+     */
+    protected function amountPaidMyr(): Attribute
+    {
+        return Attribute::get(
+            fn () => number_format((float) $this->payments()->succeeded()->sum('amount_myr'), 2, '.', '')
+        );
     }
 }
