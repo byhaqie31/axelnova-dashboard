@@ -4,20 +4,20 @@ namespace App\Services\Quoting;
 
 use App\Models\Invoice;
 use App\Models\Order;
-use App\Models\Payment;
 use App\Models\Receipt;
+use App\Support\DocumentType;
+use App\Support\ReferenceCodeGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Issues invoices and receipts for an order: assigns a derived, atomic number,
- * freezes the DocumentData snapshot, and persists it. The PDF is never stored —
- * it renders on demand from the frozen `payload`.
+ * Issues invoices and receipts for an order: mints an atomic AXN-family number
+ * (AXNI / AXNR via ReferenceCodeGenerator, each its own yearly counter), freezes
+ * the DocumentData snapshot, and persists it. The PDF is never stored — it
+ * renders on demand from the frozen `payload`.
  */
 class DocumentIssuer
 {
-    private const PREFIX = ['invoice' => 'INV', 'receipt' => 'RCP', 'payment' => 'PAY'];
-
     /**
      * Issue an invoice (deposit / partial / final). A recorded payment accrues
      * onto the order's running paid total and stamps `paid_at` when fully paid.
@@ -28,7 +28,7 @@ class DocumentIssuer
     public static function issueInvoice(Order $order, array $input = []): Invoice
     {
         return DB::transaction(function () use ($order, $input) {
-            $number = self::nextNumber($order, 'invoice');
+            $number = ReferenceCodeGenerator::generate(DocumentType::Invoice);
 
             $payload = DocumentMapper::forOrder($order, 'invoice', array_merge($input, [
                 'number' => $number,
@@ -50,6 +50,7 @@ class DocumentIssuer
                 'payment_method' => $input['paymentMethod'] ?? null,
                 'status' => $status,
                 'issued_at' => now(),
+                'due_at' => $input['dueAt'] ?? now()->addDays(14)->toDateString(),
                 'paid_at' => $status === 'paid' ? now() : null,
             ]);
 
@@ -71,7 +72,7 @@ class DocumentIssuer
     public static function issueReceipt(Order $order, array $input = []): Receipt
     {
         return DB::transaction(function () use ($order, $input) {
-            $number = self::nextNumber($order, 'receipt');
+            $number = ReferenceCodeGenerator::generate(DocumentType::Receipt);
 
             $payload = DocumentMapper::forOrder($order, 'receipt', array_merge($input, [
                 'number' => $number,
@@ -93,16 +94,6 @@ class DocumentIssuer
         });
     }
 
-    /**
-     * Derived payment number: PAY-AXNQ-2026-0006 (-2, -3 … on repeat). Mirrors the
-     * INV-/RCP- derivation and shares the same row lock. Self-contained transaction
-     * so it can be called when minting a standalone ledger row.
-     */
-    public static function nextPaymentNumber(Order $order): string
-    {
-        return DB::transaction(fn () => self::nextNumber($order, 'payment'));
-    }
-
     /** Add a payment to the order's running paid total, clamped to the agreed total. */
     private static function accruePayment(Order $order, float $amount): void
     {
@@ -111,40 +102,6 @@ class DocumentIssuer
         $order->update([
             'amount_paid_myr' => $final > 0 ? min($paid, $final) : max($paid, 0),
         ]);
-    }
-
-    /**
-     * Derived number: e.g. INV-AXNQ-2026-0011. A second document of the same type
-     * for the same order gets a -2, -3 … suffix. Locked for the transaction.
-     */
-    private static function nextNumber(Order $order, string $type): string
-    {
-        $prefix = self::PREFIX[$type];
-        $base = $order->quotation?->reference_code ?? $order->order_number;
-        $root = "{$prefix}-{$base}";
-
-        [$model, $column] = match ($type) {
-            'invoice' => [Invoice::class, 'invoice_number'],
-            'receipt' => [Receipt::class, 'receipt_number'],
-            'payment' => [Payment::class, 'payment_number'],
-        };
-
-        $taken = $model::withTrashed()
-            ->where($column, 'like', "{$root}%")
-            ->lockForUpdate()
-            ->pluck($column)
-            ->all();
-
-        if (! in_array($root, $taken, true)) {
-            return $root;
-        }
-
-        $n = 2;
-        while (in_array("{$root}-{$n}", $taken, true)) {
-            $n++;
-        }
-
-        return "{$root}-{$n}";
     }
 
     /** Total = the document's "total/red" summary row, falling back to subtotal. */

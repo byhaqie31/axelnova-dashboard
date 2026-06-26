@@ -14,6 +14,8 @@ enum DocumentType: string
     case Quotation = 'Q';
     case Order = 'O';
     case Invoice = 'I';
+    case Receipt = 'R';
+    case Payment = 'P';
 
     /** The table whose column carries this type's codes. */
     public function table(): string
@@ -22,6 +24,8 @@ enum DocumentType: string
             self::Quotation => 'quotations',
             self::Order => 'orders',
             self::Invoice => 'invoices',
+            self::Receipt => 'receipts',
+            self::Payment => 'payments',
         };
     }
 
@@ -32,6 +36,8 @@ enum DocumentType: string
             self::Quotation => 'reference_code',
             self::Order => 'order_number',
             self::Invoice => 'invoice_number',
+            self::Receipt => 'receipt_number',
+            self::Payment => 'payment_number',
         };
     }
 }

@@ -112,6 +112,12 @@
   --status-declined-bg:   rgba(255, 59, 48, 0.10);
   --status-expired-fg:    #FF9F0A;
   --status-expired-bg:    rgba(255, 159, 10, 0.12);
+  --status-issued-fg:     #0071E3;
+  --status-issued-bg:     rgba(0, 113, 227, 0.10);
+  --status-paid-fg:       #30D158;
+  --status-paid-bg:       rgba(48, 209, 88, 0.12);
+  --status-void-fg:       #86868B;
+  --status-void-bg:       rgba(134, 134, 139, 0.14);
 }
 
 .dark {
@@ -196,6 +202,12 @@
   --status-declined-bg:   rgba(255, 105, 97, 0.16);
   --status-expired-fg:    #FFB340;
   --status-expired-bg:    rgba(255, 179, 64, 0.16);
+  --status-issued-fg:     #2997FF;
+  --status-issued-bg:     rgba(41, 151, 255, 0.16);
+  --status-paid-fg:       #5DE38C;
+  --status-paid-bg:       rgba(93, 227, 140, 0.16);
+  --status-void-fg:       #A1A1A6;
+  --status-void-bg:       rgba(161, 161, 166, 0.18);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -515,6 +527,9 @@ h1 { letter-spacing: -0.045em; }
 .status-pill[data-status="sent"]        { color: var(--status-sent-fg);       background: var(--status-sent-bg); }
 .status-pill[data-status="declined"]    { color: var(--status-declined-fg);   background: var(--status-declined-bg); }
 .status-pill[data-status="expired"]     { color: var(--status-expired-fg);    background: var(--status-expired-bg); }
+.status-pill[data-status="issued"]      { color: var(--status-issued-fg);     background: var(--status-issued-bg); }
+.status-pill[data-status="paid"]        { color: var(--status-paid-fg);       background: var(--status-paid-bg); }
+.status-pill[data-status="void"]        { color: var(--status-void-fg);       background: var(--status-void-bg); }
 
 /* Status pill — selectable button variant (used in detail pages for status changes) */
 .status-pill-button {

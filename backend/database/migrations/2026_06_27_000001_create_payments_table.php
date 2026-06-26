@@ -20,7 +20,7 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->string('payment_number')->unique();            // PAY-AXNQ-2026-0006 (-2, -3 on repeat)
+            $table->string('payment_number')->unique();            // AXNP-2026-0001 (own yearly counter)
 
             $table->foreignId('order_id')->constrained()->restrictOnDelete();
             $table->foreignId('invoice_id')->nullable()->constrained()->nullOnDelete();               // allocation target

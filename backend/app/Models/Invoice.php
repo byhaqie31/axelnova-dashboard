@@ -29,6 +29,7 @@ class Invoice extends Model
         'payment_method',
         'status',
         'issued_at',
+        'due_at',
         'paid_at',
     ];
 
@@ -39,6 +40,7 @@ class Invoice extends Model
             'amount_total' => 'decimal:2',
             'amount_paid' => 'decimal:2',
             'issued_at' => 'datetime',
+            'due_at' => 'date',
             'paid_at' => 'datetime',
         ];
     }

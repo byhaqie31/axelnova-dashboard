@@ -4,7 +4,8 @@ use App\Enums\PaymentMethod;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Receipt;
-use App\Services\Quoting\DocumentIssuer;
+use App\Support\DocumentType;
+use App\Support\ReferenceCodeGenerator;
 use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
@@ -33,7 +34,7 @@ return new class extends Migration
                     }
 
                     $payment = Payment::create([
-                        'payment_number' => DocumentIssuer::nextPaymentNumber($order),
+                        'payment_number' => ReferenceCodeGenerator::generate(DocumentType::Payment),
                         'order_id' => $order->id,
                         'invoice_id' => $receipt->invoice_id,
                         'client_id' => $order->client_id,
@@ -59,7 +60,7 @@ return new class extends Migration
 
                 if ($gap > 0.009) {
                     Payment::create([
-                        'payment_number' => DocumentIssuer::nextPaymentNumber($order),
+                        'payment_number' => ReferenceCodeGenerator::generate(DocumentType::Payment),
                         'order_id' => $order->id,
                         'client_id' => $order->client_id,
                         'type' => 'payment',

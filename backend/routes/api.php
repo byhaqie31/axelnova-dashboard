@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
 use App\Http\Controllers\Api\V1\Admin\InquiriesController;
+use App\Http\Controllers\Api\V1\Admin\InvoicesController;
 use App\Http\Controllers\Api\V1\Admin\OrdersController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
@@ -117,6 +118,10 @@ Route::middleware([
         Route::post('/orders/{order}/schedule', [OrdersController::class, 'updateSchedule'])->name('orders.schedule');
         // Issue an invoice/receipt for the order (freezes a document snapshot).
         Route::post('/orders/{order}/documents', [OrdersController::class, 'issueDocument'])->name('orders.documents.issue');
+
+        // Invoices — cross-order list + detail (the standalone Invoices module).
+        Route::get('/invoices', [InvoicesController::class, 'index'])->name('invoices.index');
+        Route::get('/invoices/{invoice}', [InvoicesController::class, 'show'])->name('invoices.show');
 
         // Partner referrals
         Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');

@@ -26,8 +26,7 @@ class ReferenceCodeGenerator
         $table = $type->table();
         $column = $type->column();
 
-        // Invoices are on the roadmap; their table isn't provisioned yet. Fail
-        // loudly rather than mint a code into a missing column.
+        // Fail loudly rather than mint a code into a table that isn't there yet.
         if (! Schema::hasTable($table)) {
             throw new RuntimeException(
                 "Cannot mint {$type->name} code: '{$table}' table not yet provisioned.",

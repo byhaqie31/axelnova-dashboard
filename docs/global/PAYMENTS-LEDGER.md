@@ -29,7 +29,7 @@ Design rules:
 | Phase | Scope | State |
 |-------|-------|-------|
 | 1 | Ledger data layer — tables, enums, models, observer, numbering, backfill | **done** |
-| 2 | Invoices module — cross-order index endpoint + admin list page + nav | pending |
+| 2 | Invoices module — cross-order index endpoint + admin list page + nav | **done** |
 | 3 | Payments module — ledger index, record/refund/issue-receipt, order-detail refactor | pending |
 | 4–5 | Gateways — Billplz then Stripe webhooks → `gateway_events` → `payments` (separate handoff; read live provider docs) | pending |
 
@@ -56,7 +56,17 @@ It writes via `saveQuietly()` on Order/Invoice, and the observer is on Payment, 
 
 ### Numbering
 
-`PAY-{order.quotation.reference_code}` (e.g. `PAY-AXNQ-2026-0008`), `-2`/`-3` on repeat. Lives in `DocumentIssuer::nextPaymentNumber()` alongside the existing `INV-`/`RCP-` derivation — same `lockForUpdate()` transaction, reusing `nextNumber()`. (The brief suggested `ReferenceCodeGenerator`, but that class only mints the `AXN` family; the derived document numbering already lived in `DocumentIssuer`.)
+Documents use the standalone AXN family, each type its own yearly counter minted atomically by `ReferenceCodeGenerator::generate(DocumentType::X)`:
+
+| Type | Code | DocumentType |
+|------|------|--------------|
+| Quotation | `AXNQ-2026-0012` | `Quotation = 'Q'` |
+| Order | `AXNO-2026-0012` | `Order = 'O'` |
+| Invoice | `AXNI-2026-0001` | `Invoice = 'I'` |
+| Receipt | `AXNR-2026-0001` | `Receipt = 'R'` |
+| Payment | `AXNP-2026-0001` | `Payment = 'P'` |
+
+`DocumentIssuer` mints invoice/receipt numbers via the generator (it no longer derives `INV-`/`RCP-{quotation}` strings); payments mint `AXNP` the same way. Already-issued `INV-`/`RCP-` rows stay frozen.
 
 ### Backfill (`...000004_backfill_payments_from_legacy_amounts`)
 
@@ -68,6 +78,12 @@ Converts legacy derived money into real rows, then lets the observer recompute c
 Idempotent: linked receipts are skipped, and the catch-up gap is measured against the **current ledger sum** (not the legacy figure), so a re-run inserts nothing. `down()` drops backfilled rows (`notes LIKE 'Backfilled%'`) under `withoutEvents` so the recomputed caches are left intact.
 
 > A backfill that finds a receipt without a matching `amount_paid_myr` **heals** the drift — the ledger (receipt = proof money landed) becomes the truth and the cache is corrected. This happened on the first production-data run (an order with a RM7,000 receipt but `amount_paid_myr = 0`).
+
+## Phase 2 — invoices module (shipped)
+
+- **`invoices.due_at`** — new nullable date (overdue is now a real per-invoice property). Set to `issued_at + 14 days` at issue time (`DocumentIssuer::issueInvoice`, overridable via `dueAt`); existing rows backfilled to the same.
+- **`GET /v1/admin/invoices`** (`InvoicesController@index`) — cross-order list, paginated 20. Filters: `status` (`issued`/`paid`/`void`/**`overdue`** = issued + `due_at < today`), `type`, `order_id`, `search` (invoice #, payment ref, order #, client name/email). `GET /v1/admin/invoices/{invoice}` for detail. `InvoiceResource` carries an `is_overdue` flag + client/order context.
+- **`pages/admin/invoices/index.vue`** — mirrors the orders list (`AdminExpandingSearch` + status/type `AdminStatusFilter`, desktop `admin-table-card` table, mobile card list, pagination). Rows link to the parent order. Overdue tinted via `--color-danger`. `AdminStatusPill` + `main.css` gained `issued`/`paid`/`void` tones (light + dark). Nav: **Invoices** (`i-lucide-receipt-text`) after Orders.
 
 ### Not in Phase 1 (deliberately)
 
