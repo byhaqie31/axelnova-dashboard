@@ -93,6 +93,8 @@ class OrdersController extends Controller
         $data = $request->validate([
             'type' => ['required', 'in:invoice'],
             'invoiceType' => ['nullable', 'in:deposit,partial,final'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:2000'],
             'invoice_id' => ['nullable', 'integer', 'exists:invoices,id'],
             'amountPaid' => ['nullable', 'numeric', 'min:0'],
             'paymentRef' => ['nullable', 'string', 'max:120'],

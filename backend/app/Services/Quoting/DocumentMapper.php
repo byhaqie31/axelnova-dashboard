@@ -138,6 +138,14 @@ class DocumentMapper
 
         $quotation = $order->quotation;
         $doc = $quotation?->document ?? [];
+
+        // Amount-based invoice/receipt: bill (or confirm) an explicit sum tied to
+        // the order's agreed total — the standard path — instead of itemising the
+        // quotation. Keeps the document's total linked to the order.
+        if (isset($input['amount']) && (float) $input['amount'] > 0) {
+            return self::amountDocument($order, $quotation, $doc, $type, $input);
+        }
+
         $items = $quotation ? self::items($quotation, $doc) : [];
 
         $subtotal = array_sum(array_map(
@@ -222,6 +230,88 @@ class DocumentMapper
             'project' => $doc['project'] ?? ($quotation ? self::defaultProject($quotation) : 'Project'),
             'subtitle' => $doc['subtitle']
                 ?? ($quotation?->reference_code ? "Ref {$quotation->reference_code}" : null),
+            'summary' => ['rows' => $rows],
+            'panels' => $panels,
+            'notes' => $input['notes'] ?? null,
+        ], fn ($v) => $v !== null && $v !== []);
+    }
+
+    /**
+     * Amount-based invoice / receipt: the document bills (or confirms) one explicit
+     * figure, shown against the order's agreed total for context. This is what links
+     * the invoice's `amount_total` to the order instead of the quotation line items.
+     */
+    private static function amountDocument(Order $order, ?Quotation $quotation, array $doc, string $type, array $input): array
+    {
+        $amount = round((float) $input['amount'], 2);
+        $agreed = round((float) $order->final_amount_myr, 2);
+
+        $rows = [];
+        if ($agreed > 0 && abs($agreed - $amount) > 0.009) {
+            $rows[] = ['label' => 'Agreed project total', 'price' => $agreed];
+        }
+
+        if ($type === 'receipt') {
+            $rows[] = ['label' => 'Total paid', 'price' => $amount, 'total' => true, 'red' => true];
+            $panels = [array_filter([
+                'label' => 'Paid',
+                'value' => $amount,
+                'note' => self::paymentNote($input),
+            ])];
+            $status = $input['statusLabel'] ?? 'Payment received';
+        } else {
+            $labels = ['deposit' => 'Deposit', 'partial' => 'Partial payment', 'final' => 'Final balance'];
+            $billLabel = $labels[$input['invoiceType'] ?? ''] ?? 'Amount';
+
+            // Discount + promo apply to the billed amount; each can be a fixed sum
+            // or a percentage, and both reduce the total due.
+            [$discountAmt, $discountLabel] = self::billingAdjustment(
+                $input['discountType'] ?? null, $input['discountValue'] ?? null, $amount, $input['discountLabel'] ?? 'Discount',
+            );
+            [$promoAmt, $promoLabel] = self::billingAdjustment(
+                $input['promoType'] ?? null, $input['promoValue'] ?? null, $amount, 'Promo', $input['promoCode'] ?? null,
+            );
+            $net = max($amount - $discountAmt - $promoAmt, 0);
+
+            if ($discountAmt > 0 || $promoAmt > 0) {
+                $rows[] = ['label' => $billLabel, 'price' => $amount];
+                if ($discountAmt > 0) {
+                    $rows[] = ['label' => $discountLabel, 'price' => $discountAmt, 'negative' => true];
+                }
+                if ($promoAmt > 0) {
+                    $rows[] = ['label' => $promoLabel, 'price' => $promoAmt, 'negative' => true];
+                }
+                $rows[] = ['label' => 'Total due', 'price' => $net, 'total' => true, 'red' => true];
+            } else {
+                $rows[] = ['label' => "{$billLabel} due", 'price' => $net, 'total' => true, 'red' => true];
+            }
+
+            $panels = [array_filter([
+                'label' => 'Amount due',
+                'value' => $net,
+                'accent' => true,
+                'note' => 'Payable to ' . self::BANK['name'] . ' ' . self::BANK['acct']
+                    . ' (' . self::BANK['holder'] . '), or by card / FPX online banking.',
+            ])];
+            $status = $input['statusLabel'] ?? "{$billLabel} invoice";
+        }
+
+        return array_filter([
+            'layout' => $input['layout'] ?? 'detailed',
+            'kind' => $type,
+            'number' => $input['number'] ?? null,
+            'issued' => $input['issued'] ?? now()->format('d F Y'),
+            'status' => $status,
+            'currency' => 'RM',
+            'studio' => self::STUDIO,
+            'client' => array_filter([
+                'name' => $quotation?->name ?: $quotation?->company ?: 'Client',
+                'attn' => $doc['client']['attn'] ?? null,
+                'address' => $doc['client']['address'] ?? null,
+                'email' => $quotation?->email,
+            ]),
+            'project' => $doc['project'] ?? ($quotation ? self::defaultProject($quotation) : 'Project'),
+            'subtitle' => $doc['subtitle'] ?? ($quotation?->reference_code ? "Ref {$quotation->reference_code}" : null),
             'summary' => ['rows' => $rows],
             'panels' => $panels,
             'notes' => $input['notes'] ?? null,

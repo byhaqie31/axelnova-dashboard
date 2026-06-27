@@ -107,7 +107,7 @@ class DocumentIssuer
             $payload = DocumentMapper::forOrder($order, 'receipt', [
                 'number' => $number,
                 'issued' => now()->format('d F Y'),
-                'amountPaid' => (float) $payment->amount_myr,
+                'amount' => (float) $payment->amount_myr,
                 'paymentRef' => $payment->reference,
                 'paymentMethod' => $payment->method->value,
             ]);
