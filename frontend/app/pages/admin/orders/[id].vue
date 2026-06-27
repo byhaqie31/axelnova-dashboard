@@ -42,6 +42,7 @@ interface Order {
   quotation_addons?: { key: string; label: string; amount_myr: string }[]
   invoices?: OrderInvoice[]
   receipts?: OrderReceipt[]
+  payments?: OrderPayment[]
 }
 
 interface OrderInvoice {
@@ -71,110 +72,27 @@ interface OrderReceipt {
   pdf_path: string
 }
 
+interface OrderPayment {
+  id: number
+  payment_number: string
+  type: 'payment' | 'refund'
+  method: string
+  status: string
+  amount_myr: string
+  reference: string | null
+  paid_at: string | null
+}
+
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
 
-const issuingInvoice = ref(false)
-const invoiceForm = reactive({
-  type: 'deposit' as 'deposit' | 'partial' | 'final',
-  status: 'issued' as 'issued' | 'paid',
-  amountPaid: '',
-  paymentMethod: '',
-  paymentRef: '',
-  discountValue: '',
-  discountType: 'amount' as 'amount' | 'percent',
-  discountLabel: '',
-  promoValue: '',
-  promoType: 'amount' as 'amount' | 'percent',
-  promoCode: '',
-})
-
-// Live preview of the invoice total. Mirrors the server: percentage adjustments
-// come off the agreed subtotal (sum of line items), amounts are taken as-is.
-const invoiceSubtotal = computed(() => lineItems.value.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.rate) || 0), 0))
-function adjAmount(type: 'amount' | 'percent', value: string, base: number) {
-  const v = Number(value) || 0
-  if (v <= 0) return 0
-  return type === 'percent' ? Math.round(base * Math.min(v, 100) / 100 * 100) / 100 : v
-}
-const invoiceDiscountAmt = computed(() => adjAmount(invoiceForm.discountType, invoiceForm.discountValue, invoiceSubtotal.value))
-const invoicePromoAmt = computed(() => adjAmount(invoiceForm.promoType, invoiceForm.promoValue, invoiceSubtotal.value))
-const invoiceTotal = computed(() => Math.max(invoiceSubtotal.value - invoiceDiscountAmt.value - invoicePromoAmt.value, 0))
-
-async function issueInvoice() {
-  if (!order.value) return
-  issuingInvoice.value = true
-  try {
-    const body: Record<string, unknown> = { type: 'invoice', invoiceType: invoiceForm.type, status: invoiceForm.status }
-    if (invoiceForm.amountPaid !== '') body.amountPaid = Number(invoiceForm.amountPaid)
-    if (invoiceForm.paymentMethod) body.paymentMethod = invoiceForm.paymentMethod
-    if (invoiceForm.paymentRef) body.paymentRef = invoiceForm.paymentRef
-    if (Number(invoiceForm.discountValue) > 0) {
-      body.discountType = invoiceForm.discountType
-      body.discountValue = Number(invoiceForm.discountValue)
-      if (invoiceForm.discountLabel) body.discountLabel = invoiceForm.discountLabel
-    }
-    if (Number(invoiceForm.promoValue) > 0) {
-      body.promoType = invoiceForm.promoType
-      body.promoValue = Number(invoiceForm.promoValue)
-      if (invoiceForm.promoCode) body.promoCode = invoiceForm.promoCode
-    }
-    await apiFetch(`/api/v1/admin/orders/${order.value.id}/documents`, { method: 'POST', body })
-    toast.success('Invoice issued', 'Ready to view and share.')
-    invoiceForm.amountPaid = ''
-    invoiceForm.paymentRef = ''
-    invoiceForm.discountValue = ''
-    invoiceForm.discountLabel = ''
-    invoiceForm.promoValue = ''
-    invoiceForm.promoCode = ''
-    await fetchOrder()
-  }
-  catch {
-    toast.error('Couldn’t issue invoice', 'Something went wrong. Please try again.')
-  }
-  finally {
-    issuingInvoice.value = false
-  }
-}
-
-const issuingReceipt = ref(false)
-const receiptForm = reactive({
-  invoice_id: '',
-  amountPaid: '',
-  paymentMethod: '',
-  paymentRef: '',
-})
-
-async function issueReceipt() {
-  if (!order.value) return
-  issuingReceipt.value = true
-  try {
-    const body: Record<string, unknown> = { type: 'receipt' }
-    if (receiptForm.invoice_id) body.invoice_id = Number(receiptForm.invoice_id)
-    if (receiptForm.amountPaid !== '') body.amountPaid = Number(receiptForm.amountPaid)
-    if (receiptForm.paymentMethod) body.paymentMethod = receiptForm.paymentMethod
-    if (receiptForm.paymentRef) body.paymentRef = receiptForm.paymentRef
-    await apiFetch(`/api/v1/admin/orders/${order.value.id}/documents`, { method: 'POST', body })
-    toast.success('Receipt issued', 'Ready to view and share.')
-    receiptForm.amountPaid = ''
-    receiptForm.paymentRef = ''
-    await fetchOrder()
-  }
-  catch {
-    toast.error('Couldn’t issue receipt', 'Something went wrong. Please try again.')
-  }
-  finally {
-    issuingReceipt.value = false
-  }
-}
-
 useHead(() => ({
   title: order.value ? `${order.value.order_number} — Order` : 'Order — Admin',
 }))
 
-// Mutation endpoints (status/payment/schedule) return a lean order without the
+// Mutation endpoints (status/schedule) return a lean order without the
 // quotation snapshot — merge so the scope section doesn't blink out until refetch.
 function applyOrderUpdate(updated: Order) {
   order.value = order.value ? { ...order.value, ...updated } : updated
@@ -212,57 +130,6 @@ async function setStatus(next: string) {
   finally {
     statusLoading.value = false
   }
-}
-
-// ── Payment ───────────────────────────────────────────────────────────────
-const editingPay = ref(false)
-const paySaving = ref(false)
-const payForm = reactive({ final: '', paid: '', depositPct: '' })
-
-function startEditPay() {
-  if (!order.value) return
-  payForm.final = String(Number(order.value.final_amount_myr))
-  payForm.paid = String(Number(order.value.amount_paid_myr))
-  payForm.depositPct = String(order.value.deposit_pct ?? 50)
-  editingPay.value = true
-}
-
-async function savePayment(body: Record<string, unknown>, successMsg = 'Payment updated') {
-  if (!order.value) return
-  paySaving.value = true
-  try {
-    const res = await apiFetch<{ message: string; order: { data: Order } | Order }>(
-      `/api/v1/admin/orders/${order.value.id}/payment`,
-      { method: 'POST', body },
-    )
-    applyOrderUpdate(((res.order as any).data ?? res.order) as Order)
-    editingPay.value = false
-    toast.success(successMsg, 'The order’s payment details are up to date.')
-  }
-  catch {
-    toast.error('Couldn’t update payment', 'Something went wrong. Please try again.')
-  }
-  finally {
-    paySaving.value = false
-  }
-}
-
-function saveEditedPayment() {
-  savePayment({
-    final_amount_myr: Number(payForm.final) || 0,
-    amount_paid_myr: Number(payForm.paid) || 0,
-    deposit_pct: Number(payForm.depositPct) || 0,
-  })
-}
-
-function markDepositPaid() {
-  if (!order.value) return
-  savePayment({ amount_paid_myr: Number(order.value.deposit_due_myr) }, 'Deposit recorded')
-}
-
-function markPaidInFull() {
-  if (!order.value) return
-  savePayment({ amount_paid_myr: Number(order.value.final_amount_myr) }, 'Marked paid in full')
 }
 
 // ── Expected completion (SLA) ───────────────────────────────────────────────
@@ -475,82 +342,62 @@ const lineItems = computed(() => {
             </span>
           </div>
 
-          <!-- Read view -->
-          <template v-if="!editingPay">
-            <div class="grid grid-cols-2 gap-x-4 gap-y-4">
-              <div>
-                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Total</p>
-                <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(order.final_amount_myr) }}</p>
-              </div>
-              <div>
-                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Deposit ({{ order.deposit_pct ?? 0 }}%)</p>
-                <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text-secondary);">{{ fmtMyrExact(order.deposit_due_myr) }}</p>
-              </div>
-              <div>
-                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Paid</p>
-                <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-success);">{{ fmtMyrExact(order.amount_paid_myr) }}</p>
-              </div>
-              <div>
-                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Remaining</p>
-                <p class="text-[15px] font-bold tabular-nums" :style="{ color: Number(order.remaining_myr) > 0 ? 'var(--color-warning)' : 'var(--color-success)' }">{{ fmtMyrExact(order.remaining_myr) }}</p>
-              </div>
+          <!-- Read-only summary (figures are ledger-derived) -->
+          <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+            <div>
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Total</p>
+              <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(order.final_amount_myr) }}</p>
             </div>
+            <div>
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Deposit ({{ order.deposit_pct ?? 0 }}%)</p>
+              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text-secondary);">{{ fmtMyrExact(order.deposit_due_myr) }}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Paid</p>
+              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-success);">{{ fmtMyrExact(order.amount_paid_myr) }}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Remaining</p>
+              <p class="text-[15px] font-bold tabular-nums" :style="{ color: Number(order.remaining_myr) > 0 ? 'var(--color-warning)' : 'var(--color-success)' }">{{ fmtMyrExact(order.remaining_myr) }}</p>
+            </div>
+          </div>
 
-            <!-- Paid-vs-total progress -->
-            <div class="mt-5 h-1.5 rounded-full overflow-hidden" style="background: var(--color-bg-secondary);">
-              <div class="h-full rounded-full transition-[width] duration-500"
-                :style="{
-                  width: `${Math.min(100, Number(order.final_amount_myr) > 0 ? (Number(order.amount_paid_myr) / Number(order.final_amount_myr)) * 100 : 0)}%`,
-                  background: 'var(--color-success)',
-                }" />
-            </div>
+          <!-- Paid-vs-total progress -->
+          <div class="mt-5 h-1.5 rounded-full overflow-hidden" style="background: var(--color-bg-secondary);">
+            <div class="h-full rounded-full transition-[width] duration-500"
+              :style="{
+                width: `${Math.min(100, Number(order.final_amount_myr) > 0 ? (Number(order.amount_paid_myr) / Number(order.final_amount_myr)) * 100 : 0)}%`,
+                background: 'var(--color-success)',
+              }" />
+          </div>
 
-            <div class="flex flex-wrap gap-2 pt-5 mt-5 border-t" style="border-color: var(--color-border);">
-              <button type="button" class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;" @click="startEditPay">
-                {{ confirmed ? 'Record payment' : 'Edit amounts' }}
-              </button>
-              <button v-if="order.payment_status === 'unpaid' && Number(order.deposit_due_myr) > 0" type="button"
-                class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;"
-                :class="{ 'opacity-50': paySaving }" :disabled="paySaving" @click="markDepositPaid">
-                Mark deposit paid
-              </button>
-              <button v-if="Number(order.remaining_myr) > 0" type="button"
-                class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;"
-                :class="{ 'opacity-50': paySaving }" :disabled="paySaving" @click="markPaidInFull">
-                Mark paid in full
-              </button>
-            </div>
-          </template>
+          <!-- Payments (read-only; manage in the Payments module) -->
+          <div v-if="order.payments?.length" class="mt-5 pt-5 border-t space-y-2" style="border-color: var(--color-border);">
+            <NuxtLink v-for="p in order.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
+              class="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors hover:bg-(--color-bg-secondary)"
+              :style="{ borderColor: 'var(--color-border)' }">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-mono text-[12px] font-semibold" style="color: var(--color-text);">{{ p.payment_number }}</span>
+                  <AdminStatusPill :status="p.status" />
+                  <span v-if="p.type === 'refund'" class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-danger);">Refund</span>
+                </div>
+                <p class="text-[11px] mt-1 capitalize" style="color: var(--color-text-tertiary);">{{ p.method.replace('_', ' ') }} · {{ fmtDate(p.paid_at) }}</p>
+              </div>
+              <span class="text-[13px] font-semibold shrink-0" :style="{ color: Number(p.amount_myr) < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">
+                {{ Number(p.amount_myr) < 0 ? '−' : '' }}{{ fmtMyrExact(Math.abs(Number(p.amount_myr))) }}
+              </span>
+            </NuxtLink>
+          </div>
 
-          <!-- Edit view -->
-          <div v-else class="space-y-3">
-            <div class="grid sm:grid-cols-3 gap-3">
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Total (RM)</span>
-                <input v-model="payForm.final" type="number" min="0" step="0.01" class="doc-input mt-1" :disabled="confirmed">
-              </label>
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Paid (RM)</span>
-                <input v-model="payForm.paid" type="number" min="0" step="0.01" class="doc-input mt-1">
-              </label>
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Deposit (%)</span>
-                <input v-model="payForm.depositPct" type="number" min="0" max="100" step="1" class="doc-input mt-1" :disabled="confirmed">
-              </label>
-            </div>
-            <p class="text-[11px]" style="color: var(--color-text-tertiary);">
-              <span v-if="confirmed">Total &amp; deposit are locked — the quotation is confirmed once work is underway. You can still record payments.</span>
-              <span v-else>Paid is capped at the total — remaining can’t go negative.</span>
-            </p>
-            <div class="flex gap-2 pt-1">
-              <button type="button" class="btn-pill btn-pill-primary text-[13px]"
-                :class="{ 'opacity-50': paySaving }" :disabled="paySaving" @click="saveEditedPayment">
-                {{ paySaving ? 'Saving…' : 'Save' }}
-              </button>
-              <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="paySaving" @click="editingPay = false">
-                Cancel
-              </button>
-            </div>
+          <!-- Shortcuts into the Payments module -->
+          <div class="flex flex-wrap gap-2 pt-5 mt-5 border-t" style="border-color: var(--color-border);">
+            <NuxtLink :to="`/admin/payments/new?order_id=${order.id}`" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;">
+              Record payment
+            </NuxtLink>
+            <NuxtLink :to="`/admin/payments?order_id=${order.id}`" class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;">
+              View all payments
+            </NuxtLink>
           </div>
         </div>
 
@@ -560,111 +407,33 @@ const lineItems = computed(() => {
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Invoices</p>
 
           <div v-if="order.invoices?.length" class="space-y-2 mb-5">
-            <div v-for="d in order.invoices" :key="d.id"
-              class="flex items-center justify-between gap-3 rounded-xl border p-3"
+            <NuxtLink v-for="d in order.invoices" :key="d.id" :to="`/admin/invoices/${d.id}`"
+              class="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors hover:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ d.number }}</span>
                   <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                     :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ d.type }}</span>
-                  <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                    :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">{{ d.status }}</span>
+                  <AdminStatusPill :status="d.status" />
                 </div>
                 <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
                   {{ fmtMyrExact(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ fmtMyrExact(d.amount_paid) }}</span> · {{ fmtDate(d.issued_at) }}
                 </p>
               </div>
-              <a :href="d.pdf_path" target="_blank" rel="noopener"
-                class="btn-pill btn-pill-ghost text-[12px] shrink-0" style="height: 32px; padding: 0 16px;">
-                View PDF
-              </a>
-            </div>
+              <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0" :style="{ color: 'var(--color-text-tertiary)' }" />
+            </NuxtLink>
           </div>
           <p v-else class="text-[13px] mb-5" style="color: var(--color-text-tertiary);">No invoices issued yet.</p>
 
-          <!-- Issue invoice -->
-          <div class="pt-4 border-t space-y-3" style="border-color: var(--color-border);">
-            <div class="grid sm:grid-cols-2 gap-3">
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Invoice type</span>
-                <AdminSelect v-model="invoiceForm.type" class="mt-1" :items="[{ label: 'Deposit', value: 'deposit' }, { label: 'Partial', value: 'partial' }, { label: 'Final', value: 'final' }]" />
-              </label>
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Status</span>
-                <AdminSelect v-model="invoiceForm.status" class="mt-1" :items="[{ label: 'Issued', value: 'issued' }, { label: 'Paid', value: 'paid' }]" />
-              </label>
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount received</span>
-                <input v-model="invoiceForm.amountPaid" type="number" min="0" step="0.01" placeholder="optional" class="doc-input mt-1">
-              </label>
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment method</span>
-                <input v-model="invoiceForm.paymentMethod" type="text" placeholder="e.g. DuitNow QR (RHB)" class="doc-input mt-1">
-              </label>
-              <label class="block sm:col-span-2">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment ref</span>
-                <input v-model="invoiceForm.paymentRef" type="text" placeholder="optional" class="doc-input mt-1">
-              </label>
-            </div>
-
-            <!-- Discount & promo — reductions off the agreed value at billing time -->
-            <div class="pt-3 border-t space-y-3" style="border-color: var(--color-border);">
-              <p class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">
-                Discount &amp; promo <span class="normal-case font-normal">(optional)</span>
-              </p>
-              <div class="grid sm:grid-cols-2 gap-3">
-                <label class="block">
-                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Discount</span>
-                  <div class="flex gap-2 mt-1">
-                    <AdminRateToggle v-model="invoiceForm.discountType" />
-                    <input v-model="invoiceForm.discountValue" type="number" min="0" :max="invoiceForm.discountType === 'percent' ? 100 : undefined" :step="invoiceForm.discountType === 'percent' ? 1 : 0.01" placeholder="0" class="doc-input flex-1">
-                  </div>
-                </label>
-                <label class="block">
-                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Discount label</span>
-                  <input v-model="invoiceForm.discountLabel" type="text" placeholder="e.g. Loyalty discount" class="doc-input mt-1">
-                </label>
-                <label class="block">
-                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Promo code</span>
-                  <input v-model="invoiceForm.promoCode" type="text" placeholder="e.g. RAYA2026" class="doc-input mt-1">
-                </label>
-                <label class="block">
-                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Promo amount</span>
-                  <div class="flex gap-2 mt-1">
-                    <AdminRateToggle v-model="invoiceForm.promoType" />
-                    <input v-model="invoiceForm.promoValue" type="number" min="0" :max="invoiceForm.promoType === 'percent' ? 100 : undefined" :step="invoiceForm.promoType === 'percent' ? 1 : 0.01" placeholder="0" class="doc-input flex-1">
-                  </div>
-                </label>
-              </div>
-
-              <!-- Live total preview -->
-              <div v-if="invoiceDiscountAmt > 0 || invoicePromoAmt > 0" class="rounded-xl border p-3 text-[12px] space-y-1.5"
-                :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-                <div class="flex items-center justify-between">
-                  <span style="color: var(--color-text-secondary);">Subtotal</span>
-                  <span class="tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(invoiceSubtotal) }}</span>
-                </div>
-                <div v-if="invoiceDiscountAmt > 0" class="flex items-center justify-between">
-                  <span style="color: var(--color-text-secondary);">{{ invoiceForm.discountLabel || 'Discount' }}<span v-if="invoiceForm.discountType === 'percent'" style="color: var(--color-text-tertiary);"> ({{ Number(invoiceForm.discountValue) }}%)</span></span>
-                  <span class="tabular-nums" style="color: var(--color-text);">−{{ fmtMyrExact(invoiceDiscountAmt) }}</span>
-                </div>
-                <div v-if="invoicePromoAmt > 0" class="flex items-center justify-between">
-                  <span style="color: var(--color-text-secondary);">Promo<span v-if="invoiceForm.promoCode" style="color: var(--color-text-tertiary);"> ({{ invoiceForm.promoCode }})</span><span v-else-if="invoiceForm.promoType === 'percent'" style="color: var(--color-text-tertiary);"> ({{ Number(invoiceForm.promoValue) }}%)</span></span>
-                  <span class="tabular-nums" style="color: var(--color-text);">−{{ fmtMyrExact(invoicePromoAmt) }}</span>
-                </div>
-                <div class="flex items-center justify-between pt-1.5 border-t font-semibold" style="border-color: var(--color-border);">
-                  <span style="color: var(--color-text);">Total due</span>
-                  <span class="tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(invoiceTotal) }}</span>
-                </div>
-              </div>
-            </div>
-
-            <p class="text-[11px]" style="color: var(--color-text-tertiary);">A recorded amount is added to the order’s paid total. Discounts apply to the agreed subtotal.</p>
-            <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
-              :class="{ 'opacity-50': issuingInvoice }" :disabled="issuingInvoice" @click="issueInvoice">
-              {{ issuingInvoice ? 'Issuing…' : 'Issue invoice' }}
-            </button>
+          <!-- Shortcuts into the Invoices module -->
+          <div class="flex flex-wrap gap-2 pt-4 border-t" style="border-color: var(--color-border);">
+            <NuxtLink :to="`/admin/invoices/new?order_id=${order.id}`" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;">
+              Issue invoice
+            </NuxtLink>
+            <NuxtLink :to="`/admin/invoices?order_id=${order.id}`" class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;">
+              View all invoices
+            </NuxtLink>
           </div>
         </div>
 
@@ -689,33 +458,13 @@ const lineItems = computed(() => {
               </a>
             </div>
           </div>
-          <p v-else class="text-[13px] mb-5" style="color: var(--color-text-tertiary);">No receipts issued yet.</p>
+          <p v-else class="text-[13px]" style="color: var(--color-text-tertiary);">No receipts issued yet.</p>
 
-          <!-- Issue receipt -->
-          <div class="pt-4 border-t space-y-3" style="border-color: var(--color-border);">
-            <div class="grid sm:grid-cols-2 gap-3">
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">For invoice</span>
-                <AdminSelect v-model="receiptForm.invoice_id" class="mt-1" :items="[{ label: '— none —', value: '' }, ...(order.invoices ?? []).map(d => ({ label: d.number, value: String(d.id) }))]" />
-              </label>
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount paid</span>
-                <input v-model="receiptForm.amountPaid" type="number" min="0" step="0.01" placeholder="optional" class="doc-input mt-1">
-              </label>
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment method</span>
-                <input v-model="receiptForm.paymentMethod" type="text" placeholder="e.g. DuitNow QR (RHB)" class="doc-input mt-1">
-              </label>
-              <label class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Payment ref</span>
-                <input v-model="receiptForm.paymentRef" type="text" placeholder="optional" class="doc-input mt-1">
-              </label>
-            </div>
-            <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
-              :class="{ 'opacity-50': issuingReceipt }" :disabled="issuingReceipt" @click="issueReceipt">
-              {{ issuingReceipt ? 'Issuing…' : 'Issue receipt' }}
-            </button>
-          </div>
+          <p class="text-[11px] pt-4 mt-4 border-t" style="color: var(--color-text-tertiary); border-color: var(--color-border);">
+            Receipts are issued from a payment — open one in
+            <NuxtLink :to="`/admin/payments?order_id=${order.id}`" class="underline" :style="{ color: 'var(--color-accent)' }">Payments</NuxtLink>
+            and choose “Issue receipt”.
+          </p>
         </div>
 
       </div>

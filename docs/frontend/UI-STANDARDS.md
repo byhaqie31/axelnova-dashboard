@@ -553,6 +553,16 @@ The desktop table still gets `<div class="overflow-x-auto">` inside the outer ro
 
 **Audit before merging.** Open the page at 375px (Chrome DevTools mobile preset). Look for: horizontal scroll on the body, action buttons overlapping titles, modals/popovers running off-screen, sticky panels covering content. Fix before merging.
 
+### 12.11 List filter row (standard)
+
+Every admin index page uses the **same filter row** so they read identically — `flex flex-wrap items-center gap-3` containing, in order:
+
+1. [`<AdminExpandingSearch>`](frontend/app/components/admin/ExpandingSearch.vue) — left.
+2. [`<AdminFilterMenu>`](frontend/app/components/admin/FilterMenu.vue) — a funnel button beside the search that opens a popover holding the page's **secondary** filters (type / method / gateway …), each an [`<AdminFilterPills>`](frontend/app/components/admin/FilterPills.vue) group (§12.6). Pass `:active-count` (count of non-empty secondary filters) for the badge + accent state and `@clear` to reset them. Omit it entirely when a page has no secondary filters (e.g. Orders).
+3. [`<AdminStatusFilter>`](frontend/app/components/admin/StatusFilter.vue) — **right**, via `class="ml-auto"`, carrying `:total` (record count) + the primary Status filter.
+
+`Total | Status` always lives on the right and nothing else does; everything page-specific collapses into the funnel, keeping the row uncluttered at every width.
+
 ---
 
 ## 13. Updating this doc

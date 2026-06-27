@@ -36,7 +36,6 @@ class DocumentIssuer
                 'issued' => $input['issued'] ?? now()->format('d F Y'),
             ]));
 
-            $amountPaid = isset($input['amountPaid']) ? (float) $input['amountPaid'] : null;
             $status = $input['status'] ?? 'issued';
 
             $invoice = Invoice::create([
@@ -46,7 +45,7 @@ class DocumentIssuer
                 'type' => $input['invoiceType'] ?? 'deposit',
                 'payload' => $payload,
                 'amount_total' => self::payloadTotal($payload),
-                'amount_paid' => $amountPaid,
+                'amount_paid' => null,
                 'payment_ref' => $input['paymentRef'] ?? null,
                 'payment_method' => $input['paymentMethod'] ?? null,
                 'status' => $status,
@@ -54,10 +53,6 @@ class DocumentIssuer
                 'due_at' => $input['dueAt'] ?? now()->addDays(14)->toDateString(),
                 'paid_at' => $status === 'paid' ? now() : null,
             ]);
-
-            if ($amountPaid !== null && $amountPaid > 0) {
-                self::accruePayment($order, $amountPaid);
-            }
 
             return $invoice;
         });
@@ -131,16 +126,6 @@ class DocumentIssuer
                 'issued_at' => now(),
             ]);
         });
-    }
-
-    /** Add a payment to the order's running paid total, clamped to the agreed total. */
-    private static function accruePayment(Order $order, float $amount): void
-    {
-        $final = (float) $order->final_amount_myr;
-        $paid = (float) $order->amount_paid_myr + $amount;
-        $order->update([
-            'amount_paid_myr' => $final > 0 ? min($paid, $final) : max($paid, 0),
-        ]);
     }
 
     /** Total = the document's "total/red" summary row, falling back to subtotal. */

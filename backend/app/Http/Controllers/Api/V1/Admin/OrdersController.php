@@ -39,7 +39,7 @@ class OrdersController extends Controller
 
     public function show(Order $order): OrderResource
     {
-        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice']);
+        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments']);
 
         return new OrderResource($order);
     }
@@ -62,40 +62,6 @@ class OrdersController extends Controller
             'revenue' => round((float) $row->revenue, 2),
             'collected' => round((float) $row->collected, 2),
             'pending' => round((float) $row->pending, 2),
-        ]);
-    }
-
-    /**
-     * Adjust the agreed total and record payments. Paid is clamped to
-     * [0, final] so the derived remaining balance can never go negative.
-     */
-    public function updatePayment(Request $request, Order $order): JsonResponse
-    {
-        $data = $request->validate([
-            'final_amount_myr' => ['nullable', 'numeric', 'min:0'],
-            'amount_paid_myr' => ['nullable', 'numeric', 'min:0'],
-            'deposit_pct' => ['nullable', 'integer', 'min:0', 'max:100'],
-        ]);
-
-        $final = array_key_exists('final_amount_myr', $data) && $data['final_amount_myr'] !== null
-            ? (float) $data['final_amount_myr']
-            : (float) $order->final_amount_myr;
-
-        $paid = array_key_exists('amount_paid_myr', $data) && $data['amount_paid_myr'] !== null
-            ? (float) $data['amount_paid_myr']
-            : (float) $order->amount_paid_myr;
-
-        $order->update([
-            'final_amount_myr' => $final,
-            'amount_paid_myr' => min(max($paid, 0), $final),
-            'deposit_pct' => $data['deposit_pct'] ?? $order->deposit_pct,
-        ]);
-
-        $order->load(['client', 'quotation']);
-
-        return response()->json([
-            'message' => 'Payment details updated.',
-            'order' => new OrderResource($order),
         ]);
     }
 
@@ -125,7 +91,7 @@ class OrdersController extends Controller
     public function issueDocument(Request $request, Order $order): JsonResponse
     {
         $data = $request->validate([
-            'type' => ['required', 'in:invoice,receipt'],
+            'type' => ['required', 'in:invoice'],
             'invoiceType' => ['nullable', 'in:deposit,partial,final'],
             'invoice_id' => ['nullable', 'integer', 'exists:invoices,id'],
             'amountPaid' => ['nullable', 'numeric', 'min:0'],
@@ -146,14 +112,12 @@ class OrdersController extends Controller
 
         $order->loadMissing('quotation');
 
-        $document = $data['type'] === 'invoice'
-            ? DocumentIssuer::issueInvoice($order, $data)
-            : DocumentIssuer::issueReceipt($order, $data);
+        $document = DocumentIssuer::issueInvoice($order, $data);
 
-        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice']);
+        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments']);
 
         return response()->json([
-            'message' => ucfirst($data['type']).' issued.',
+            'message' => 'Invoice issued.',
             'document' => $document,
             'order' => new OrderResource($order),
         ], 201);

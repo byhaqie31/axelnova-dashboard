@@ -30,7 +30,7 @@ Design rules:
 |-------|-------|-------|
 | 1 | Ledger data layer — tables, enums, models, observer, numbering, backfill | **done** |
 | 2 | Invoices module — cross-order index endpoint + admin list page + nav | **done** |
-| 3 | Payments module — ledger index, record/refund/issue-receipt, order-detail refactor | pending |
+| 3 | Payments module — ledger index, record/refund/issue-receipt, order-detail refactor | **done** |
 | 4–5 | Gateways — Billplz then Stripe webhooks → `gateway_events` → `payments` (separate handoff; read live provider docs) | pending |
 
 ## Phase 1 — data layer (shipped)
@@ -88,6 +88,17 @@ Idempotent: linked receipts are skipped, and the catch-up gap is measured agains
 ### Not in Phase 1 (deliberately)
 
 Removing the direct paid-amount write paths (`OrdersController::updatePayment`, the order-detail "Mark paid" block) is **Phase 3** — done together with the frontend refactor and the new record-payment endpoint, so nothing breaks mid-transition. Phase 1 is purely additive.
+
+## Phase 3 — payments module (shipped)
+
+The money ledger as a first-class admin module, plus the order page reduced to a read-only financial hub.
+
+- **`PaymentService`** (record / refund / refundable) + **`PaymentsController`** (`index`/`show`/`store`/`refund`/`issueReceipt`) + **`PaymentResource`**. `DocumentIssuer::receiptForPayment()` mints an `AXNR` receipt from a payment (1:1, works with no invoice).
+- **Endpoints:** `GET /v1/admin/payments` (+ `/{id}`); `POST /v1/admin/orders/{order}/payments` (record); `POST /v1/admin/payments/{id}/refund`; `POST /v1/admin/payments/{id}/receipt` (idempotent).
+- **Pages:** `/admin/payments` (ledger list — gateway/method/type/status filters, refunds as `−RM`), `/admin/payments/{id}` (detail + refund + issue-receipt). Nav: **Payments** (`i-lucide-wallet`).
+- **Create flows live in the modules**, reached from the order via shortcut (chosen UX): `pages/admin/invoices/new.vue` (issue invoice, quotation-derived) and `pages/admin/payments/new.vue` (record payment) both read `?order_id`. Index pages honour `?order_id` (filtered view + clear).
+- **Order detail is now read-only + shortcuts** (`orders/[id].vue`): a derived payment summary, read-only invoice + payment mini-lists (rows link to their detail), and "Issue invoice" / "Record payment" / "View all" buttons into the modules. No inline create forms.
+- **Direct paid-amount writes removed:** `OrdersController::updatePayment` (route + method) deleted; `DocumentIssuer::issueInvoice` no longer accrues a payment (the old `accruePayment` is gone) — invoices issue **unpaid**, and payment is recorded separately through the ledger. The observer remains the sole writer of the paid caches.
 
 ## Out of scope (by design)
 

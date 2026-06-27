@@ -2,6 +2,7 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
+const route = useRoute()
 
 interface Invoice {
   id: number
@@ -30,8 +31,20 @@ const filters = reactive({
   search: '',
   status: '',
   type: '',
+  order_id: route.query.order_id ? String(route.query.order_id) : '',
   page: 1,
 })
+
+function clearOrderFilter() {
+  filters.order_id = ''
+  filters.page = 1
+  fetchInvoices()
+}
+
+const activeFilterCount = computed(() => (filters.type ? 1 : 0))
+function clearSecondary() {
+  filters.type = ''
+}
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -56,6 +69,7 @@ async function fetchInvoices() {
     if (filters.search) params.set('search', filters.search)
     if (filters.status) params.set('status', filters.status)
     if (filters.type) params.set('type', filters.type)
+    if (filters.order_id) params.set('order_id', filters.order_id)
     params.set('page', String(filters.page))
 
     const res = await apiFetch<{ data: Invoice[]; meta: any }>(`/api/v1/admin/invoices?${params}`)
@@ -110,8 +124,19 @@ function fmtMyr(amount: string | number) {
 
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by invoice #, client, email or order…" />
-      <AdminStatusFilter v-model="filters.type" :options="typeOptions" label="Type" class="ml-auto" />
-      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" />
+      <AdminFilterMenu :active-count="activeFilterCount" @clear="clearSecondary">
+        <AdminFilterPills v-model="filters.type" label="Type" :options="typeOptions" />
+      </AdminFilterMenu>
+      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" class="ml-auto" />
+    </div>
+
+    <div v-if="filters.order_id" class="flex items-center justify-between gap-3 mb-5 rounded-xl border px-4 py-2.5"
+      :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+      <p class="text-[12px]" style="color: var(--color-text-secondary);">Filtered to one order.</p>
+      <div class="flex items-center gap-2">
+        <NuxtLink :to="`/admin/invoices/new?order_id=${filters.order_id}`" class="btn-pill btn-pill-primary text-[12px]" style="height: 30px; padding: 0 14px;">Issue invoice</NuxtLink>
+        <button type="button" class="btn-pill btn-pill-ghost text-[12px]" style="height: 30px; padding: 0 14px;" @click="clearOrderFilter">Clear</button>
+      </div>
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>

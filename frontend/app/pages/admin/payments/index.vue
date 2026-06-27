@@ -2,6 +2,7 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
+const route = useRoute()
 
 interface Payment {
   id: number
@@ -30,8 +31,22 @@ const filters = reactive({
   type: '',
   method: '',
   gateway: '',
+  order_id: route.query.order_id ? String(route.query.order_id) : '',
   page: 1,
 })
+
+function clearOrderFilter() {
+  filters.order_id = ''
+  filters.page = 1
+  fetchPayments()
+}
+
+const activeFilterCount = computed(() => [filters.type, filters.method, filters.gateway].filter(Boolean).length)
+function clearSecondary() {
+  filters.type = ''
+  filters.method = ''
+  filters.gateway = ''
+}
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -75,6 +90,7 @@ async function fetchPayments() {
     if (filters.type) params.set('type', filters.type)
     if (filters.method) params.set('method', filters.method)
     if (filters.gateway) params.set('gateway', filters.gateway)
+    if (filters.order_id) params.set('order_id', filters.order_id)
     params.set('page', String(filters.page))
 
     const res = await apiFetch<{ data: Payment[]; meta: any }>(`/api/v1/admin/payments?${params}`)
@@ -127,10 +143,21 @@ function methodLabel(v: string) {
 
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by payment #, ref, order or client…" />
-      <AdminStatusFilter v-model="filters.gateway" :options="gatewayOptions" label="Gateway" class="ml-auto" />
-      <AdminStatusFilter v-model="filters.method" :options="methodOptions" label="Method" />
-      <AdminStatusFilter v-model="filters.type" :options="typeOptions" label="Type" />
-      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" />
+      <AdminFilterMenu :active-count="activeFilterCount" @clear="clearSecondary">
+        <AdminFilterPills v-model="filters.type" label="Type" :options="typeOptions" />
+        <AdminFilterPills v-model="filters.method" label="Method" :options="methodOptions" />
+        <AdminFilterPills v-model="filters.gateway" label="Gateway" :options="gatewayOptions" />
+      </AdminFilterMenu>
+      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" class="ml-auto" />
+    </div>
+
+    <div v-if="filters.order_id" class="flex items-center justify-between gap-3 mb-5 rounded-xl border px-4 py-2.5"
+      :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+      <p class="text-[12px]" style="color: var(--color-text-secondary);">Filtered to one order.</p>
+      <div class="flex items-center gap-2">
+        <NuxtLink :to="`/admin/payments/new?order_id=${filters.order_id}`" class="btn-pill btn-pill-primary text-[12px]" style="height: 30px; padding: 0 14px;">Record payment</NuxtLink>
+        <button type="button" class="btn-pill btn-pill-ghost text-[12px]" style="height: 30px; padding: 0 14px;" @click="clearOrderFilter">Clear</button>
+      </div>
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
