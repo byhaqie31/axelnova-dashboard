@@ -546,6 +546,8 @@ The desktop table still gets `<div class="overflow-x-auto">` inside the outer ro
 
 **Action buttons in detail pages** (status pickers, etc.) must already use the pill-button group (12.6), which wraps via `flex flex-wrap`.
 
+**Button icon spacing.** `.btn-pill` carries a built-in `gap` (≈8px) so a `<UIcon>` never sits flush against the label — write `<UIcon … /> Label` and the gap is handled. Don't add manual spacer spans / `&nbsp;`; only add a `gap-*` utility on the button when a specific tighter/looser gap is wanted (it overrides the base).
+
 **Search bars** in admin index pages must use [`<AdminExpandingSearch v-model=… placeholder=… />`](frontend/app/components/admin/ExpandingSearch.vue), not a raw `<input type="search">`. Default state is an icon-only round button (~36px); clicking it slides the input open and auto-focuses it. Blurring an empty input collapses back to the icon. Pre-filling `v-model` from a query string opens the input on mount automatically. Reasons:
 - At mobile widths the full-width search input dominates the filter bar; the icon recovers that space.
 - Most admin queries are quick "open the page → maybe search" — the icon expresses that intent better than a permanently-open field.

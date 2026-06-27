@@ -103,6 +103,7 @@ Route::middleware([
 
         Route::get('/quotations', [QuotationsController::class, 'index'])->name('quotations.index');
         Route::post('/quotations', [QuotationsController::class, 'store'])->name('quotations.store');
+        Route::post('/quotations/preview', [QuotationsController::class, 'preview'])->name('quotations.preview');
         Route::get('/quotations/{quotation}', [QuotationsController::class, 'show'])->name('quotations.show');
         Route::put('/quotations/{quotation}', [QuotationsController::class, 'update'])->name('quotations.update');
         Route::post('/quotations/{quotation}/status', [QuotationsController::class, 'updateStatus'])->name('quotations.status');
@@ -118,6 +119,8 @@ Route::middleware([
         Route::post('/orders/{order}/schedule', [OrdersController::class, 'updateSchedule'])->name('orders.schedule');
         // Issue an invoice/receipt for the order (freezes a document snapshot).
         Route::post('/orders/{order}/documents', [OrdersController::class, 'issueDocument'])->name('orders.documents.issue');
+        // Live preview of the would-be invoice document (no persist).
+        Route::post('/orders/{order}/documents/preview', [OrdersController::class, 'previewDocument'])->name('orders.documents.preview');
 
         // Invoices — cross-order list + detail (the standalone Invoices module).
         Route::get('/invoices', [InvoicesController::class, 'index'])->name('invoices.index');
@@ -128,6 +131,7 @@ Route::middleware([
         Route::get('/payments/{payment}', [PaymentsController::class, 'show'])->name('payments.show');
         Route::post('/orders/{order}/payments', [PaymentsController::class, 'store'])->name('orders.payments.store');
         Route::post('/payments/{payment}/refund', [PaymentsController::class, 'refund'])->name('payments.refund');
+        Route::get('/payments/{payment}/receipt/preview', [PaymentsController::class, 'receiptPreview'])->name('payments.receipt.preview');
         Route::post('/payments/{payment}/receipt', [PaymentsController::class, 'issueReceipt'])->name('payments.receipt');
 
         // Partner referrals

@@ -350,6 +350,7 @@ h1 { letter-spacing: -0.045em; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem; /* icon ↔ text breathing room (override per-button with gap-* if needed) */
   height: 44px;
   padding: 0 24px;
   border-radius: 980px;

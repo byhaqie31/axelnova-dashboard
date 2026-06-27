@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\Quoting\DocumentIssuer;
+use App\Services\Quoting\DocumentMapper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -123,6 +124,35 @@ class OrdersController extends Controller
             'document' => $document,
             'order' => new OrderResource($order),
         ], 201);
+    }
+
+    /**
+     * Build the invoice DocumentData for the current draft inputs WITHOUT
+     * persisting — powers the live preview while issuing. Same mapper as the real
+     * issue path, so the preview matches the eventual document exactly.
+     */
+    public function previewDocument(Request $request, Order $order): JsonResponse
+    {
+        $data = $request->validate([
+            'invoiceType' => ['nullable', 'in:deposit,partial,final'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'discountType' => ['nullable', 'in:amount,percent'],
+            'discountValue' => ['nullable', 'numeric', 'min:0'],
+            'discountLabel' => ['nullable', 'string', 'max:60'],
+            'promoCode' => ['nullable', 'string', 'max:40'],
+            'promoType' => ['nullable', 'in:amount,percent'],
+            'promoValue' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $order->loadMissing('quotation');
+
+        $payload = DocumentMapper::forOrder($order, 'invoice', array_merge($data, [
+            'number' => 'DRAFT',
+            'issued' => now()->format('d F Y'),
+        ]));
+
+        return response()->json($payload);
     }
 
     public function updateStatus(Request $request, Order $order): JsonResponse

@@ -41,6 +41,15 @@ const refundOpen = ref(false)
 const refunding = ref(false)
 const refundForm = reactive({ amount: '', notes: '' })
 const issuingReceipt = ref(false)
+const receiptPreviewData = ref<Record<string, any> | null>(null)
+
+async function fetchReceiptPreview() {
+  if (!payment.value || payment.value.type !== 'payment' || payment.value.status !== 'succeeded') return
+  try {
+    receiptPreviewData.value = await apiFetch(`/api/v1/admin/payments/${payment.value.id}/receipt/preview`)
+  }
+  catch { /* ignore — keep last good preview */ }
+}
 
 const refundable = computed(() => Number(payment.value?.refundable_myr ?? 0))
 const canAct = computed(() => payment.value?.type === 'payment' && payment.value?.status === 'succeeded')
@@ -51,6 +60,7 @@ async function fetchPayment() {
   try {
     const res = await apiFetch<{ data: Payment }>(`/api/v1/admin/payments/${route.params.id}`)
     payment.value = res.data
+    fetchReceiptPreview()
   }
   catch {
     error.value = 'Failed to load payment.'
@@ -142,16 +152,8 @@ function fmtMyr(amount: string | number) {
             </template>
           </p>
         </div>
-        <div v-if="canAct" class="flex items-center gap-2 shrink-0">
-          <a v-if="payment.receipt" :href="payment.receipt.pdf_path" target="_blank" rel="noopener"
-            class="btn-pill btn-pill-ghost text-[12px]" style="height: 36px; padding: 0 16px;">
-            <UIcon name="i-lucide-file-text" class="size-4" /> Receipt
-          </a>
-          <button v-else type="button" class="btn-pill btn-pill-ghost text-[12px]" style="height: 36px; padding: 0 16px;"
-            :class="{ 'opacity-50': issuingReceipt }" :disabled="issuingReceipt" @click="issueReceipt">
-            Issue receipt
-          </button>
-          <button v-if="refundable > 0" type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 36px; padding: 0 16px;"
+        <div v-if="canAct && refundable > 0" class="shrink-0">
+          <button type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 36px; padding: 0 18px;"
             @click="refundOpen = !refundOpen">
             Refund
           </button>
@@ -237,6 +239,28 @@ function fmtMyr(amount: string | number) {
               <span style="color: var(--color-text-secondary);">Receipt</span>
               <a :href="payment.receipt.pdf_path" target="_blank" rel="noopener" class="font-mono" :style="{ color: 'var(--color-accent)' }">{{ payment.receipt.number }}</a>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Receipt — preview + issue (succeeded payments only) -->
+      <div v-if="canAct" class="rounded-2xl border p-6 mt-5"
+        :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Receipt</p>
+            <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">{{ payment.receipt ? 'Issued — proof this payment landed.' : 'Preview the receipt, then issue it.' }}</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <AdminDocumentPreviewModal :data="receiptPreviewData" label="Preview" :disabled="!receiptPreviewData" />
+            <a v-if="payment.receipt" :href="payment.receipt.pdf_path" target="_blank" rel="noopener"
+              class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;">
+              <UIcon name="i-lucide-file-text" class="size-4" /> View PDF
+            </a>
+            <button v-else type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;"
+              :class="{ 'opacity-50': issuingReceipt }" :disabled="issuingReceipt" @click="issueReceipt">
+              {{ issuingReceipt ? 'Issuing…' : 'Issue receipt' }}
+            </button>
           </div>
         </div>
       </div>

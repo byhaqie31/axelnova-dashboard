@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Payments\PaymentService;
 use App\Services\Quoting\DocumentIssuer;
+use App\Services\Quoting\DocumentMapper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -112,6 +113,22 @@ class PaymentsController extends Controller
             'message' => 'Refund recorded.',
             'payment' => new PaymentResource($refund),
         ], 201);
+    }
+
+    /** Preview the would-be (or issued) receipt for a payment — powers the live preview. */
+    public function receiptPreview(Payment $payment): JsonResponse
+    {
+        $payment->loadMissing('order.quotation');
+
+        $payload = DocumentMapper::forOrder($payment->order, 'receipt', [
+            'number' => $payment->receipt()->value('receipt_number') ?? 'DRAFT',
+            'issued' => now()->format('d F Y'),
+            'amount' => (float) $payment->amount_myr,
+            'paymentRef' => $payment->reference,
+            'paymentMethod' => $payment->method->value,
+        ]);
+
+        return response()->json($payload);
     }
 
     /** Issue a receipt for a succeeded payment. Idempotent — returns the existing one. */
