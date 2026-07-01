@@ -24,10 +24,10 @@ class AdminUserSeeder extends Seeder
             [
                 'name' => $name,
                 'password' => $password,
-                'role' => 'admin',
+                'role' => 'founder',
             ],
         );
 
-        $this->command->info("Admin user ready: {$user->email}");
+        $this->command->info("Founder user ready: {$user->email}");
     }
 }

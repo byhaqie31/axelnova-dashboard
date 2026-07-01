@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class ServicePackagesController extends Controller
@@ -84,6 +85,8 @@ class ServicePackagesController extends Controller
 
     public function destroy(ServicePackage $servicePackage): JsonResponse
     {
+        Gate::authorize('hard-delete');
+
         DB::transaction(function () use ($servicePackage) {
             $oldCategory = (int) $servicePackage->service_category_id;
             $oldOrder = (int) $servicePackage->sort_order;

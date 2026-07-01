@@ -20,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -232,6 +233,9 @@ class QuotationsController extends Controller
 
     public function accept(Request $request, Quotation $quotation): JsonResponse
     {
+        // Founder-only: converting an accepted quote into an order.
+        Gate::authorize('accept-quote');
+
         if ($quotation->status === 'accepted') {
             return response()->json(['message' => 'Already accepted.', 'order_id' => $quotation->order?->id], 422);
         }

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Admin\ServiceAddonsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
 use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
+use App\Http\Controllers\Api\V1\Admin\UsersController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\InquiryController;
 use App\Http\Controllers\Api\V1\PublicProjectsController;
@@ -80,17 +81,25 @@ Route::middleware($loginThrottle)->group(function () {
     Route::post('/v1/admin/login', [AuthController::class, 'login'])->name('admin.login');
 });
 
-// Admin — Sanctum SPA (stateful via cookie + CSRF) + role:admin
+// Admin cockpit — Sanctum SPA (stateful via cookie + CSRF), cockpit tier only
+// (founder + partner). Workspace roles (marketer/engineer) get 403 here and use
+// /v1/team/* instead (Phase 3b).
 Route::middleware([
     EnsureFrontendRequestsAreStateful::class,
     'auth:sanctum',
-    'role:admin',
+    'role:cockpit',
 ])
     ->prefix('v1/admin')
     ->name('admin.')
     ->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/me', [AuthController::class, 'me'])->name('me');
+
+        // Team provisioning — founder-only (Gate: manage-users, enforced in-controller).
+        Route::get('/users', [UsersController::class, 'index'])->name('users.index');
+        Route::post('/users', [UsersController::class, 'store'])->name('users.store');
+        Route::patch('/users/{user}', [UsersController::class, 'update'])->name('users.update');
+        Route::post('/users/{user}/deactivate', [UsersController::class, 'deactivate'])->name('users.deactivate');
 
         // Customers (clients) — typeahead for the builder + the Customers spine
         Route::get('/clients', [ClientsController::class, 'index'])->name('clients.index');

@@ -20,13 +20,15 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password) || $user->role !== 'admin') {
+        // Only the cockpit tier (founder/partner) signs in here; workspace roles
+        // authenticate against /team (Phase 3b), not the admin SPA.
+        if (!$user || !Hash::check($credentials['password'], $user->password) || !$user->isCockpit()) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials.'],
             ]);
         }
 
-        $token = $user->createToken('admin-spa', ['admin'])->plainTextToken;
+        $token = $user->createToken('admin-spa', ['cockpit'])->plainTextToken;
 
         return response()->json([
             'token' => $token,
@@ -34,6 +36,8 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->role,
+                'tier' => $user->tier(),
             ],
         ]);
     }
@@ -53,6 +57,8 @@ class AuthController extends Controller
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'role' => $user->role,
+            'tier' => $user->tier(),
         ]);
     }
 }

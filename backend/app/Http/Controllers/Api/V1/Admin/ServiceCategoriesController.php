@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class ServiceCategoriesController extends Controller
@@ -65,6 +66,8 @@ class ServiceCategoriesController extends Controller
 
     public function destroy(ServiceCategory $serviceCategory): JsonResponse
     {
+        Gate::authorize('hard-delete');
+
         DB::transaction(function () use ($serviceCategory) {
             $oldOrder = (int) $serviceCategory->sort_order;
             $serviceCategory->delete();

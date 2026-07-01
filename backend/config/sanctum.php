@@ -48,9 +48,12 @@ return [
     | considered expired. This will override any values set in the token's
     | "expires_at" attribute, but first-party sessions are not affected.
     |
+    | Phase 0: bearer tokens minted at login now expire (default 12h) so a
+    | leaked token can't live forever. Tune via SANCTUM_EXPIRATION_MINUTES.
+    |
     */
 
-    'expiration' => null,
+    'expiration' => (int) env('SANCTUM_EXPIRATION_MINUTES', 720),
 
     /*
     |--------------------------------------------------------------------------

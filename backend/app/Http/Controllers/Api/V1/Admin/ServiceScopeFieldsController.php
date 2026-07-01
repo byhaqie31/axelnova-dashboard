@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class ServiceScopeFieldsController extends Controller
 {
@@ -68,6 +69,8 @@ class ServiceScopeFieldsController extends Controller
 
     public function destroy(ServiceScopeField $serviceScopeField): JsonResponse
     {
+        Gate::authorize('hard-delete');
+
         DB::transaction(function () use ($serviceScopeField) {
             $scope = ['service_category_id' => (int) $serviceScopeField->service_category_id];
             $oldOrder = (int) $serviceScopeField->sort_order;

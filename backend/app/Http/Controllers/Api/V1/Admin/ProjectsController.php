@@ -8,6 +8,7 @@ use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class ProjectsController extends Controller
@@ -54,6 +55,8 @@ class ProjectsController extends Controller
 
     public function destroy(Project $project): JsonResponse
     {
+        Gate::authorize('hard-delete');
+
         $project->delete();
 
         return response()->json(['message' => 'Project deleted.']);
