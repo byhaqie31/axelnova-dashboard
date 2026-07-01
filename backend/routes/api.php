@@ -3,7 +3,9 @@
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
 use App\Http\Controllers\Api\V1\Admin\InquiriesController;
+use App\Http\Controllers\Api\V1\Admin\InvoicesController;
 use App\Http\Controllers\Api\V1\Admin\OrdersController;
+use App\Http\Controllers\Api\V1\Admin\PaymentsController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
@@ -101,6 +103,7 @@ Route::middleware([
 
         Route::get('/quotations', [QuotationsController::class, 'index'])->name('quotations.index');
         Route::post('/quotations', [QuotationsController::class, 'store'])->name('quotations.store');
+        Route::post('/quotations/preview', [QuotationsController::class, 'preview'])->name('quotations.preview');
         Route::get('/quotations/{quotation}', [QuotationsController::class, 'show'])->name('quotations.show');
         Route::put('/quotations/{quotation}', [QuotationsController::class, 'update'])->name('quotations.update');
         Route::post('/quotations/{quotation}/status', [QuotationsController::class, 'updateStatus'])->name('quotations.status');
@@ -113,10 +116,23 @@ Route::middleware([
         Route::get('/orders/stats', [OrdersController::class, 'stats'])->name('orders.stats');
         Route::get('/orders/{order}', [OrdersController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status', [OrdersController::class, 'updateStatus'])->name('orders.status');
-        Route::post('/orders/{order}/payment', [OrdersController::class, 'updatePayment'])->name('orders.payment');
         Route::post('/orders/{order}/schedule', [OrdersController::class, 'updateSchedule'])->name('orders.schedule');
         // Issue an invoice/receipt for the order (freezes a document snapshot).
         Route::post('/orders/{order}/documents', [OrdersController::class, 'issueDocument'])->name('orders.documents.issue');
+        // Live preview of the would-be invoice document (no persist).
+        Route::post('/orders/{order}/documents/preview', [OrdersController::class, 'previewDocument'])->name('orders.documents.preview');
+
+        // Invoices — cross-order list + detail (the standalone Invoices module).
+        Route::get('/invoices', [InvoicesController::class, 'index'])->name('invoices.index');
+        Route::get('/invoices/{invoice}', [InvoicesController::class, 'show'])->name('invoices.show');
+
+        // Payments — the money ledger. Record/refund/issue-receipt flow through here.
+        Route::get('/payments', [PaymentsController::class, 'index'])->name('payments.index');
+        Route::get('/payments/{payment}', [PaymentsController::class, 'show'])->name('payments.show');
+        Route::post('/orders/{order}/payments', [PaymentsController::class, 'store'])->name('orders.payments.store');
+        Route::post('/payments/{payment}/refund', [PaymentsController::class, 'refund'])->name('payments.refund');
+        Route::get('/payments/{payment}/receipt/preview', [PaymentsController::class, 'receiptPreview'])->name('payments.receipt.preview');
+        Route::post('/payments/{payment}/receipt', [PaymentsController::class, 'issueReceipt'])->name('payments.receipt');
 
         // Partner referrals
         Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');
@@ -129,6 +145,8 @@ Route::middleware([
         Route::get('/inquiries', [InquiriesController::class, 'index'])->name('inquiries.index');
         Route::get('/inquiries/{inquiry}', [InquiriesController::class, 'show'])->name('inquiries.show');
         Route::post('/inquiries/{inquiry}/status', [InquiriesController::class, 'updateStatus'])->name('inquiries.status');
+        Route::post('/inquiries/{inquiry}/quotation', [InquiriesController::class, 'linkQuotation'])->name('inquiries.quotation.link');
+        Route::delete('/inquiries/{inquiry}/quotation', [InquiriesController::class, 'unlinkQuotation'])->name('inquiries.quotation.unlink');
 
         // CMS — Service categories
         Route::get('/service-categories', [ServiceCategoriesController::class, 'index'])->name('service-categories.index');

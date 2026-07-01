@@ -11,6 +11,8 @@ export const adminNav: AdminNavItem[] = [
   { to: '/admin/inquiries', label: 'Inquiries', icon: 'i-lucide-inbox', matchPrefix: '/admin/inquiries' },
   { to: '/admin/quotations', label: 'Quotations', icon: 'i-lucide-file-text', matchPrefix: '/admin/quotations' },
   { to: '/admin/orders', label: 'Orders', icon: 'i-lucide-package-check', matchPrefix: '/admin/orders' },
+  { to: '/admin/invoices', label: 'Invoices', icon: 'i-lucide-receipt-text', matchPrefix: '/admin/invoices' },
+  { to: '/admin/payments', label: 'Payments', icon: 'i-lucide-wallet', matchPrefix: '/admin/payments' },
   { to: '/admin/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/admin/referrals' },
   { to: '/admin/services', label: 'Services', icon: 'i-lucide-briefcase-business', matchPrefix: '/admin/services' },
   { to: '/admin/projects', label: 'Projects', icon: 'i-lucide-folder-kanban', matchPrefix: '/admin/projects' },

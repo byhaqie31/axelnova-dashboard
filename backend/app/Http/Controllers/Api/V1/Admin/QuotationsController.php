@@ -10,6 +10,7 @@ use App\Models\Client;
 use App\Models\Inquiry;
 use App\Models\Order;
 use App\Models\Quotation;
+use App\Services\Quoting\DocumentMapper;
 use App\Services\Quoting\EstimateResult;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
@@ -24,6 +25,31 @@ use Illuminate\Support\Str;
 
 class QuotationsController extends Controller
 {
+    /**
+     * Live quotation-document preview from the builder's current draft, WITHOUT
+     * persisting. Hydrates a transient Quotation and runs the same DocumentMapper
+     * the PDF uses, so the preview matches the eventual document.
+     */
+    public function preview(Request $request): JsonResponse
+    {
+        $quotation = new Quotation();
+        $quotation->forceFill([
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
+            'phone' => $request->input('phone'),
+            'company' => $request->input('company'),
+            'package_key' => $request->input('package_key'),
+            'reference_code' => 'DRAFT',
+            'document' => $request->input('document', []),
+            'form_payload' => $request->input('form_payload', []),
+            'expires_at' => $request->input('expires_at'),
+        ]);
+        // Avoid a lazy-load on the unsaved model when the standard layout maps items.
+        $quotation->setRelation('addons', collect());
+
+        return response()->json(DocumentMapper::toDocumentData($quotation));
+    }
+
     public function index(Request $request): AnonymousResourceCollection
     {
         // Self-heal overdue sent quotes before listing, so 'expired' is accurate

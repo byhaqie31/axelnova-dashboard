@@ -433,6 +433,34 @@ function formFingerprint(): string {
 }
 const dirty = computed(() => formFingerprint() !== baseline.value)
 
+// ── Live document preview ────────────────────────────────────────────────────
+// Reuses buildPayload() so the preview is the exact data that would be saved,
+// rendered through the real PDF template (no persist).
+const previewData = ref<Record<string, any> | null>(null)
+const previewLoading = ref(false)
+let previewTimer: ReturnType<typeof setTimeout> | undefined
+
+async function fetchPreview() {
+  previewLoading.value = true
+  try {
+    previewData.value = await apiFetch('/api/v1/admin/quotations/preview', { method: 'POST', body: buildPayload() })
+  }
+  catch {
+    // keep last good preview
+  }
+  finally {
+    previewLoading.value = false
+  }
+}
+
+watch(() => formFingerprint(), () => {
+  clearTimeout(previewTimer)
+  previewTimer = setTimeout(fetchPreview, 400)
+})
+
+onMounted(() => nextTick(fetchPreview))
+onBeforeUnmount(() => clearTimeout(previewTimer))
+
 // Persist without UI feedback — shared by the Save button and the send flow
 // so sending doesn't fire two toasts ("saved" then "sent"). `silent` skips the
 // `saved` emit so the send flow doesn't trigger a parent refetch that would race
@@ -747,6 +775,7 @@ async function revert() {
       </div>
 
       <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <AdminDocumentPreviewModal :data="previewData" :disabled="!previewData" block />
         <button v-if="!isEdit" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="saving" @click="save">
           {{ saving ? 'Saving…' : 'Save draft' }}
         </button>

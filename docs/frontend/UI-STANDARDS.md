@@ -546,12 +546,24 @@ The desktop table still gets `<div class="overflow-x-auto">` inside the outer ro
 
 **Action buttons in detail pages** (status pickers, etc.) must already use the pill-button group (12.6), which wraps via `flex flex-wrap`.
 
+**Button icon spacing.** `.btn-pill` carries a built-in `gap` (≈8px) so a `<UIcon>` never sits flush against the label — write `<UIcon … /> Label` and the gap is handled. Don't add manual spacer spans / `&nbsp;`; only add a `gap-*` utility on the button when a specific tighter/looser gap is wanted (it overrides the base).
+
 **Search bars** in admin index pages must use [`<AdminExpandingSearch v-model=… placeholder=… />`](frontend/app/components/admin/ExpandingSearch.vue), not a raw `<input type="search">`. Default state is an icon-only round button (~36px); clicking it slides the input open and auto-focuses it. Blurring an empty input collapses back to the icon. Pre-filling `v-model` from a query string opens the input on mount automatically. Reasons:
 - At mobile widths the full-width search input dominates the filter bar; the icon recovers that space.
 - Most admin queries are quick "open the page → maybe search" — the icon expresses that intent better than a permanently-open field.
 - Escape clears + collapses (`@keydown.escape="clearAndCollapse"` is built-in).
 
 **Audit before merging.** Open the page at 375px (Chrome DevTools mobile preset). Look for: horizontal scroll on the body, action buttons overlapping titles, modals/popovers running off-screen, sticky panels covering content. Fix before merging.
+
+### 12.11 List filter row (standard)
+
+Every admin index page uses the **same filter row** so they read identically — `flex flex-wrap items-center gap-3` containing, in order:
+
+1. [`<AdminExpandingSearch>`](frontend/app/components/admin/ExpandingSearch.vue) — left.
+2. [`<AdminFilterMenu>`](frontend/app/components/admin/FilterMenu.vue) — a funnel button beside the search that opens a popover holding the page's **secondary** filters (type / method / gateway …), each an [`<AdminFilterPills>`](frontend/app/components/admin/FilterPills.vue) group (§12.6). Pass `:active-count` (count of non-empty secondary filters) for the badge + accent state and `@clear` to reset them. Omit it entirely when a page has no secondary filters (e.g. Orders).
+3. [`<AdminStatusFilter>`](frontend/app/components/admin/StatusFilter.vue) — **right**, via `class="ml-auto"`, carrying `:total` (record count) + the primary Status filter.
+
+`Total | Status` always lives on the right and nothing else does; everything page-specific collapses into the funnel, keeping the row uncluttered at every width.
 
 ---
 

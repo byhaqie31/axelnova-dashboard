@@ -79,6 +79,16 @@ class OrderResource extends JsonResource
                 'issued_at' => $r->issued_at?->toISOString(),
                 'pdf_path' => $r->pdf_path,
             ])),
+            'payments' => $this->whenLoaded('payments', fn () => $this->payments->map(fn ($p) => [
+                'id' => $p->id,
+                'payment_number' => $p->payment_number,
+                'type' => $p->type->value,
+                'method' => $p->method->value,
+                'status' => $p->status->value,
+                'amount_myr' => $p->amount_myr,
+                'reference' => $p->reference,
+                'paid_at' => $p->paid_at?->toISOString(),
+            ])),
         ];
     }
 }

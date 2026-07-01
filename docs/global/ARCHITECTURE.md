@@ -52,6 +52,14 @@ axelnova-dashboard/
 | `page_views` | Append-only public page-view log (hashed IP, path, referrer, UA). Bots dropped on write |
 | `entity_likes` | Anonymous likes per entity (`project` / `service_package`), deduped per browser by `cookie_id` (hashed IP recorded for abuse/analytics) |
 
+### Payments ledger (see [PAYMENTS-LEDGER.md](./PAYMENTS-LEDGER.md))
+
+| Table | Purpose |
+|-------|---------|
+| `payments` | The money ledger — one signed row per movement (refunds are negative rows). Single source of truth; order/invoice paid caches derive from it via `PaymentObserver` |
+| `gateway_events` | Raw inbound webhook log + idempotency gate for the Billplz/Stripe phases (empty until then) |
+| `receipts.payment_id` | Receipts now anchor to the payment that produced them (1 payment : 1 receipt) |
+
 ## API routes
 
 All routes prefixed with `/api`:

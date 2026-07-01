@@ -18,6 +18,7 @@ class Receipt extends Model
     protected $fillable = [
         'order_id',
         'invoice_id',
+        'payment_id',
         'receipt_number',
         'public_token',
         'payload',
@@ -48,6 +49,12 @@ class Receipt extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /** The payment that produced this receipt (1 payment : 1 receipt). */
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
     }
 
     public function getPdfPathAttribute(): string

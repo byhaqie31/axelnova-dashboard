@@ -60,4 +60,37 @@ class InquiriesController extends Controller
 
         return response()->json(['message' => 'Status updated.', 'status' => $inquiry->status]);
     }
+
+    /**
+     * Link this inquiry to an already-existing quotation (as opposed to
+     * building a new one via QuotationsController@store). Mirrors the build
+     * flow's side effect: the inquiry is marked 'quoted'.
+     */
+    public function linkQuotation(Request $request, Inquiry $inquiry): InquiryResource
+    {
+        $data = $request->validate([
+            'quotation_id' => ['required', 'integer', 'exists:quotations,id'],
+        ]);
+
+        $inquiry->update([
+            'quotation_id' => $data['quotation_id'],
+            'status' => 'quoted',
+        ]);
+
+        return new InquiryResource($inquiry->load('quotation'));
+    }
+
+    /**
+     * Detach the linked quotation. Reverts the inquiry to 'reviewing' (an
+     * in-progress state) rather than 'new' — it has already been looked at.
+     */
+    public function unlinkQuotation(Inquiry $inquiry): InquiryResource
+    {
+        $inquiry->update([
+            'quotation_id' => null,
+            'status' => 'reviewing',
+        ]);
+
+        return new InquiryResource($inquiry->load('quotation'));
+    }
 }

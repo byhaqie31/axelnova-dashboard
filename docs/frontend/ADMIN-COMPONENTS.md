@@ -52,3 +52,15 @@ follow the standard list+detail pattern (UI-STANDARDS §12): `AdminExpandingSear
 action sidebar. New status-pill tokens were added in `main.css` + `AdminStatusPill.vue`:
 `qualified`, `converted` (referrals); `reviewing`, `quoted`, `archived` (inquiries);
 `draft`, `sent`, `declined`, `expired` (quotation lifecycle).
+
+**Inquiry → quotation (build _or_ link).** On `inquiries/[id].vue`, an unquoted
+inquiry offers two paths: **Build new quotation** (the builder, prefilled — see
+`QuotationBuilder` `inquiryId` above) or **Link existing quotation** via
+`AdminLinkQuotationModal` (`components/admin/LinkQuotationModal.vue`) — a searchable
+picker over `GET /v1/admin/quotations` (`include_accepted=1`, so any quote is
+linkable). Linking `POST`s `/v1/admin/inquiries/{inquiry}/quotation` (sets
+`quotation_id`, status → `quoted`); the sidebar then shows the linked quote plus an
+**Unlink** action → `DELETE /v1/admin/inquiries/{inquiry}/quotation` (clears the link,
+status → `reviewing`). Building still links on save via `QuotationsController@store`.
+The `inquiries.quotation_id` FK is one-to-many by design (a quote can cover related
+inquiries) — no uniqueness guard.
