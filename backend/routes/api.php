@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\ActivityController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
 use App\Http\Controllers\Api\V1\Admin\InquiriesController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
 use App\Http\Controllers\Api\V1\Admin\UsersController;
 use App\Http\Controllers\Api\V1\DocumentController;
+use App\Http\Middleware\LogAdminActivity;
 use App\Http\Controllers\Api\V1\InquiryController;
 use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
@@ -88,6 +90,7 @@ Route::middleware([
     EnsureFrontendRequestsAreStateful::class,
     'auth:sanctum',
     'role:cockpit',
+    LogAdminActivity::class,
 ])
     ->prefix('v1/admin')
     ->name('admin.')
@@ -107,8 +110,12 @@ Route::middleware([
         Route::get('/clients/{client}', [ClientsController::class, 'show'])->name('clients.show');
         Route::put('/clients/{client}', [ClientsController::class, 'update'])->name('clients.update');
 
-        // Analytics overview (traffic / engagement)
+        // Analytics overview (traffic / engagement) + revenue attribution
         Route::get('/analytics/overview', [AnalyticsController::class, 'overview'])->name('analytics.overview');
+        Route::get('/analytics/attribution', [AnalyticsController::class, 'attribution'])->name('analytics.attribution');
+
+        // Activity feed — the audit trail (founder + partner, per the cockpit group)
+        Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
 
         Route::get('/quotations', [QuotationsController::class, 'index'])->name('quotations.index');
         Route::post('/quotations', [QuotationsController::class, 'store'])->name('quotations.store');

@@ -35,6 +35,8 @@ interface Order {
   due_at: string | null
   notes: string | null
   created_at: string
+  updated_at: string | null
+  updated_by: { id: number, name: string } | null
   estimate_min_myr?: string
   estimate_max_myr?: string
   quotation_document?: Record<string, any> | null
@@ -165,7 +167,7 @@ async function saveDue() {
   }
 }
 
-const paymentMeta: Record<string, { label: string; color: string; bg: string }> = {
+const paymentMeta: Record<Order['payment_status'], { label: string; color: string; bg: string }> = {
   unpaid: { label: 'Unpaid', color: 'var(--color-warning)', bg: 'var(--color-bg-secondary)' },
   deposit_paid: { label: 'Deposit paid', color: 'var(--color-accent)', bg: 'var(--color-accent-soft)' },
   paid: { label: 'Paid in full', color: 'var(--color-success)', bg: 'var(--color-success-soft)' },
@@ -299,7 +301,7 @@ const lineItems = computed(() => {
             <span v-if="packageLabel" class="font-medium" style="color: var(--color-text);">{{ packageLabel }}</span>
             <code v-if="order.package_key" class="font-mono text-[12px]" style="color: var(--color-text-tertiary);">{{ order.package_key }}</code>
             <span v-if="order.estimate_eta_value && order.estimate_eta_unit">· {{ formatEta(order.estimate_eta_value, order.estimate_eta_unit) }}</span>
-            <span v-if="order.estimate_min_myr">· Est. {{ fmtMyr(order.estimate_min_myr) }} – {{ fmtMyr(order.estimate_max_myr) }}</span>
+            <span v-if="order.estimate_min_myr && order.estimate_max_myr">· Est. {{ fmtMyr(order.estimate_min_myr) }} – {{ fmtMyr(order.estimate_max_myr) }}</span>
           </div>
 
           <div v-if="lineItems.length" class="mt-5 pt-4 border-t" style="border-color: var(--color-border);">
@@ -328,6 +330,7 @@ const lineItems = computed(() => {
             Source quotation
             <NuxtLink :to="`/admin/quotations/${order.quotation_id}`" class="underline ml-1" :style="{ color: 'var(--color-accent)' }">{{ order.reference_code ?? `#${order.quotation_id}` }}</NuxtLink>
             <span v-if="order.submitted_at"> · submitted {{ fmtDate(order.submitted_at) }}</span>
+            <span v-if="order.updated_by"> · last updated by {{ order.updated_by.name }}</span>
           </p>
         </div>
 

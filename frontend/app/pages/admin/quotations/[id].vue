@@ -27,6 +27,8 @@ interface Quotation {
   viewed_at: string | null
   sent_at: string | null
   expires_at: string | null
+  updated_at: string | null
+  updated_by: { id: number, name: string } | null
   public_token: string | null
   form_payload: Record<string, any> | null
   document: Record<string, any> | null
@@ -220,6 +222,12 @@ async function saveExpiry() {
               <div>
                 <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Sent</p>
                 <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(quotation.sent_at) }}</p>
+              </div>
+              <div v-if="quotation.updated_by">
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Last updated by</p>
+                <p class="text-[13px]" style="color: var(--color-text);">
+                  {{ quotation.updated_by.name }}<span v-if="quotation.updated_at" style="color: var(--color-text-tertiary);"> · {{ fmtDate(quotation.updated_at) }}</span>
+                </p>
               </div>
               <div v-if="quotation.expires_at || canEditExpiry">
                 <p class="text-[11px] font-medium uppercase tracking-wider mb-1 flex items-center gap-1.5" style="color: var(--color-text-tertiary);">

@@ -102,7 +102,7 @@ class QuotationsController extends Controller
             $quotation->update(['status' => 'expired']);
         }
 
-        $quotation->load('addons', 'order');
+        $quotation->load('addons', 'order', 'updatedBy');
 
         return new QuotationResource($quotation);
     }
@@ -138,6 +138,8 @@ class QuotationsController extends Controller
             return $quotation;
         });
 
+        $quotation->logActivity('quotation.created', ['reference_code' => $quotation->reference_code]);
+
         return new QuotationResource($quotation->load('addons', 'order'));
     }
 
@@ -158,6 +160,8 @@ class QuotationsController extends Controller
             $quotation->update($this->pricedAttributes($client, $input, $engine, $estimate, $data));
             $this->syncAddons($quotation, $input->addonKeys, $engine);
         });
+
+        $quotation->logActivity('quotation.updated');
 
         return new QuotationResource($quotation->load('addons', 'order'));
     }
@@ -187,6 +191,8 @@ class QuotationsController extends Controller
             ->where('status', '!=', 'quoted')
             ->update(['status' => 'quoted']);
 
+        $quotation->logActivity('quotation.sent', ['emailed' => $request->boolean('email', true)]);
+
         return response()->json([
             'message' => 'Quotation sent to the client.',
             'data' => new QuotationResource($quotation->load('addons', 'order')),
@@ -199,7 +205,9 @@ class QuotationsController extends Controller
             'status' => ['required', 'in:draft,sent,accepted,rejected,expired'],
         ]);
 
+        $from = $quotation->status;
         $quotation->update(['status' => $request->status]);
+        $quotation->logActivity('quotation.status', ['from' => $from, 'to' => $quotation->status]);
 
         return response()->json(['message' => 'Status updated.', 'status' => $quotation->status]);
     }
@@ -260,6 +268,9 @@ class QuotationsController extends Controller
                 'status' => 'pending',
             ]);
         });
+
+        $quotation->logActivity('quotation.accepted', ['order_number' => $order->order_number]);
+        $order->logActivity('order.created', ['from_quotation' => $quotation->reference_code]);
 
         return response()->json([
             'message' => 'Quotation accepted. Order created.',

@@ -56,7 +56,9 @@ class InquiriesController extends Controller
             'status' => ['required', 'in:new,reviewing,quoted,archived'],
         ]);
 
+        $from = $inquiry->status;
         $inquiry->update(['status' => $request->status]);
+        $inquiry->logActivity('inquiry.status', ['from' => $from, 'to' => $inquiry->status]);
 
         return response()->json(['message' => 'Status updated.', 'status' => $inquiry->status]);
     }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\ServiceCategoryObserver;
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[ObservedBy([ServiceCategoryObserver::class])]
 class ServiceCategory extends Model
 {
+    use RecordsActivity;
+
     protected $fillable = ['slug', 'name', 'icon', 'description', 'sort_order', 'active', 'is_default'];
 
     protected function casts(): array

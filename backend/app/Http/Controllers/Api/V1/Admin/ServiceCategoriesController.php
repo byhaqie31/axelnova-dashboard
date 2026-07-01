@@ -44,6 +44,8 @@ class ServiceCategoriesController extends Controller
             return $category;
         });
 
+        $category->logActivity('service_category.created', ['name' => $category->name]);
+
         return new ServiceCategoryResource($category);
     }
 
@@ -61,6 +63,8 @@ class ServiceCategoriesController extends Controller
             }
         });
 
+        $serviceCategory->logActivity('service_category.updated', ['name' => $serviceCategory->name]);
+
         return new ServiceCategoryResource($serviceCategory);
     }
 
@@ -69,6 +73,7 @@ class ServiceCategoriesController extends Controller
         Gate::authorize('hard-delete');
 
         DB::transaction(function () use ($serviceCategory) {
+            $serviceCategory->logActivity('service_category.deleted', ['name' => $serviceCategory->name]);
             $oldOrder = (int) $serviceCategory->sort_order;
             $serviceCategory->delete();
             SortOrder::removeFromScope(ServiceCategory::class, [], $oldOrder);

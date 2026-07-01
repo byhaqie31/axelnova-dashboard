@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\EntityLike;
+use App\Models\Inquiry;
+use App\Models\Order;
 use App\Models\PageView;
+use App\Models\Payment;
 use App\Models\Project;
+use App\Models\Referral;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -67,6 +72,90 @@ class AnalyticsController extends Controller
             'topPaths' => $topPaths,
             'topReferrers' => $topReferrers,
             'topLikedProjects' => $this->topLikedProjects(),
+        ]);
+    }
+
+    /**
+     * Attribution — where collected revenue comes from. Traces succeeded payments
+     * up the chain (payment → order → quotation → originating inquiry) and reports
+     * contracted vs collected by inquiry source, plus a referrer roll-up from the
+     * current referrals table. Commission stays derived, never stored. (Phase 2
+     * normalises referrers into referral_partners; this reads the flat table until
+     * then.)
+     */
+    public function attribution(Request $request): JsonResponse
+    {
+        // Collected = signed SUM over succeeded rows (refunds are negative, so they
+        // net out), grouped per order.
+        $collectedByOrder = Payment::query()
+            ->where('status', PaymentStatus::Succeeded)
+            ->groupBy('order_id')
+            ->selectRaw('order_id, SUM(amount_myr) as collected')
+            ->pluck('collected', 'order_id');
+
+        $orders = Order::query()->get(['id', 'quotation_id', 'final_amount_myr']);
+
+        // quotation_id → originating inquiry source (web / referral / other).
+        $sourceByQuotation = Inquiry::query()
+            ->whereNotNull('quotation_id')
+            ->pluck('source', 'quotation_id');
+
+        $bySource = [];
+        $totalContracted = 0.0;
+        $totalCollected = 0.0;
+
+        foreach ($orders as $order) {
+            // No originating inquiry → a directly-built or public quote.
+            $source = $sourceByQuotation[$order->quotation_id] ?? 'direct';
+            $contracted = (float) $order->final_amount_myr;
+            $collected = (float) ($collectedByOrder[$order->id] ?? 0);
+
+            $totalContracted += $contracted;
+            $totalCollected += $collected;
+
+            $bySource[$source] ??= ['source' => $source, 'orders' => 0, 'contracted' => 0.0, 'collected' => 0.0];
+            $bySource[$source]['orders']++;
+            $bySource[$source]['contracted'] += $contracted;
+            $bySource[$source]['collected'] += $collected;
+        }
+
+        $orderContracted = $orders->pluck('final_amount_myr', 'id');
+
+        $byReferrer = Referral::query()
+            ->whereNotNull('linked_order_id')
+            ->get(['referrer_name', 'referrer_email', 'commission_tier_pct', 'linked_order_id'])
+            ->groupBy('referrer_email')
+            ->map(function ($rows) use ($collectedByOrder, $orderContracted) {
+                $first = $rows->first();
+                $pct = (int) $first->commission_tier_pct;
+                $contracted = 0.0;
+                $collected = 0.0;
+                foreach ($rows as $row) {
+                    $contracted += (float) ($orderContracted[$row->linked_order_id] ?? 0);
+                    $collected += (float) ($collectedByOrder[$row->linked_order_id] ?? 0);
+                }
+
+                return [
+                    'referrer' => $first->referrer_name,
+                    'email' => $first->referrer_email,
+                    'referrals' => $rows->count(),
+                    'commission_pct' => $pct,
+                    'contracted' => round($contracted, 2),
+                    'collected' => round($collected, 2),
+                    // Derived, never stored — payout stays manual (plan §3).
+                    'commission_est' => round($collected * $pct / 100, 2),
+                ];
+            })
+            ->sortByDesc('collected')
+            ->values();
+
+        return response()->json([
+            'totals' => [
+                'contracted' => round($totalContracted, 2),
+                'collected' => round($totalCollected, 2),
+            ],
+            'bySource' => collect($bySource)->sortByDesc('collected')->values(),
+            'byReferrer' => $byReferrer,
         ]);
     }
 

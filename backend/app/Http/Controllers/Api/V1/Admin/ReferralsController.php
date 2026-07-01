@@ -47,7 +47,9 @@ class ReferralsController extends Controller
             'status' => ['required', 'in:new,contacted,qualified,converted,rejected'],
         ]);
 
+        $from = $referral->status;
         $referral->update(['status' => $request->status]);
+        $referral->logActivity('referral.status', ['from' => $from, 'to' => $referral->status]);
 
         return response()->json(['message' => 'Status updated.', 'status' => $referral->status]);
     }
@@ -62,6 +64,7 @@ class ReferralsController extends Controller
             'linked_order_id' => $request->integer('order_id'),
             'status' => 'converted',
         ]);
+        $referral->logActivity('referral.linked_order', ['order_id' => $referral->linked_order_id]);
 
         $referral->load('order');
 

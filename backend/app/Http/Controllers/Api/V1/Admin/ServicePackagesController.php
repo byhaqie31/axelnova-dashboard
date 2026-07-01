@@ -46,6 +46,8 @@ class ServicePackagesController extends Controller
             return ServicePackage::create($data);
         });
 
+        $package->logActivity('service_package.created', ['name' => $package->name]);
+
         return new ServicePackageResource($package);
     }
 
@@ -80,6 +82,8 @@ class ServicePackagesController extends Controller
             $servicePackage->update($data);
         });
 
+        $servicePackage->logActivity('service_package.updated', ['name' => $servicePackage->name]);
+
         return new ServicePackageResource($servicePackage);
     }
 
@@ -88,6 +92,7 @@ class ServicePackagesController extends Controller
         Gate::authorize('hard-delete');
 
         DB::transaction(function () use ($servicePackage) {
+            $servicePackage->logActivity('service_package.deleted', ['name' => $servicePackage->name]);
             $oldCategory = (int) $servicePackage->service_category_id;
             $oldOrder = (int) $servicePackage->sort_order;
             $servicePackage->delete();

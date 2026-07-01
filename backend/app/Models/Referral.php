@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Referral extends Model
 {
-    use SoftDeletes;
+    use RecordsActivity, SoftDeletes;
 
     /**
      * Relationship tier → commission band (percent of final project value).

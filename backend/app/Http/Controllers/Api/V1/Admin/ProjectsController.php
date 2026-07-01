@@ -41,7 +41,10 @@ class ProjectsController extends Controller
     {
         $data = $request->validate($this->rules());
 
-        return new ProjectResource(Project::create($data));
+        $project = Project::create($data);
+        $project->logActivity('project.created', ['name' => $project->name]);
+
+        return new ProjectResource($project);
     }
 
     public function update(Request $request, Project $project): ProjectResource
@@ -49,6 +52,7 @@ class ProjectsController extends Controller
         $data = $request->validate($this->rules($project->id));
 
         $project->update($data);
+        $project->logActivity('project.updated', ['name' => $project->name]);
 
         return new ProjectResource($project);
     }
@@ -57,6 +61,7 @@ class ProjectsController extends Controller
     {
         Gate::authorize('hard-delete');
 
+        $project->logActivity('project.deleted', ['name' => $project->name]);
         $project->delete();
 
         return response()->json(['message' => 'Project deleted.']);

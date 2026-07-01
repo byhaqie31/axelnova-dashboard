@@ -54,6 +54,11 @@ class OrderResource extends JsonResource
             'due_at' => $this->due_at?->toDateString(),
             'notes' => $this->notes,
             'created_at' => $this->created_at?->toISOString(),
+            'updated_at' => $this->updated_at?->toISOString(),
+            'updated_by' => $this->whenLoaded('updatedBy', fn () => $this->updatedBy ? [
+                'id' => $this->updatedBy->id,
+                'name' => $this->updatedBy->name,
+            ] : null),
             'invoices' => $this->whenLoaded('invoices', fn () => $this->invoices->map(fn ($d) => [
                 'id' => $d->id,
                 'type' => $d->type,

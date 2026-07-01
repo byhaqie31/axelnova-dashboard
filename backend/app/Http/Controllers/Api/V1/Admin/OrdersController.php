@@ -40,7 +40,7 @@ class OrdersController extends Controller
 
     public function show(Order $order): OrderResource
     {
-        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments']);
+        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments', 'updatedBy']);
 
         return new OrderResource($order);
     }
@@ -74,6 +74,7 @@ class OrdersController extends Controller
         ]);
 
         $order->update(['due_at' => $data['due_at'] ?? null]);
+        $order->logActivity('order.schedule', ['due_at' => $order->due_at?->toDateString()]);
         $order->load(['client', 'quotation']);
 
         return response()->json([
@@ -116,6 +117,10 @@ class OrdersController extends Controller
         $order->loadMissing('quotation');
 
         $document = DocumentIssuer::issueInvoice($order, $data);
+        $document->logActivity('invoice.issued', [
+            'invoice_number' => $document->invoice_number,
+            'order_number' => $order->order_number,
+        ]);
 
         $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments']);
 
@@ -175,7 +180,9 @@ class OrdersController extends Controller
             $updates['completed_at'] = now();
         }
 
+        $from = $order->status;
         $order->update($updates);
+        $order->logActivity('order.status', ['from' => $from, 'to' => $order->status]);
         $order->load(['client', 'quotation']);
 
         return response()->json([
