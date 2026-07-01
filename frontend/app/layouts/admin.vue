@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
-import { adminNav, isAdminNavActive } from '~/data/adminNav'
+import { visibleAdminNav, isAdminNavActive, type NavGroup, type Role } from '~/data/adminNav'
 
 useSeoMeta({ robots: 'noindex, nofollow' })
 
@@ -11,11 +11,32 @@ const profileOpen = ref(false)
 // SSR and the rail doesn't flash from expanded → collapsed on reload.
 const sidebarCollapsed = useCookie<boolean>('axn_admin_sidebar_collapsed', { default: () => false })
 
+// Per-group open/closed state, cookie-backed (SSR-resolved, no open/closed flash
+// on reload). A group is open unless it holds an explicit `false`; the group that
+// owns the active route is always forced open regardless of the stored value.
+const navGroupsOpen = useCookie<Record<string, boolean>>('axn_admin_nav_groups', { default: () => ({}) })
+
 const route = useRoute()
 const { logout, apiFetch } = useAdminAuth()
 
-interface Me { id: number, name: string, email: string }
+interface Me { id: number, name: string, email: string, role?: Role }
 const me = ref<Me | null>(null)
+
+// Role stays undefined until Phase 0 adds it to `/admin/me`; visibleAdminNav is
+// permissive meanwhile, so all six groups render for the current founder.
+const navGroups = computed<NavGroup[]>(() => visibleAdminNav(me.value?.role))
+
+function groupHasActive(group: NavGroup): boolean {
+  return group.items.some(item => isAdminNavActive(item, route.path))
+}
+function isGroupOpen(group: NavGroup): boolean {
+  return groupHasActive(group) || navGroupsOpen.value[group.label] !== false
+}
+function toggleGroup(group: NavGroup): void {
+  // The active item's group stays expanded — don't let it be collapsed shut.
+  if (groupHasActive(group)) return
+  navGroupsOpen.value = { ...navGroupsOpen.value, [group.label]: !isGroupOpen(group) }
+}
 
 async function fetchMe() {
   try {
@@ -150,18 +171,55 @@ useHead({ title: 'Admin Portal' })
         }"
       >
         <nav class="p-3 flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden">
-          <NuxtLink
-            v-for="item in adminNav"
-            :key="item.to"
-            :to="item.to"
-            class="admin-nav-item"
-            :style="sidebarCollapsed ? { justifyContent: 'center', paddingLeft: 0, paddingRight: 0, width: '100%' } : undefined"
-            :data-active="isAdminNavActive(item, route.path)"
-            :title="sidebarCollapsed ? item.label : undefined"
-          >
-            <UIcon :name="item.icon" class="size-4.5 shrink-0" />
-            <span v-if="!sidebarCollapsed">{{ item.label }}</span>
-          </NuxtLink>
+          <!-- Collapsed rail: no room for labels, so flatten groups to icons with
+               a hairline between them. Full list stays reachable. -->
+          <template v-if="sidebarCollapsed">
+            <template v-for="(group, gi) in navGroups" :key="group.label">
+              <hr v-if="gi > 0" class="my-1 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
+              <NuxtLink
+                v-for="item in group.items"
+                :key="item.to"
+                :to="item.to"
+                class="admin-nav-item"
+                :style="{ justifyContent: 'center', paddingLeft: 0, paddingRight: 0, width: '100%' }"
+                :data-active="isAdminNavActive(item, route.path)"
+                :title="item.label"
+              >
+                <UIcon :name="item.icon" class="size-4.5 shrink-0" />
+              </NuxtLink>
+            </template>
+          </template>
+
+          <!-- Expanded: muted section label (also the collapse toggle) + items. -->
+          <template v-else>
+            <div v-for="group in navGroups" :key="group.label" class="flex flex-col gap-1">
+              <button
+                type="button"
+                class="admin-nav-group-label"
+                :aria-expanded="isGroupOpen(group)"
+                @click="toggleGroup(group)"
+              >
+                <span>{{ group.label }}</span>
+                <UIcon
+                  name="i-lucide-chevron-down"
+                  class="size-3.5 shrink-0 transition-transform"
+                  :style="{ transform: isGroupOpen(group) ? 'rotate(0deg)' : 'rotate(-90deg)' }"
+                />
+              </button>
+              <div v-show="isGroupOpen(group)" class="flex flex-col gap-1">
+                <NuxtLink
+                  v-for="item in group.items"
+                  :key="item.to"
+                  :to="item.to"
+                  class="admin-nav-item"
+                  :data-active="isAdminNavActive(item, route.path)"
+                >
+                  <UIcon :name="item.icon" class="size-4.5 shrink-0" />
+                  <span>{{ item.label }}</span>
+                </NuxtLink>
+              </div>
+            </div>
+          </template>
         </nav>
       </aside>
 
@@ -185,16 +243,33 @@ useHead({ title: 'Admin Portal' })
           }"
         >
           <nav class="p-3 flex flex-col gap-1.5 h-full overflow-y-auto">
-            <NuxtLink
-              v-for="item in adminNav"
-              :key="item.to"
-              :to="item.to"
-              class="admin-nav-item"
-              :data-active="isAdminNavActive(item, route.path)"
-            >
-              <UIcon :name="item.icon" class="size-4.5 shrink-0" />
-              <span>{{ item.label }}</span>
-            </NuxtLink>
+            <div v-for="group in navGroups" :key="group.label" class="flex flex-col gap-1">
+              <button
+                type="button"
+                class="admin-nav-group-label"
+                :aria-expanded="isGroupOpen(group)"
+                @click="toggleGroup(group)"
+              >
+                <span>{{ group.label }}</span>
+                <UIcon
+                  name="i-lucide-chevron-down"
+                  class="size-3.5 shrink-0 transition-transform"
+                  :style="{ transform: isGroupOpen(group) ? 'rotate(0deg)' : 'rotate(-90deg)' }"
+                />
+              </button>
+              <div v-show="isGroupOpen(group)" class="flex flex-col gap-1">
+                <NuxtLink
+                  v-for="item in group.items"
+                  :key="item.to"
+                  :to="item.to"
+                  class="admin-nav-item"
+                  :data-active="isAdminNavActive(item, route.path)"
+                >
+                  <UIcon :name="item.icon" class="size-4.5 shrink-0" />
+                  <span>{{ item.label }}</span>
+                </NuxtLink>
+              </div>
+            </div>
             <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
             <button
               class="admin-nav-item"
