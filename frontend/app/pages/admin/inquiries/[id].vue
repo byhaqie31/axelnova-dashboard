@@ -26,6 +26,7 @@ const inquiry = ref<Inquiry | null>(null)
 const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
+const unlinking = ref(false)
 
 useHead(() => ({
   title: inquiry.value ? `${inquiry.value.name} — Inquiry` : 'Inquiry — Admin',
@@ -62,6 +63,22 @@ async function updateStatus(status: string) {
   }
   finally {
     statusLoading.value = false
+  }
+}
+
+async function unlinkQuotation() {
+  if (!inquiry.value) return
+  unlinking.value = true
+  try {
+    await apiFetch(`/api/v1/admin/inquiries/${inquiry.value.id}/quotation`, { method: 'DELETE' })
+    toast.success('Quotation unlinked', 'This inquiry is no longer linked to a quotation.')
+    await fetchInquiry()
+  }
+  catch {
+    toast.error('Couldn’t unlink quotation', 'Something went wrong. Please try again.')
+  }
+  finally {
+    unlinking.value = false
   }
 }
 
@@ -150,26 +167,40 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
       <!-- Sidebar -->
       <div class="lg:sticky lg:top-20 space-y-4">
 
-        <!-- Build quotation / linked quotation -->
+        <!-- Quotation: linked, or a choice of build-new / link-existing -->
         <div class="rounded-2xl border p-5 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Quotation</p>
 
-          <div v-if="inquiry.quotation_id" class="rounded-xl border px-4 py-3"
-            :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
-            <p class="text-[11px]" style="color: var(--color-text-tertiary);">Built quotation</p>
-            <NuxtLink :to="`/admin/quotations/${inquiry.quotation_id}`" class="text-[13px] font-mono font-medium" style="color: var(--color-accent);">
-              {{ inquiry.quotation_reference ?? `#${inquiry.quotation_id}` }}
-            </NuxtLink>
-          </div>
+          <!-- Linked -->
+          <template v-if="inquiry.quotation_id">
+            <div class="rounded-xl border px-4 py-3"
+              :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
+              <p class="text-[11px]" style="color: var(--color-text-tertiary);">Linked quotation</p>
+              <NuxtLink :to="`/admin/quotations/${inquiry.quotation_id}`" class="text-[13px] font-mono font-medium" style="color: var(--color-accent);">
+                {{ inquiry.quotation_reference ?? `#${inquiry.quotation_id}` }}
+              </NuxtLink>
+            </div>
+            <button type="button"
+              class="btn-pill btn-pill-ghost w-full justify-center text-[13px]"
+              :class="{ 'opacity-50': unlinking }"
+              :disabled="unlinking"
+              @click="unlinkQuotation">
+              {{ unlinking ? 'Unlinking…' : 'Unlink' }}
+            </button>
+          </template>
 
-          <NuxtLink v-else :to="`/admin/quotations/new?inquiry=${inquiry.id}`"
-            class="btn-pill btn-pill-accent w-full justify-center text-[13px]">
-            Build quotation →
-          </NuxtLink>
-          <p v-if="!inquiry.quotation_id" class="text-[11px]" style="color: var(--color-text-tertiary);">
-            Opens the builder pre-filled with this client's details.
-          </p>
+          <!-- Not linked: build a new one, or link one that already exists -->
+          <template v-else>
+            <NuxtLink :to="`/admin/quotations/new?inquiry=${inquiry.id}`"
+              class="btn-pill btn-pill-accent w-full justify-center text-[13px]">
+              Build new quotation →
+            </NuxtLink>
+            <AdminLinkQuotationModal :inquiry-id="inquiry.id" @linked="fetchInquiry" />
+            <p class="text-[11px]" style="color: var(--color-text-tertiary);">
+              Build a fresh quote pre-filled with this client's details, or link one that already exists.
+            </p>
+          </template>
         </div>
 
         <!-- Status -->
@@ -188,7 +219,7 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
             </button>
           </div>
           <p v-if="inquiry.status === 'quoted'" class="text-[11px] mt-3" style="color: var(--color-text-tertiary);">
-            Quoted — a quotation has been built from this inquiry.
+            Quoted — a quotation is linked to this inquiry.
           </p>
         </div>
 

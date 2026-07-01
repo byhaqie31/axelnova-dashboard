@@ -145,6 +145,8 @@ Route::middleware([
         Route::get('/inquiries', [InquiriesController::class, 'index'])->name('inquiries.index');
         Route::get('/inquiries/{inquiry}', [InquiriesController::class, 'show'])->name('inquiries.show');
         Route::post('/inquiries/{inquiry}/status', [InquiriesController::class, 'updateStatus'])->name('inquiries.status');
+        Route::post('/inquiries/{inquiry}/quotation', [InquiriesController::class, 'linkQuotation'])->name('inquiries.quotation.link');
+        Route::delete('/inquiries/{inquiry}/quotation', [InquiriesController::class, 'unlinkQuotation'])->name('inquiries.quotation.unlink');
 
         // CMS — Service categories
         Route::get('/service-categories', [ServiceCategoriesController::class, 'index'])->name('service-categories.index');
