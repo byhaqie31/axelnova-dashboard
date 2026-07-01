@@ -39,6 +39,12 @@ class User extends Authenticatable
         return in_array($this->role, self::COCKPIT_ROLES, true);
     }
 
+    /** Any internal role — the /team workspace admits both tiers (founder…engineer). */
+    public function isWorkspace(): bool
+    {
+        return in_array($this->role, self::WORKSPACE_ROLES, true);
+    }
+
     public function isFounder(): bool
     {
         return $this->role === 'founder';

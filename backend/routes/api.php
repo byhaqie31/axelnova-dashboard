@@ -15,6 +15,9 @@ use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
 use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
 use App\Http\Controllers\Api\V1\Admin\UsersController;
+use App\Http\Controllers\Api\V1\Team\AuthController as TeamAuthController;
+use App\Http\Controllers\Api\V1\Team\InquiriesController as TeamInquiriesController;
+use App\Http\Controllers\Api\V1\Team\ReferralsController as TeamReferralsController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Middleware\LogAdminActivity;
 use App\Http\Controllers\Api\V1\InquiryController;
@@ -81,6 +84,10 @@ Route::middleware($trackThrottle)->group(function () {
 $loginThrottle = app()->environment('production') ? 'throttle:10,1' : 'throttle:1000,1';
 Route::middleware($loginThrottle)->group(function () {
     Route::post('/v1/admin/login', [AuthController::class, 'login'])->name('admin.login');
+
+    // Workspace login — same brute-force throttle. Admits every internal role
+    // (marketer/engineer land here since they get 403 on the cockpit login).
+    Route::post('/v1/team/login', [TeamAuthController::class, 'login'])->name('team.login');
 });
 
 // Admin cockpit — Sanctum SPA (stateful via cookie + CSRF), cockpit tier only
@@ -198,4 +205,34 @@ Route::middleware([
         Route::get('/projects/{project}', [ProjectsController::class, 'show'])->name('projects.show');
         Route::put('/projects/{project}', [ProjectsController::class, 'update'])->name('projects.update');
         Route::delete('/projects/{project}', [ProjectsController::class, 'destroy'])->name('projects.destroy');
+    });
+
+// Team workspace — Sanctum, workspace tier (all four internal roles). Scoped to
+// the surfaces staff own: inquiry triage + the referral programme. Every payload
+// here is a *_Team resource that omits money — the cockpit keeps the financials.
+// Cockpit-only work (quotations, orders, billing, users) is simply absent, so a
+// marketer/engineer token can only ever reach what's mounted below.
+Route::middleware([
+    EnsureFrontendRequestsAreStateful::class,
+    'auth:sanctum',
+    'role:workspace',
+])
+    ->prefix('v1/team')
+    ->name('team.')
+    ->group(function () {
+        Route::post('/logout', [TeamAuthController::class, 'logout'])->name('logout');
+        Route::get('/me', [TeamAuthController::class, 'me'])->name('me');
+
+        // Project inquiries — triage + respond (all workspace roles).
+        Route::get('/inquiries', [TeamInquiriesController::class, 'index'])->name('inquiries.index');
+        Route::get('/inquiries/{inquiry}', [TeamInquiriesController::class, 'show'])->name('inquiries.show');
+        Route::post('/inquiries/{inquiry}/status', [TeamInquiriesController::class, 'updateStatus'])->name('inquiries.status');
+
+        // Referral programme — the marketer owns it; engineers are excluded here
+        // (they can enter /team, but not this surface). founder/partner keep access.
+        Route::middleware('role:founder,partner,marketer')->group(function () {
+            Route::get('/referrals', [TeamReferralsController::class, 'index'])->name('referrals.index');
+            Route::get('/referrals/{referral}', [TeamReferralsController::class, 'show'])->name('referrals.show');
+            Route::post('/referrals/{referral}/status', [TeamReferralsController::class, 'updateStatus'])->name('referrals.status');
+        });
     });
