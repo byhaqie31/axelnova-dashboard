@@ -13,6 +13,7 @@ class Inquiry extends Model
 
     protected $fillable = [
         'client_id',
+        'referral_partner_id',
         'name',
         'email',
         'phone',
@@ -36,5 +37,11 @@ class Inquiry extends Model
     public function quotation(): BelongsTo
     {
         return $this->belongsTo(Quotation::class);
+    }
+
+    /** The referrer whose ?ref link brought this inquiry in (null = public/organic). */
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(Referrer::class, 'referral_partner_id');
     }
 }

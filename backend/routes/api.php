@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Admin\OrdersController;
 use App\Http\Controllers\Api\V1\Admin\PaymentsController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
+use App\Http\Controllers\Api\V1\Admin\ReferralPartnersController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceAddonsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
@@ -18,6 +19,8 @@ use App\Http\Controllers\Api\V1\Admin\UsersController;
 use App\Http\Controllers\Api\V1\Team\AuthController as TeamAuthController;
 use App\Http\Controllers\Api\V1\Team\InquiriesController as TeamInquiriesController;
 use App\Http\Controllers\Api\V1\Team\ReferralsController as TeamReferralsController;
+use App\Http\Controllers\Api\V1\Partner\AuthController as PartnerAuthController;
+use App\Http\Controllers\Api\V1\Partner\DashboardController as PartnerDashboardController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Middleware\LogAdminActivity;
 use App\Http\Controllers\Api\V1\InquiryController;
@@ -88,6 +91,14 @@ Route::middleware($loginThrottle)->group(function () {
     // Workspace login — same brute-force throttle. Admits every internal role
     // (marketer/engineer land here since they get 403 on the cockpit login).
     Route::post('/v1/team/login', [TeamAuthController::class, 'login'])->name('team.login');
+
+    // Partner portal login — the isolated referral guard. Same brute-force throttle;
+    // only approved (active) referrers with an issued passcode can sign in.
+    Route::post('/v1/partner/login', [PartnerAuthController::class, 'login'])->name('partner.login');
+
+    // Self-service passcode reset: a correct active email auto-emails a new passcode
+    // (and notifies the founder). Same throttle bounds abuse.
+    Route::post('/v1/partner/forgot-passcode', [PartnerAuthController::class, 'forgotPasscode'])->name('partner.forgot-passcode');
 });
 
 // Admin cockpit — Sanctum SPA (stateful via cookie + CSRF), cockpit tier only
@@ -164,6 +175,13 @@ Route::middleware([
         Route::post('/referrals/{referral}/link-order', [ReferralsController::class, 'linkOrder'])->name('referrals.link-order');
         Route::post('/referrals/{referral}/commission-email', [ReferralsController::class, 'sendCommissionEmail'])->name('referrals.commission-email');
 
+        // Referral partners (the affiliate accounts). Approve issues + emails the
+        // first passcode; reset-passcode regenerates it. The passcode is never
+        // returned here — only emailed. No self-service reset exists.
+        Route::get('/referral-partners', [ReferralPartnersController::class, 'index'])->name('referral-partners.index');
+        Route::post('/referral-partners/{referralPartner}/approve', [ReferralPartnersController::class, 'approve'])->name('referral-partners.approve');
+        Route::post('/referral-partners/{referralPartner}/reset-passcode', [ReferralPartnersController::class, 'resetPasscode'])->name('referral-partners.reset-passcode');
+
         // Project inquiries
         Route::get('/inquiries', [InquiriesController::class, 'index'])->name('inquiries.index');
         Route::get('/inquiries/{inquiry}', [InquiriesController::class, 'show'])->name('inquiries.show');
@@ -235,4 +253,23 @@ Route::middleware([
             Route::get('/referrals/{referral}', [TeamReferralsController::class, 'show'])->name('referrals.show');
             Route::post('/referrals/{referral}/status', [TeamReferralsController::class, 'updateStatus'])->name('referrals.status');
         });
+    });
+
+// Partner portal — the third, isolated surface. Pure bearer tokens on the `referral`
+// guard (Referrer / referral_partners), deliberately WITHOUT the stateful-cookie
+// middleware the cockpit/workspace use. A Referrer token authenticates only here:
+// the `sanctum` guard (provider = users) behind /v1/admin and /v1/team rejects it,
+// and a User token is rejected here. Everything is scoped to the token's own data.
+Route::middleware(['auth:referral'])
+    ->prefix('v1/partner')
+    ->name('partner.')
+    ->group(function () {
+        Route::post('/logout', [PartnerAuthController::class, 'logout'])->name('logout');
+        Route::get('/me', [PartnerAuthController::class, 'me'])->name('me');
+
+        // Own leads + derived earnings + the ?ref link.
+        Route::get('/dashboard', [PartnerDashboardController::class, 'index'])->name('dashboard');
+
+        // Context-aware "refer another" — bound to the authenticated referrer.
+        Route::post('/referrals', [PartnerDashboardController::class, 'storeReferral'])->name('referrals.store');
     });

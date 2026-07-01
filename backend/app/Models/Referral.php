@@ -22,6 +22,7 @@ class Referral extends Model
     ];
 
     protected $fillable = [
+        'referral_partner_id',
         'referrer_name',
         'referrer_email',
         'referrer_phone',
@@ -52,6 +53,12 @@ class Referral extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'linked_order_id');
+    }
+
+    /** The normalized referrer this lead belongs to (null during transition). */
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(Referrer::class, 'referral_partner_id');
     }
 
     /** Resolve the commission band for a relationship tier (defaults to the cold band). */

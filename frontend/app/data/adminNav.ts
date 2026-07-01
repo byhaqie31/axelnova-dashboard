@@ -46,6 +46,7 @@ export const adminNav: NavGroup[] = [
     label: 'Growth',
     items: [
       { to: '/admin/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/admin/referrals' },
+      { to: '/admin/referral-partners', label: 'Partners', icon: 'i-lucide-user-check', matchPrefix: '/admin/referral-partners' },
       { to: '/admin/analytics', label: 'Analytics', icon: 'i-lucide-chart-line', matchPrefix: '/admin/analytics' },
     ],
   },

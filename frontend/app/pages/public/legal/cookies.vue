@@ -17,6 +17,11 @@ const cookieTypes = [
     description: 'Remember your settings between visits, such as your colour mode preference. These improve your experience by avoiding the need to re-apply settings each time you visit.',
     canDisable: true,
   },
+  {
+    name: 'Referral Attribution (Functional)',
+    description: 'If you arrive via a partner referral link (a URL with a ?ref code), we store that code in a first-party cookie named "axn_ref" for up to 90 days so the partner who referred you is correctly credited if you get in touch. It is set only after you accept cookies, holds just the referral code, and is never used to track you across other sites. Decline consent, or delete the cookie, to opt out.',
+    canDisable: true,
+  },
 ]
 
 const thirdParty = [
