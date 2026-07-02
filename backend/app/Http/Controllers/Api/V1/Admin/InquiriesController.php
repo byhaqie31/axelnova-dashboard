@@ -79,6 +79,10 @@ class InquiriesController extends Controller
             'status' => 'quoted',
         ]);
 
+        $inquiry = $inquiry->fresh();
+        app(\App\Services\Referrals\ReferralAttributionService::class)
+            ->attribute($inquiry->quotation, $inquiry);
+
         return new InquiryResource($inquiry->load('quotation'));
     }
 

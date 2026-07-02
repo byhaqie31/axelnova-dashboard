@@ -33,6 +33,8 @@ interface Quotation {
   form_payload: Record<string, any> | null
   document: Record<string, any> | null
   addons: { key: string; label: string; amount_myr: string }[]
+  referral_partner_id: number | null
+  referrer: { name: string; relationship_tier: string; commission_pct: number } | null
 }
 
 const quotation = ref<Quotation | null>(null)
@@ -77,12 +79,22 @@ function applyQuotation(data: Record<string, any>) {
 const isDraft = computed(() => quotation.value?.status === 'draft')
 const isDetailed = computed(() => quotation.value?.document?.layout === 'detailed')
 
+// Referral-attributed quotes let the founder confirm the commission % on accept —
+// defaults to the referrer's tier estimate (or 10 if the nested referrer summary
+// isn't loaded), clamped 5–15. Non-referral quotes never show or send this field.
+const isReferralAttributed = computed(() => !!quotation.value?.referral_partner_id)
+const commissionPct = ref(10)
+watch(() => quotation.value?.referral_partner_id, () => {
+  commissionPct.value = quotation.value?.referrer?.commission_pct ?? 10
+}, { immediate: true })
+
 async function acceptQuotation() {
   if (!quotation.value) return
   acceptLoading.value = true
   try {
+    const body = isReferralAttributed.value ? { commission_pct: commissionPct.value } : undefined
     const res = await apiFetch<{ message: string; order_id: number; order_number: string }>(
-      `/api/v1/admin/quotations/${quotation.value.id}/accept`, { method: 'POST' },
+      `/api/v1/admin/quotations/${quotation.value.id}/accept`, { method: 'POST', body },
     )
     toast.success('Order created', `${res.order_number} created from this quotation.`)
     navigateTo(`/admin/orders/${res.order_id}`)
@@ -300,6 +312,13 @@ async function saveExpiry() {
 
             <!-- Outcomes for a live sent quote: accept (→ order) or reject. Expiry is automatic. -->
             <template v-if="quotation.status === 'sent'">
+              <div v-if="isReferralAttributed">
+                <label for="commission-pct" class="text-[11px] font-medium uppercase tracking-wider mb-1 block" style="color: var(--color-text-tertiary);">
+                  Commission % <span v-if="quotation.referrer" class="normal-case font-normal" style="color: var(--color-text-secondary);">— {{ quotation.referrer.name }}</span>
+                </label>
+                <input id="commission-pct" v-model.number="commissionPct" type="number" min="5" max="15" class="contact-input w-full text-[13px]"
+                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+              </div>
               <button class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="acceptLoading || rejectLoading" @click="acceptQuotation">
                 {{ acceptLoading ? 'Creating order…' : 'Proceed & Create Order' }}
               </button>

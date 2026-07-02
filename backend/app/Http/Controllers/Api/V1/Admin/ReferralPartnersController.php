@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ReferrerDetailResource;
 use App\Http\Resources\ReferrerResource;
 use App\Mail\PartnerPasscodeMail;
 use App\Models\Referrer;
@@ -40,6 +41,35 @@ class ReferralPartnersController extends Controller
         }
 
         return ReferrerResource::collection($query->paginate(20));
+    }
+
+    /**
+     * Partner detail: profile + full referral history + derived earned/estimated
+     * commission stats (converted-only earned; estimated across any referral with
+     * an order reached via its quotation).
+     */
+    public function show(Referrer $referralPartner): ReferrerDetailResource
+    {
+        $referralPartner->load(['referrals' => fn ($q) => $q->with('quotation.order')->latest('created_at')]);
+
+        $earned = 0.0;
+        $estimated = 0.0;
+        foreach ($referralPartner->referrals as $ref) {
+            $order = $ref->orderViaQuotation();
+            if (! $order) {
+                continue;
+            }
+            $rate = $ref->effectivePct();
+            $collected = (float) $order->amount_paid_myr;
+            $contract = (float) $order->final_amount_myr;
+            if ($ref->status === 'converted') {
+                $earned += round($collected * $rate / 100, 2);
+            }
+            $estimated += max(0, round(($contract - $collected) * $rate / 100, 2));
+        }
+
+        return (new ReferrerDetailResource($referralPartner))
+            ->additional(['stats' => ['earned_myr' => round($earned, 2), 'estimated_myr' => round($estimated, 2), 'referrals_count' => $referralPartner->referrals->count()]]);
     }
 
     /**

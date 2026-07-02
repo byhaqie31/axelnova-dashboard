@@ -752,6 +752,18 @@ h1 { letter-spacing: -0.045em; }
   box-shadow: var(--shadow-glow);
 }
 
+/* Number inputs: strip the browser spinner (up/down arrows) — never wanted in
+   this UI. Pair type="number" with inputmode="numeric" for the numeric keypad. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Focus rings */
 :where(a, button, [role="button"], input, textarea, select):focus-visible {
   outline: none;

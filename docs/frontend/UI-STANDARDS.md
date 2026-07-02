@@ -159,6 +159,10 @@ All buttons are 44pt tall (Apple HIG touch target), pill-shaped (`border-radius:
 
 **Rule:** one primary CTA per screen. Secondary actions are ghost or silver; WhatsApp/positive actions use success green.
 
+**Form-control height parity.** Inputs, selects, and buttons share a **44px** control height so they line up on the same row — buttons via `.btn-pill` (44px), text fields via `.contact-input` (44px). Never pair a `.btn-pill` with an ad-hoc short input (they misalign, as the referral "Tie" control did): use `.contact-input`, or set the field to `height: 44px`. When an input + button don't fit comfortably side by side, stack them full-width instead of shrinking either below 44px.
+
+**Number inputs have no spinner.** The browser's up/down spin arrows are stripped globally in `main.css` — they never fit this UI. Use `type="number"` + `inputmode="numeric"` for a clean field with a numeric keypad on mobile.
+
 ### 6.1 Glass nav & chip surfaces
 
 Two pill-family surfaces for floating overlays (introduced by the hero `HeroEpoch`). Both are theme-driven so they read in light **and** dark — never bind their backgrounds to `colorMode` in JS.

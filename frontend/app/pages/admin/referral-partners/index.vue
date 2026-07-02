@@ -177,7 +177,7 @@ async function confirmAction() {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in partners" :key="p.id" class="admin-table-row">
+            <tr v-for="p in partners" :key="p.id" class="admin-table-row" @click="navigateTo(`/admin/referral-partners/${p.id}`)">
               <td class="px-4 py-3.5">
                 <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ p.name }}</p>
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ p.email }}</p>
@@ -197,10 +197,10 @@ async function confirmAction() {
               </td>
               <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">{{ fmtDate(p.last_login_at) }}</td>
               <td class="px-4 py-3.5">
-                <button v-if="p.status === 'pending'" type="button" class="btn-pill btn-pill-accent text-[12px]" @click="ask(p, 'approve')">
+                <button v-if="p.status === 'pending'" type="button" class="btn-pill btn-pill-accent text-[12px]" @click.stop="ask(p, 'approve')">
                   Approve
                 </button>
-                <button v-else-if="p.status === 'active'" type="button" class="btn-pill btn-pill-ghost text-[12px]" @click="ask(p, 'reset')">
+                <button v-else-if="p.status === 'active'" type="button" class="btn-pill btn-pill-ghost text-[12px]" @click.stop="ask(p, 'reset')">
                   Reset passcode
                 </button>
                 <span v-else class="text-[12px]" style="color: var(--color-text-tertiary);">—</span>
@@ -216,8 +216,9 @@ async function confirmAction() {
       <div
         v-for="p in partners"
         :key="p.id"
-        class="rounded-xl border p-4"
+        class="rounded-xl border p-4 cursor-pointer"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+        @click="navigateTo(`/admin/referral-partners/${p.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-1.5">
           <span class="text-[13px] font-semibold leading-tight" style="color: var(--color-text);">{{ p.name }}</span>
@@ -231,8 +232,8 @@ async function confirmAction() {
             {{ tierLabels[p.relationship_tier] }} <span style="color: var(--color-accent);">· {{ p.commission_pct }}%</span>
             <span class="text-[12px] font-normal ml-2" style="color: var(--color-text-secondary);">{{ p.referrals_count }} referrals</span>
           </p>
-          <button v-if="p.status === 'pending'" type="button" class="btn-pill btn-pill-accent text-[12px]" @click="ask(p, 'approve')">Approve</button>
-          <button v-else-if="p.status === 'active'" type="button" class="btn-pill btn-pill-ghost text-[12px]" @click="ask(p, 'reset')">Reset</button>
+          <button v-if="p.status === 'pending'" type="button" class="btn-pill btn-pill-accent text-[12px]" @click.stop="ask(p, 'approve')">Approve</button>
+          <button v-else-if="p.status === 'active'" type="button" class="btn-pill btn-pill-ghost text-[12px]" @click.stop="ask(p, 'reset')">Reset</button>
         </div>
       </div>
     </div>

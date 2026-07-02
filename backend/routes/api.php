@@ -174,11 +174,14 @@ Route::middleware([
         Route::post('/referrals/{referral}/status', [ReferralsController::class, 'updateStatus'])->name('referrals.status');
         Route::post('/referrals/{referral}/link-order', [ReferralsController::class, 'linkOrder'])->name('referrals.link-order');
         Route::post('/referrals/{referral}/commission-email', [ReferralsController::class, 'sendCommissionEmail'])->name('referrals.commission-email');
+        Route::post('/referrals/{referral}/tie-quotation', [ReferralsController::class, 'tieQuotation'])->name('referrals.tie-quotation');
+        Route::post('/referrals/{referral}/untie-quotation', [ReferralsController::class, 'untieQuotation'])->name('referrals.untie-quotation');
 
         // Referral partners (the affiliate accounts). Approve issues + emails the
         // first passcode; reset-passcode regenerates it. The passcode is never
         // returned here — only emailed. No self-service reset exists.
         Route::get('/referral-partners', [ReferralPartnersController::class, 'index'])->name('referral-partners.index');
+        Route::get('/referral-partners/{referralPartner}', [ReferralPartnersController::class, 'show'])->name('referral-partners.show');
         Route::post('/referral-partners/{referralPartner}/approve', [ReferralPartnersController::class, 'approve'])->name('referral-partners.approve');
         Route::post('/referral-partners/{referralPartner}/reset-passcode', [ReferralPartnersController::class, 'resetPasscode'])->name('referral-partners.reset-passcode');
 

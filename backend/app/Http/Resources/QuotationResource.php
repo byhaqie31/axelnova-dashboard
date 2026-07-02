@@ -39,6 +39,12 @@ class QuotationResource extends JsonResource
             ] : null),
             'order_id' => $this->whenLoaded('order', fn () => $this->order?->id),
             'order_number' => $this->whenLoaded('order', fn () => $this->order?->order_number),
+            'referral_partner_id' => $this->referral_partner_id,
+            'referrer' => $this->whenLoaded('referrer', fn () => $this->referrer ? [
+                'name' => $this->referrer->name,
+                'relationship_tier' => $this->referrer->relationship_tier,
+                'commission_pct' => $this->referrer->commission_pct,
+            ] : null),
             'public_token' => $this->when(! $listRoute, $this->public_token),
             'form_payload' => $this->when(! $listRoute, $this->form_payload),
             'document' => $this->when(! $listRoute, $this->document),

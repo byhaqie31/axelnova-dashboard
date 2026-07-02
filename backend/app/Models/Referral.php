@@ -39,6 +39,8 @@ class Referral extends Model
         'commission_email_sent_at',
         'ip_address',
         'user_agent',
+        'quotation_id',
+        'commission_pct',
     ];
 
     protected function casts(): array
@@ -47,6 +49,7 @@ class Referral extends Model
             'commission_tier_pct' => 'integer',
             'agreed_terms' => 'boolean',
             'commission_email_sent_at' => 'datetime',
+            'commission_pct' => 'integer',
         ];
     }
 
@@ -59,6 +62,23 @@ class Referral extends Model
     public function referrer(): BelongsTo
     {
         return $this->belongsTo(Referrer::class, 'referral_partner_id');
+    }
+
+    public function quotation(): BelongsTo
+    {
+        return $this->belongsTo(Quotation::class);
+    }
+
+    /** Confirmed rate if set, else the tier estimate. */
+    public function effectivePct(): int
+    {
+        return (int) ($this->commission_pct ?? $this->commission_tier_pct);
+    }
+
+    /** The order this referral earns on — reached via its quotation anchor (falls back to legacy link). */
+    public function orderViaQuotation(): ?Order
+    {
+        return $this->quotation?->order ?? $this->order;
     }
 
     /** Resolve the commission band for a relationship tier (defaults to the cold band). */

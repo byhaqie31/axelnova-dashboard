@@ -183,6 +183,13 @@ class OrdersController extends Controller
         $from = $order->status;
         $order->update($updates);
         $order->logActivity('order.status', ['from' => $from, 'to' => $order->status]);
+
+        if ($order->status === 'cancelled' && $order->quotation_id) {
+            \App\Models\Referral::where('quotation_id', $order->quotation_id)
+                ->where('status', 'converted')
+                ->update(['status' => 'draft']);
+        }
+
         $order->load(['client', 'quotation']);
 
         return response()->json([

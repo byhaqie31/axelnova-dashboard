@@ -7,15 +7,14 @@ interface DashboardReferral {
   id: number
   business_name: string
   status: string
-  relationship_tier: string
   commission_pct: number
-  converted: boolean
+  has_order: boolean
   earned_myr: number | null
   created_at: string | null
 }
 interface Dashboard {
   partner: { name: string, code: string, relationship_tier: string, commission_tiers: Record<string, number> }
-  stats: { earned_myr: number, pending_myr: number, referrals_count: number }
+  stats: { earned_myr: number, estimated_myr: number, referrals_count: number }
   ref_link: string
   referrals: DashboardReferral[]
 }
@@ -37,8 +36,6 @@ onMounted(load)
 
 const myr = (n: number) => new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(n || 0)
 
-const tierLabels: Record<string, string> = { cold: 'Cold', warm: 'Warm', closed: 'Closed' }
-
 // Commission varies per referral by relationship tier — surface the available bands
 // (e.g. "5% / 10% / 15%") rather than a single fixed rate.
 const tierPcts = computed(() =>
@@ -52,7 +49,8 @@ const statusStyle: Record<string, PillStyle> = {
   new: PILL_NEW,
   contacted: { label: 'Contacted', color: 'var(--color-accent)', bg: 'var(--color-accent-soft)' },
   qualified: { label: 'Qualified', color: 'var(--color-accent)', bg: 'var(--color-accent-soft)' },
-  converted: { label: 'Converted', color: 'var(--color-success)', bg: 'var(--color-success-soft, var(--color-bg-secondary))' },
+  draft: { label: 'Draft', color: 'var(--color-text-secondary)', bg: 'var(--color-bg-secondary)' },
+  converted: { label: 'Earning', color: 'var(--color-success)', bg: 'var(--color-success-soft, var(--color-bg-secondary))' },
   rejected: { label: 'Not proceeding', color: 'var(--color-text-tertiary)', bg: 'var(--color-bg-secondary)' },
 }
 const pill = (s: string): PillStyle => statusStyle[s] ?? PILL_NEW
@@ -151,8 +149,8 @@ async function submitReferral() {
         <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-success);">{{ myr(data.stats.earned_myr) }}</p>
       </div>
       <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }">
-        <p class="text-[12px] font-medium mb-1.5" style="color: var(--color-text-tertiary);">Pending (contracted)</p>
-        <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-text);">{{ myr(data.stats.pending_myr) }}</p>
+        <p class="text-[12px] font-medium mb-1.5" style="color: var(--color-text-tertiary);">Estimated</p>
+        <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-text);">{{ myr(data.stats.estimated_myr) }}</p>
       </div>
       <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }">
         <p class="text-[12px] font-medium mb-1.5" style="color: var(--color-text-tertiary);">Referrals</p>
@@ -195,7 +193,7 @@ async function submitReferral() {
           <div class="min-w-0">
             <p class="text-[14px] font-medium truncate" style="color: var(--color-text);">{{ r.business_name }}</p>
             <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">
-              {{ tierLabels[r.relationship_tier] ?? r.relationship_tier }} · {{ r.commission_pct }}% commission<span v-if="r.earned_myr" style="color: var(--color-success);"> · {{ myr(r.earned_myr) }} earned</span>
+              {{ r.commission_pct }}% commission<span v-if="r.earned_myr != null" style="color: var(--color-success);"> · {{ myr(r.earned_myr) }} earned</span><span v-else-if="r.has_order"> · Estimated once your client pays</span>
             </p>
           </div>
           <span class="text-[11px] font-medium px-2.5 py-1 rounded-full shrink-0"

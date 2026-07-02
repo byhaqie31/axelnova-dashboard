@@ -21,36 +21,26 @@ class DashboardController extends Controller
         /** @var Referrer $referrer */
         $referrer = $request->user();
 
-        $referrals = $referrer->referrals()->with('order')->latest('created_at')->get();
+        $referrals = $referrer->referrals()->with('quotation.order')->latest('created_at')->get();
+        $earned = 0.0; $estimated = 0.0;
 
-        $earned = 0.0;   // commission on money actually COLLECTED (from payments)
-        $pending = 0.0;  // commission on the rest of the contracted value
-
-        // Commission is derived PER REFERRAL — each lead carries its own rate from
-        // the relationship tier it was referred under (cold 5 / warm 10 / closed 15),
-        // not a single partner-wide percentage.
-        $rows = $referrals->map(function (Referral $referral) use (&$earned, &$pending) {
-            $order = $referral->order;
-            $pct = (int) $referral->commission_tier_pct;
-
+        $rows = $referrals->map(function (\App\Models\Referral $referral) use (&$earned, &$estimated) {
+            $order = $referral->orderViaQuotation();
+            $rate = $referral->effectivePct();
             $collected = (float) ($order->amount_paid_myr ?? 0);
             $contract = (float) ($order->final_amount_myr ?? 0);
 
-            $earnedForRef = round($collected * $pct / 100, 2);
-            $contractCommission = round($contract * $pct / 100, 2);
-            $pendingForRef = max(0, round($contractCommission - $earnedForRef, 2));
-
+            $earnedForRef = $referral->status === 'converted' ? round($collected * $rate / 100, 2) : 0.0;
             $earned += $earnedForRef;
-            $pending += $pendingForRef;
+            $estimated += $order ? max(0, round(($contract - $collected) * $rate / 100, 2)) : 0.0;
 
             return [
                 'id' => $referral->id,
                 'business_name' => $referral->business_name,
                 'status' => $referral->status,
-                'relationship_tier' => $referral->relationship_tier,
-                'commission_pct' => $pct,
-                'converted' => (bool) $referral->linked_order_id,
-                'earned_myr' => $order ? $earnedForRef : null,
+                'commission_pct' => $rate,
+                'has_order' => (bool) $order,
+                'earned_myr' => $referral->status === 'converted' ? $earnedForRef : null,
                 'created_at' => $referral->created_at?->toISOString(),
             ];
         });
@@ -66,7 +56,7 @@ class DashboardController extends Controller
             ],
             'stats' => [
                 'earned_myr' => round($earned, 2),
-                'pending_myr' => round($pending, 2),
+                'estimated_myr' => round($estimated, 2),
                 'referrals_count' => $referrals->count(),
             ],
             'ref_link' => rtrim((string) config('services.frontend.url'), '/').'/?ref='.$referrer->code,

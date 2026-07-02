@@ -10,7 +10,8 @@ use App\Models\Order;
 use App\Models\PageView;
 use App\Models\Payment;
 use App\Models\Project;
-use App\Models\Referral;
+use App\Models\Quotation;
+use App\Models\Referrer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -78,10 +79,11 @@ class AnalyticsController extends Controller
     /**
      * Attribution — where collected revenue comes from. Traces succeeded payments
      * up the chain (payment → order → quotation → originating inquiry) and reports
-     * contracted vs collected by inquiry source, plus a referrer roll-up from the
-     * current referrals table. Commission stays derived, never stored. (Phase 2
-     * normalises referrers into referral_partners; this reads the flat table until
-     * then.)
+     * contracted vs collected by inquiry source, plus a referrer roll-up traced
+     * through the normalized chain (payment → order → quotation.referral_partner_id
+     * → referral_partners). Commission stays derived, never stored. Payments/orders
+     * whose quotation carries no referral_partner_id (or has no quotation at all)
+     * bucket under "Public" — organic, unattributed revenue.
      */
     public function attribution(Request $request): JsonResponse
     {
@@ -119,33 +121,47 @@ class AnalyticsController extends Controller
             $bySource[$source]['collected'] += $collected;
         }
 
-        $orderContracted = $orders->pluck('final_amount_myr', 'id');
+        // quotation_id → referral_partner_id, for orders reached via the normalized
+        // chain (payment → order → quotation.referral_partner_id).
+        $referrerByQuotation = Quotation::query()
+            ->whereNotNull('referral_partner_id')
+            ->pluck('referral_partner_id', 'id');
 
-        $byReferrer = Referral::query()
-            ->whereNotNull('linked_order_id')
-            ->get(['referrer_name', 'referrer_email', 'commission_tier_pct', 'linked_order_id'])
-            ->groupBy('referrer_email')
-            ->map(function ($rows) use ($collectedByOrder, $orderContracted) {
-                $first = $rows->first();
-                $pct = (int) $first->commission_tier_pct;
-                $contracted = 0.0;
-                $collected = 0.0;
-                foreach ($rows as $row) {
-                    $contracted += (float) ($orderContracted[$row->linked_order_id] ?? 0);
-                    $collected += (float) ($collectedByOrder[$row->linked_order_id] ?? 0);
-                }
+        $referrers = Referrer::query()->get(['id', 'name', 'email', 'commission_pct'])->keyBy('id');
 
-                return [
-                    'referrer' => $first->referrer_name,
-                    'email' => $first->referrer_email,
-                    'referrals' => $rows->count(),
-                    'commission_pct' => $pct,
-                    'contracted' => round($contracted, 2),
-                    'collected' => round($collected, 2),
-                    // Derived, never stored — payout stays manual (plan §3).
-                    'commission_est' => round($collected * $pct / 100, 2),
-                ];
-            })
+        // Roll up contracted/collected per order under its referrer (or the
+        // "Public" bucket when the quotation carries no referral_partner_id, or
+        // the order has no quotation at all).
+        $rollup = [];
+        foreach ($orders as $order) {
+            $partnerId = $referrerByQuotation[$order->quotation_id] ?? null;
+            $key = $partnerId ?? 'public';
+
+            $contracted = (float) $order->final_amount_myr;
+            $collected = (float) ($collectedByOrder[$order->id] ?? 0);
+
+            $rollup[$key] ??= ['partner_id' => $partnerId, 'orders' => 0, 'contracted' => 0.0, 'collected' => 0.0];
+            $rollup[$key]['orders']++;
+            $rollup[$key]['contracted'] += $contracted;
+            $rollup[$key]['collected'] += $collected;
+        }
+
+        $byReferrer = collect($rollup)->map(function ($row) use ($referrers) {
+            $referrer = $row['partner_id'] !== null ? $referrers->get($row['partner_id']) : null;
+            $pct = $referrer ? (int) $referrer->commission_pct : 0;
+            $collected = $row['collected'];
+
+            return [
+                'referrer' => $referrer?->name ?? 'Public',
+                'email' => $referrer?->email,
+                'referrals' => $row['orders'],
+                'commission_pct' => $pct,
+                'contracted' => round($row['contracted'], 2),
+                'collected' => round($collected, 2),
+                // Derived, never stored — payout stays manual (plan §3).
+                'commission_est' => round($collected * $pct / 100, 2),
+            ];
+        })
             ->sortByDesc('collected')
             ->values();
 

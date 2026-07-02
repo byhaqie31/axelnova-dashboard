@@ -38,6 +38,7 @@ class Quotation extends Model
         'viewed_at',
         'sent_at',
         'expires_at',
+        'referral_partner_id',
     ];
 
     protected function casts(): array
@@ -100,6 +101,11 @@ class Quotation extends Model
     public function order(): HasOne
     {
         return $this->hasOne(Order::class);
+    }
+
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Referrer::class, 'referral_partner_id');
     }
 
     /**

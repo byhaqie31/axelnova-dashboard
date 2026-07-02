@@ -10,6 +10,7 @@ use App\Models\Client;
 use App\Models\Inquiry;
 use App\Models\Order;
 use App\Models\Quotation;
+use App\Models\Referral;
 use App\Services\Quoting\DocumentMapper;
 use App\Services\Quoting\EstimateResult;
 use App\Services\Quoting\PricingEngine;
@@ -102,7 +103,7 @@ class QuotationsController extends Controller
             $quotation->update(['status' => 'expired']);
         }
 
-        $quotation->load('addons', 'order', 'updatedBy');
+        $quotation->load('addons', 'order', 'updatedBy', 'referrer');
 
         return new QuotationResource($quotation);
     }
@@ -131,8 +132,11 @@ class QuotationsController extends Controller
             $this->syncAddons($quotation, $input->addonKeys, $engine);
 
             if (! empty($data['inquiry_id'])) {
-                Inquiry::where('id', $data['inquiry_id'])
-                    ->update(['quotation_id' => $quotation->id, 'status' => 'quoted']);
+                $inquiry = Inquiry::find($data['inquiry_id']);
+                if ($inquiry) {
+                    $inquiry->update(['quotation_id' => $quotation->id, 'status' => 'quoted']);
+                    app(\App\Services\Referrals\ReferralAttributionService::class)->attribute($quotation, $inquiry);
+                }
             }
 
             return $quotation;
@@ -252,10 +256,14 @@ class QuotationsController extends Controller
             return response()->json(['message' => 'Quotation has no client linked.'], 422);
         }
 
-        $order = DB::transaction(function () use ($quotation) {
+        $request->validate([
+            'commission_pct' => ['nullable', 'integer', 'min:5', 'max:15'],
+        ]);
+
+        $order = DB::transaction(function () use ($request, $quotation) {
             $quotation->update(['status' => 'accepted']);
 
-            return Order::create([
+            $order = Order::create([
                 'order_number' => ReferenceCodeGenerator::generate(DocumentType::Order),
                 'quotation_id' => $quotation->id,
                 'client_id' => $quotation->client_id,
@@ -267,6 +275,15 @@ class QuotationsController extends Controller
                 'due_at' => $quotation->dueDateFrom(),
                 'status' => 'pending',
             ]);
+
+            $referral = Referral::where('quotation_id', $quotation->id)->first();
+            if ($referral) {
+                $referral->update([
+                    'commission_pct' => $request->integer('commission_pct') ?: $referral->commission_tier_pct,
+                ]);
+            }
+
+            return $order;
         });
 
         $quotation->logActivity('quotation.accepted', ['order_number' => $order->order_number]);

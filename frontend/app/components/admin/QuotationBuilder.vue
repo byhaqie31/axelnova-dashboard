@@ -19,6 +19,8 @@ interface QuotationLike {
   expires_at?: string | null
   form_payload: Record<string, any> | null
   document: Record<string, any> | null
+  referral_partner_id?: number | null
+  referrer?: { name: string; relationship_tier: string; commission_pct: number } | null
 }
 
 const props = defineProps<{
@@ -531,12 +533,22 @@ async function deliver(channel: 'email' | 'download') {
   }
 }
 
+// Referral-attributed quotes let the founder confirm the commission % on accept —
+// defaults to the referrer's tier estimate (or 10 if the nested referrer summary
+// isn't loaded), clamped 5–15. Non-referral quotes never show or send this field.
+const isReferralAttributed = computed(() => !!props.quotation?.referral_partner_id)
+const commissionPct = ref(10)
+watch(() => props.quotation?.referral_partner_id, () => {
+  commissionPct.value = props.quotation?.referrer?.commission_pct ?? 10
+}, { immediate: true })
+
 async function accept() {
   if (!isEdit.value) return
   accepting.value = true
   error.value = ''
   try {
-    const res = await apiFetch<{ order_id: number }>(`/api/v1/admin/quotations/${props.quotation!.id}/accept`, { method: 'POST' })
+    const body = isReferralAttributed.value ? { commission_pct: commissionPct.value } : undefined
+    const res = await apiFetch<{ order_id: number }>(`/api/v1/admin/quotations/${props.quotation!.id}/accept`, { method: 'POST', body })
     toast.success('Order created', 'Quotation accepted and converted to an order.')
     emit('accepted', res.order_id)
   }
@@ -808,9 +820,18 @@ async function revert() {
           <button v-if="dirty" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="saving" @click="save">
             {{ saving ? 'Saving…' : 'Save changes' }}
           </button>
-          <button v-else type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
-            {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
-          </button>
+          <template v-else>
+            <div v-if="isReferralAttributed">
+              <label for="qb-commission-pct" class="text-[11px] font-medium uppercase tracking-wider mb-1 block" style="color: var(--color-text-tertiary);">
+                Commission % <span v-if="props.quotation?.referrer" class="normal-case font-normal" style="color: var(--color-text-secondary);">— {{ props.quotation.referrer.name }}</span>
+              </label>
+              <input id="qb-commission-pct" v-model.number="commissionPct" type="number" min="5" max="15" class="contact-input w-full text-[13px]"
+                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            </div>
+            <button type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
+              {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
+            </button>
+          </template>
         </template>
       </div>
 
