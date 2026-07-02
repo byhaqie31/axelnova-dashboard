@@ -48,6 +48,8 @@ export const adminNav: NavGroup[] = [
       { to: '/admin/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/admin/referrals' },
       { to: '/admin/referral-partners', label: 'Partners', icon: 'i-lucide-user-check', matchPrefix: '/admin/referral-partners' },
       { to: '/admin/analytics', label: 'Analytics', icon: 'i-lucide-chart-line', matchPrefix: '/admin/analytics' },
+      // Marketing-spend ledger (Phase 5, record-only) — founder + partner see all.
+      { to: '/admin/marketing', label: 'Marketing', icon: 'i-lucide-megaphone', matchPrefix: '/admin/marketing' },
     ],
   },
   {
@@ -64,6 +66,9 @@ export const adminNav: NavGroup[] = [
       // Users + Activity land in Phase 0 / Phase 1 — nav is scaffolded ahead so
       // those phases only add the page, not the nav entry.
       { to: '/admin/users', label: 'Users', icon: 'i-lucide-user-cog', matchPrefix: '/admin/users', roles: ['founder'] },
+      // Payroll ledger (Phase 5, record-only) — founder-only; partners read
+      // their own payslips on /team like everyone else.
+      { to: '/admin/payroll', label: 'Payroll', icon: 'i-lucide-banknote', matchPrefix: '/admin/payroll', roles: ['founder'] },
       { to: '/admin/activity', label: 'Activity', icon: 'i-lucide-history', matchPrefix: '/admin/activity' },
       { to: '/admin/investors', label: 'Investors', icon: 'i-lucide-handshake', matchPrefix: '/admin/investors' },
     ],

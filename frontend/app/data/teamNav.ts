@@ -31,6 +31,9 @@ export const teamNav: NavGroup[] = [
     roles: PROGRAMME_ROLES,
     items: [
       { to: '/team/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/team/referrals', roles: PROGRAMME_ROLES },
+      // Marketing spend (Phase 5, record-only) — enter own + see own here;
+      // the full roll-up is the cockpit's /admin/marketing.
+      { to: '/team/marketing', label: 'Marketing', icon: 'i-lucide-megaphone', matchPrefix: '/team/marketing', roles: PROGRAMME_ROLES },
     ],
   },
   {

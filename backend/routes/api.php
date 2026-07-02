@@ -3,10 +3,12 @@
 use App\Http\Controllers\Api\V1\Admin\ActivityController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
+use App\Http\Controllers\Api\V1\Admin\ExpensesController;
 use App\Http\Controllers\Api\V1\Admin\InquiriesController;
 use App\Http\Controllers\Api\V1\Admin\InvoicesController;
 use App\Http\Controllers\Api\V1\Admin\OrdersController;
 use App\Http\Controllers\Api\V1\Admin\PaymentsController;
+use App\Http\Controllers\Api\V1\Admin\PayrollController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\Admin\ReferralPartnersController;
@@ -17,7 +19,9 @@ use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
 use App\Http\Controllers\Api\V1\Admin\UsersController;
 use App\Http\Controllers\Api\V1\Team\AuthController as TeamAuthController;
+use App\Http\Controllers\Api\V1\Team\ExpensesController as TeamExpensesController;
 use App\Http\Controllers\Api\V1\Team\InquiriesController as TeamInquiriesController;
+use App\Http\Controllers\Api\V1\Team\PayrollController as TeamPayrollController;
 use App\Http\Controllers\Api\V1\Team\ReferralsController as TeamReferralsController;
 use App\Http\Controllers\Api\V1\Partner\AuthController as PartnerAuthController;
 use App\Http\Controllers\Api\V1\Partner\DashboardController as PartnerDashboardController;
@@ -135,6 +139,17 @@ Route::middleware([
         // Activity feed — the audit trail (founder + partner, per the cockpit group)
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
 
+        // Payroll ledger (Phase 5, record-only) — founder-only via the
+        // view-all-payroll gate in-controller; a partner reads their own
+        // payslips at /v1/team/payslips like everyone else.
+        Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+        Route::post('/payroll', [PayrollController::class, 'store'])->name('payroll.store');
+
+        // Marketing-spend ledger (Phase 5, record-only) — founder + partner
+        // enter their own and see every row (the full roll-up).
+        Route::get('/marketing-expenses', [ExpensesController::class, 'index'])->name('marketing-expenses.index');
+        Route::post('/marketing-expenses', [ExpensesController::class, 'store'])->name('marketing-expenses.store');
+
         Route::get('/quotations', [QuotationsController::class, 'index'])->name('quotations.index');
         Route::post('/quotations', [QuotationsController::class, 'store'])->name('quotations.store');
         Route::post('/quotations/preview', [QuotationsController::class, 'preview'])->name('quotations.preview');
@@ -249,12 +264,21 @@ Route::middleware([
         Route::get('/inquiries/{inquiry}', [TeamInquiriesController::class, 'show'])->name('inquiries.show');
         Route::post('/inquiries/{inquiry}/status', [TeamInquiriesController::class, 'updateStatus'])->name('inquiries.status');
 
+        // Own payslips (Phase 5) — every internal role reads only their own rows;
+        // the founder's full ledger lives at /v1/admin/payroll.
+        Route::get('/payslips', [TeamPayrollController::class, 'index'])->name('payslips.index');
+
         // Referral programme — the marketer owns it; engineers are excluded here
         // (they can enter /team, but not this surface). founder/partner keep access.
         Route::middleware('role:founder,partner,marketer')->group(function () {
             Route::get('/referrals', [TeamReferralsController::class, 'index'])->name('referrals.index');
             Route::get('/referrals/{referral}', [TeamReferralsController::class, 'show'])->name('referrals.show');
             Route::post('/referrals/{referral}/status', [TeamReferralsController::class, 'updateStatus'])->name('referrals.status');
+
+            // Marketing spend (Phase 5) — the marketer enters + sees only their
+            // own rows here; the full roll-up is /v1/admin/marketing-expenses.
+            Route::get('/marketing-expenses', [TeamExpensesController::class, 'index'])->name('marketing-expenses.index');
+            Route::post('/marketing-expenses', [TeamExpensesController::class, 'store'])->name('marketing-expenses.store');
         });
     });
 

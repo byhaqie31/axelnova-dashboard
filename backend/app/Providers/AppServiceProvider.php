@@ -24,8 +24,8 @@ class AppServiceProvider extends ServiceProvider
 
         // Founder-only capabilities (Phase 0). Each gate is the single source of
         // truth for one privileged action; controllers call Gate::authorize() at
-        // the call site. `view-all-payroll` is defined now but has no call site
-        // until the payroll ledger lands (Phase 5).
+        // the call site. `view-all-payroll` guards the payroll ledger (Phase 5):
+        // reading the roll-up AND recording entries are both founder-only.
         Gate::define('manage-users', fn (User $user) => $user->isFounder());
         Gate::define('hard-delete', fn (User $user) => $user->isFounder());
         Gate::define('accept-quote', fn (User $user) => $user->isFounder());
