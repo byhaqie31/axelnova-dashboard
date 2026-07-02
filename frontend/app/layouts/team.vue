@@ -175,21 +175,28 @@ useHead({ title: 'Team Workspace' })
       >
         <nav class="p-3 flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden">
           <!-- Collapsed rail: no room for labels, so flatten groups to icons with
-               a hairline between them. Full list stays reachable. -->
+               a hairline between them; each icon names itself via a hover
+               tooltip (right side, teleported past the rail's overflow clip). -->
           <template v-if="sidebarCollapsed">
             <template v-for="(group, gi) in navGroups" :key="group.label">
               <hr v-if="gi > 0" class="my-1 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
-              <NuxtLink
+              <UTooltip
                 v-for="item in group.items"
                 :key="item.to"
-                :to="item.to"
-                class="admin-nav-item"
-                :style="{ justifyContent: 'center', paddingLeft: 0, paddingRight: 0, width: '100%' }"
-                :data-active="isAdminNavActive(item, route.path)"
-                :title="item.label"
+                :text="item.label"
+                :content="{ side: 'right', sideOffset: 10 }"
+                :delay-duration="150"
+                :ui="{ content: 'admin-nav-tooltip' }"
               >
-                <UIcon :name="item.icon" class="size-4.5 shrink-0" />
-              </NuxtLink>
+                <NuxtLink
+                  :to="item.to"
+                  class="admin-nav-item"
+                  :style="{ justifyContent: 'center', paddingLeft: 0, paddingRight: 0, width: '100%' }"
+                  :data-active="isAdminNavActive(item, route.path)"
+                >
+                  <UIcon :name="item.icon" class="size-4.5 shrink-0" />
+                </NuxtLink>
+              </UTooltip>
             </template>
           </template>
 
