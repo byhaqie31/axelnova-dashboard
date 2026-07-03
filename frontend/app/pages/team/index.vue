@@ -38,7 +38,7 @@ const blurbs: Record<string, string> = {
   <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <div class="mb-9">
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
-        {{ firstName ? `Welcome, ${firstName}` : 'Team workspace' }}
+        {{ firstName ? `Welcome, ${firstName}` : 'Team Workspace' }}
       </h1>
       <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
         Your workspace for inquiry triage and the referral programme.

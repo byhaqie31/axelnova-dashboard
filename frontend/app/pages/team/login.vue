@@ -59,7 +59,7 @@ async function handleLogin() {
           <div class="space-y-4">
             <div class="flex items-center justify-center gap-3">
               <BrandMark variant="mark-only" class="team-brand" />
-              <h1 class="text-[26px] font-bold tracking-tight text-gradient">Team workspace</h1>
+              <h1 class="text-[26px] font-bold tracking-tight text-gradient">Team Workspace</h1>
             </div>
             <p class="text-[13px] text-center" style="color: var(--color-text-secondary);">
               Sign in to triage inquiries and manage referrals.

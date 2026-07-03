@@ -424,7 +424,7 @@ useHead({ title: 'Admin Portal' })
             <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" >
             <button type="button" class="admin-nav-item w-full" @click="jumpToTeam">
               <UIcon name="i-lucide-users-round" class="size-4.5 shrink-0" />
-              <span>Team workspace</span>
+              <span>Team Workspace</span>
               <UIcon name="i-lucide-arrow-up-right" class="size-3.5 shrink-0 ml-auto opacity-60" />
             </button>
             <NuxtLink to="/partners/login" target="_blank" rel="noopener" class="admin-nav-item">
