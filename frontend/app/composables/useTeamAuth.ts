@@ -17,16 +17,19 @@ export function useTeamAuth() {
     localStorage.removeItem('axn_team_token')
   }
 
-  function authHeaders() {
+  function authHeaders(): Record<string, string> {
     const token = getToken()
     return token ? { Authorization: `Bearer ${token}` } : {}
   }
 
   async function apiFetch<T>(path: string, opts: Parameters<typeof $fetch>[1] = {}): Promise<T> {
-    return $fetch<T>(`${runtimeConfig.public.apiBase}${path}`, {
+    // Cast around nitro's typed-route inference: a template-literal URL sends
+    // vue-tsc into "excessive stack depth" comparing route unions.
+    const fetcher = $fetch as (url: string, o?: Parameters<typeof $fetch>[1]) => Promise<unknown>
+    return await fetcher(`${runtimeConfig.public.apiBase}${path}`, {
       ...opts,
       headers: { ...authHeaders(), ...(opts.headers as Record<string, string> ?? {}) },
-    })
+    }) as T
   }
 
   async function logout() {

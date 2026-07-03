@@ -41,6 +41,7 @@ class ServiceCategoriesController extends Controller
             if ($category->is_default) {
                 ServiceCategory::where('id', '!=', $category->id)->update(['is_default' => false]);
             }
+
             return $category;
         });
 

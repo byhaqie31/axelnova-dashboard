@@ -118,7 +118,8 @@ function fmtMyr(amount: string | number) {
 
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading orders…</div>
 
-    <div v-else-if="!orders.length" class="rounded-2xl border p-12 text-center"
+    <div
+v-else-if="!orders.length" class="rounded-2xl border p-12 text-center"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
       <UIcon name="i-lucide-package" class="size-8 mb-3 mx-auto" :style="{ color: 'var(--color-text-tertiary)' }" />
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">No orders yet</p>
@@ -132,14 +133,16 @@ function fmtMyr(amount: string | number) {
       <table class="w-full text-left">
         <thead>
           <tr>
-            <th v-for="h in ['Order', 'Client', 'Value', 'Status', 'Due', 'Started', 'Created']" :key="h"
+            <th
+v-for="h in ['Order', 'Client', 'Value', 'Status', 'Due', 'Started', 'Created']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="o in orders" :key="o.id"
+          <tr
+v-for="o in orders" :key="o.id"
             class="admin-table-row"
             @click="navigateTo(`/admin/orders/${o.id}`)">
             <td class="px-4 py-3.5">

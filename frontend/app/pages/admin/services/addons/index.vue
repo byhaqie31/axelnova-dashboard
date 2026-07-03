@@ -56,7 +56,8 @@ function fmtPrice(n: string | number) {
 
 <template>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All services
     </NuxtLink>
@@ -78,34 +79,40 @@ function fmtPrice(n: string | number) {
 
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
 
-    <div v-else-if="!addons.length" class="rounded-2xl border p-12 text-center"
+    <div
+v-else-if="!addons.length" class="rounded-2xl border p-12 text-center"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">No add-ons yet</p>
       <p class="text-[12px] mb-4" :style="{ color: 'var(--color-text-secondary)' }">Add-ons are the optional extras (SEO, copywriting…) shown under every package.</p>
       <NuxtLink to="/admin/services/addons/new" class="btn-pill btn-pill-accent text-[12px]">+ New add-on</NuxtLink>
     </div>
 
-    <ul v-else class="rounded-2xl border overflow-hidden"
+    <ul
+v-else class="rounded-2xl border overflow-hidden"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-      <li v-for="a in addons" :key="a.id"
+      <li
+v-for="a in addons" :key="a.id"
         class="flex items-center gap-4 px-5 py-3.5 border-b last:border-b-0"
         :style="{ borderColor: 'var(--color-border)' }">
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
             <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ a.label }}</p>
-            <span v-if="!a.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+            <span
+v-if="!a.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
               :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
           </div>
           <p class="text-[11px] font-mono mt-0.5" :style="{ color: 'var(--color-text-tertiary)' }">{{ a.addon_key }}</p>
         </div>
         <p class="text-[13px] font-semibold tabular-nums shrink-0" :style="{ color: 'var(--color-text)' }">{{ fmtPrice(a.amount_myr) }}</p>
         <div class="flex items-center gap-1 shrink-0">
-          <NuxtLink :to="`/admin/services/addons/${a.id}`"
+          <NuxtLink
+:to="`/admin/services/addons/${a.id}`"
             class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
             Edit
           </NuxtLink>
-          <button class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+          <button
+class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
             @click="deleteAddon(a)">
             Delete

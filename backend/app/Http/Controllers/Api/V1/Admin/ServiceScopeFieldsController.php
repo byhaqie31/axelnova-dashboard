@@ -43,6 +43,7 @@ class ServiceScopeFieldsController extends Controller
                 ['service_category_id' => $data['service_category_id']],
                 (int) ($data['sort_order'] ?? 0),
             );
+
             return ServiceScopeField::create($data);
         });
 

@@ -177,9 +177,11 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
     <div v-if="open" class="fixed inset-0 z-50 flex justify-end">
       <button class="absolute inset-0 cursor-default" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);" aria-label="Close" @click="emit('close')" />
 
-      <div class="scope-drawer-panel relative h-full w-full max-w-md overflow-y-auto border-l"
+      <div
+class="scope-drawer-panel relative h-full w-full max-w-md overflow-y-auto border-l"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
-        <div class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b"
+        <div
+class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[16px] font-semibold tracking-tight" style="color: var(--color-text);">{{ isEdit ? 'Edit scope field' : 'New scope field' }}</p>
           <button type="button" class="size-8 rounded-lg flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text-tertiary);" aria-label="Close" @click="emit('close')">
@@ -192,11 +194,12 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <div>
             <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Type *</label>
             <div class="grid grid-cols-3 gap-2">
-              <button v-for="t in types" :key="t.value" type="button" @click="form.type = t.value"
-                class="flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 transition-all"
+              <button
+v-for="t in types" :key="t.value" type="button" class="flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 transition-all"
                 :style="form.type === t.value
                   ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-                  : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
+                  : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
+                @click="form.type = t.value">
                 <UIcon :name="t.icon" class="size-5" />
                 <span class="text-[12px] font-medium">{{ t.label }}</span>
               </button>
@@ -207,12 +210,12 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Key *</label>
-              <input v-model="form.field_key" type="text" required placeholder="extra_page" class="contact-input w-full font-mono text-[12px]" :style="fieldStyle" />
+              <input v-model="form.field_key" type="text" required placeholder="extra_page" class="contact-input w-full font-mono text-[12px]" :style="fieldStyle" >
               <p v-if="err('field_key')" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ err('field_key') }}</p>
             </div>
             <div>
               <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Label *</label>
-              <input v-model="form.label" type="text" required placeholder="Number of pages" class="contact-input w-full" :style="fieldStyle" />
+              <input v-model="form.label" type="text" required placeholder="Number of pages" class="contact-input w-full" :style="fieldStyle" >
               <p v-if="err('label')" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ err('label') }}</p>
             </div>
           </div>
@@ -221,14 +224,14 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <div v-if="form.type === 'slider'" class="rounded-xl border p-4 space-y-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
             <p class="text-[12px] font-semibold" :style="{ color: 'var(--color-text)' }">Slider settings</p>
             <div class="grid grid-cols-3 gap-3">
-              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Min</label><input v-model.number="form.s_min" type="number" class="contact-input w-full" :style="fieldStyle" /></div>
-              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Max</label><input v-model.number="form.s_max" type="number" class="contact-input w-full" :style="fieldStyle" /></div>
-              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Default</label><input v-model.number="form.s_default" type="number" class="contact-input w-full" :style="fieldStyle" /></div>
+              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Min</label><input v-model.number="form.s_min" type="number" class="contact-input w-full" :style="fieldStyle" ></div>
+              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Max</label><input v-model.number="form.s_max" type="number" class="contact-input w-full" :style="fieldStyle" ></div>
+              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Default</label><input v-model.number="form.s_default" type="number" class="contact-input w-full" :style="fieldStyle" ></div>
             </div>
             <div class="grid grid-cols-3 gap-3">
-              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Unit</label><input v-model="form.s_unit" type="text" placeholder="page" class="contact-input w-full" :style="fieldStyle" /></div>
-              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Free up to</label><input v-model.number="form.s_free_threshold" type="number" min="0" class="contact-input w-full" :style="fieldStyle" /></div>
-              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">RM / extra</label><input v-model.number="form.s_price_per_unit" type="number" min="0" step="50" class="contact-input w-full" :style="fieldStyle" /></div>
+              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Unit</label><input v-model="form.s_unit" type="text" placeholder="page" class="contact-input w-full" :style="fieldStyle" ></div>
+              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Free up to</label><input v-model.number="form.s_free_threshold" type="number" min="0" class="contact-input w-full" :style="fieldStyle" ></div>
+              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">RM / extra</label><input v-model.number="form.s_price_per_unit" type="number" min="0" step="50" class="contact-input w-full" :style="fieldStyle" ></div>
             </div>
             <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">First {{ form.s_free_threshold }} {{ form.s_unit || 'unit' }}(s) free; each beyond adds RM {{ form.s_price_per_unit || 0 }}. Set RM/extra to 0 to capture scope without pricing.</p>
           </div>
@@ -237,8 +240,8 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <div v-else-if="form.type === 'toggle'" class="rounded-xl border p-4 space-y-3" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
             <p class="text-[12px] font-semibold" :style="{ color: 'var(--color-text)' }">Toggle settings</p>
             <div class="grid grid-cols-2 gap-3 items-end">
-              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Price when on (RM)</label><input v-model.number="form.t_amount" type="number" min="0" step="50" class="contact-input w-full" :style="fieldStyle" /></div>
-              <label class="flex items-center gap-2 cursor-pointer pb-2"><input v-model="form.t_default" type="checkbox" class="size-4" /><span class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">On by default</span></label>
+              <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Price when on (RM)</label><input v-model.number="form.t_amount" type="number" min="0" step="50" class="contact-input w-full" :style="fieldStyle" ></div>
+              <label class="flex items-center gap-2 cursor-pointer pb-2"><input v-model="form.t_default" type="checkbox" class="size-4" ><span class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">On by default</span></label>
             </div>
           </div>
 
@@ -246,14 +249,14 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <div v-else class="rounded-xl border p-4 space-y-3" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
             <div class="flex items-center justify-between">
               <p class="text-[12px] font-semibold" :style="{ color: 'var(--color-text)' }">Options</p>
-              <button type="button" @click="addOption" class="text-[11px] font-medium" :style="{ color: 'var(--color-accent)' }">+ Add option</button>
+              <button type="button" class="text-[11px] font-medium" :style="{ color: 'var(--color-accent)' }" @click="addOption">+ Add option</button>
             </div>
             <div v-for="(opt, i) in form.sel_options" :key="i" class="flex items-center gap-2">
-              <input v-model="form.sel_default" type="radio" :value="opt.value" title="Default" class="size-3.5 shrink-0" />
-              <input v-model="opt.value" type="text" placeholder="value" class="contact-input w-20 font-mono text-[12px]" :style="fieldStyle" />
-              <input v-model="opt.label" type="text" placeholder="Label" class="contact-input flex-1" :style="fieldStyle" />
-              <input v-model.number="opt.amount" type="number" min="0" step="50" placeholder="RM" class="contact-input w-20" :style="fieldStyle" />
-              <button type="button" @click="removeOption(i)" :disabled="form.sel_options.length <= 1" class="shrink-0 size-8 rounded-md inline-flex items-center justify-center transition-opacity disabled:opacity-30" :style="{ color: 'var(--color-danger)' }" aria-label="Remove option"><UIcon name="i-lucide-trash-2" class="size-4" /></button>
+              <input v-model="form.sel_default" type="radio" :value="opt.value" title="Default" class="size-3.5 shrink-0" >
+              <input v-model="opt.value" type="text" placeholder="value" class="contact-input w-20 font-mono text-[12px]" :style="fieldStyle" >
+              <input v-model="opt.label" type="text" placeholder="Label" class="contact-input flex-1" :style="fieldStyle" >
+              <input v-model.number="opt.amount" type="number" min="0" step="50" placeholder="RM" class="contact-input w-20" :style="fieldStyle" >
+              <button type="button" :disabled="form.sel_options.length <= 1" class="shrink-0 size-8 rounded-md inline-flex items-center justify-center transition-opacity disabled:opacity-30" :style="{ color: 'var(--color-danger)' }" aria-label="Remove option" @click="removeOption(i)"><UIcon name="i-lucide-trash-2" class="size-4" /></button>
             </div>
             <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">The radio marks the default. Each option adds its RM amount.</p>
           </div>
@@ -262,11 +265,12 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <div>
             <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Applies to</label>
             <div v-if="packages.length" class="flex flex-wrap gap-2">
-              <button v-for="p in packages" :key="p.key" type="button" @click="togglePackage(p.key)"
-                class="text-[12px] px-3 py-1.5 rounded-full border transition-all"
+              <button
+v-for="p in packages" :key="p.key" type="button" class="text-[12px] px-3 py-1.5 rounded-full border transition-all"
                 :style="form.applies_to.includes(p.key)
                   ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-                  : { borderColor: 'var(--color-border)', background: 'transparent', color: 'var(--color-text-secondary)' }">
+                  : { borderColor: 'var(--color-border)', background: 'transparent', color: 'var(--color-text-secondary)' }"
+                @click="togglePackage(p.key)">
                 {{ p.name }}
               </button>
             </div>
@@ -275,26 +279,30 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           </div>
 
           <!-- Active -->
-          <button type="button" @click="form.active = !form.active"
-            class="w-full flex items-center justify-between gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+          <button
+type="button" class="w-full flex items-center justify-between gap-3 rounded-lg border px-4 py-3 transition-all text-left"
             :style="form.active
               ? { borderColor: 'var(--color-success)', background: 'var(--color-bg)' }
-              : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+              : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+            @click="form.active = !form.active">
             <span>
               <span class="block text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">Active</span>
               <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Shown in the quote builder</span>
             </span>
-            <span class="relative inline-block rounded-full transition-colors shrink-0"
+            <span
+class="relative inline-block rounded-full transition-colors shrink-0"
               :style="{ background: form.active ? 'var(--color-success)' : '#d1d5db', height: '1.25rem', width: '2.25rem' }">
-              <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
-                :style="{ left: form.active ? '1.125rem' : '0.125rem' }"></span>
+              <span
+class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+                :style="{ left: form.active ? '1.125rem' : '0.125rem' }"/>
             </span>
           </button>
 
           <p v-if="message" class="text-[12px]" :style="{ color: 'var(--color-danger)' }">{{ message }}</p>
         </form>
 
-        <div class="sticky bottom-0 flex items-center justify-end gap-2 px-6 py-4 border-t"
+        <div
+class="sticky bottom-0 flex items-center justify-end gap-2 px-6 py-4 border-t"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="emit('close')">Cancel</button>
           <button type="button" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving" @click="save">

@@ -36,11 +36,13 @@ const fields = computed(() => classifyScopeFields(props.scope))
     <!-- Ruled spec grid: label-left / value-right. Booleans read as Yes/No badges
          (Yes pops in accent, No recedes), numbers are emphasised, text wraps. -->
     <div class="grid sm:grid-cols-2 sm:gap-x-10">
-      <div v-for="field in fields" :key="field.key"
+      <div
+v-for="field in fields" :key="field.key"
         class="flex items-center justify-between gap-3 py-2.5 border-b" :style="{ borderColor: 'var(--color-border)' }">
         <span class="text-[12.5px]" style="color: var(--color-text-secondary);">{{ field.label }}</span>
 
-        <span v-if="field.kind === 'bool'" class="inline-flex items-center gap-1 rounded-full pl-1.5 pr-2 py-0.5 text-[11px] font-semibold shrink-0"
+        <span
+v-if="field.kind === 'bool'" class="inline-flex items-center gap-1 rounded-full pl-1.5 pr-2 py-0.5 text-[11px] font-semibold shrink-0"
           :style="field.on
             ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
             : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-tertiary)' }">

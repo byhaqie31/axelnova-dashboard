@@ -250,7 +250,8 @@ const statusLabels: Record<string, string> = {
 <template>
   <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/referrals" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/referrals" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All referrals
     </NuxtLink>
@@ -263,7 +264,8 @@ const statusLabels: Record<string, string> = {
       <div class="space-y-6">
 
         <!-- Header -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
             <div>
@@ -293,11 +295,13 @@ const statusLabels: Record<string, string> = {
         </div>
 
         <!-- Commission (once there's an anchored order) -->
-        <div v-if="referral.anchor_order_id" class="rounded-2xl border p-6"
+        <div
+v-if="referral.anchor_order_id" class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3 mb-5">
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Commission</p>
-            <span v-if="referral.commission_email_sent_at" class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            <span
+v-if="referral.commission_email_sent_at" class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
               :style="{ color: 'var(--color-success)', background: 'var(--color-success-soft)' }">
               <UIcon name="i-lucide-mail-check" class="size-3" /> Requested {{ fmtDate(referral.commission_email_sent_at) }}
             </span>
@@ -340,7 +344,8 @@ const statusLabels: Record<string, string> = {
             <p v-if="referral.status !== 'converted'" class="text-[11px]" style="color: var(--color-text-tertiary);">
               Available once the referral converts (deposit collected).
             </p>
-            <button type="button" class="btn-pill btn-pill-accent text-[13px] ml-auto shrink-0"
+            <button
+type="button" class="btn-pill btn-pill-accent text-[13px] ml-auto shrink-0"
               :class="{ 'opacity-50': commissionSending || referral.status !== 'converted' }"
               :disabled="commissionSending || referral.status !== 'converted'"
               @click="sendCommissionEmail">
@@ -351,7 +356,8 @@ const statusLabels: Record<string, string> = {
         </div>
 
         <!-- Referrer contact -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Referrer</p>
           <div class="grid sm:grid-cols-2 gap-4">
@@ -367,7 +373,8 @@ const statusLabels: Record<string, string> = {
         </div>
 
         <!-- Business -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Business referred</p>
           <div class="grid sm:grid-cols-2 gap-4">
@@ -391,7 +398,8 @@ const statusLabels: Record<string, string> = {
         </div>
 
         <!-- Notes -->
-        <div v-if="referral.notes" class="rounded-2xl border p-6"
+        <div
+v-if="referral.notes" class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Notes</p>
           <p class="text-[13px] leading-relaxed whitespace-pre-line" style="color: var(--color-text);">{{ referral.notes }}</p>
@@ -403,11 +411,13 @@ const statusLabels: Record<string, string> = {
       <div class="lg:sticky lg:top-20 space-y-4">
 
         <!-- Status -->
-        <div class="rounded-2xl border p-5"
+        <div
+class="rounded-2xl border p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Update status</p>
           <div class="flex flex-wrap gap-2">
-            <button v-for="s in statusOptions" :key="s" type="button"
+            <button
+v-for="s in statusOptions" :key="s" type="button"
               class="status-pill status-pill-button"
               :class="{ 'opacity-50': statusLoading }"
               :data-status="referral.status === s ? s : ''"
@@ -426,12 +436,14 @@ const statusLabels: Record<string, string> = {
         </div>
 
         <!-- Quotation anchor -->
-        <div class="rounded-2xl border p-5 space-y-3"
+        <div
+class="rounded-2xl border p-5 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Quotation anchor</p>
 
           <template v-if="referral.quotation_id">
-            <div class="rounded-xl border px-4 py-3"
+            <div
+class="rounded-xl border px-4 py-3"
               :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
               <p class="text-[11px]" style="color: var(--color-text-tertiary);">Tied quotation</p>
               <NuxtLink :to="`/admin/quotations/${referral.quotation_id}`" class="text-[13px] font-mono font-medium" style="color: var(--color-accent);">
@@ -451,8 +463,9 @@ const statusLabels: Record<string, string> = {
             <p class="text-[12px]" style="color: var(--color-text-secondary);">
               Anchor this referral to the quotation its lead became — it converts automatically once the deposit is collected.
             </p>
-            <input v-model="tieQuotationId" type="number" inputmode="numeric" placeholder="Quotation ID" class="contact-input text-[13px]" />
-            <button type="button" class="btn-pill btn-pill-accent w-full justify-center"
+            <input v-model="tieQuotationId" type="number" inputmode="numeric" placeholder="Quotation ID" class="contact-input text-[13px]" >
+            <button
+type="button" class="btn-pill btn-pill-accent w-full justify-center"
               :disabled="tying || !tieQuotationId"
               @click="askTie(Number(tieQuotationId), null)">
               Tie
@@ -464,7 +477,8 @@ const statusLabels: Record<string, string> = {
               <UIcon name="i-lucide-list" class="size-4 mr-1.5" /> View quotation list
             </button>
 
-            <NuxtLink v-if="referral.linked_order_id" :to="`/admin/orders/${referral.linked_order_id}`"
+            <NuxtLink
+v-if="referral.linked_order_id" :to="`/admin/orders/${referral.linked_order_id}`"
               class="text-[11px] inline-flex items-center gap-1 pt-1" style="color: var(--color-text-tertiary);">
               Legacy linked order #{{ referral.linked_order_id }} →
             </NuxtLink>
@@ -472,16 +486,19 @@ const statusLabels: Record<string, string> = {
         </div>
 
         <!-- Actions -->
-        <div class="rounded-2xl border p-5 space-y-3"
+        <div
+class="rounded-2xl border p-5 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Actions</p>
 
-          <a :href="`mailto:${referral.referrer_email}?subject=Your%20referral%20to%20Axel%20Nova`"
+          <a
+:href="`mailto:${referral.referrer_email}?subject=Your%20referral%20to%20Axel%20Nova`"
             class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
             Email referrer
           </a>
 
-          <a v-if="referral.referrer_phone"
+          <a
+v-if="referral.referrer_phone"
             :href="`https://wa.me/${referral.referrer_phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(referral.referrer_name)}%2C%20thanks%20for%20referring%20${encodeURIComponent(referral.business_name)}.`"
             target="_blank" rel="noopener"
             class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
@@ -490,7 +507,8 @@ const statusLabels: Record<string, string> = {
         </div>
 
         <!-- Audit -->
-        <div class="rounded-xl border px-4 py-3.5 space-y-2"
+        <div
+class="rounded-xl border px-4 py-3.5 space-y-2"
           :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
           <div class="flex justify-between">
             <span class="text-[11px]" style="color: var(--color-text-tertiary);">Submitted</span>
@@ -519,7 +537,7 @@ const statusLabels: Record<string, string> = {
               </button>
             </div>
             <div class="px-5 pb-3">
-              <input v-model="listSearch" type="search" placeholder="Search by ref, name, company…" class="contact-input text-[13px]" />
+              <input v-model="listSearch" type="search" placeholder="Search by ref, name, company…" class="contact-input text-[13px]" >
             </div>
             <div class="drawer-list">
               <p v-if="listLoading" class="text-[13px] px-5 py-6 text-center" style="color: var(--color-text-tertiary);">Loading quotations…</p>
@@ -543,7 +561,8 @@ const statusLabels: Record<string, string> = {
               </button>
             </div>
             <div class="drawer-foot" :style="{ borderColor: 'var(--color-border)' }">
-              <button type="button" class="btn-pill btn-pill-accent w-full justify-center"
+              <button
+type="button" class="btn-pill btn-pill-accent w-full justify-center"
                 :disabled="!selectedQuotation || tying"
                 @click="selectedQuotation && askTie(selectedQuotation.id, selectedQuotation.reference_code)">
                 {{ selectedQuotation ? `Tie ${selectedQuotation.reference_code}` : 'Select a quotation to tie' }}

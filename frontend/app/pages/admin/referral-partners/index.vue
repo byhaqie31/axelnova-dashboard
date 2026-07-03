@@ -170,7 +170,8 @@ async function confirmAction() {
         <table class="w-full text-left">
           <thead>
             <tr>
-              <th v-for="h in ['Partner', 'Code', 'Tier', 'Referrals', 'Status', 'Last login', 'Actions']" :key="h"
+              <th
+v-for="h in ['Partner', 'Code', 'Tier', 'Referrals', 'Status', 'Last login', 'Actions']" :key="h"
                 class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
                 {{ h }}
               </th>

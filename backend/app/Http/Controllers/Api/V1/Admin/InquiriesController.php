@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\InquiryResource;
 use App\Models\Inquiry;
+use App\Services\Referrals\ReferralAttributionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -80,7 +81,7 @@ class InquiriesController extends Controller
         ]);
 
         $inquiry = $inquiry->fresh();
-        app(\App\Services\Referrals\ReferralAttributionService::class)
+        app(ReferralAttributionService::class)
             ->attribute($inquiry->quotation, $inquiry);
 
         return new InquiryResource($inquiry->load('quotation'));

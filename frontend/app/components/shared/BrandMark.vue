@@ -26,7 +26,7 @@ const wordmarkSize = computed(() => props.variant === 'compact' ? 'text-[13px]' 
       alt=""
       aria-hidden="true"
       :class="[iconSize, 'object-contain brand-logo-glow']"
-    />
+    >
     <span v-if="variant !== 'mark-only'" class="text-gradient">{{ wordmark }}</span>
   </NuxtLink>
 </template>

@@ -151,7 +151,8 @@ async function confirmAction() {
 <template>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/referral-partners" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/referral-partners" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All referral partners
     </NuxtLink>
@@ -168,13 +169,15 @@ async function confirmAction() {
       <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
       <!-- Header card -->
-      <div class="rounded-2xl border p-6 mb-8"
+      <div
+class="rounded-2xl border p-6 mb-8"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
           <div>
             <div class="flex items-center gap-3 flex-wrap">
               <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ partner.name }}</p>
-              <span class="text-[11px] font-medium px-2.5 py-1 rounded-full"
+              <span
+class="text-[11px] font-medium px-2.5 py-1 rounded-full"
                 :style="{ color: partnerPill(partner.status).color, background: partnerPill(partner.status).bg }">
                 {{ partnerPill(partner.status).label }}
               </span>
@@ -229,14 +232,16 @@ async function confirmAction() {
           <table class="w-full text-left">
             <thead>
               <tr>
-                <th v-for="h in ['Business', 'Status', 'Quotation', 'Rate', 'Earned']" :key="h"
+                <th
+v-for="h in ['Business', 'Status', 'Quotation', 'Rate', 'Earned']" :key="h"
                   class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
                   {{ h }}
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="r in partner.referrals" :key="r.id" class="admin-table-row" style="cursor: pointer;"
+              <tr
+v-for="r in partner.referrals" :key="r.id" class="admin-table-row" style="cursor: pointer;"
                 @click="navigateTo(`/admin/referrals/${r.id}`)">
                 <td class="px-4 py-3.5">
                   <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ r.business_name }}</p>

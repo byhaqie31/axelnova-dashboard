@@ -38,6 +38,7 @@ class ServiceAddonsController extends Controller
                 [],
                 (int) ($data['sort_order'] ?? 0),
             );
+
             return ServiceAddon::create($data);
         });
 

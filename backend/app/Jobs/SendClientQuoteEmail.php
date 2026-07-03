@@ -12,11 +12,12 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 
-class SendClientQuoteEmail implements ShouldQueue, ShouldBeUnique
+class SendClientQuoteEmail implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
+
     public int $uniqueFor = 3600;
 
     public function __construct(private readonly int $quoteRequestId) {}

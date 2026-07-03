@@ -18,7 +18,7 @@ const sidebarCollapsed = useCookie<boolean>('axn_admin_sidebar_collapsed', { def
 const navGroupsOpen = useCookie<Record<string, boolean>>('axn_admin_nav_groups', { default: () => ({}) })
 
 const route = useRoute()
-const { logout, apiFetch } = useAdminAuth()
+const { logout, apiFetch, jumpToTeam } = useAdminAuth()
 
 interface Me { id: number, name: string, email: string, role?: Role }
 const me = ref<Me | null>(null)
@@ -131,14 +131,16 @@ useHead({ title: 'Admin Portal' })
         </div>
 
         <div class="relative flex items-center gap-2">
-          <!-- Quick jumps to the other portals' sign-ins. New tab + isolated
-               token keys per portal, so the admin session here stays intact. -->
-          <nav class="hidden md:flex items-center gap-1.5" aria-label="Other portal sign-ins">
-            <NuxtLink to="/team/login" target="_blank" rel="noopener" class="portal-jump">
+          <!-- Quick jumps to the other portals. Team signs in directly via the
+               token exchange (new tab, own token key — the admin session here
+               stays intact); Partners is a different account type, so that jump
+               still lands on its login. -->
+          <nav class="hidden md:flex items-center gap-1.5" aria-label="Other portals">
+            <button type="button" class="portal-jump" @click="jumpToTeam">
               <UIcon name="i-lucide-users-round" class="size-3.5 shrink-0" />
               <span>Team</span>
               <UIcon name="i-lucide-arrow-up-right" class="size-3 shrink-0 opacity-60" />
-            </NuxtLink>
+            </button>
             <NuxtLink to="/partners/login" target="_blank" rel="noopener" class="portal-jump">
               <UIcon name="i-lucide-handshake" class="size-3.5 shrink-0" />
               <span>Partners</span>
@@ -234,7 +236,7 @@ useHead({ title: 'Admin Portal' })
                tooltip (right side, teleported past the rail's overflow clip). -->
           <template v-if="sidebarCollapsed">
             <template v-for="(group, gi) in sidebarGroups" :key="group.label">
-              <hr v-if="gi > 0" class="my-1 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
+              <hr v-if="gi > 0" class="my-1 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" >
               <UTooltip
                 v-for="item in group.items"
                 :key="item.to"
@@ -419,12 +421,12 @@ useHead({ title: 'Admin Portal' })
                 </NuxtLink>
               </div>
             </div>
-            <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
-            <NuxtLink to="/team/login" target="_blank" rel="noopener" class="admin-nav-item">
+            <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" >
+            <button type="button" class="admin-nav-item w-full" @click="jumpToTeam">
               <UIcon name="i-lucide-users-round" class="size-4.5 shrink-0" />
-              <span>Team sign-in</span>
+              <span>Team workspace</span>
               <UIcon name="i-lucide-arrow-up-right" class="size-3.5 shrink-0 ml-auto opacity-60" />
-            </NuxtLink>
+            </button>
             <NuxtLink to="/partners/login" target="_blank" rel="noopener" class="admin-nav-item">
               <UIcon name="i-lucide-handshake" class="size-4.5 shrink-0" />
               <span>Partner sign-in</span>

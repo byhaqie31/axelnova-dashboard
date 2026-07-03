@@ -22,9 +22,10 @@ class DashboardController extends Controller
         $referrer = $request->user();
 
         $referrals = $referrer->referrals()->with('quotation.order')->latest('created_at')->get();
-        $earned = 0.0; $estimated = 0.0;
+        $earned = 0.0;
+        $estimated = 0.0;
 
-        $rows = $referrals->map(function (\App\Models\Referral $referral) use (&$earned, &$estimated) {
+        $rows = $referrals->map(function (Referral $referral) use (&$earned, &$estimated) {
             $order = $referral->orderViaQuotation();
             $rate = $referral->effectivePct();
             $collected = (float) ($order->amount_paid_myr ?? 0);

@@ -161,7 +161,8 @@ function fmtMyr(amount: number) {
     </div>
 
     <!-- Founder-only surface: a partner reaches the route but the gate stops the data. -->
-    <div v-if="forbidden" class="rounded-2xl border p-12 text-center"
+    <div
+v-if="forbidden" class="rounded-2xl border p-12 text-center"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
       <UIcon name="i-lucide-lock" class="size-8 mb-3 mx-auto" :style="{ color: 'var(--color-text-tertiary)' }" />
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">Founder only</p>
@@ -173,7 +174,8 @@ function fmtMyr(amount: number) {
 
     <template v-else>
       <!-- Record form -->
-      <div v-if="showForm" class="rounded-2xl border p-6 space-y-5 mb-8"
+      <div
+v-if="showForm" class="rounded-2xl border p-6 space-y-5 mb-8"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <div class="grid sm:grid-cols-2 gap-3">
           <label class="block">
@@ -200,7 +202,8 @@ function fmtMyr(amount: number) {
         <div>
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Method</span>
           <div class="flex flex-wrap gap-1.5 mt-1.5">
-            <button v-for="m in methodOptions" :key="m.value" type="button" class="standard-pill"
+            <button
+v-for="m in methodOptions" :key="m.value" type="button" class="standard-pill"
               :style="form.method === m.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}"
               @click="form.method = m.value">{{ m.label }}</button>
           </div>
@@ -213,7 +216,8 @@ function fmtMyr(amount: number) {
 
         <p class="text-[11px]" style="color: var(--color-text-tertiary);">Record-only: the gross is entered as agreed. EPF/SOCSO/EIS/PCB stay with the payroll provider, never computed here.</p>
 
-        <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
+        <button
+type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
           :class="{ 'opacity-50': saving }" :disabled="saving" @click="record">
           {{ saving ? 'Recording…' : 'Record payslip' }}
         </button>
@@ -229,7 +233,8 @@ function fmtMyr(amount: number) {
 
       <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading payroll…</div>
 
-      <div v-else-if="!entries.length" class="rounded-2xl border p-12 text-center"
+      <div
+v-else-if="!entries.length" class="rounded-2xl border p-12 text-center"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <UIcon name="i-lucide-banknote" class="size-8 mb-3 mx-auto" :style="{ color: 'var(--color-text-tertiary)' }" />
         <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">No payslips yet</p>
@@ -242,7 +247,8 @@ function fmtMyr(amount: number) {
         <table class="w-full text-left">
           <thead>
             <tr>
-              <th v-for="h in ['Teammate', 'Period', 'Gross', 'Paid on', 'Method', 'Recorded by']" :key="h"
+              <th
+v-for="h in ['Teammate', 'Period', 'Gross', 'Paid on', 'Method', 'Recorded by']" :key="h"
                 class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
                 {{ h }}
               </th>
@@ -269,7 +275,8 @@ function fmtMyr(amount: number) {
 
       <!-- Mobile: cards -->
       <div v-if="entries.length && !loading" class="md:hidden space-y-2.5">
-        <div v-for="e in entries" :key="e.id" class="rounded-xl border p-4"
+        <div
+v-for="e in entries" :key="e.id" class="rounded-xl border p-4"
           :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
           <div class="flex items-start justify-between gap-3 mb-1">
             <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ e.user_name ?? '—' }}</span>

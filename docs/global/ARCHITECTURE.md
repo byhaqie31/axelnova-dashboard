@@ -21,7 +21,7 @@ axelnova-dashboard/
 | Database | MySQL 8 (shared via [axelnova-infra](../../../axelnova-infra/)) |
 | Queue | Laravel database queue |
 | Email | SMTP — Mailtrap in dev, Mailgun/Postmark/SES in prod |
-| Auth | Laravel Sanctum (token-based, admin only) |
+| Auth | Laravel Sanctum bearer tokens — three isolated surfaces (admin cockpit / team workspace / partner portal), each minting tokens with its own ability (`cockpit` / `workspace` / `partner`) enforced by the `abilities:` middleware. Admin → Team jump via `POST /v1/admin/team-session` token exchange |
 
 ## Database tables
 
@@ -71,6 +71,13 @@ GET  /v1/admin/leads                 Sanctum + admin role
 GET  /v1/admin/leads/{id}            Sanctum + admin role
 POST /v1/admin/leads/{id}/status     Sanctum + admin role
 POST /v1/admin/leads/{id}/convert    Sanctum + admin role
+
+# Auth surfaces (cockpit / workspace / partner — isolated token abilities)
+POST /v1/admin/login                 Public, throttled — mints ['cockpit'] token (founder/partner roles)
+POST /v1/team/login                  Public, throttled — mints ['workspace'] token (all internal roles)
+POST /v1/partner/login               Public, throttled — mints ['partner'] token (Referrer guard)
+POST /v1/admin/team-session          Cockpit — exchanges the admin session for a fresh workspace
+                                     token (the admin→team direct sign-in; audited per call)
 
 # Document generation (see DOCUMENT-GENERATION.md)
 POST /v1/admin/orders/{order}/documents   Sanctum — issue an invoice/receipt

@@ -181,7 +181,8 @@ onMounted(async () => {
 <template>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All services
     </NuxtLink>
@@ -194,14 +195,16 @@ onMounted(async () => {
 
     <p v-if="message" class="mb-4 text-[13px]" :style="{ color: 'var(--color-danger)' }">{{ message }}</p>
 
-    <form v-if="!loading" class="rounded-2xl border p-6 space-y-5"
+    <form
+v-if="!loading" class="rounded-2xl border p-6 space-y-5"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
       @submit.prevent="save">
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Category *</label>
         <div class="relative">
-          <button type="button"
+          <button
+type="button"
             class="standard-select-trigger"
             :aria-expanded="categoryOpen"
             @click="categoryOpen = !categoryOpen">
@@ -209,7 +212,8 @@ onMounted(async () => {
             <span class="flex-1 truncate" :style="{ color: selectedCategory ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">
               {{ selectedCategory?.name ?? '— pick a category —' }}
             </span>
-            <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform"
+            <UIcon
+name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform"
               :class="{ 'rotate-180': categoryOpen }"
               :style="{ color: 'var(--color-text-tertiary)' }" />
           </button>
@@ -217,7 +221,8 @@ onMounted(async () => {
           <Transition name="dropdown-panel">
             <ul v-if="categoryOpen" class="standard-select-panel" role="listbox">
               <li v-for="c in categoryOptions" :key="c.id">
-                <button type="button"
+                <button
+type="button"
                   class="standard-select-option"
                   :aria-selected="form.service_category_id === c.id"
                   @click="form.service_category_id = c.id; categoryOpen = false">
@@ -235,76 +240,86 @@ onMounted(async () => {
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Slug *</label>
-          <input v-model="form.slug" type="text" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="form.slug" type="text" required class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p v-if="errors.slug?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.slug[0] }}</p>
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Name *</label>
-          <input v-model="form.name" type="text" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="form.name" type="text" required class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
       </div>
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Tagline *</label>
-        <input v-model="form.tagline" type="text" required class="contact-input w-full"
-          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+        <input
+v-model="form.tagline" type="text" required class="contact-input w-full"
+          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
       </div>
 
       <div class="grid sm:grid-cols-3 gap-4">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Price min (MYR) *</label>
-          <input v-model.number="form.price_min_myr" type="number" min="0" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model.number="form.price_min_myr" type="number" min="0" required class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Price max (MYR)</label>
-          <input v-model.number="form.price_max_myr" type="number" min="0"
+          <input
+v-model.number="form.price_max_myr" type="number" min="0"
             placeholder="empty = open-ended"
             class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Unit *</label>
-          <input v-model="form.unit" type="text" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="form.unit" type="text" required class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Duration label *</label>
-          <input v-model="form.duration_text" type="text" required placeholder="e.g. 2 weeks"
+          <input
+v-model="form.duration_text" type="text" required placeholder="e.g. 2 weeks"
             class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Human-readable, shown on cards (e.g. "5–6 weeks").</p>
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Revisions</label>
-          <input v-model="form.revisions" type="text" placeholder="e.g. 2 rounds"
+          <input
+v-model="form.revisions" type="text" placeholder="e.g. 2 rounds"
             class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">ETA value *</label>
-          <input v-model.number="form.eta_value" type="number" required min="1" max="999"
+          <input
+v-model.number="form.eta_value" type="number" required min="1" max="999"
             class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p v-if="errors.eta_value?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.eta_value[0] }}</p>
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">ETA unit *</label>
           <div class="flex flex-wrap gap-1.5">
-            <button v-for="u in etaUnitOptions" :key="u.value" type="button"
-              @click="form.eta_unit = u.value"
+            <button
+v-for="u in etaUnitOptions" :key="u.value" type="button"
               class="standard-pill"
               :style="form.eta_unit === u.value
                 ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-                : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
+                : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
+              @click="form.eta_unit = u.value">
               {{ u.label }}
             </button>
           </div>
@@ -314,69 +329,78 @@ onMounted(async () => {
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Features (one per line) *</label>
-        <textarea v-model="featuresText" required rows="6" class="contact-input w-full font-mono text-[12px]"
+        <textarea
+v-model="featuresText" required rows="6" class="contact-input w-full font-mono text-[12px]"
           placeholder="Single-page, mobile-first layout&#10;WhatsApp + contact form integration&#10;…"
           :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
       </div>
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">CTA label</label>
-        <input v-model="form.cta" type="text" class="contact-input w-full"
-          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+        <input
+v-model="form.cta" type="text" class="contact-input w-full"
+          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
       </div>
 
       <!-- Quote-builder deep link -->
-      <div class="rounded-xl border p-4"
+      <div
+class="rounded-xl border p-4"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <label class="flex items-center gap-2 cursor-pointer">
-          <input v-model="useQuoteKey" type="checkbox" class="size-4" />
+          <input v-model="useQuoteKey" type="checkbox" class="size-4" >
           <span class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">Wire CTA to the quote builder</span>
         </label>
         <p class="text-[11px] mt-1" :style="{ color: 'var(--color-text-tertiary)' }">
           When enabled, clicking the package CTA opens <code>/quote?category=&hellip;&package=&hellip;</code> with the right preset.
         </p>
         <div v-if="useQuoteKey" class="grid sm:grid-cols-2 gap-3 mt-3">
-          <input v-model="quoteKeyCategory" type="text" placeholder="quote category key (e.g. web)"
+          <input
+v-model="quoteKeyCategory" type="text" placeholder="quote category key (e.g. web)"
             class="contact-input w-full font-mono text-[12px]"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
-          <input v-model="quoteKeyPackage" type="text" placeholder="quote package key (e.g. web_business)"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
+          <input
+v-model="quoteKeyPackage" type="text" placeholder="quote package key (e.g. web_business)"
             class="contact-input w-full font-mono text-[12px]"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
         </div>
       </div>
 
       <div>
         <label class="text-[12px] font-medium block mb-2" :style="{ color: 'var(--color-text-secondary)' }">Sort order</label>
         <div class="flex items-center gap-1.5 flex-wrap">
-          <button type="button" :disabled="(form.sort_order ?? 0) <= 0" @click="nudgeSort(-1)"
-            class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
+          <button
+type="button" :disabled="(form.sort_order ?? 0) <= 0" class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
             :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }"
-            aria-label="Move position left">
+            aria-label="Move position left"
+            @click="nudgeSort(-1)">
             <UIcon name="i-lucide-chevron-left" class="size-4" />
           </button>
 
-          <button v-for="n in occupiedSortOrders" :key="n" type="button" @click="setSort(n)"
-            class="size-9 rounded-lg border flex items-center justify-center text-[13px] font-medium tabular-nums transition-colors"
+          <button
+v-for="n in occupiedSortOrders" :key="n" type="button" class="size-9 rounded-lg border flex items-center justify-center text-[13px] font-medium tabular-nums transition-colors"
             :style="form.sort_order === n
               ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)' }
               : { borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text)' }"
-            :aria-label="`Set position ${n}`">
+            :aria-label="`Set position ${n}`"
+            @click="setSort(n)">
             {{ n }}
           </button>
 
-          <button type="button" @click="setSort(nextAvailableSort)"
-            class="size-9 rounded-lg flex items-center justify-center transition-colors"
+          <button
+type="button" class="size-9 rounded-lg flex items-center justify-center transition-colors"
             :style="form.sort_order === nextAvailableSort
               ? { border: '1px solid var(--color-accent)', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)' }
               : { border: '1px dashed var(--color-border)', color: 'var(--color-text-tertiary)' }"
-            aria-label="Auto-append at end">
+            aria-label="Auto-append at end"
+            @click="setSort(nextAvailableSort)">
             <UIcon name="i-lucide-plus" class="size-4" />
           </button>
 
-          <button type="button" :disabled="(form.sort_order ?? 0) >= nextAvailableSort" @click="nudgeSort(1)"
-            class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
+          <button
+type="button" :disabled="(form.sort_order ?? 0) >= nextAvailableSort" class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
             :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }"
-            aria-label="Move position right">
+            aria-label="Move position right"
+            @click="nudgeSort(1)">
             <UIcon name="i-lucide-chevron-right" class="size-4" />
           </button>
         </div>
@@ -386,12 +410,14 @@ onMounted(async () => {
       </div>
 
       <div class="space-y-2 pt-1">
-        <button type="button" @click="form.featured = !form.featured"
-          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+        <button
+type="button" class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
           :style="form.featured
             ? { borderColor: 'var(--color-accent)', background: 'var(--color-bg-elevated)' }
-            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+          @click="form.featured = !form.featured">
+          <span
+class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
             :style="form.featured
               ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
               : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
@@ -401,23 +427,27 @@ onMounted(async () => {
             <span class="block text-[13px] font-medium" :style="{ color: form.featured ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Featured</span>
             <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Highlighted on the public services page</span>
           </span>
-          <span class="relative inline-block rounded-full transition-colors shrink-0"
+          <span
+class="relative inline-block rounded-full transition-colors shrink-0"
             :style="{
               background: form.featured ? 'var(--color-accent)' : '#d1d5db',
               height: '1.25rem',
               width: '2.25rem',
             }">
-            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
-              :style="{ left: form.featured ? '1.125rem' : '0.125rem' }"></span>
+            <span
+class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.featured ? '1.125rem' : '0.125rem' }"/>
           </span>
         </button>
 
-        <button type="button" @click="form.active = !form.active"
-          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+        <button
+type="button" class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
           :style="form.active
             ? { borderColor: 'var(--color-success)', background: 'var(--color-bg-elevated)' }
-            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+          @click="form.active = !form.active">
+          <span
+class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
             :style="form.active
               ? { background: 'var(--color-success-soft)', color: 'var(--color-success)' }
               : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
@@ -427,14 +457,16 @@ onMounted(async () => {
             <span class="block text-[13px] font-medium" :style="{ color: form.active ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Active</span>
             <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Visible on the public services page</span>
           </span>
-          <span class="relative inline-block rounded-full transition-colors shrink-0"
+          <span
+class="relative inline-block rounded-full transition-colors shrink-0"
             :style="{
               background: form.active ? 'var(--color-success)' : '#d1d5db',
               height: '1.25rem',
               width: '2.25rem',
             }">
-            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
-              :style="{ left: form.active ? '1.125rem' : '0.125rem' }"></span>
+            <span
+class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.active ? '1.125rem' : '0.125rem' }"/>
           </span>
         </button>
       </div>

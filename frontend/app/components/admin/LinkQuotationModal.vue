@@ -92,7 +92,8 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
       <div v-if="open" class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6" @click.self="open = false">
         <div class="absolute inset-0" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(2px);" @click="open = false" />
 
-        <div class="relative w-full max-w-[520px] max-h-[85vh] flex flex-col rounded-2xl border shadow-2xl"
+        <div
+class="relative w-full max-w-[520px] max-h-[85vh] flex flex-col rounded-2xl border shadow-2xl"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }" @click.stop>
 
           <!-- Header -->
@@ -105,7 +106,8 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
 
           <!-- Search -->
           <div class="px-5 pb-3">
-            <input v-model="search" type="text" placeholder="Search by reference, name, email…"
+            <input
+v-model="search" type="text" placeholder="Search by reference, name, email…"
               class="w-full rounded-xl border px-3.5 py-2.5 text-[13px] outline-none transition-colors focus:border-(--color-accent)"
               :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }">
           </div>
@@ -118,7 +120,8 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
 
             <ul v-else class="space-y-1.5">
               <li v-for="q in rows" :key="q.id">
-                <button type="button"
+                <button
+type="button"
                   class="w-full text-left rounded-xl border px-3.5 py-2.5 transition-colors"
                   :style="{
                     borderColor: selectedId === q.id ? 'var(--color-accent)' : 'var(--color-border)',
@@ -139,7 +142,8 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
           <!-- Footer -->
           <div class="flex items-center justify-end gap-2 px-5 py-4 border-t" style="border-color: var(--color-border);">
             <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="open = false">Cancel</button>
-            <button type="button" class="btn-pill btn-pill-accent text-[13px]"
+            <button
+type="button" class="btn-pill btn-pill-accent text-[13px]"
               :class="{ 'opacity-50': !selectedId || linking }"
               :disabled="!selectedId || linking"
               @click="link">

@@ -13,7 +13,9 @@ return new class extends Migration
 
             foreach ($emails as $email) {
                 $first = DB::table('quotations')->where('email', $email)->orderBy('id')->first();
-                if (!$first) continue;
+                if (! $first) {
+                    continue;
+                }
 
                 DB::table('clients')->updateOrInsert(
                     ['email' => $email],

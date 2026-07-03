@@ -53,7 +53,8 @@ async function handleSubmit() {
 
           <!-- Success (generic — no account disclosure) -->
           <div v-if="done" class="space-y-5">
-            <div class="rounded-2xl border p-4 flex items-start gap-2.5"
+            <div
+class="rounded-2xl border p-4 flex items-start gap-2.5"
               :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
               <UIcon name="i-lucide-mail-check" class="size-5 shrink-0" style="color: var(--color-success);" />
               <p class="text-[13px] leading-relaxed" style="color: var(--color-text-secondary);">
@@ -69,8 +70,9 @@ async function handleSubmit() {
           <form v-else class="space-y-5" @submit.prevent="handleSubmit">
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email</label>
-              <input v-model="email" type="email" required autocomplete="email" placeholder="Your work email"
-                class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
+              <input
+v-model="email" type="email" required autocomplete="email" placeholder="Your work email"
+                class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" >
             </div>
             <p v-if="error" class="text-[12px] flex items-center gap-1.5" style="color: var(--color-danger);">
               <UIcon name="i-lucide-alert-circle" class="size-4 shrink-0" />

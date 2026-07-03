@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Support\RecordsActivity;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Quotation extends Model
 {
-    use RecordsActivity, SoftDeletes;
+    use HasFactory, RecordsActivity, SoftDeletes;
 
     protected $fillable = [
         'reference_code',
@@ -105,7 +107,7 @@ class Quotation extends Model
 
     public function referrer(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Referrer::class, 'referral_partner_id');
+        return $this->belongsTo(Referrer::class, 'referral_partner_id');
     }
 
     /**
@@ -165,7 +167,7 @@ class Quotation extends Model
      * Expected completion date derived from the ETA, measured from $anchor
      * (defaults to now). Null when no ETA was captured.
      */
-    public function dueDateFrom(?\Carbon\CarbonInterface $anchor = null): ?\Carbon\CarbonInterface
+    public function dueDateFrom(?CarbonInterface $anchor = null): ?CarbonInterface
     {
         $value = (int) ($this->estimate_eta_value ?? 0);
         if ($value <= 0) {

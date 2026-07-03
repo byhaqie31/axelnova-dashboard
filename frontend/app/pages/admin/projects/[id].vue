@@ -98,7 +98,8 @@ onMounted(fetchProject)
 <template>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/projects" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/projects" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All projects
     </NuxtLink>
@@ -111,33 +112,38 @@ onMounted(fetchProject)
 
     <p v-if="message" class="mb-4 text-[13px]" :style="{ color: 'var(--color-danger)' }">{{ message }}</p>
 
-    <form v-if="!loading" class="rounded-2xl border p-6 space-y-5"
+    <form
+v-if="!loading" class="rounded-2xl border p-6 space-y-5"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
       @submit.prevent="save">
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Slug *</label>
-          <input v-model="form.slug" type="text" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="form.slug" type="text" required class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p v-if="errors.slug?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.slug[0] }}</p>
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Name *</label>
-          <input v-model="form.name" type="text" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="form.name" type="text" required class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
       </div>
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Short description (max 500) *</label>
-        <textarea v-model="form.description" required maxlength="500" rows="2" class="contact-input w-full"
+        <textarea
+v-model="form.description" required maxlength="500" rows="2" class="contact-input w-full"
           :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
       </div>
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Long description *</label>
-        <textarea v-model="form.long_description" required rows="5" class="contact-input w-full"
+        <textarea
+v-model="form.long_description" required rows="5" class="contact-input w-full"
           :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
       </div>
 
@@ -145,64 +151,73 @@ onMounted(fetchProject)
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Status *</label>
           <div class="flex flex-wrap gap-1.5">
-            <button v-for="s in projectStatuses" :key="s.value" type="button"
-              @click="form.status = s.value"
+            <button
+v-for="s in projectStatuses" :key="s.value" type="button"
               class="standard-pill"
               :style="form.status === s.value
                 ? { borderColor: s.color, background: s.bg, color: s.color }
-                : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
+                : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
+              @click="form.status = s.value">
               {{ s.label }}
             </button>
           </div>
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Sort order</label>
-          <input v-model.number="form.sort_order" type="number" min="0" class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model.number="form.sort_order" type="number" min="0" class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Live URL</label>
-          <input v-model="form.url" type="url" placeholder="https://…" class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="form.url" type="url" placeholder="https://…" class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p v-if="errors.url?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.url[0] }}</p>
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Repo URL</label>
-          <input v-model="form.repo" type="url" placeholder="https://github.com/…" class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="form.repo" type="url" placeholder="https://github.com/…" class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p v-if="errors.repo?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.repo[0] }}</p>
         </div>
       </div>
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Cover image URL</label>
-        <input v-model="form.cover_image_url" type="url" class="contact-input w-full"
-          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+        <input
+v-model="form.cover_image_url" type="url" class="contact-input w-full"
+          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Tags (comma-separated)</label>
-          <input v-model="tagsText" type="text" placeholder="SaaS, Fintech" class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="tagsText" type="text" placeholder="SaaS, Fintech" class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Stack (comma-separated)</label>
-          <input v-model="stackText" type="text" placeholder="Laravel, Nuxt, Redis" class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="stackText" type="text" placeholder="Laravel, Nuxt, Redis" class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
       </div>
 
       <div class="space-y-2 pt-1">
-        <button type="button" @click="form.featured = !form.featured"
-          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+        <button
+type="button" class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
           :style="form.featured
             ? { borderColor: 'var(--color-accent)', background: 'var(--color-bg-elevated)' }
-            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+          @click="form.featured = !form.featured">
+          <span
+class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
             :style="form.featured
               ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
               : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
@@ -212,23 +227,27 @@ onMounted(fetchProject)
             <span class="block text-[13px] font-medium" :style="{ color: form.featured ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Featured</span>
             <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Highlighted on the public projects page</span>
           </span>
-          <span class="relative inline-block rounded-full transition-colors shrink-0"
+          <span
+class="relative inline-block rounded-full transition-colors shrink-0"
             :style="{
               background: form.featured ? 'var(--color-accent)' : '#d1d5db',
               height: '1.25rem',
               width: '2.25rem',
             }">
-            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
-              :style="{ left: form.featured ? '1.125rem' : '0.125rem' }"></span>
+            <span
+class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.featured ? '1.125rem' : '0.125rem' }"/>
           </span>
         </button>
 
-        <button type="button" @click="form.active = !form.active"
-          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+        <button
+type="button" class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
           :style="form.active
             ? { borderColor: 'var(--color-success)', background: 'var(--color-bg-elevated)' }
-            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+          @click="form.active = !form.active">
+          <span
+class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
             :style="form.active
               ? { background: 'var(--color-success-soft)', color: 'var(--color-success)' }
               : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
@@ -238,14 +257,16 @@ onMounted(fetchProject)
             <span class="block text-[13px] font-medium" :style="{ color: form.active ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Active</span>
             <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Visible on the public site</span>
           </span>
-          <span class="relative inline-block rounded-full transition-colors shrink-0"
+          <span
+class="relative inline-block rounded-full transition-colors shrink-0"
             :style="{
               background: form.active ? 'var(--color-success)' : '#d1d5db',
               height: '1.25rem',
               width: '2.25rem',
             }">
-            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
-              :style="{ left: form.active ? '1.125rem' : '0.125rem' }"></span>
+            <span
+class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.active ? '1.125rem' : '0.125rem' }"/>
           </span>
         </button>
       </div>

@@ -68,7 +68,8 @@ function fmtMyr(amount: number) {
 
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading payslips…</div>
 
-    <div v-else-if="!entries.length" class="rounded-2xl border px-6 py-12 text-center"
+    <div
+v-else-if="!entries.length" class="rounded-2xl border px-6 py-12 text-center"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <span
         class="size-12 rounded-2xl inline-flex items-center justify-center mb-4"
@@ -83,9 +84,11 @@ function fmtMyr(amount: number) {
     </div>
 
     <!-- Statement-style rows: period + payment detail left, gross right. -->
-    <div v-else class="rounded-2xl border divide-y"
+    <div
+v-else class="rounded-2xl border divide-y"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-      <div v-for="e in entries" :key="e.id" class="flex items-center justify-between gap-4 px-5 py-4"
+      <div
+v-for="e in entries" :key="e.id" class="flex items-center justify-between gap-4 px-5 py-4"
         :style="{ borderColor: 'var(--color-border)' }">
         <div class="min-w-0">
           <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ e.period_label }}</p>

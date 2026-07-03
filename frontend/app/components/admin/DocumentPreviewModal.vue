@@ -2,7 +2,7 @@
 // A "Preview" button that pops the live PDF preview in a centered overlay —
 // keeps the editing surface clean (no permanent preview pane). The PDF only
 // renders once the modal opens (the child auto-generates on mount).
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   data: Record<string, any> | null
   label?: string
   disabled?: boolean
@@ -35,7 +35,8 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
 
   <Teleport to="body">
     <Transition name="preview-modal">
-      <div v-if="open" class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6"
+      <div
+v-if="open" class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6"
         @click.self="open = false">
         <div class="absolute inset-0" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(2px);" @click="open = false" />
         <div class="relative w-full max-w-[900px] h-[92vh] shadow-2xl" @click.stop>

@@ -105,14 +105,16 @@ function fmtDate(iso: string) {
       <table class="w-full text-left">
         <thead>
           <tr>
-            <th v-for="h in ['Name', 'Project type', 'Budget', 'Status', 'Submitted']" :key="h"
+            <th
+v-for="h in ['Name', 'Project type', 'Budget', 'Status', 'Submitted']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="q in inquiries" :key="q.id"
+          <tr
+v-for="q in inquiries" :key="q.id"
             class="admin-table-row"
             @click="navigateTo(`/team/inquiries/${q.id}`)">
             <td class="px-4 py-3.5">

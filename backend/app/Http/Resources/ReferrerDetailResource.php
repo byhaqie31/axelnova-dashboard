@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Referral;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,7 +17,7 @@ class ReferrerDetailResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'relationship_tier' => $this->relationship_tier,
-            'commission_tiers' => \App\Models\Referral::COMMISSION_TIERS,
+            'commission_tiers' => Referral::COMMISSION_TIERS,
             'status' => $this->status,
             'has_passcode' => filled($this->password),
             'last_login_at' => $this->last_login_at?->toISOString(),

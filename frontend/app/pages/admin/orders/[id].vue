@@ -244,7 +244,8 @@ const lineItems = computed(() => {
 <template>
   <div class="max-w-5xl mx-auto px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/orders" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/orders" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All orders
     </NuxtLink>
@@ -256,7 +257,8 @@ const lineItems = computed(() => {
 
       <div class="space-y-6">
 
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
             <div>
@@ -287,11 +289,13 @@ const lineItems = computed(() => {
         </div>
 
         <!-- Scope snapshot (confirmed quotation, read-only) -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3 mb-4">
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Scope snapshot</p>
-            <span v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            <span
+v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
               :style="{ color: 'var(--color-text-secondary)', background: 'var(--color-bg-secondary)' }">
               <UIcon name="i-lucide-lock" class="size-3" /> Confirmed
             </span>
@@ -335,11 +339,13 @@ const lineItems = computed(() => {
         </div>
 
         <!-- Payment -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3 mb-5">
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Payment</p>
-            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+            <span
+class="text-[11px] font-semibold px-2.5 py-1 rounded-full"
               :style="{ color: paymentMeta[order.payment_status].color, background: paymentMeta[order.payment_status].bg }">
               {{ paymentMeta[order.payment_status].label }}
             </span>
@@ -367,7 +373,8 @@ const lineItems = computed(() => {
 
           <!-- Paid-vs-total progress -->
           <div class="mt-5 h-1.5 rounded-full overflow-hidden" style="background: var(--color-bg-secondary);">
-            <div class="h-full rounded-full transition-[width] duration-500"
+            <div
+class="h-full rounded-full transition-[width] duration-500"
               :style="{
                 width: `${Math.min(100, Number(order.final_amount_myr) > 0 ? (Number(order.amount_paid_myr) / Number(order.final_amount_myr)) * 100 : 0)}%`,
                 background: 'var(--color-success)',
@@ -376,7 +383,8 @@ const lineItems = computed(() => {
 
           <!-- Payments (read-only; manage in the Payments module) -->
           <div v-if="order.payments?.length" class="mt-5 pt-5 border-t space-y-2" style="border-color: var(--color-border);">
-            <NuxtLink v-for="p in order.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
+            <NuxtLink
+v-for="p in order.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
               class="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors hover:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
@@ -405,18 +413,21 @@ const lineItems = computed(() => {
         </div>
 
         <!-- Invoices -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Invoices</p>
 
           <div v-if="order.invoices?.length" class="space-y-2 mb-5">
-            <NuxtLink v-for="d in order.invoices" :key="d.id" :to="`/admin/invoices/${d.id}`"
+            <NuxtLink
+v-for="d in order.invoices" :key="d.id" :to="`/admin/invoices/${d.id}`"
               class="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors hover:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ d.number }}</span>
-                  <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                  <span
+class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                     :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ d.type }}</span>
                   <AdminStatusPill :status="d.status" />
                 </div>
@@ -441,12 +452,14 @@ const lineItems = computed(() => {
         </div>
 
         <!-- Receipts -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Receipts</p>
 
           <div v-if="order.receipts?.length" class="space-y-2 mb-5">
-            <div v-for="r in order.receipts" :key="r.id"
+            <div
+v-for="r in order.receipts" :key="r.id"
               class="flex items-center justify-between gap-3 rounded-xl border p-3"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
@@ -455,7 +468,8 @@ const lineItems = computed(() => {
                   {{ fmtMyrExact(r.amount) }}<span v-if="r.invoice_number"> · for {{ r.invoice_number }}</span> · {{ fmtDate(r.issued_at) }}
                 </p>
               </div>
-              <a :href="r.pdf_path" target="_blank" rel="noopener"
+              <a
+:href="r.pdf_path" target="_blank" rel="noopener"
                 class="btn-pill btn-pill-ghost text-[12px] shrink-0" style="height: 32px; padding: 0 16px;">
                 View PDF
               </a>
@@ -474,11 +488,13 @@ const lineItems = computed(() => {
 
       <div class="lg:sticky lg:top-20 space-y-4">
 
-        <div class="rounded-2xl border p-5"
+        <div
+class="rounded-2xl border p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Order status</p>
           <div class="flex flex-wrap gap-2">
-            <button v-for="s in statusOptions" :key="s" type="button"
+            <button
+v-for="s in statusOptions" :key="s" type="button"
               class="status-pill status-pill-button"
               :class="{ 'opacity-50': statusLoading }"
               :data-status="order.status === s ? s : ''"
@@ -490,7 +506,8 @@ const lineItems = computed(() => {
           </div>
         </div>
 
-        <div class="rounded-2xl border p-5"
+        <div
+class="rounded-2xl border p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Timeline</p>
           <ol class="space-y-4">
@@ -515,32 +532,38 @@ const lineItems = computed(() => {
           </ol>
         </div>
 
-        <div class="rounded-2xl border p-5"
+        <div
+class="rounded-2xl border p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-2 mb-3">
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Expected completion</p>
-            <span v-if="isOverdue" class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            <span
+v-if="isOverdue" class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
               :style="{ color: 'var(--color-danger)', background: 'var(--color-danger-soft, var(--color-bg-secondary))' }">Overdue</span>
           </div>
           <input v-model="dueDraft" type="date" class="doc-input">
           <p class="text-[11px] mt-2" style="color: var(--color-text-tertiary);">Target delivery date — your SLA for this order.</p>
-          <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px] mt-3"
+          <button
+type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px] mt-3"
             :class="{ 'opacity-50': dueSaving || dueDraft === (order.due_at ?? '') }"
             :disabled="dueSaving || dueDraft === (order.due_at ?? '')" @click="saveDue">
             {{ dueSaving ? 'Saving…' : 'Save date' }}
           </button>
         </div>
 
-        <div class="rounded-2xl border p-5 space-y-3"
+        <div
+class="rounded-2xl border p-5 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Contact</p>
 
-          <a v-if="order.email" :href="`mailto:${order.email}?subject=Re: ${order.order_number}`"
+          <a
+v-if="order.email" :href="`mailto:${order.email}?subject=Re: ${order.order_number}`"
             class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
             Email client
           </a>
 
-          <a v-if="order.phone" :href="`https://wa.me/${order.phone.replace(/\\D/g, '')}?text=Hi%20${encodeURIComponent(order.name ?? '')}%2C%20update%20on%20${order.order_number}.`"
+          <a
+v-if="order.phone" :href="`https://wa.me/${order.phone.replace(/\\D/g, '')}?text=Hi%20${encodeURIComponent(order.name ?? '')}%2C%20update%20on%20${order.order_number}.`"
             target="_blank" rel="noopener"
             class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
             WhatsApp

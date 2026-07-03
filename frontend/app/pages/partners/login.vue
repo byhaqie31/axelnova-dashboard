@@ -67,8 +67,9 @@ async function handleLogin() {
           <form class="space-y-5" @submit.prevent="handleLogin">
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email</label>
-              <input v-model="email" type="email" required autocomplete="email" placeholder="Email"
-                class="contact-input glass-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
+              <input
+v-model="email" type="email" required autocomplete="email" placeholder="Email"
+                class="contact-input glass-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" >
             </div>
             <div class="space-y-2">
               <div class="flex items-center justify-between gap-3">

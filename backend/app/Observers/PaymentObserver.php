@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Payment;
+use App\Models\Referral;
 
 /**
  * The single writer of the derived paid caches (`orders.amount_paid_myr`,
@@ -42,7 +43,7 @@ class PaymentObserver
 
             // A referral earns once the deposit lands, and stops if fully refunded.
             if ($order->quotation_id) {
-                $referral = \App\Models\Referral::where('quotation_id', $order->quotation_id)->first();
+                $referral = Referral::where('quotation_id', $order->quotation_id)->first();
                 if ($referral) {
                     if ($paid > 0 && $referral->status === 'draft') {
                         $referral->update(['status' => 'converted']);

@@ -22,7 +22,7 @@ class AuthController extends Controller
 
         // Only the cockpit tier (founder/partner) signs in here; workspace roles
         // authenticate against /team (Phase 3b), not the admin SPA.
-        if (!$user || !Hash::check($credentials['password'], $user->password) || !$user->isCockpit()) {
+        if (! $user || ! Hash::check($credentials['password'], $user->password) || ! $user->isCockpit()) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials.'],
             ]);
@@ -59,6 +59,32 @@ class AuthController extends Controller
             'email' => $user->email,
             'role' => $user->role,
             'tier' => $user->tier(),
+        ]);
+    }
+
+    /**
+     * Admin → Team direct sign-in. Exchanges the current cockpit session for a
+     * fresh workspace token so the portal jump never re-asks for credentials.
+     * Cockpit-only via the route group, and the ONLY sanctioned bridge between
+     * the two surfaces — the tokens themselves stay non-replayable (the
+     * `abilities:` middleware rejects a cockpit token on /v1/team/* and vice
+     * versa). Every exchange is auto-audited as `team-session`.
+     */
+    public function teamSession(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $token = $user->createToken('team-spa', ['workspace'])->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'tier' => $user->tier(),
+            ],
         ]);
     }
 }

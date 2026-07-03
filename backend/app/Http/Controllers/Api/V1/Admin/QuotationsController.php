@@ -15,14 +15,15 @@ use App\Services\Quoting\DocumentMapper;
 use App\Services\Quoting\EstimateResult;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
+use App\Services\Referrals\ReferralAttributionService;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class QuotationsController extends Controller
@@ -34,7 +35,7 @@ class QuotationsController extends Controller
      */
     public function preview(Request $request): JsonResponse
     {
-        $quotation = new Quotation();
+        $quotation = new Quotation;
         $quotation->forceFill([
             'name' => $request->input('name'),
             'email' => $request->input('email'),
@@ -135,7 +136,7 @@ class QuotationsController extends Controller
                 $inquiry = Inquiry::find($data['inquiry_id']);
                 if ($inquiry) {
                     $inquiry->update(['quotation_id' => $quotation->id, 'status' => 'quoted']);
-                    app(\App\Services\Referrals\ReferralAttributionService::class)->attribute($quotation, $inquiry);
+                    app(ReferralAttributionService::class)->attribute($quotation, $inquiry);
                 }
             }
 
@@ -230,8 +231,7 @@ class QuotationsController extends Controller
 
         if ($quotation->status === 'expired' && ($expiresAt === null || $expiresAt->isFuture())) {
             $quotation->status = 'sent';
-        }
-        elseif ($quotation->status === 'sent' && $expiresAt !== null && $expiresAt->isPast()) {
+        } elseif ($quotation->status === 'sent' && $expiresAt !== null && $expiresAt->isPast()) {
             $quotation->status = 'expired';
         }
 
@@ -379,5 +379,4 @@ class QuotationsController extends Controller
             }
         }
     }
-
 }

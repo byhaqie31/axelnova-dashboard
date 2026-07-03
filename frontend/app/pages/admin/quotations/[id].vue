@@ -184,7 +184,8 @@ async function saveExpiry() {
 <template>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All quotations
     </NuxtLink>
@@ -249,7 +250,7 @@ async function saveExpiry() {
                   </button>
                 </p>
                 <div v-if="expiryEditing" class="flex items-center gap-1.5">
-                  <input v-model="expiryDraft" type="date" class="contact-input text-[12px] py-1 px-2" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+                  <input v-model="expiryDraft" type="date" class="contact-input text-[12px] py-1 px-2" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
                   <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors" :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }" :disabled="expiryLoading" aria-label="Save validity date" @click="saveExpiry">
                     <UIcon :name="expiryLoading ? 'i-lucide-loader-circle' : 'i-lucide-check'" class="size-3.5" :class="{ 'animate-spin': expiryLoading }" />
                   </button>
@@ -316,8 +317,9 @@ async function saveExpiry() {
                 <label for="commission-pct" class="text-[11px] font-medium uppercase tracking-wider mb-1 block" style="color: var(--color-text-tertiary);">
                   Commission % <span v-if="quotation.referrer" class="normal-case font-normal" style="color: var(--color-text-secondary);">— {{ quotation.referrer.name }}</span>
                 </label>
-                <input id="commission-pct" v-model.number="commissionPct" type="number" min="5" max="15" class="contact-input w-full text-[13px]"
-                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+                <input
+id="commission-pct" v-model.number="commissionPct" type="number" min="5" max="15" class="contact-input w-full text-[13px]"
+                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
               </div>
               <button class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="acceptLoading || rejectLoading" @click="acceptQuotation">
                 {{ acceptLoading ? 'Creating order…' : 'Proceed & Create Order' }}
@@ -333,7 +335,8 @@ async function saveExpiry() {
             </button>
 
             <a :href="`mailto:${quotation.email}?subject=Re: your quote ${quotation.reference_code}`" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">Email Client</a>
-            <a v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
+            <a
+v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
               target="_blank" rel="noopener" class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
           </div>
         </div>

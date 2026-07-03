@@ -121,7 +121,8 @@ function fmtMyr(amount: number) {
     </div>
 
     <!-- Record form -->
-    <div v-if="showForm" class="rounded-2xl border p-6 space-y-5 mb-8"
+    <div
+v-if="showForm" class="rounded-2xl border p-6 space-y-5 mb-8"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <div class="grid sm:grid-cols-2 gap-3">
         <label class="block">
@@ -145,7 +146,8 @@ function fmtMyr(amount: number) {
         </label>
       </div>
 
-      <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
+      <button
+type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
         :class="{ 'opacity-50': saving }" :disabled="saving" @click="record">
         {{ saving ? 'Recording…' : 'Record spend' }}
       </button>
@@ -164,7 +166,8 @@ function fmtMyr(amount: number) {
 
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading spend…</div>
 
-    <div v-else-if="!expenses.length" class="rounded-2xl border p-12 text-center"
+    <div
+v-else-if="!expenses.length" class="rounded-2xl border p-12 text-center"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
       <UIcon name="i-lucide-megaphone" class="size-8 mb-3 mx-auto" :style="{ color: 'var(--color-text-tertiary)' }" />
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">No spend recorded yet</p>
@@ -177,7 +180,8 @@ function fmtMyr(amount: number) {
       <table class="w-full text-left">
         <thead>
           <tr>
-            <th v-for="h in ['Category', 'Amount', 'Spent on', 'Entered by', 'Recorded']" :key="h"
+            <th
+v-for="h in ['Category', 'Amount', 'Spent on', 'Entered by', 'Recorded']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
@@ -203,7 +207,8 @@ function fmtMyr(amount: number) {
 
     <!-- Mobile: cards -->
     <div v-if="expenses.length && !loading" class="md:hidden space-y-2.5">
-      <div v-for="x in expenses" :key="x.id" class="rounded-xl border p-4"
+      <div
+v-for="x in expenses" :key="x.id" class="rounded-xl border p-4"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <div class="flex items-start justify-between gap-3 mb-1">
           <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ x.category }}</span>

@@ -117,7 +117,8 @@ const liveCount = computed(() => projects.value.filter(p => p.status === 'live')
 
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
 
-    <div v-else-if="!projects.length" class="rounded-2xl border p-12 text-center"
+    <div
+v-else-if="!projects.length" class="rounded-2xl border p-12 text-center"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">No projects found</p>
       <p class="text-[12px] mb-4" :style="{ color: 'var(--color-text-secondary)' }">Add the first one to start filling your portfolio.</p>
@@ -127,7 +128,8 @@ const liveCount = computed(() => projects.value.filter(p => p.status === 'live')
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <article v-for="p in projects" :key="p.id"
+      <article
+v-for="p in projects" :key="p.id"
         class="rounded-2xl border p-5 transition-shadow hover:shadow-md"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <div class="flex items-start justify-between gap-3 mb-2">
@@ -135,7 +137,8 @@ const liveCount = computed(() => projects.value.filter(p => p.status === 'live')
             <h3 class="text-[15px] font-semibold tracking-tight truncate" :style="{ color: 'var(--color-text)' }">{{ p.name }}</h3>
             <p class="text-[10px] font-mono" :style="{ color: 'var(--color-text-tertiary)' }">{{ p.slug }}</p>
           </div>
-          <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
+          <span
+class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
             :style="{
               color: statusColors[p.status] ?? 'var(--color-text-secondary)',
               background: `${statusColors[p.status] ?? 'var(--color-text-secondary)'}20`,
@@ -145,24 +148,29 @@ const liveCount = computed(() => projects.value.filter(p => p.status === 'live')
         </div>
         <p class="text-[12px] line-clamp-3 mb-3" :style="{ color: 'var(--color-text-secondary)' }">{{ p.description }}</p>
         <div class="flex flex-wrap gap-1.5 mb-3">
-          <span v-for="tag in p.tags.slice(0, 4)" :key="tag"
+          <span
+v-for="tag in p.tags.slice(0, 4)" :key="tag"
             class="text-[10px] font-medium px-2 py-0.5 rounded-full"
             :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">
             {{ tag }}
           </span>
         </div>
         <div class="flex items-center gap-2 pt-3 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <span v-if="p.featured" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+          <span
+v-if="p.featured" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
             :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">Featured</span>
-          <span v-if="!p.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+          <span
+v-if="!p.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
             :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
           <div class="flex items-center gap-1 ml-auto">
-            <NuxtLink :to="`/admin/projects/${p.id}`"
+            <NuxtLink
+:to="`/admin/projects/${p.id}`"
               class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
               Edit
             </NuxtLink>
-            <button class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+            <button
+class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
               @click="deleteProject(p)">
               Delete

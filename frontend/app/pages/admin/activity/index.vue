@@ -137,7 +137,8 @@ function fullTime(iso: string): string {
 
 function toggleGroup(key: string) {
   const next = new Set(collapsed.value)
-  next.has(key) ? next.delete(key) : next.add(key)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
   collapsed.value = next
 }
 

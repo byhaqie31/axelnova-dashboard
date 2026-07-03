@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\ActivityController;
+use App\Http\Controllers\Api\V1\Admin\AnalyticsController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
 use App\Http\Controllers\Api\V1\Admin\ExpensesController;
@@ -15,27 +16,26 @@ use App\Http\Controllers\Api\V1\Admin\ReferralPartnersController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceAddonsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
-use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
+use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\UsersController;
+use App\Http\Controllers\Api\V1\DocumentController;
+use App\Http\Controllers\Api\V1\InquiryController;
+use App\Http\Controllers\Api\V1\LikesController;
+use App\Http\Controllers\Api\V1\Partner\AuthController as PartnerAuthController;
+use App\Http\Controllers\Api\V1\Partner\DashboardController as PartnerDashboardController;
+use App\Http\Controllers\Api\V1\PublicProjectsController;
+use App\Http\Controllers\Api\V1\PublicServicesController;
+use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
+use App\Http\Controllers\Api\V1\QuoteRequestController;
+use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\Team\AuthController as TeamAuthController;
 use App\Http\Controllers\Api\V1\Team\ExpensesController as TeamExpensesController;
 use App\Http\Controllers\Api\V1\Team\InquiriesController as TeamInquiriesController;
 use App\Http\Controllers\Api\V1\Team\PayrollController as TeamPayrollController;
 use App\Http\Controllers\Api\V1\Team\ReferralsController as TeamReferralsController;
-use App\Http\Controllers\Api\V1\Partner\AuthController as PartnerAuthController;
-use App\Http\Controllers\Api\V1\Partner\DashboardController as PartnerDashboardController;
-use App\Http\Controllers\Api\V1\DocumentController;
-use App\Http\Middleware\LogAdminActivity;
-use App\Http\Controllers\Api\V1\InquiryController;
-use App\Http\Controllers\Api\V1\PublicProjectsController;
-use App\Http\Controllers\Api\V1\PublicServicesController;
-use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
-use App\Http\Controllers\Api\V1\QuoteRequestController;
-use App\Http\Controllers\Api\V1\LikesController;
-use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\TrackingController;
-use App\Http\Controllers\Api\V1\Admin\AnalyticsController;
+use App\Http\Middleware\LogAdminActivity;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
@@ -115,6 +115,7 @@ Route::middleware($loginThrottle)->group(function () {
 Route::middleware([
     EnsureFrontendRequestsAreStateful::class,
     'auth:sanctum',
+    'abilities:cockpit',
     'role:cockpit',
     LogAdminActivity::class,
 ])
@@ -123,6 +124,10 @@ Route::middleware([
     ->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/me', [AuthController::class, 'me'])->name('me');
+
+        // Admin → Team jump: exchange the cockpit session for a workspace token
+        // (same account) so the portal link signs in directly. Audited per call.
+        Route::post('/team-session', [AuthController::class, 'teamSession'])->name('team-session');
 
         // Team provisioning — founder-only (Gate: manage-users, enforced in-controller).
         Route::get('/users', [UsersController::class, 'index'])->name('users.index');
@@ -255,6 +260,7 @@ Route::middleware([
 Route::middleware([
     EnsureFrontendRequestsAreStateful::class,
     'auth:sanctum',
+    'abilities:workspace',
     'role:workspace',
 ])
     ->prefix('v1/team')
@@ -291,7 +297,7 @@ Route::middleware([
 // middleware the cockpit/workspace use. A Referrer token authenticates only here:
 // the `sanctum` guard (provider = users) behind /v1/admin and /v1/team rejects it,
 // and a User token is rejected here. Everything is scoped to the token's own data.
-Route::middleware(['auth:referral'])
+Route::middleware(['auth:referral', 'abilities:partner'])
     ->prefix('v1/partner')
     ->name('partner.')
     ->group(function () {

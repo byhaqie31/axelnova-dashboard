@@ -47,9 +47,9 @@ const statusMeta = (status: Project['status']) => {
       <div class="flex items-center gap-2">
         <LikeButton
           v-if="project.dbId"
+          :id="project.dbId"
           class="relative z-20"
           type="project"
-          :id="project.dbId"
           :count="project.likes ?? 0"
         />
         <span

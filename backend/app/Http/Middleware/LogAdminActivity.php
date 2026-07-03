@@ -43,7 +43,7 @@ class LogAdminActivity
                 'subject_id' => $subjectId,
                 'changes' => [
                     'method' => $request->method(),
-                    'path' => '/' . ltrim($request->path(), '/'),
+                    'path' => '/'.ltrim($request->path(), '/'),
                     'status' => $response->getStatusCode(),
                 ],
             ]);
@@ -73,6 +73,6 @@ class LogAdminActivity
             return str_starts_with($name, 'admin.') ? substr($name, 6) : $name;
         }
 
-        return 'http.' . strtolower($request->method());
+        return 'http.'.strtolower($request->method());
     }
 }

@@ -151,7 +151,8 @@ function fmtMyr(amount: string | number) {
 
 <template>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink :to="orderId ? `/admin/orders/${orderId}` : '/admin/invoices'"
+    <NuxtLink
+:to="orderId ? `/admin/orders/${orderId}` : '/admin/invoices'"
       class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70" :style="{ color: 'var(--color-text-secondary)' }">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> {{ orderId ? 'Back to order' : 'All invoices' }}
     </NuxtLink>
@@ -167,7 +168,8 @@ function fmtMyr(amount: string | number) {
 
       <div class="space-y-5">
           <!-- Order money context -->
-          <div class="rounded-2xl border p-5 grid grid-cols-3 gap-4"
+          <div
+class="rounded-2xl border p-5 grid grid-cols-3 gap-4"
             :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <div>
               <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Agreed total</p>
@@ -183,7 +185,8 @@ function fmtMyr(amount: string | number) {
             </div>
           </div>
 
-          <div class="rounded-2xl border p-6 space-y-5"
+          <div
+class="rounded-2xl border p-6 space-y-5"
             :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="block">
@@ -254,7 +257,8 @@ function fmtMyr(amount: string | number) {
 
             <div class="flex gap-2">
               <AdminDocumentPreviewModal :data="previewData" :disabled="!previewData" />
-              <button type="button" class="btn-pill btn-pill-primary flex-1 justify-center text-[13px]"
+              <button
+type="button" class="btn-pill btn-pill-primary flex-1 justify-center text-[13px]"
                 :class="{ 'opacity-50': issuing }" :disabled="issuing" @click="issueInvoice">
                 {{ issuing ? 'Issuing…' : 'Issue invoice' }}
               </button>

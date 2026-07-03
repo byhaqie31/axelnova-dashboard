@@ -1,8 +1,8 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
-
 import { MOTION } from '~/utils/motion'
 import { useMockupRegistry, mockupUrl, mockupAccent, MOCKUP_LISTING_URL } from '~/composables/useMockupRegistry'
+
+definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 // Every public mockup from the axelnova.my registry (internal rows excluded)
 // — the dashboard used to feature the top six; this page lists them all.

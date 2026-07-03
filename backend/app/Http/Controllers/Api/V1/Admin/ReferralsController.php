@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ReferralResource;
 use App\Mail\ReferralCommissionMail;
+use App\Models\Quotation;
 use App\Models\Referral;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -79,7 +80,7 @@ class ReferralsController extends Controller
     {
         $data = $request->validate(['quotation_id' => ['required', 'exists:quotations,id']]);
         $referral->update(['quotation_id' => $data['quotation_id'], 'status' => 'draft']);
-        \App\Models\Quotation::where('id', $data['quotation_id'])
+        Quotation::where('id', $data['quotation_id'])
             ->update(['referral_partner_id' => $referral->referral_partner_id]);
         $referral->logActivity('referral.tied_quotation', ['quotation_id' => $data['quotation_id']]);
 
@@ -94,7 +95,7 @@ class ReferralsController extends Controller
         // tied quotation). Clear the credit stamped on the quotation.
         $referral->update(['quotation_id' => null, 'status' => 'new']);
         if ($quotationId) {
-            \App\Models\Quotation::where('id', $quotationId)->update(['referral_partner_id' => null]);
+            Quotation::where('id', $quotationId)->update(['referral_partner_id' => null]);
         }
         $referral->logActivity('referral.untied_quotation', ['quotation_id' => $quotationId]);
 

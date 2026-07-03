@@ -187,7 +187,7 @@ useHead({ title: 'Team Workspace' })
                tooltip (right side, teleported past the rail's overflow clip). -->
           <template v-if="sidebarCollapsed">
             <template v-for="(group, gi) in navGroups" :key="group.label">
-              <hr v-if="gi > 0" class="my-1 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
+              <hr v-if="gi > 0" class="my-1 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" >
               <UTooltip
                 v-for="item in group.items"
                 :key="item.to"
@@ -288,7 +288,7 @@ useHead({ title: 'Team Workspace' })
                 </NuxtLink>
               </div>
             </div>
-            <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
+            <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" >
             <button
               class="admin-nav-item"
               @click="logout"

@@ -74,16 +74,19 @@ function toggleInArray(arr: string[], value: string) {
       <section>
         <p class="quote-label mb-3">Category</p>
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-          <button v-for="cat in categories" :key="cat.key" type="button"
+          <button
+v-for="cat in categories" :key="cat.key" type="button"
             class="flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all"
             :style="{
               borderColor: state.categoryKey === cat.key ? 'var(--color-accent)' : 'var(--color-border)',
               background: state.categoryKey === cat.key ? 'var(--color-accent-soft)' : 'var(--color-bg-elevated)',
             }"
             @click="pickCategory(cat.key)">
-            <UIcon :name="cat.icon" class="size-4 shrink-0"
+            <UIcon
+:name="cat.icon" class="size-4 shrink-0"
               :style="{ color: state.categoryKey === cat.key ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }" />
-            <span class="text-[13px] font-medium"
+            <span
+class="text-[13px] font-medium"
               :style="{ color: state.categoryKey === cat.key ? 'var(--color-accent)' : 'var(--color-text)' }">
               {{ cat.label }}
             </span>
@@ -93,14 +96,16 @@ function toggleInArray(arr: string[], value: string) {
         <p class="quote-label mb-3">Package <span v-if="requirePackage" style="color: var(--color-danger);">*</span></p>
         <Transition name="tab" mode="out-in">
           <div v-if="currentCategory" :key="state.categoryKey" class="grid sm:grid-cols-3 gap-3">
-            <button v-for="pkg in currentCategory.packages" :key="pkg.key" type="button"
+            <button
+v-for="pkg in currentCategory.packages" :key="pkg.key" type="button"
               class="rounded-xl border p-4 text-left transition-all"
               :style="{
                 borderColor: state.packageKey === pkg.key ? 'var(--color-accent)' : 'var(--color-border)',
                 background: state.packageKey === pkg.key ? 'var(--color-accent-soft)' : 'var(--color-bg-elevated)',
               }"
               @click="state.packageKey = pkg.key">
-              <p class="text-[13px] font-semibold mb-0.5"
+              <p
+class="text-[13px] font-semibold mb-0.5"
                 :style="{ color: state.packageKey === pkg.key ? 'var(--color-accent)' : 'var(--color-text)' }">
                 {{ pkg.name }}
               </p>
@@ -126,15 +131,16 @@ function toggleInArray(arr: string[], value: string) {
             <div v-if="sliderFields.length" class="space-y-5">
               <div v-for="f in sliderFields" :key="f.field_key" class="space-y-2">
                 <label class="quote-label">{{ f.label }}: <strong style="color:var(--color-text)">{{ state.scopeValues[f.field_key] }}</strong></label>
-                <input v-model.number="state.scopeValues[f.field_key]" type="range"
-                  :min="f.config.min ?? 1" :max="f.config.max ?? 10" class="quote-range w-full" />
+                <input
+v-model.number="state.scopeValues[f.field_key]" type="range"
+                  :min="f.config.min ?? 1" :max="f.config.max ?? 10" class="quote-range w-full" >
               </div>
             </div>
             <!-- Switches (right) -->
             <div v-if="toggleFields.length" class="space-y-4 sm:pt-1">
               <label v-for="f in toggleFields" :key="f.field_key" class="quote-toggle">
-                <input v-model="state.scopeValues[f.field_key]" type="checkbox" class="sr-only" />
-                <span class="quote-toggle-track" :class="{ active: state.scopeValues[f.field_key] }"></span>
+                <input v-model="state.scopeValues[f.field_key]" type="checkbox" class="sr-only" >
+                <span class="quote-toggle-track" :class="{ active: state.scopeValues[f.field_key] }"/>
                 <span class="text-[13px]" style="color: var(--color-text);">{{ f.label }}</span>
               </label>
             </div>
@@ -144,7 +150,8 @@ function toggleInArray(arr: string[], value: string) {
           <div v-for="f in selectFields" :key="f.field_key" class="space-y-1.5 mt-6">
             <label class="quote-label">{{ f.label }}</label>
             <div class="flex flex-wrap gap-2">
-              <button v-for="opt in f.config.options ?? []" :key="opt.value" type="button"
+              <button
+v-for="opt in f.config.options ?? []" :key="opt.value" type="button"
                 class="text-[12px] px-3.5 py-1.5 rounded-full border transition-all"
                 :style="{
                   borderColor: state.scopeValues[f.field_key] === opt.value ? 'var(--color-accent)' : 'var(--color-border)',
@@ -163,18 +170,21 @@ function toggleInArray(arr: string[], value: string) {
       <section v-if="state.packageKey && config">
         <p class="quote-label mb-4">Add-ons</p>
         <div class="grid sm:grid-cols-2 gap-3">
-          <button v-for="[key, addon] in Object.entries(config.addons)" :key="key" type="button"
+          <button
+v-for="[key, addon] in Object.entries(config.addons)" :key="key" type="button"
             class="flex items-center justify-between rounded-xl border px-4 py-3.5 text-left transition-all"
             :style="{
               borderColor: state.addonKeys.includes(key) ? 'var(--color-accent)' : 'var(--color-border)',
               background: state.addonKeys.includes(key) ? 'var(--color-accent-soft)' : 'var(--color-bg-elevated)',
             }"
             @click="toggleInArray(state.addonKeys, key)">
-            <p class="text-[13px] font-medium"
+            <p
+class="text-[13px] font-medium"
               :style="{ color: state.addonKeys.includes(key) ? 'var(--color-accent)' : 'var(--color-text)' }">
               {{ addon.label }}
             </p>
-            <p class="text-[12px] font-semibold shrink-0 ml-3"
+            <p
+class="text-[12px] font-semibold shrink-0 ml-3"
               :style="{ color: state.addonKeys.includes(key) ? 'var(--color-accent)' : 'var(--color-text-secondary)' }">
               +{{ fmtMyrExact(addon.amount) }}
             </p>
@@ -185,8 +195,8 @@ function toggleInArray(arr: string[], value: string) {
       <!-- Rush -->
       <section v-if="state.packageKey">
         <label class="quote-toggle flex items-center gap-3">
-          <input v-model="state.rush" type="checkbox" class="sr-only" />
-          <span class="quote-toggle-track" :class="{ active: state.rush }"></span>
+          <input v-model="state.rush" type="checkbox" class="sr-only" >
+          <span class="quote-toggle-track" :class="{ active: state.rush }"/>
           <span>
             <span class="text-[13px] font-medium" style="color: var(--color-text);">Rush delivery</span>
             <span class="text-[12px] ml-2" style="color: var(--color-text-tertiary);">(+20%, timeline reduced ~30%)</span>

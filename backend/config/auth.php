@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Referrer;
+use App\Models\User;
+
 return [
 
     /*
@@ -58,12 +61,12 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
+            'model' => env('AUTH_MODEL', User::class),
         ],
 
         'referrers' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Referrer::class,
+            'model' => Referrer::class,
         ],
     ],
 

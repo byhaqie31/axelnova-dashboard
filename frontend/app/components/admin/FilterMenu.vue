@@ -54,7 +54,8 @@ function clearAll() {
           <slot />
         </div>
         <div v-if="active" class="pt-3 mt-3 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <button type="button" class="text-[12px] font-medium transition-opacity hover:opacity-70"
+          <button
+type="button" class="text-[12px] font-medium transition-opacity hover:opacity-70"
             :style="{ color: 'var(--color-accent)' }" @click="clearAll">
             Clear filters
           </button>

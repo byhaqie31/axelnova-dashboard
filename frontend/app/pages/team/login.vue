@@ -69,8 +69,9 @@ async function handleLogin() {
           <form class="space-y-5" @submit.prevent="handleLogin">
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email</label>
-              <input v-model="email" type="email" required autocomplete="email" placeholder="Email"
-                class="contact-input glass-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
+              <input
+v-model="email" type="email" required autocomplete="email" placeholder="Email"
+                class="contact-input glass-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" >
             </div>
             <div class="space-y-1.5">
               <div class="flex items-center justify-between gap-3">
@@ -78,10 +79,12 @@ async function handleLogin() {
                 <NuxtLink to="/team/forgot" class="text-[12px]" style="color: var(--color-accent);">Forgot password?</NuxtLink>
               </div>
               <div class="relative">
-                <input v-model="password" :type="showPassword ? 'text' : 'password'" required autocomplete="current-password" placeholder="Password"
+                <input
+v-model="password" :type="showPassword ? 'text' : 'password'" required autocomplete="current-password" placeholder="Password"
                   class="contact-input glass-input"
-                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', paddingRight: '2.75rem' }" />
-                <button type="button" class="pw-toggle" :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', paddingRight: '2.75rem' }" >
+                <button
+type="button" class="pw-toggle" :aria-label="showPassword ? 'Hide password' : 'Show password'"
                   @click="showPassword = !showPassword">
                   <UIcon :name="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="size-4.5" />
                 </button>

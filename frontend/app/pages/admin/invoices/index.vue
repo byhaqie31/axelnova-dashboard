@@ -130,7 +130,8 @@ function fmtMyr(amount: string | number) {
       <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" class="ml-auto" />
     </div>
 
-    <div v-if="filters.order_id" class="flex items-center justify-between gap-3 mb-5 rounded-xl border px-4 py-2.5"
+    <div
+v-if="filters.order_id" class="flex items-center justify-between gap-3 mb-5 rounded-xl border px-4 py-2.5"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
       <p class="text-[12px]" style="color: var(--color-text-secondary);">Filtered to one order.</p>
       <div class="flex items-center gap-2">
@@ -143,7 +144,8 @@ function fmtMyr(amount: string | number) {
 
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading invoices…</div>
 
-    <div v-else-if="!invoices.length" class="rounded-2xl border p-12 text-center"
+    <div
+v-else-if="!invoices.length" class="rounded-2xl border p-12 text-center"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
       <UIcon name="i-lucide-receipt-text" class="size-8 mb-3 mx-auto" :style="{ color: 'var(--color-text-tertiary)' }" />
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">No invoices yet</p>
@@ -157,14 +159,16 @@ function fmtMyr(amount: string | number) {
       <table class="w-full text-left">
         <thead>
           <tr>
-            <th v-for="h in ['Invoice', 'Client', 'Type', 'Total', 'Status', 'Due', 'Issued']" :key="h"
+            <th
+v-for="h in ['Invoice', 'Client', 'Type', 'Total', 'Status', 'Due', 'Issued']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="i in invoices" :key="i.id"
+          <tr
+v-for="i in invoices" :key="i.id"
             class="admin-table-row"
             @click="navigateTo(`/admin/invoices/${i.id}`)">
             <td class="px-4 py-3.5">
@@ -176,7 +180,8 @@ function fmtMyr(amount: string | number) {
               <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ i.email ?? '' }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+              <span
+class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                 :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ i.type }}</span>
             </td>
             <td class="px-4 py-3.5">
@@ -221,7 +226,8 @@ function fmtMyr(amount: string | number) {
           <AdminStatusPill :status="i.status" />
         </div>
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+          <span
+class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
             :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ i.type }}</span>
           <p class="text-[13px] font-medium leading-tight truncate" :style="{ color: 'var(--color-text)' }">{{ i.name ?? '—' }}</p>
         </div>

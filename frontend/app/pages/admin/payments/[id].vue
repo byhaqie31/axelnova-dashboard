@@ -127,7 +127,8 @@ function fmtMyr(amount: string | number) {
 
 <template>
   <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink to="/admin/payments" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/payments" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       :style="{ color: 'var(--color-text-secondary)' }">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All payments
     </NuxtLink>
@@ -142,7 +143,8 @@ function fmtMyr(amount: string | number) {
           <div class="flex items-center gap-3 flex-wrap">
             <h1 class="font-mono text-[24px] font-bold tracking-tight" style="color: var(--color-text);">{{ payment.payment_number }}</h1>
             <AdminStatusPill :status="payment.status" />
-            <span v-if="payment.type === 'refund'" class="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+            <span
+v-if="payment.type === 'refund'" class="text-[11px] font-semibold px-2 py-0.5 rounded-full"
               :style="{ color: 'var(--color-danger)', background: 'var(--color-danger-soft)' }">Refund</span>
           </div>
           <p class="text-[13px] mt-1.5" style="color: var(--color-text-secondary);">
@@ -153,7 +155,8 @@ function fmtMyr(amount: string | number) {
           </p>
         </div>
         <div v-if="canAct && refundable > 0" class="shrink-0">
-          <button type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 36px; padding: 0 18px;"
+          <button
+type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 36px; padding: 0 18px;"
             @click="refundOpen = !refundOpen">
             Refund
           </button>
@@ -161,13 +164,15 @@ function fmtMyr(amount: string | number) {
       </div>
 
       <!-- Refund form -->
-      <div v-if="refundOpen" class="rounded-2xl border p-6 mb-5"
+      <div
+v-if="refundOpen" class="rounded-2xl border p-6 mb-5"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Refund — up to {{ fmtMyr(refundable) }}</p>
         <div class="grid sm:grid-cols-2 gap-3">
           <label class="block">
             <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount (RM)</span>
-            <input v-model="refundForm.amount" type="number" min="0" :max="refundable" step="0.01"
+            <input
+v-model="refundForm.amount" type="number" min="0" :max="refundable" step="0.01"
               class="contact-input mt-1 w-full" placeholder="0.00">
           </label>
           <label class="block">
@@ -176,7 +181,8 @@ function fmtMyr(amount: string | number) {
           </label>
         </div>
         <div class="flex gap-2 mt-4">
-          <button type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;"
+          <button
+type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;"
             :class="{ 'opacity-50': refunding }" :disabled="refunding" @click="submitRefund">Record refund</button>
           <button type="button" class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;" @click="refundOpen = false">Cancel</button>
         </div>
@@ -184,7 +190,8 @@ function fmtMyr(amount: string | number) {
 
       <div class="grid lg:grid-cols-3 gap-5">
         <!-- Summary -->
-        <div class="lg:col-span-2 rounded-2xl border p-6"
+        <div
+class="lg:col-span-2 rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Details</p>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4">
@@ -215,18 +222,21 @@ function fmtMyr(amount: string | number) {
         </div>
 
         <!-- Client & links -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Client &amp; links</p>
           <p class="text-[14px] font-medium" style="color: var(--color-text);">{{ payment.name ?? '—' }}</p>
           <p class="text-[12px] mb-4" style="color: var(--color-text-tertiary);">{{ payment.email ?? '' }}</p>
           <div class="space-y-2 pt-4 border-t" style="border-color: var(--color-border);">
-            <NuxtLink v-if="payment.order_number" :to="`/admin/orders/${payment.order_id}`"
+            <NuxtLink
+v-if="payment.order_number" :to="`/admin/orders/${payment.order_id}`"
               class="flex items-center justify-between gap-2 text-[13px]">
               <span style="color: var(--color-text-secondary);">Order</span>
               <span class="font-mono" :style="{ color: 'var(--color-accent)' }">{{ payment.order_number }}</span>
             </NuxtLink>
-            <NuxtLink v-if="payment.invoice_id" :to="`/admin/invoices/${payment.invoice_id}`"
+            <NuxtLink
+v-if="payment.invoice_id" :to="`/admin/invoices/${payment.invoice_id}`"
               class="flex items-center justify-between gap-2 text-[13px]">
               <span style="color: var(--color-text-secondary);">Invoice</span>
               <span class="font-mono" :style="{ color: 'var(--color-accent)' }">{{ payment.invoice_number }}</span>
@@ -244,7 +254,8 @@ function fmtMyr(amount: string | number) {
       </div>
 
       <!-- Receipt — preview + issue (succeeded payments only) -->
-      <div v-if="canAct" class="rounded-2xl border p-6 mt-5"
+      <div
+v-if="canAct" class="rounded-2xl border p-6 mt-5"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div>
@@ -253,11 +264,13 @@ function fmtMyr(amount: string | number) {
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <AdminDocumentPreviewModal :data="receiptPreviewData" label="Preview" :disabled="!receiptPreviewData" />
-            <a v-if="payment.receipt" :href="payment.receipt.pdf_path" target="_blank" rel="noopener"
+            <a
+v-if="payment.receipt" :href="payment.receipt.pdf_path" target="_blank" rel="noopener"
               class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;">
               <UIcon name="i-lucide-file-text" class="size-4" /> View PDF
             </a>
-            <button v-else type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;"
+            <button
+v-else type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;"
               :class="{ 'opacity-50': issuingReceipt }" :disabled="issuingReceipt" @click="issueReceipt">
               {{ issuingReceipt ? 'Issuing…' : 'Issue receipt' }}
             </button>

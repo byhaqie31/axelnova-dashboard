@@ -165,9 +165,10 @@ async function submitReferral() {
         Share this link. Anyone who reaches out within 90 days is credited to you.
       </p>
       <div class="flex flex-col sm:flex-row gap-2">
-        <input :value="data.ref_link" readonly class="contact-input flex-1"
+        <input
+:value="data.ref_link" readonly class="contact-input flex-1"
           :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }"
-          @focus="($event.target as HTMLInputElement).select()" />
+          @focus="($event.target as HTMLInputElement).select()" >
         <button type="button" class="btn-pill btn-pill-accent partner-copy-btn justify-center" @click="copyLink">
           <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="size-4" />
           {{ copied ? 'Copied' : 'Copy' }}
@@ -178,7 +179,8 @@ async function submitReferral() {
     <!-- Referrals list -->
     <div>
       <h2 class="text-[16px] font-semibold tracking-tight mb-3" style="color: var(--color-text);">Your referrals</h2>
-      <div v-if="data.referrals.length === 0" class="rounded-2xl border p-6 text-center"
+      <div
+v-if="data.referrals.length === 0" class="rounded-2xl border p-6 text-center"
         :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }">
         <p class="text-[14px]" style="color: var(--color-text-secondary);">No referrals yet. Share your link or refer a business below.</p>
       </div>
@@ -196,7 +198,8 @@ async function submitReferral() {
               {{ r.commission_pct }}% commission<span v-if="r.earned_myr != null" style="color: var(--color-success);"> · {{ myr(r.earned_myr) }} earned</span><span v-else-if="r.has_order"> · Estimated once your client pays</span>
             </p>
           </div>
-          <span class="text-[11px] font-medium px-2.5 py-1 rounded-full shrink-0"
+          <span
+class="text-[11px] font-medium px-2.5 py-1 rounded-full shrink-0"
             :style="{ color: pill(r.status).color, background: pill(r.status).bg }">
             {{ pill(r.status).label }}
           </span>
@@ -218,29 +221,34 @@ async function submitReferral() {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Business name *</label>
-            <input v-model="form.business_name" type="text" required placeholder="Acme Sdn Bhd"
-              class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
+            <input
+v-model="form.business_name" type="text" required placeholder="Acme Sdn Bhd"
+              class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" >
           </div>
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Contact name</label>
-            <input v-model="form.business_contact_name" type="text" placeholder="Who to reach"
-              class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
+            <input
+v-model="form.business_contact_name" type="text" placeholder="Who to reach"
+              class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" >
           </div>
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Business email</label>
-            <input v-model="form.business_email" type="email" placeholder="hello@acme.com"
-              class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
+            <input
+v-model="form.business_email" type="email" placeholder="hello@acme.com"
+              class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" >
           </div>
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Business phone</label>
-            <input v-model="form.business_phone" type="tel" placeholder="+60…"
-              class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
+            <input
+v-model="form.business_phone" type="tel" placeholder="+60…"
+              class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" >
           </div>
         </div>
 
         <div class="space-y-1.5">
           <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">How well do you know them?</label>
-          <select v-model="form.relationship_tier" class="contact-input"
+          <select
+v-model="form.relationship_tier" class="contact-input"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }">
             <option v-for="t in tiers" :key="t.value" :value="t.value">{{ t.label }}</option>
           </select>
@@ -248,7 +256,8 @@ async function submitReferral() {
 
         <div class="space-y-1.5">
           <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Notes</label>
-          <textarea v-model="form.notes" rows="3" placeholder="Anything helpful about the referral"
+          <textarea
+v-model="form.notes" rows="3" placeholder="Anything helpful about the referral"
             class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
         </div>
 

@@ -67,7 +67,8 @@ function fmtRm(n: string | number | null) {
 <template>
   <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/clients" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/clients" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All clients
     </NuxtLink>
@@ -85,7 +86,8 @@ function fmtRm(n: string | number | null) {
             <div>
               <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ client.name }}</p>
               <div v-if="client.tags.length" class="flex flex-wrap gap-1.5 mt-2.5">
-                <span v-for="t in client.tags" :key="t" class="text-[11px] px-2 py-0.5 rounded-full"
+                <span
+v-for="t in client.tags" :key="t" class="text-[11px] px-2 py-0.5 rounded-full"
                   :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ t }}</span>
               </div>
             </div>
@@ -122,7 +124,8 @@ function fmtRm(n: string | number | null) {
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Inquiries ({{ client.inquiries_count }})</p>
           <p v-if="!client.inquiries.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No inquiries.</p>
           <div v-else class="space-y-1.5">
-            <NuxtLink v-for="i in client.inquiries" :key="i.id" :to="`/admin/inquiries/${i.id}`"
+            <NuxtLink
+v-for="i in client.inquiries" :key="i.id" :to="`/admin/inquiries/${i.id}`"
               class="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
@@ -139,7 +142,8 @@ function fmtRm(n: string | number | null) {
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Quotations ({{ client.quotations_count }})</p>
           <p v-if="!client.quotations.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No quotations.</p>
           <div v-else class="space-y-1.5">
-            <NuxtLink v-for="q in client.quotations" :key="q.id" :to="`/admin/quotations/${q.id}`"
+            <NuxtLink
+v-for="q in client.quotations" :key="q.id" :to="`/admin/quotations/${q.id}`"
               class="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
@@ -159,7 +163,8 @@ function fmtRm(n: string | number | null) {
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Orders ({{ client.orders_count }})</p>
           <p v-if="!client.orders.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No orders.</p>
           <div v-else class="space-y-1.5">
-            <NuxtLink v-for="o in client.orders" :key="o.id" :to="`/admin/orders/${o.id}`"
+            <NuxtLink
+v-for="o in client.orders" :key="o.id" :to="`/admin/orders/${o.id}`"
               class="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
@@ -198,7 +203,8 @@ function fmtRm(n: string | number | null) {
         <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Actions</p>
           <a :href="`mailto:${client.email}`" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">Email client</a>
-          <a v-if="client.phone"
+          <a
+v-if="client.phone"
             :href="`https://wa.me/${client.phone.replace(/\D/g, '')}`"
             target="_blank" rel="noopener"
             class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
