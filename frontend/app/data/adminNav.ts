@@ -24,6 +24,7 @@ export const adminNav: NavGroup[] = [
     label: 'Overview',
     items: [
       { to: '/admin', label: 'Dashboard', icon: 'i-lucide-layout-dashboard' },
+      { to: '/admin/mockups', label: 'Mockups', icon: 'i-lucide-monitor-smartphone', matchPrefix: '/admin/mockups' },
     ],
   },
   {

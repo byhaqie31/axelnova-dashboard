@@ -403,9 +403,6 @@ const tiles = computed<StatTile[]>(() => [
         </div>
       </button>
     </div>
-
-    <!-- Featured mockups — live client prototypes from axelnova.my -->
-    <AdminFeaturedMockups class="mt-12" />
   </div>
 </template>
 

@@ -4,6 +4,7 @@ definePageMeta({ layout: 'public' })
 import type { ComponentPublicInstance } from 'vue'
 import type { Project } from '~/data/projects'
 import HeroEpoch from '~/components/public/HeroEpoch.vue'
+import FeaturedMockups from '~/components/public/FeaturedMockups.vue'
 import FeaturedProjectsCarousel from '~/components/shared/FeaturedProjectsCarousel.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import { MOTION } from '~/utils/motion'
@@ -164,6 +165,18 @@ useScrollReveal('.reveal')
       >
         Featured projects coming soon.
       </div>
+    </section>
+
+    <!-- FEATURED MOCKUPS -->
+    <section class="max-w-7xl mx-auto px-6 pb-32 reveal">
+      <SectionHeader
+        eyebrow="Client previews"
+        title="Featured mockups."
+        subtitle="Live prototypes built for clients — click a card for an instant in-page preview."
+        :action="{ label: 'View all', to: 'https://axelnova.my/', target: '_blank' }"
+      />
+
+      <FeaturedMockups class="reveal" />
     </section>
 
     <!-- CTA BANNER -->

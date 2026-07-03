@@ -16,3 +16,24 @@ The landing hero (`pages/public/index.vue`). A `rounded-[48px]` video card (`bg-
 - Runs its **own** GSAP entrance timeline (badge → headline SplitText → subhead → CTA → floating nav), font-gated + 3.5s safety timeout, full no-op under reduced motion. The page keeps `useScrollReveal('.reveal')` for the sections below.
 - Forces `video.muted = true` in `onMounted` (Vue can drop the prop, breaking autoplay).
 - **Pre-ship:** self-host the placeholder CloudFront video to R2 and the svgl.app logos to `/public/logos/`, then swap the URLs.
+
+### `FeaturedMockups` / `FeaturedMockupCard` / `MockupPreviewModal`
+The "Featured mockups" section on the landing page (`pages/public/index.vue`) —
+live client prototypes from the registry at `https://axelnova.my/projects/registry.json`
+(CORS-open, fetched client-side; filtering/sorting/offline-fallback live in
+`composables/useMockupRegistry.ts`, shared with the admin dashboard section).
+
+- **`FeaturedMockups`** — the snap carousel shell (same arrows/edge-fade pattern as
+  `FeaturedProjectsCarousel`) with loading skeletons; owns the `previewing` state and
+  mounts the modal.
+- **`FeaturedMockupCard`** — browser-frame card with an mShots live screenshot
+  (retry-on-placeholder, tinted fallback tile from the registry `tint {h,c}` →
+  `hsl(h, c*400%, 55%)`). Whole card opens the preview popup; the hover "Visit live"
+  pill skips straight to the site. Public status labels: `draft` renders as
+  **Concept** (internal lifecycle words stay off the marketing site).
+- **`MockupPreviewModal`** — Teleported full-screen browser-window overlay with a live
+  `<iframe>` of the mockup (axelnova.my pages send no `X-Frame-Options`). Esc/backdrop
+  close, scroll lock, loading spinner, 15s timeout → "open live site" fallback panel.
+- `SectionHeader` gained an optional `action.target: '_blank'` for the external
+  "View all" → `https://axelnova.my/` (the root showcase; the admin dashboard's
+  section keeps the `/projects/` listing).

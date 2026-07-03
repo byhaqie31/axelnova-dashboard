@@ -65,20 +65,23 @@ status → `reviewing`). Building still links on save via `QuotationsController@
 The `inquiries.quotation_id` FK is one-to-many by design (a quote can cover related
 inquiries) — no uniqueness guard.
 
-### `components/admin/FeaturedMockups.vue`
+### `pages/admin/mockups.vue` — Mockups page
 
-The dashboard's "Featured Mockups" section (`pages/admin/index.vue`) — a card grid
-of live client prototypes pulled from the public mockup registry at
-`https://axelnova.my/projects/registry.json` (CORS-open, fetched client-side on mount).
+A dedicated page (sidebar: Overview → Mockups, right below Dashboard) listing
+**every** public client prototype from the registry at
+`https://axelnova.my/projects/registry.json` (CORS-open, fetched client-side on
+mount; fetch/filter/sort/fallback live in `composables/useMockupRegistry.ts`,
+shared with the public landing showcase — the page passes `limit: Infinity`
+where the landing keeps the featured six).
 
 - Excludes any registry row with `internal: true` (admin-only mockups must never
-  render), sorts the rest by `updatedAt` desc, shows the top 6.
-- Each card links to `https://axelnova.my/{slug}/` in a new tab; a right-aligned
-  **View all** button links to the full public listing at `https://axelnova.my/projects/`.
+  render), sorts by `updatedAt` desc.
+- Each card links to `https://axelnova.my/{slug}/` in a new tab; an **Open
+  listing** button in the header links to `https://axelnova.my/projects/`.
 - Card accent comes from the registry's `tint {h, c}` → `hsl(h, c*400%, 55%)`,
   applied as a soft wash on the icon chip (full strength for the icon only).
 - Registry statuses reuse the `AdminStatusPill` vocabulary (`in-review` → `reviewing`,
   `approved` → `accepted`) so `main.css` pill tokens stay the single source of truth.
-- If the live fetch fails, a frozen 6-item snapshot renders instead — the section
-  never breaks the dashboard. Empty registry → quiet empty state; loading → shimmer
-  skeleton (disabled under reduced motion).
+- If the live fetch fails, a frozen 6-item snapshot renders instead — the page
+  never breaks. Empty registry → quiet empty state; loading → shimmer skeleton
+  (disabled under reduced motion).

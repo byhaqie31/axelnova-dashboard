@@ -5,7 +5,7 @@ defineProps<{
   eyebrow?: string
   title: string
   subtitle?: string
-  action?: { label: string, to: string }
+  action?: { label: string, to: string, target?: '_blank' }
 }>()
 
 const ruleEl = ref<HTMLElement | null>(null)
@@ -61,6 +61,8 @@ onUnmounted(() => {
     <NuxtLink
       v-if="action"
       :to="action.to"
+      :target="action.target"
+      :rel="action.target === '_blank' ? 'noopener' : undefined"
       class="text-[14px] font-medium whitespace-nowrap inline-flex items-center gap-1.5 transition-all hover:gap-2.5"
       style="color: var(--color-accent);"
     >
