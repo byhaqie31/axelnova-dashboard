@@ -225,6 +225,12 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 - Wraps the canonical `.brand-logo-glow` drop-shadow — never reimplement the gradient/glow inline
 - Used in `public.vue` header AND footer, `admin.vue` topbar, `portal.vue` header
 
+### `VideoBackground`
+- Full-bleed ambient mp4 layer behind page content — fixed, click-through, `z-index:-1`, `object-fit: cover`.
+- Solid `--color-bg` always paints underneath, so a failed load degrades to the app background.
+- Forces `muted` on mount (hydration can drop the prop and break autoplay); paused on first frame under `prefers-reduced-motion`.
+- Used by the admin / team / partner login screens, each passing its own `src` footage behind the liquid-glass sign-in card.
+
 ### `SectionHeader`
 - `eyebrow` (uppercase gradient)
 - `title` (h2)

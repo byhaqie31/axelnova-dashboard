@@ -94,7 +94,22 @@ useHead({ title: 'Admin Portal' })
           <BrandMark to="/admin" wordmark="Admin Portal" />
         </div>
 
-        <div class="relative flex items-center">
+        <div class="relative flex items-center gap-2">
+          <!-- Quick jumps to the other portals' sign-ins. New tab + isolated
+               token keys per portal, so the admin session here stays intact. -->
+          <nav class="hidden md:flex items-center gap-1.5" aria-label="Other portal sign-ins">
+            <NuxtLink to="/team/login" target="_blank" rel="noopener" class="portal-jump">
+              <UIcon name="i-lucide-users-round" class="size-3.5 shrink-0" />
+              <span>Team</span>
+              <UIcon name="i-lucide-arrow-up-right" class="size-3 shrink-0 opacity-60" />
+            </NuxtLink>
+            <NuxtLink to="/partners/login" target="_blank" rel="noopener" class="portal-jump">
+              <UIcon name="i-lucide-handshake" class="size-3.5 shrink-0" />
+              <span>Partners</span>
+              <UIcon name="i-lucide-arrow-up-right" class="size-3 shrink-0 opacity-60" />
+            </NuxtLink>
+          </nav>
+
           <button
             type="button"
             class="size-9 rounded-full inline-flex items-center justify-center border transition-colors hover:bg-(--color-bg-secondary)"
@@ -278,6 +293,16 @@ useHead({ title: 'Admin Portal' })
               </div>
             </div>
             <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
+            <NuxtLink to="/team/login" target="_blank" rel="noopener" class="admin-nav-item">
+              <UIcon name="i-lucide-users-round" class="size-4.5 shrink-0" />
+              <span>Team sign-in</span>
+              <UIcon name="i-lucide-arrow-up-right" class="size-3.5 shrink-0 ml-auto opacity-60" />
+            </NuxtLink>
+            <NuxtLink to="/partners/login" target="_blank" rel="noopener" class="admin-nav-item">
+              <UIcon name="i-lucide-handshake" class="size-4.5 shrink-0" />
+              <span>Partner sign-in</span>
+              <UIcon name="i-lucide-arrow-up-right" class="size-3.5 shrink-0 ml-auto opacity-60" />
+            </NuxtLink>
             <button
               class="admin-nav-item"
               @click="logout"
@@ -298,6 +323,27 @@ useHead({ title: 'Admin Portal' })
 </template>
 
 <style scoped>
+/* Compact topbar pills jumping to the other portals' sign-in pages — same
+   material as the profile button (elevated bg, hairline border). */
+.portal-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.portal-jump:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+}
+
 /* Mobile floating drawer */
 .drawer-backdrop-enter-active,
 .drawer-backdrop-leave-active {

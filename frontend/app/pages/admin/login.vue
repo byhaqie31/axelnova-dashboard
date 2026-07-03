@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
-import FluidBackground from '~/components/shared/FluidBackground.vue'
+import VideoBackground from '~/components/shared/VideoBackground.vue'
 
 definePageMeta({ layout: false })
 useHead({ title: 'Admin Login — Axel Nova' })
@@ -46,11 +46,8 @@ async function handleLogin() {
 
 <template>
   <div class="admin-login-screen min-h-screen flex items-center justify-center px-6 py-12">
-    <!-- Fluid generative-art background (OCEAN preset). `interactive` lets it warp
-         toward the cursor (like the live preview): the screen is click-through so
-         empty areas reach the fluid, while the glass card re-enables pointer
-         events for the form. /public/fluid-bg.jpg is the offline fallback. -->
-    <FluidBackground fallback-image="/fluid-bg.jpg" :scrim="0.35" interactive />
+    <!-- Full-bleed ambient video behind the glass card, shown unscrimmed. -->
+    <VideoBackground src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_102933_4e8f73b5-775a-4179-b2fb-472f59063dcd.mp4" />
 
     <div class="relative w-full max-w-md">
       <!-- Soft accent halo bleeding from behind the glass for depth -->
@@ -119,9 +116,6 @@ async function handleLogin() {
 .admin-login-screen {
   position: relative;
   overflow: hidden;
-  /* Click-through so the interactive Fluid layer behind receives the cursor in
-     the empty areas around the card. The card re-enables pointer events. */
-  pointer-events: none;
 }
 
 /* Soft accent halo bleeding from behind the glass card (the card's backdrop
@@ -135,7 +129,7 @@ async function handleLogin() {
 }
 
 /* Liquid-glass panel — frosted surface + specular top edge + diagonal sheen,
-   floating over the live Fluid background. Surface/border/text stay on design
+   floating over the video background. Surface/border/text stay on design
    tokens; only the material highlights are local rgba, switched per mode. */
 .glass-card {
   --glass-edge: rgba(255, 255, 255, 0.7);
@@ -143,8 +137,6 @@ async function handleLogin() {
   --glass-input: rgba(255, 255, 255, 0.55);
   position: relative;
   overflow: hidden;
-  /* Re-enable hit-testing inside the otherwise click-through screen. */
-  pointer-events: auto;
   background: var(--nav-bg-scrolled);
   border: 1px solid var(--color-border);
   backdrop-filter: blur(40px) saturate(180%);

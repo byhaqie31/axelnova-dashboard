@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
+import VideoBackground from '~/components/shared/VideoBackground.vue'
 
 definePageMeta({ layout: false })
 useHead({ title: 'Team Sign-in — Axel Nova' })
@@ -44,17 +45,21 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center px-6 py-12" style="background: var(--color-bg-secondary);">
-    <div class="w-full max-w-md">
-      <div
-        class="rounded-3xl border px-8 pt-10 pb-7 sm:px-10 sm:pt-12 sm:pb-8"
-        :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }"
-      >
-        <div class="space-y-6">
+  <div class="team-login-screen min-h-screen flex items-center justify-center px-6 py-12">
+    <!-- Full-bleed ambient video behind the glass card, shown unscrimmed. -->
+    <VideoBackground src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260503_101827_abebfeec-f243-466b-b494-7f6814c0fbbf.mp4" />
+
+    <div class="relative w-full max-w-md">
+      <!-- Soft accent halo bleeding from behind the glass for depth -->
+      <div class="team-login-glow" aria-hidden="true" />
+
+      <!-- One liquid-glass panel holds the entire sign-in -->
+      <div class="glass-card relative rounded-4xl px-8 pt-10 pb-7 sm:px-10 sm:pt-12 sm:pb-8">
+        <div class="relative space-y-6">
           <div class="space-y-4">
             <div class="flex items-center justify-center gap-3">
               <BrandMark variant="mark-only" class="team-brand" />
-              <h1 class="text-[26px] font-bold tracking-tight" style="color: var(--color-text);">Team workspace</h1>
+              <h1 class="text-[26px] font-bold tracking-tight text-gradient">Team workspace</h1>
             </div>
             <p class="text-[13px] text-center" style="color: var(--color-text-secondary);">
               Sign in to triage inquiries and manage referrals.
@@ -65,13 +70,13 @@ async function handleLogin() {
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email</label>
               <input v-model="email" type="email" required autocomplete="email" placeholder="Email"
-                class="contact-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
+                class="contact-input glass-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
             </div>
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Password</label>
               <div class="relative">
                 <input v-model="password" :type="showPassword ? 'text' : 'password'" required autocomplete="current-password" placeholder="Password"
-                  class="contact-input"
+                  class="contact-input glass-input"
                   :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', paddingRight: '2.75rem' }" />
                 <button type="button" class="pw-toggle" :aria-label="showPassword ? 'Hide password' : 'Show password'"
                   @click="showPassword = !showPassword">
@@ -105,6 +110,57 @@ async function handleLogin() {
 </template>
 
 <style scoped>
+.team-login-screen {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Soft accent halo bleeding from behind the glass card (the card's backdrop
+   blur samples it, tinting the glass). */
+.team-login-glow {
+  position: absolute;
+  inset: -22% -28%;
+  background: radial-gradient(50% 50% at 50% 32%, var(--color-accent-soft) 0%, transparent 70%);
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+/* Liquid-glass panel — frosted surface + specular top edge + diagonal sheen,
+   floating over the video background. Surface/border/text stay on design
+   tokens; only the material highlights are local rgba, switched per mode. */
+.glass-card {
+  --glass-edge: rgba(255, 255, 255, 0.7);
+  --glass-sheen: rgba(255, 255, 255, 0.4);
+  --glass-input: rgba(255, 255, 255, 0.55);
+  position: relative;
+  overflow: hidden;
+  background: var(--nav-bg-scrolled);
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 0 var(--glass-edge);
+}
+.dark .glass-card {
+  --glass-edge: rgba(255, 255, 255, 0.14);
+  --glass-sheen: rgba(255, 255, 255, 0.07);
+  --glass-input: rgba(255, 255, 255, 0.05);
+}
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--glass-sheen) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+/* Inputs read as nested panes within the glass (still fully legible to type in). */
+.glass-input {
+  background: var(--glass-input);
+}
+
 .team-brand :deep(img) {
   width: 2.7rem;
   height: 2.7rem;

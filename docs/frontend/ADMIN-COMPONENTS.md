@@ -64,3 +64,21 @@ linkable). Linking `POST`s `/v1/admin/inquiries/{inquiry}/quotation` (sets
 status → `reviewing`). Building still links on save via `QuotationsController@store`.
 The `inquiries.quotation_id` FK is one-to-many by design (a quote can cover related
 inquiries) — no uniqueness guard.
+
+### `components/admin/FeaturedMockups.vue`
+
+The dashboard's "Featured Mockups" section (`pages/admin/index.vue`) — a card grid
+of live client prototypes pulled from the public mockup registry at
+`https://axelnova.my/projects/registry.json` (CORS-open, fetched client-side on mount).
+
+- Excludes any registry row with `internal: true` (admin-only mockups must never
+  render), sorts the rest by `updatedAt` desc, shows the top 6.
+- Each card links to `https://axelnova.my/{slug}/` in a new tab; a right-aligned
+  **View all** button links to the full public listing at `https://axelnova.my/projects/`.
+- Card accent comes from the registry's `tint {h, c}` → `hsl(h, c*400%, 55%)`,
+  applied as a soft wash on the icon chip (full strength for the icon only).
+- Registry statuses reuse the `AdminStatusPill` vocabulary (`in-review` → `reviewing`,
+  `approved` → `accepted`) so `main.css` pill tokens stay the single source of truth.
+- If the live fetch fails, a frozen 6-item snapshot renders instead — the section
+  never breaks the dashboard. Empty registry → quiet empty state; loading → shimmer
+  skeleton (disabled under reduced motion).
