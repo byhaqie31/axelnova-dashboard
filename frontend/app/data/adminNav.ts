@@ -16,6 +16,10 @@ export interface AdminNavItem {
 export interface NavGroup {
   label: string
   roles?: Role[]
+  /** Kept out of the sidebar rail so it stays glanceable; reachable via the
+   *  "View more" apps launcher pinned at the rail's bottom (and the mobile
+   *  drawer, which scrolls and always lists everything). */
+  overflow?: boolean
   items: AdminNavItem[]
 }
 
@@ -45,6 +49,7 @@ export const adminNav: NavGroup[] = [
   },
   {
     label: 'Growth',
+    overflow: true,
     items: [
       { to: '/admin/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/admin/referrals' },
       { to: '/admin/referral-partners', label: 'Partners', icon: 'i-lucide-user-check', matchPrefix: '/admin/referral-partners' },
@@ -63,6 +68,7 @@ export const adminNav: NavGroup[] = [
   {
     label: 'Business',
     roles: ['founder', 'partner'],
+    overflow: true,
     items: [
       // Users + Activity land in Phase 0 / Phase 1 — nav is scaffolded ahead so
       // those phases only add the page, not the nav entry.
@@ -91,4 +97,10 @@ export function visibleAdminNav(role?: Role): NavGroup[] {
     .filter(group => allows(group.roles))
     .map(group => ({ ...group, items: group.items.filter(item => allows(item.roles)) }))
     .filter(group => group.items.length > 0)
+}
+
+// The sidebar rail shows only primary groups; overflow groups live in the
+// "View more" apps launcher (which lists everything).
+export function sidebarAdminNav(role?: Role): NavGroup[] {
+  return visibleAdminNav(role).filter(group => !group.overflow)
 }

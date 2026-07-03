@@ -85,3 +85,19 @@ where the landing keeps the featured six).
 - If the live fetch fails, a frozen 6-item snapshot renders instead — the page
   never breaks. Empty registry → quiet empty state; loading → shimmer skeleton
   (disabled under reduced motion).
+
+### Sidebar "View more" launchpad (`layouts/admin.vue`)
+
+The desktop rail stays glanceable by showing only primary groups; groups
+flagged `overflow: true` in `data/adminNav.ts` (currently **Growth** and
+**Business**) are excluded from the rail and reachable via a **View more**
+button pinned at the rail's bottom (chevron points right, toward the reveal).
+Clicking it **transforms the whole bar**: the aside animates wider (464px)
+and the rail list swaps for a launchpad view — *every* group (rail +
+overflow) rendered as 4-column icon-tile grids with eyebrow labels, all on
+one surface. Toggling again (or Esc / click-away / navigating) restores the
+rail. Active tile highlighted; the View more button lights up when the
+current route lives in an overflow group. Works from both expanded and
+collapsed rail states. The mobile drawer is unaffected — it scrolls and
+always lists every group. To move a module in or out of the rail, toggle its
+group's `overflow` flag — no layout changes needed.

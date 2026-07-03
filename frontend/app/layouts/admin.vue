@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
-import { visibleAdminNav, isAdminNavActive, type NavGroup, type Role } from '~/data/adminNav'
+import { visibleAdminNav, sidebarAdminNav, isAdminNavActive, type NavGroup, type Role } from '~/data/adminNav'
 
 useSeoMeta({ robots: 'noindex, nofollow' })
 
 const mobileNavOpen = ref(false)
 const profileOpen = ref(false)
+const appsOpen = ref(false)
 
 // Desktop sidebar collapse → icon-only rail. Cookie-backed so it's resolved during
 // SSR and the rail doesn't flash from expanded → collapsed on reload.
@@ -24,7 +25,25 @@ const me = ref<Me | null>(null)
 
 // Role stays undefined until Phase 0 adds it to `/admin/me`; visibleAdminNav is
 // permissive meanwhile, so all six groups render for the current founder.
+// The desktop rail shows only primary groups; overflow groups (Growth,
+// Business) live in the "View more" apps launcher. Mobile keeps everything.
 const navGroups = computed<NavGroup[]>(() => visibleAdminNav(me.value?.role))
+const sidebarGroups = computed<NavGroup[]>(() => sidebarAdminNav(me.value?.role))
+
+// The launcher button lights up when the active route lives in a group the
+// rail doesn't show — the user still gets a "you are here" cue.
+const overflowGroups = computed(() => navGroups.value.filter(g => g.overflow))
+const overflowActive = computed(() =>
+  overflowGroups.value.some(g => g.items.some(item => isAdminNavActive(item, route.path))),
+)
+
+// "View more" swaps the rail for a launchpad view — every group (rail +
+// overflow) rendered as tile grids on one wider bar — then back. Fixed inner
+// widths keep content steady while the aside's width animates (overflow
+// clips the rest).
+const LAUNCHER_W = 464
+const railWidth = computed(() => (sidebarCollapsed.value ? 68 : 248))
+const asideWidth = computed(() => `${appsOpen.value ? LAUNCHER_W : railWidth.value}px`)
 
 function groupHasActive(group: NavGroup): boolean {
   return group.items.some(item => isAdminNavActive(item, route.path))
@@ -51,9 +70,13 @@ onMounted(fetchMe)
 watch(() => route.fullPath, () => {
   mobileNavOpen.value = false
   profileOpen.value = false
+  appsOpen.value = false
 })
 
-onKeyStroke('Escape', () => { if (profileOpen.value) profileOpen.value = false })
+onKeyStroke('Escape', () => {
+  if (profileOpen.value) profileOpen.value = false
+  if (appsOpen.value) appsOpen.value = false
+})
 
 // One title for every page rendered under this layout.
 // Per-page useHead calls deliberately don't set `title` so this stays.
@@ -176,21 +199,28 @@ useHead({ title: 'Admin Portal' })
     <div class="flex-1 flex">
       <!-- Sidebar (desktop) — sticks below the topbar while content scrolls -->
       <aside
-        class="hidden md:flex flex-col border-r self-start sticky"
+        class="apps-aside hidden md:flex flex-col border-r self-start sticky overflow-hidden z-30"
         :style="{
-          width: sidebarCollapsed ? '68px' : '248px',
+          width: asideWidth,
           top: '3.5rem',
           height: 'calc(100vh - 3.5rem)',
           background: 'var(--color-bg)',
           borderColor: 'var(--color-border)',
         }"
       >
-        <nav class="p-3 flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden">
+        <!-- Rail mode. Fixed inner width so items hold steady while the aside's
+             width animates. min-h-0 lets the nav shrink below its content so
+             overflow-y engages (flexbox default min-height:auto cuts menus off). -->
+        <nav
+          v-if="!appsOpen"
+          class="side-nav-scroll flex-1 min-h-0 p-3 flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden shrink-0"
+          :style="{ width: `${railWidth}px` }"
+        >
           <!-- Collapsed rail: no room for labels, so flatten groups to icons with
                a hairline between them; each icon names itself via a hover
                tooltip (right side, teleported past the rail's overflow clip). -->
           <template v-if="sidebarCollapsed">
-            <template v-for="(group, gi) in navGroups" :key="group.label">
+            <template v-for="(group, gi) in sidebarGroups" :key="group.label">
               <hr v-if="gi > 0" class="my-1 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" />
               <UTooltip
                 v-for="item in group.items"
@@ -214,7 +244,7 @@ useHead({ title: 'Admin Portal' })
 
           <!-- Expanded: muted section label (also the collapse toggle) + items. -->
           <template v-else>
-            <div v-for="group in navGroups" :key="group.label" class="flex flex-col gap-1">
+            <div v-for="group in sidebarGroups" :key="group.label" class="flex flex-col gap-1">
               <button
                 type="button"
                 class="admin-nav-group-label"
@@ -243,7 +273,78 @@ useHead({ title: 'Admin Portal' })
             </div>
           </template>
         </nav>
+
+        <!-- Launcher mode: the whole bar becomes a launchpad — every group
+             (rail + overflow) as a tile grid on one wide surface. -->
+        <div
+          v-else
+          class="side-nav-scroll flex-1 min-h-0 overflow-y-auto p-4 shrink-0"
+          :style="{ width: `${LAUNCHER_W}px` }"
+          aria-label="All apps"
+        >
+          <div v-for="(group, gi) in navGroups" :key="group.label" :class="{ 'mt-5': gi > 0 }">
+            <p class="text-[11px] font-semibold uppercase tracking-wider px-1 mb-2" style="color: var(--color-text-tertiary);">
+              {{ group.label }}
+            </p>
+            <div class="grid grid-cols-4 gap-1.5">
+              <NuxtLink
+                v-for="item in group.items"
+                :key="item.to"
+                :to="item.to"
+                class="app-tile"
+                :data-active="isAdminNavActive(item, route.path)"
+              >
+                <UIcon :name="item.icon" class="size-4.5 shrink-0" />
+                <span class="text-[11px] font-medium leading-tight text-center">{{ item.label }}</span>
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pinned launcher trigger — the rail stays glanceable; everything
+             else lives one click away. Lights up when the active route
+             belongs to a group the rail doesn't show. -->
+        <div class="shrink-0 p-3 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
+          <UTooltip
+            v-if="sidebarCollapsed && !appsOpen"
+            text="View more"
+            :content="{ side: 'right', sideOffset: 10 }"
+            :delay-duration="150"
+            :ui="{ content: 'admin-nav-tooltip' }"
+          >
+            <button
+              type="button"
+              class="admin-nav-item w-full"
+              :style="{ justifyContent: 'center', paddingLeft: 0, paddingRight: 0 }"
+              :data-active="overflowActive"
+              :aria-expanded="appsOpen"
+              aria-label="View more apps"
+              @click="appsOpen = !appsOpen"
+            >
+              <UIcon name="i-lucide-layout-grid" class="size-4.5 shrink-0" />
+            </button>
+          </UTooltip>
+          <button
+            v-else
+            type="button"
+            class="admin-nav-item w-full"
+            :data-active="overflowActive"
+            :aria-expanded="appsOpen"
+            @click="appsOpen = !appsOpen"
+          >
+            <UIcon name="i-lucide-layout-grid" class="size-4.5 shrink-0" />
+            <span>View more</span>
+            <UIcon
+              name="i-lucide-chevron-right"
+              class="size-3.5 shrink-0 ml-auto transition-transform"
+              :style="{ transform: appsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }"
+            />
+          </button>
+        </div>
       </aside>
+
+      <!-- Click-away for the widened sidebar (below the aside, above content) -->
+      <div v-if="appsOpen" class="hidden md:block fixed inset-0 z-20 cursor-default" @click="appsOpen = false" />
 
       <!-- Sidebar (mobile floating drawer + backdrop) -->
       <Transition name="drawer-backdrop">
@@ -368,4 +469,46 @@ useHead({ title: 'Admin Portal' })
   .drawer-panel-enter-active,
   .drawer-panel-leave-active { transition: none; }
 }
+
+/* The aside grows/shrinks to reveal the more-apps column. */
+.apps-aside {
+  transition: width 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .apps-aside { transition: none; }
+}
+
+/* Apps-launcher tiles — icon over label, same resting/hover/active grammar
+   as .admin-nav-item but in launchpad form. */
+.app-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px 10px;
+  border-radius: 12px;
+  color: var(--color-text-secondary);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.app-tile:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+}
+.app-tile[data-active="true"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+/* Sidebar scrolls independently once modules outgrow the viewport — slim,
+   token-colored scrollbar so the rail stays quiet. */
+.side-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+.side-nav-scroll::-webkit-scrollbar { width: 6px; }
+.side-nav-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 9999px;
+}
+.side-nav-scroll::-webkit-scrollbar-track { background: transparent; }
 </style>

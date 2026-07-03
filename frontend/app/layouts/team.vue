@@ -173,7 +173,9 @@ useHead({ title: 'Team Workspace' })
           borderColor: 'var(--color-border)',
         }"
       >
-        <nav class="p-3 flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden">
+        <!-- min-h-0 lets the nav shrink below its content so overflow-y engages;
+             without it the flexbox default (min-height: auto) cuts long menus off. -->
+        <nav class="side-nav-scroll flex-1 min-h-0 p-3 flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden">
           <!-- Collapsed rail: no room for labels, so flatten groups to icons with
                a hairline between them; each icon names itself via a hover
                tooltip (right side, teleported past the rail's overflow clip). -->
@@ -325,4 +327,17 @@ useHead({ title: 'Team Workspace' })
   .drawer-panel-enter-active,
   .drawer-panel-leave-active { transition: none; }
 }
+
+/* Sidebar scrolls independently once modules outgrow the viewport — slim,
+   token-colored scrollbar so the rail stays quiet. */
+.side-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+.side-nav-scroll::-webkit-scrollbar { width: 6px; }
+.side-nav-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 9999px;
+}
+.side-nav-scroll::-webkit-scrollbar-track { background: transparent; }
 </style>
