@@ -96,6 +96,10 @@ Route::middleware($loginThrottle)->group(function () {
     // (marketer/engineer land here since they get 403 on the cockpit login).
     Route::post('/v1/team/login', [TeamAuthController::class, 'login'])->name('team.login');
 
+    // Workspace "forgot password" — no self-service reset; a matching email
+    // notifies the founder (services.admin.email) to reset it from Users.
+    Route::post('/v1/team/forgot-password', [TeamAuthController::class, 'forgotPassword'])->name('team.forgot-password');
+
     // Partner portal login — the isolated referral guard. Same brute-force throttle;
     // only approved (active) referrers with an issued passcode can sign in.
     Route::post('/v1/partner/login', [PartnerAuthController::class, 'login'])->name('partner.login');

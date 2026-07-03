@@ -71,7 +71,10 @@ async function handleLogin() {
                 class="contact-input glass-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
             </div>
             <div class="space-y-2">
-              <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">8-digit passcode</label>
+              <div class="flex items-center justify-between gap-3">
+                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">8-digit passcode</label>
+                <NuxtLink to="/partners/forgot" class="text-[12px]" style="color: var(--color-accent);">Forgot passcode?</NuxtLink>
+              </div>
               <PasscodeInput v-model="passcode" :length="8" />
             </div>
             <p v-if="error" class="text-[12px] flex items-center gap-1.5" style="color: var(--color-danger);">
@@ -85,9 +88,6 @@ async function handleLogin() {
 
           <div class="space-y-2.5">
             <div class="partner-login-divider" />
-            <p class="text-[12px] text-center">
-              <NuxtLink to="/partners/forgot" style="color: var(--color-accent);">Forgot passcode?</NuxtLink>
-            </p>
             <p class="text-[12px] text-center" style="color: var(--color-text-secondary);">
               Not a partner yet?
               <NuxtLink to="/partners/refer" style="color: var(--color-accent);">Refer a business</NuxtLink>

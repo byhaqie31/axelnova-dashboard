@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api\V1\Team;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TeamPasswordResetRequestedMail;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -39,6 +42,41 @@ class AuthController extends Controller
         return response()->json([
             'token' => $token,
             'user' => $this->present($user),
+        ]);
+    }
+
+    /**
+     * "Forgot password" for the workspace. Team passwords have no self-service
+     * reset — only the founder resets them (Users screen) — so this simply
+     * notifies the founder by email that the member is locked out. The response
+     * is identical whether or not the email matches an account, so it never
+     * reveals who works here. Abuse is bounded by the shared login throttle.
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = User::where('email', $data['email'])->first();
+
+        if ($user && $user->isWorkspace()) {
+            ActivityLog::create([
+                'actor_id' => null,
+                'action' => 'team.password_reset_requested',
+                'subject_type' => class_basename($user),
+                'subject_id' => $user->id,
+                'changes' => null,
+            ]);
+
+            $adminEmail = config('services.admin.email') ?: config('mail.from.address');
+            if ($adminEmail) {
+                Mail::to($adminEmail)->send(new TeamPasswordResetRequestedMail($user));
+            }
+        }
+
+        return response()->json([
+            'message' => 'If that email matches a team account, the admin has been notified and will reset your password.',
         ]);
     }
 

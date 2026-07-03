@@ -73,7 +73,10 @@ async function handleLogin() {
                 class="contact-input glass-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" />
             </div>
             <div class="space-y-1.5">
-              <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Password</label>
+              <div class="flex items-center justify-between gap-3">
+                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Password</label>
+                <NuxtLink to="/team/forgot" class="text-[12px]" style="color: var(--color-accent);">Forgot password?</NuxtLink>
+              </div>
               <div class="relative">
                 <input v-model="password" :type="showPassword ? 'text' : 'password'" required autocomplete="current-password" placeholder="Password"
                   class="contact-input glass-input"
