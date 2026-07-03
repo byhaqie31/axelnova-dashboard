@@ -88,16 +88,22 @@ where the landing keeps the featured six).
 
 ### Sidebar "View more" launchpad (`layouts/admin.vue`)
 
-The desktop rail stays glanceable by showing only primary groups; groups
-flagged `overflow: true` in `data/adminNav.ts` (currently **Growth** and
-**Business**) are excluded from the rail and reachable via a **View more**
-button pinned at the rail's bottom (chevron points right, toward the reveal).
-Clicking it **transforms the whole bar**: the aside animates wider (464px)
-and the rail list swaps for a launchpad view — *every* group (rail +
-overflow) rendered as 4-column icon-tile grids with eyebrow labels, all on
-one surface. Toggling again (or Esc / click-away / navigating) restores the
-rail. Active tile highlighted; the View more button lights up when the
-current route lives in an overflow group. Works from both expanded and
-collapsed rail states. The mobile drawer is unaffected — it scrolls and
-always lists every group. To move a module in or out of the rail, toggle its
-group's `overflow` flag — no layout changes needed.
+The desktop rail is **user-customizable**. **Overview** is `mandatory: true`
+in `data/adminNav.ts` (always in the rail, no pin control); every other group
+carries a pin: pinned groups sit in the rail, unpinned ones live only in the
+launchpad. Data defaults come from `defaultPinned` (omitted = pinned;
+currently **Growth** and **Business** start unpinned); the user's own choices
+are stored in the `axn_admin_nav_pinned` cookie — cookie-backed like the
+other sidebar prefs so it's SSR-resolved with no flash (a DB-backed pref can
+replace the cookie once Phase 0 user profiles land).
+
+A **View more** button pinned at the rail's bottom (chevron points right,
+toward the reveal) **transforms the whole bar**: the aside animates wider
+(464px) and the rail list swaps for a launchpad view — *every* group rendered
+as 4-column icon-tile grids with eyebrow labels, all on one surface. Each
+customizable group's header carries a pin toggle (accent = pinned) that
+updates the rail live. Toggling again (or Esc / click-away / navigating)
+restores the rail. Active tile highlighted; the View more button lights up
+when the current route lives in an unpinned group. Works from both expanded
+and collapsed rail states. The mobile drawer is unaffected — it scrolls and
+always lists every group.

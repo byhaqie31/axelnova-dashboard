@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
-import { visibleAdminNav, sidebarAdminNav, isAdminNavActive, type NavGroup, type Role } from '~/data/adminNav'
+import { visibleAdminNav, isAdminNavActive, isGroupPinned, type NavGroup, type Role } from '~/data/adminNav'
 
 useSeoMeta({ robots: 'noindex, nofollow' })
 
@@ -25,16 +25,23 @@ const me = ref<Me | null>(null)
 
 // Role stays undefined until Phase 0 adds it to `/admin/me`; visibleAdminNav is
 // permissive meanwhile, so all six groups render for the current founder.
-// The desktop rail shows only primary groups; overflow groups (Growth,
-// Business) live in the "View more" apps launcher. Mobile keeps everything.
 const navGroups = computed<NavGroup[]>(() => visibleAdminNav(me.value?.role))
-const sidebarGroups = computed<NavGroup[]>(() => sidebarAdminNav(me.value?.role))
+
+// The rail is customizable: Overview is mandatory, every other group can be
+// pinned/unpinned from the launchpad. Unpinned groups live only in "View
+// more". Cookie-backed like the other sidebar prefs (SSR-resolved, no flash).
+const navPinned = useCookie<Record<string, boolean>>('axn_admin_nav_pinned', { default: () => ({}) })
+const isPinned = (group: NavGroup) => isGroupPinned(group, navPinned.value)
+function togglePin(group: NavGroup) {
+  if (group.mandatory) return
+  navPinned.value = { ...navPinned.value, [group.label]: !isPinned(group) }
+}
+const sidebarGroups = computed<NavGroup[]>(() => navGroups.value.filter(isPinned))
 
 // The launcher button lights up when the active route lives in a group the
 // rail doesn't show — the user still gets a "you are here" cue.
-const overflowGroups = computed(() => navGroups.value.filter(g => g.overflow))
-const overflowActive = computed(() =>
-  overflowGroups.value.some(g => g.items.some(item => isAdminNavActive(item, route.path))),
+const unpinnedActive = computed(() =>
+  navGroups.value.some(g => !isPinned(g) && g.items.some(item => isAdminNavActive(item, route.path))),
 )
 
 // "View more" swaps the rail for a launchpad view — every group (rail +
@@ -77,6 +84,12 @@ onKeyStroke('Escape', () => {
   if (profileOpen.value) profileOpen.value = false
   if (appsOpen.value) appsOpen.value = false
 })
+
+// Close the profile dropdown on any outside click. (A fixed inset-0 backdrop
+// can't do this here: the header's backdrop-blur makes it a containing block
+// for fixed descendants, so such a backdrop only spans the topbar strip.)
+const profileWrap = ref<HTMLElement | null>(null)
+onClickOutside(profileWrap, () => { profileOpen.value = false })
 
 // One title for every page rendered under this layout.
 // Per-page useHead calls deliberately don't set `title` so this stays.
@@ -133,6 +146,7 @@ useHead({ title: 'Admin Portal' })
             </NuxtLink>
           </nav>
 
+          <div ref="profileWrap" class="relative">
           <button
             type="button"
             class="size-9 rounded-full inline-flex items-center justify-center border transition-colors hover:bg-(--color-bg-secondary)"
@@ -143,8 +157,6 @@ useHead({ title: 'Admin Portal' })
           >
             <UIcon name="i-lucide-user" class="size-4" />
           </button>
-
-          <div v-if="profileOpen" class="fixed inset-0 z-40 cursor-default" @click="profileOpen = false" />
 
           <Transition name="dropdown-panel">
             <div
@@ -192,6 +204,7 @@ useHead({ title: 'Admin Portal' })
               </div>
             </div>
           </Transition>
+          </div>
         </div>
       </div>
     </header>
@@ -283,9 +296,22 @@ useHead({ title: 'Admin Portal' })
           aria-label="All apps"
         >
           <div v-for="(group, gi) in navGroups" :key="group.label" :class="{ 'mt-5': gi > 0 }">
-            <p class="text-[11px] font-semibold uppercase tracking-wider px-1 mb-2" style="color: var(--color-text-tertiary);">
-              {{ group.label }}
-            </p>
+            <div class="flex items-center justify-between px-1 mb-2">
+              <p class="text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
+                {{ group.label }}
+              </p>
+              <button
+                v-if="!group.mandatory"
+                type="button"
+                class="pin-btn"
+                :data-pinned="isPinned(group)"
+                :aria-pressed="isPinned(group)"
+                :title="isPinned(group) ? 'Unpin from sidebar' : 'Pin to sidebar'"
+                @click="togglePin(group)"
+              >
+                <UIcon :name="isPinned(group) ? 'i-lucide-pin' : 'i-lucide-pin-off'" class="size-3.5" />
+              </button>
+            </div>
             <div class="grid grid-cols-4 gap-1.5">
               <NuxtLink
                 v-for="item in group.items"
@@ -316,7 +342,7 @@ useHead({ title: 'Admin Portal' })
               type="button"
               class="admin-nav-item w-full"
               :style="{ justifyContent: 'center', paddingLeft: 0, paddingRight: 0 }"
-              :data-active="overflowActive"
+              :data-active="unpinnedActive"
               :aria-expanded="appsOpen"
               aria-label="View more apps"
               @click="appsOpen = !appsOpen"
@@ -328,7 +354,7 @@ useHead({ title: 'Admin Portal' })
             v-else
             type="button"
             class="admin-nav-item w-full"
-            :data-active="overflowActive"
+            :data-active="unpinnedActive"
             :aria-expanded="appsOpen"
             @click="appsOpen = !appsOpen"
           >
@@ -496,6 +522,25 @@ useHead({ title: 'Admin Portal' })
 }
 .app-tile[data-active="true"] {
   background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+/* Pin toggle beside each customizable group label in the launchpad. */
+.pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  color: var(--color-text-tertiary);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.pin-btn:hover {
+  color: var(--color-text);
+  background: var(--color-bg-secondary);
+}
+.pin-btn[data-pinned="true"] {
   color: var(--color-accent);
 }
 

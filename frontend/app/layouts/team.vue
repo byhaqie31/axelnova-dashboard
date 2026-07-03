@@ -58,6 +58,12 @@ watch(() => route.fullPath, () => {
 
 onKeyStroke('Escape', () => { if (profileOpen.value) profileOpen.value = false })
 
+// Close the profile dropdown on any outside click. (A fixed inset-0 backdrop
+// can't do this here: the header's backdrop-blur makes it a containing block
+// for fixed descendants, so such a backdrop only spans the topbar strip.)
+const profileWrap = ref<HTMLElement | null>(null)
+onClickOutside(profileWrap, () => { profileOpen.value = false })
+
 // One title for every page rendered under this layout.
 useHead({ title: 'Team Workspace' })
 </script>
@@ -97,6 +103,7 @@ useHead({ title: 'Team Workspace' })
         </div>
 
         <div class="relative flex items-center">
+          <div ref="profileWrap" class="relative">
           <button
             type="button"
             class="size-9 rounded-full inline-flex items-center justify-center border transition-colors hover:bg-(--color-bg-secondary)"
@@ -107,8 +114,6 @@ useHead({ title: 'Team Workspace' })
           >
             <UIcon name="i-lucide-user" class="size-4" />
           </button>
-
-          <div v-if="profileOpen" class="fixed inset-0 z-40 cursor-default" @click="profileOpen = false" />
 
           <Transition name="dropdown-panel">
             <div
@@ -157,6 +162,7 @@ useHead({ title: 'Team Workspace' })
               </div>
             </div>
           </Transition>
+          </div>
         </div>
       </div>
     </header>
