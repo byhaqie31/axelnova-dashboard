@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type EntityType = 'lead' | 'quotation' | 'project' | 'invoice' | 'milestone'
+type EntityType = 'lead' | 'quotation' | 'project' | 'invoice' | 'milestone' | 'referral' | 'referral_partner'
 type Tone = 'neutral' | 'info' | 'warn' | 'success' | 'danger'
 
 const props = defineProps<{
@@ -46,6 +46,21 @@ const map: Record<EntityType, Record<string, Tone>> = {
     review: 'warn',
     completed: 'success',
     blocked: 'danger',
+  },
+  // Referral submission lifecycle (admin.referrals table).
+  referral: {
+    new: 'info',
+    contacted: 'warn',
+    qualified: 'info',
+    draft: 'neutral',
+    converted: 'success',
+    rejected: 'danger',
+  },
+  // Referral partner account lifecycle (admin.referral_partners table).
+  referral_partner: {
+    pending: 'warn',
+    active: 'success',
+    paused: 'neutral',
   },
 }
 

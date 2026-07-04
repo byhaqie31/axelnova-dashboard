@@ -208,7 +208,7 @@ const tiles = computed<StatTile[]>(() => [
     value: activeReferrals.value === null ? '—' : String(shown.refs),
     hint: 'Excludes rejected',
     icon: 'i-lucide-share-2',
-    to: '/admin/referrals',
+    to: '/admin/referrals?view=referrals',
     cta: 'View referrals',
   },
   {

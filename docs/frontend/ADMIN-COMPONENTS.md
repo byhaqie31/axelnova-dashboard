@@ -46,12 +46,37 @@ pipeline: [DOCUMENT-GENERATION.md](../global/DOCUMENT-GENERATION.md).
 
 ### Referrals / Inquiries pages
 
-`pages/admin/referrals/{index,[id]}.vue` and `pages/admin/inquiries/{index,[id]}.vue`
-follow the standard list+detail pattern (UI-STANDARDS §12): `AdminExpandingSearch`,
-`AdminStatusFilter`, desktop table + mobile cards, status-pill button group, sticky
-action sidebar. New status-pill tokens were added in `main.css` + `AdminStatusPill.vue`:
+`pages/admin/inquiries/{index,[id]}.vue` follows the standard list+detail
+pattern (UI-STANDARDS §12): `AdminExpandingSearch`, `AdminStatusFilter`,
+desktop table + mobile cards, status-pill button group, sticky action
+sidebar. New status-pill tokens were added in `main.css` + `AdminStatusPill.vue`:
 `qualified`, `converted` (referrals); `reviewing`, `quoted`, `archived` (inquiries);
 `draft`, `sent`, `declined`, `expired` (quotation lifecycle).
+
+**`pages/admin/referrals/index.vue` — the Referrals hub.** Merges the old
+standalone `/admin/referral-partners/{index,[id]}` pages in as a "Referrers"
+tab alongside "Referrals" (Task 2 of the portal restructure — both tables
+(`referrals`, `referral_partners`) and their backend endpoints are unchanged;
+this was a UI-only merge). Two new patterns established here, documented in
+UI-STANDARDS §12.12–§12.13:
+
+- **Tabs** — a query-param pill tab group (`?view=referrers|referrals`,
+  default `referrers`). See §12.12.
+- **Referrer detail** — opens as a **slideover** from the Referrers tab
+  instead of navigating to a separate page (Qie can promote it back to a full
+  page later if it outgrows the panel). Includes the approve / reset-passcode
+  actions the old detail page had, funnelled through the same confirm-dialog
+  as the list row's quick actions. See §12.13.
+- `pages/admin/referrals/[id].vue` (a referral **submission**, not a
+  referrer) is unchanged — it stays a full page. Its "All referrals" back-link
+  now points at `/admin/referrals?view=referrals` (not the bare hub URL,
+  which defaults to the Referrers tab).
+- First real adoption of the `shared/primitives/StatusPill` domain primitive
+  (`type="referral"` / `type="referral_partner"`) and of `ReferenceCode` /
+  `DateRange` from the same folder — see §7 "Domain primitives". The dense
+  desktop table's "Code" column keeps its existing plain mono badge rather
+  than `ReferenceCode`'s copy-button treatment, reserved for the slideover's
+  more spacious detail context.
 
 **Inquiry → quotation (build _or_ link).** On `inquiries/[id].vue`, an unquoted
 inquiry offers two paths: **Build new quotation** (the builder, prefilled — see

@@ -246,7 +246,7 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 ### Domain primitives
 
 - **`PriceTag`** — MYR-formatted (Intl `ms-MY`). Props: `min`, `max?`, `prefix?`, `compact?`. Renders ranges with en-dash, prefixed values with em-dash separator.
-- **`StatusPill`** — status badge with semantic tone mapping. Props: `status`, `type` (`lead` | `quotation` | `project` | `invoice` | `milestone`). Reads existing CSS tokens (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`); no new color tokens introduced.
+- **`StatusPill`** — status badge with semantic tone mapping. Props: `status`, `type` (`lead` | `quotation` | `project` | `invoice` | `milestone` | `referral` | `referral_partner`). Reads existing CSS tokens (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`); no new color tokens introduced. `referral` / `referral_partner` were added for the `/admin/referrals` hub (Task 2 of the portal restructure) — first real adoption of this primitive; earlier admin pages still use the older `AdminStatusPill.vue` (data-attribute driven, `main.css` tokens) and haven't been migrated.
 - **`ReferenceCode`** — monospace document-code display (e.g. `AXNQ-2026-0012`) with click-to-copy via `useClipboard`. Renders any string; falls back to plain span when `copyable={false}`.
 - **`DateRange`** — Intl `en-MY` formatted dates. Formats: `short`, `long`, `relative`. Accepts optional `prefix` ("Valid until", "Issued").
 
@@ -578,6 +578,46 @@ Every admin index page uses the **same filter row** so they read identically —
 3. [`<AdminStatusFilter>`](frontend/app/components/admin/StatusFilter.vue) — **right**, via `class="ml-auto"`, carrying `:total` (record count) + the primary Status filter.
 
 `Total | Status` always lives on the right and nothing else does; everything page-specific collapses into the funnel, keeping the row uncluttered at every width.
+
+### 12.12 Query-param pill tabs
+
+The standard "hub page with switchable views" pattern — introduced by the `/admin/referrals` merge (Task 2 of the portal restructure, merging the old `/admin/referral-partners` pages in as a "Referrers" tab alongside "Referrals"). Use this whenever an admin page needs 2–4 mutually-exclusive views of related data on one URL, instead of a native `<select>` or a router-tab library component.
+
+**Anatomy:** a bounded segmented track (`.tab-track`), not a loose row of pills — this is what reads as a single control rather than a filter group (contrast with §12.6, which is intentionally unbounded). Each `.tab-pill` is a plain `<button>`; the active one gets an elevated `--color-bg-elevated` fill + `--shadow-sm`, matching the "hotel lobby" restraint (no accent color, no underline animation — just a subtle raised state).
+
+```vue
+<div class="tab-track" role="tablist" aria-label="…">
+  <button
+    v-for="tab in TABS" :key="tab.value" type="button" role="tab"
+    :aria-selected="activeView === tab.value"
+    class="tab-pill"
+    @click="setView(tab.value)"
+  >{{ tab.label }}</button>
+</div>
+```
+
+**State contract — query-param is the single source of truth:**
+- Tab state lives in `?view=<value>`, read via `computed(() => normalizeView(route.query.view))` — not a separate `ref` kept in sync with a watcher. One source of truth avoids drift bugs.
+- `normalizeView()` maps anything that isn't a recognised value (missing, malformed, stale) to the **default** — the first tab. Never throw or redirect on a bad param; just render the default.
+- Switching tabs calls `router.replace({ query: { ...route.query, view } })` — **replace, not push**, so clicking between tabs doesn't spam browser-back history with one entry per click.
+- Because `route.query` is populated from the request URL during SSR, a hard refresh on a deep link (`/admin/referrals?view=referrers`) renders the correct tab server-side — no client-only flash.
+
+**Where it applies today:** `/admin/referrals` (`Referrers` | `Referrals`, default `Referrers`). First use — the CSS lives scoped on that page (`<style scoped>`), not yet in `main.css`. Promote `.tab-track`/`.tab-pill` to global classes (mirroring the §12.9 mobile-drawer precedent: single-use patterns stay scoped, promote once a second page needs them) if another hub page adopts this.
+
+### 12.13 Slideover panel
+
+A right-edge overlay for a detail view that's one click deep from a list row, without leaving the list — introduced by the same `/admin/referrals` merge (the old `/admin/referral-partners/[id].vue` full page became the Referrers tab's slideover). Chosen over `@nuxt/ui`'s `USlideover` because this codebase has no prior `USlideover` usage and its theming is Tailwind-slot based (`ui` prop overrides), which fights the CSS-var token system rather than consuming it; the bespoke `Teleport` + scrim + sliding-panel shape was already proven on this exact page (the quotation-picker drawer in `referrals/[id].vue`) and on confirm dialogs across admin pages, so generalising that shape keeps one visual language instead of introducing a second.
+
+**Anatomy:**
+- `Teleport to="body"` + `<Transition name="slideover">` wrapping a scrim (`.slideover-scrim`, `rgba(0,0,0,0.4)` + `blur(3px)`, click-through only via `@click.self` so clicks inside the panel don't close it) and the panel itself (`.slideover-panel`, `width: 100%; max-width: 480px`, right-aligned via the scrim's `flex justify-end`, `height: 100%`, `box-shadow: var(--shadow-lg)`).
+- Panel structure: `.slideover-head` (title/subtitle + `.slideover-close` circular icon button) → `.slideover-body` (`flex: 1; overflow-y: auto`) for the actual content.
+- At 375px the panel is naturally full-bleed (`100%` < `480px` cap); no separate mobile layout needed — this is why the pattern works without a `hidden md:block` / `md:hidden` split.
+
+**Motion:** dashboard register (§8) — scrim opacity `0.3s ease`, panel `transform: translateX(100% → 0)` over `0.35s cubic-bezier(0.32, 0.72, 0, 1)` (same curve as the quotation-picker drawer). Honor `prefers-reduced-motion: reduce` (drop both transitions).
+
+**Layering with a confirm dialog.** If an action inside the slideover needs a confirm-before-act step (e.g. approve / reset passcode), the confirm overlay must sit *above* the slideover: slideover scrim `z-index: 90`, confirm overlay `z-index: 100` (same two-layer convention as the tie/untie confirm above the quotation-picker drawer in `referrals/[id].vue`). Wire `Escape` to close the topmost layer first (confirm, if open) before the slideover.
+
+**Where it applies today:** `/admin/referrals` (Referrers tab → referrer detail). First use — CSS lives scoped on that page. Promote to global classes in `main.css` once a second page needs a slideover (same rule-of-three deferral as §12.12).
 
 ---
 
