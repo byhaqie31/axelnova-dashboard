@@ -20,8 +20,10 @@ use Illuminate\Validation\Rule;
  *                       └► payment_pending ─► paid   (bonus attached)
  *
  * Assignment never changes status: assigning a pooled task keeps it 'open' so the
- * team member is the one who starts it. Only `mark-paid` writes 'paid' + paid_at,
- * and only from payment_pending (or the completed-with-bonus edge).
+ * team member is the one who starts it. The one exception runs the other way —
+ * unassigning an in_progress task drops it back to 'open' (see `update()`), the
+ * admin-side mirror of the team's own release edge. Only `mark-paid` writes
+ * 'paid' + paid_at, and only from payment_pending (or the completed-with-bonus edge).
  */
 class TasksController extends Controller
 {
@@ -79,10 +81,29 @@ class TasksController extends Controller
      * priority. Deliberately NOT status: assignment keeps the current status (the
      * team member starts it), and the lifecycle only advances through the team
      * transitions + mark-paid.
+     *
+     * The one exception is unassigning: clearing `assignee_id` on an in_progress
+     * task mirrors the team's own "release" edge (Team\TasksController::updateStatus)
+     * — it isn't just orphaning the task in place, it sends it back to the pool
+     * (status → open) so it's claimable again. A task past that point (completed,
+     * payment_pending, paid) is a historical record of who did the work, so
+     * unassigning it is rejected outright rather than silently dropping the trail.
      */
-    public function update(Request $request, Task $task): TaskResource
+    public function update(Request $request, Task $task): JsonResponse|TaskResource
     {
         $data = $this->validatePayload($request, creating: false);
+
+        if (array_key_exists('assignee_id', $data) && $data['assignee_id'] === null) {
+            if (in_array($task->status, ['completed', 'payment_pending', 'paid'], true)) {
+                return response()->json([
+                    'message' => 'This task is already past assignment — completed/paid work stays linked to who did it.',
+                ], 422);
+            }
+
+            if ($task->status === 'in_progress') {
+                $data['status'] = 'open';
+            }
+        }
 
         $task->update($data);
 
@@ -117,11 +138,30 @@ class TasksController extends Controller
             ], 422);
         }
 
-        $task->update([
-            'status' => 'paid',
-            'paid_at' => now(),
-            'completed_at' => $task->completed_at ?? now(),
-        ]);
+        // The checks above cover the common cases with a friendly message, but
+        // the actual write is re-guarded as a single conditional UPDATE so two
+        // concurrent mark-paid calls (or one racing a payslip generation that
+        // links payroll_entry_id) can't both win — only the first commits; a
+        // loser affects 0 rows and gets a 422 instead of silently double-paying.
+        $affected = Task::whereKey($task->id)
+            ->whereNull('payroll_entry_id')
+            ->where(function ($query) {
+                $query->where('status', 'payment_pending')
+                    ->orWhere(function ($query) {
+                        $query->where('status', 'completed')->whereNotNull('pay_amount_myr');
+                    });
+            })
+            ->update([
+                'status' => 'paid',
+                'paid_at' => now(),
+                'completed_at' => $task->completed_at ?? now(),
+            ]);
+
+        if ($affected === 0) {
+            return response()->json([
+                'message' => 'This task changed state just now — refresh and try again.',
+            ], 422);
+        }
 
         return new TaskResource($task->fresh()->load(['creator', 'assignee', 'payrollEntry']));
     }

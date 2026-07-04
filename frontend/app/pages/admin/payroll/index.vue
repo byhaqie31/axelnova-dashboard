@@ -391,8 +391,8 @@ v-for="h in ['Teammate', 'Period', 'Allowance', 'Extras', 'Gross', 'State', '']"
                 <span
                   class="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-medium"
                   :style="e.settled
-                    ? { background: 'rgba(48, 209, 88, 0.12)', color: 'var(--color-success)' }
-                    : { background: 'rgba(255, 159, 10, 0.12)', color: 'var(--color-warning)' }">
+                    ? { background: 'var(--status-succeeded-bg)', color: 'var(--color-success)' }
+                    : { background: 'var(--status-refunded-bg)', color: 'var(--color-warning)' }">
                   <span class="size-1.5 rounded-full" :style="{ background: e.settled ? 'var(--color-success)' : 'var(--color-warning)' }" aria-hidden="true" />
                   {{ e.settled ? `Paid ${fmtDate(e.paid_at)}` : 'Pending' }}
                 </span>

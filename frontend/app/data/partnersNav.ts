@@ -17,7 +17,7 @@ export interface PartnerNavItem extends AdminNavItem {
 }
 
 export const partnersNav: PartnerNavItem[] = [
-  { to: '/partners', label: 'Dashboard', icon: 'i-lucide-house', type: 'shared' },
+  { to: '/partners/home', label: 'Dashboard', icon: 'i-lucide-house', type: 'shared' },
   { to: '/partners/referrals', label: 'Referrals', icon: 'i-lucide-users', matchPrefix: '/partners/referrals', type: 'referrer' },
   { to: '/partners/earnings', label: 'Earnings', icon: 'i-lucide-wallet', matchPrefix: '/partners/earnings', type: 'referrer' },
   { to: '/partners/documents', label: 'Documents', icon: 'i-lucide-folder-lock', matchPrefix: '/partners/documents', type: 'investor' },

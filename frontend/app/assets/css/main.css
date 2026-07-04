@@ -138,6 +138,7 @@
   --calendar-cell-muted-bg: #FBFBFD;
   --calendar-grid-border: rgba(0, 0, 0, 0.07);
   --calendar-today-ring: #0071E3;
+  --calendar-today-fg: #FFFFFF;
   --calendar-chip-mine-bg: rgba(0, 113, 227, 0.10);
   --calendar-chip-mine-fg: #0071E3;
   --calendar-chip-pool-bg: rgba(134, 134, 139, 0.12);
@@ -250,6 +251,7 @@
   --calendar-cell-muted-bg: #0C1122;
   --calendar-grid-border: rgba(255, 255, 255, 0.08);
   --calendar-today-ring: #2997FF;
+  --calendar-today-fg: #FFFFFF;
   --calendar-chip-mine-bg: rgba(41, 151, 255, 0.16);
   --calendar-chip-mine-fg: #2997FF;
   --calendar-chip-pool-bg: rgba(161, 161, 166, 0.18);

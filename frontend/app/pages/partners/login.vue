@@ -18,7 +18,7 @@ const year = new Date().getFullYear()
 // defaulting to the dashboard. Only allow internal /partners paths (no open-redirect).
 const redirectTo = computed(() => {
   const r = route.query.redirect
-  return typeof r === 'string' && r.startsWith('/partners') && !r.startsWith('//') ? r : '/partners'
+  return typeof r === 'string' && r.startsWith('/partners') && !r.startsWith('//') ? r : '/partners/home'
 })
 
 async function handleLogin() {

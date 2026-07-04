@@ -25,6 +25,16 @@ useHead({
   link: [{ rel: 'canonical', href: `${siteUrl}/partners` }],
 })
 
+// This route is the public marketing landing (SSR'd for SEO — title/canonical
+// above target it explicitly), but a logged-in partner hitting bare /partners
+// almost always means the dashboard, which now lives at /partners/home. Bounce
+// them client-side only: import.meta.server guards this out of SSR entirely,
+// so crawlers/no-JS visitors always get the marketing page untouched.
+onMounted(() => {
+  if (import.meta.server) return
+  if (localStorage.getItem('axn_partner_token')) navigateTo('/partners/home')
+})
+
 const audience = [
   {
     icon: 'i-fluent-building-24-regular',

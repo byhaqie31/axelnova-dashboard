@@ -37,14 +37,19 @@ const secondaryActiveCount = computed(() =>
   Number(!!filters.priority) + Number(!!filters.assignee_id))
 
 // Deactivated accounts (Task 8 lockout) can't work tasks — the backend rejects
-// assigning to them, so they're hidden from both pickers. (They may still hold
-// historical tasks; those rows keep rendering the assignee's name regardless.)
+// assigning to them, so the assign/edit picker (assigneeFormItems) is
+// active-only. The FILTER dropdown keeps everyone, tagged, same as the
+// payroll ledger filter (admin/payroll/index.vue) — a deactivated teammate's
+// historical tasks stay filterable even though they can no longer be assigned.
 const activeTeammates = computed(() => teammates.value.filter(u => !u.deactivated_at))
 
 const assigneeFilterItems = computed(() => [
   { label: 'Anyone', value: '' },
   { label: 'Unassigned (pool)', value: 'unassigned' },
-  ...activeTeammates.value.map(u => ({ label: `${u.name} (${u.role})`, value: String(u.id) })),
+  ...teammates.value.map(u => ({
+    label: `${u.name} (${u.role})${u.deactivated_at ? ' — deactivated' : ''}`,
+    value: String(u.id),
+  })),
 ])
 
 const priorityFilterOptions = [

@@ -167,7 +167,7 @@ function fmtCompleted(iso: string) {
             <span
               class="cal-daynum"
               :class="{ 'cal-daynum-today': day.isToday }"
-              :style="{ color: day.isToday ? '#fff' : day.inMonth ? 'var(--color-text-secondary)' : 'var(--color-text-tertiary)' }">
+              :style="{ color: day.isToday ? 'var(--calendar-today-fg)' : day.inMonth ? 'var(--color-text-secondary)' : 'var(--color-text-tertiary)' }">
               {{ day.date.getDate() }}
             </span>
             <div class="flex flex-col gap-1 mt-1 min-w-0">

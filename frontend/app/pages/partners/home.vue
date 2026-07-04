@@ -1,9 +1,11 @@
 <script setup lang="ts">
-// Shared /partners dashboard (Task 9) — one landing for both partner kinds.
-// Referrers get the stats trio + their ?ref link (referral list + submit form
-// moved to /partners/referrals, earnings detail to /partners/earnings);
-// investors get a welcome overview with a premium "portfolio coming online"
-// empty state (no investor content model yet).
+// Shared /partners/home dashboard (Task 9) — one landing for both partner
+// kinds, moved off bare /partners because that route is owned by the public
+// marketing landing (pages/public/partners/index.vue). Referrers get the
+// stats trio + their ?ref link (referral list + submit form moved to
+// /partners/referrals, earnings detail to /partners/earnings); investors get
+// a welcome overview with a premium "portfolio coming online" empty state
+// (no investor content model yet).
 definePageMeta({ layout: 'partner', middleware: 'partner-auth' })
 useHead({ title: 'Partner Portal — Axel Nova' })
 useSeoMeta({ robots: 'noindex, nofollow' })

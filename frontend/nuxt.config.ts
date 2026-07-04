@@ -76,7 +76,7 @@ export default defineNuxtConfig({
     },
     // Task 9: the single-page portal became a multi-page portal — keep old
     // bookmarks/emails pointing at /partners/portal working.
-    '/partners/portal': { redirect: { to: '/partners', statusCode: 301 } },
+    '/partners/portal': { redirect: { to: '/partners/home', statusCode: 301 } },
   },
 
   app: {

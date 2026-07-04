@@ -628,7 +628,7 @@ A right-edge overlay for a detail view that's one click deep from a list row, wi
 
 **Layering with a confirm dialog.** If an action inside the slideover needs a confirm-before-act step (e.g. approve / reset passcode), the confirm overlay must sit *above* the slideover: slideover scrim `z-index: 90`, confirm overlay `z-index: 100` (same two-layer convention as the tie/untie confirm above the quotation-picker drawer in `referrals/[id].vue`). Wire `Escape` to close the topmost layer first (confirm, if open) before the slideover.
 
-**Where it applies today:** `/admin/referrals` (Referrers tab → referrer detail), `/admin/tasks` (create/edit task panel — second adopter, Task 5), and `/admin/announcements` (create/edit panel — third adopter, Task 6; same class names + motion, CSS still scoped per page). Next page that adopts it should promote `.slideover-*` to global classes in `main.css` and strip all three scoped copies.
+**Where it applies today:** `/admin/referrals` (Referrers tab → referrer detail), `/admin/tasks` (create/edit task panel — second adopter, Task 5), `/admin/announcements` (create/edit panel — third adopter, Task 6), and `/admin/users` (create/edit user panel — fourth adopter, Task 8; same class names + motion, CSS still scoped per page). Four scoped copies now exist, which is the trigger point for the "next page that adopts it" promotion rule above — promoting `.slideover-*` to global classes in `main.css` and stripping all four scoped copies is queued as a follow-up sweep, not done in this pass.
 
 ### 12.14 Team kanban board
 

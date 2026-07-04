@@ -101,8 +101,9 @@ Route::middleware($loginThrottle)->group(function () {
     // notifies the founder (services.admin.email) to reset it from Users.
     Route::post('/v1/team/forgot-password', [TeamAuthController::class, 'forgotPassword'])->name('team.forgot-password');
 
-    // Partner portal login — the isolated referral guard. Same brute-force throttle;
-    // only approved (active) referrers with an issued passcode can sign in.
+    // Partner portal login — the isolated `external` guard on external_accounts.
+    // Same brute-force throttle; covers both partner types (referrer + investor),
+    // active accounts only, with an issued passcode.
     Route::post('/v1/partner/login', [PartnerAuthController::class, 'login'])->name('partner.login');
 
     // Self-service passcode reset: a correct active email auto-emails a new passcode
@@ -276,11 +277,12 @@ Route::middleware([
         Route::delete('/projects/{project}', [ProjectsController::class, 'destroy'])->name('projects.destroy');
     });
 
-// Team workspace — Sanctum, workspace tier (all four internal roles). The team
-// no longer touches admin-owned operational data (Task 4 of the portal
-// restructure dropped inquiry triage, the referral programme, and marketing
-// spend entry — those stay cockpit-only). What's left is personal: your own
-// session/profile, your own payslips, and (soon) tasks/calendar/announcements.
+// Team workspace — Sanctum, workspace tier (three internal roles: founder/
+// marketer/engineer). The team no longer touches admin-owned operational data
+// (Task 4 of the portal restructure dropped inquiry triage, the referral
+// programme, and marketing spend entry — those stay cockpit-only). What's
+// left is personal: your own session/profile, your own payslips, and
+// tasks/calendar/announcements.
 Route::middleware([
     EnsureFrontendRequestsAreStateful::class,
     'auth:sanctum',

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Referrer-only (Task 9): the referral list + "refer another" form, split out
-// of the old single portal page. Wrong-type visitors bounce to /partners
+// of the old single portal page. Wrong-type visitors bounce to /partners/home
 // (partner-type middleware); the API 403s investor tokens regardless.
 definePageMeta({
   layout: 'partner',

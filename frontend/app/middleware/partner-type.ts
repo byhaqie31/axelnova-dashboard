@@ -1,7 +1,7 @@
 // Type gate for the type-aware partner portal (Task 9). Pages declare their
 // account type via page meta — e.g.
 //   definePageMeta({ middleware: ['partner-auth', 'partner-type'], partnerType: 'referrer' })
-// — and a signed-in partner of the other type is bounced back to /partners.
+// — and a signed-in partner of the other type is bounced back to /partners/home.
 // This is a UX convenience on top of the token-existence check (same pattern as
 // team); the server's `partner.type:*` middleware is what actually 403s a
 // wrong-type token on the API.
@@ -21,6 +21,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (!me) return
 
   if (me.type !== required) {
-    return navigateTo('/partners')
+    return navigateTo('/partners/home')
   }
 })

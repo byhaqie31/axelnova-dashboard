@@ -208,13 +208,18 @@ GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?rang
 /team/payslips        Own payslips (allowance/extras/gross breakdown) + a "Pending extras" block on top
 /team/profile         Self-service profile — display name + availability (Available|Busy)
 
-# Partner portal (/partners/*) — Task 9 made it type-aware (referrer + investor
-# share one login); the old single /partners/portal page 301s to /partners.
+# /partners is the PUBLIC marketing landing (pages/public/partners/index.vue,
+# stripPublicPrefix'd), not the portal — a route collision with the logged-in
+# dashboard was resolved by moving the dashboard to /partners/home. A
+# logged-in partner hitting bare /partners is auto-forwarded there client-side
+# (localStorage token check in the public page's onMounted; SSR-safe, no SEO
+# impact). Task 9 made the portal type-aware (referrer + investor share one
+# login); the old single /partners/portal page 301s to /partners/home.
 # partnersNav flags each item shared|referrer|investor; the partner-type route
-# middleware bounces the wrong type to /partners (the API 403s regardless).
+# middleware bounces the wrong type to /partners/home (the API 403s regardless).
 /partners/login       Partner auth — email + 8-digit passcode (glass card, both types)
 /partners/forgot      Self-service passcode reissue
-/partners             Dashboard — referrer: stats trio + ?ref link; investor: portfolio-coming-online
+/partners/home        Dashboard — referrer: stats trio + ?ref link; investor: portfolio-coming-online
 /partners/profile     Shared — type badge + email; referrer: code/tier/commission; investor: company
 /partners/referrals   Referrer-only — referral list + "refer another" form
 /partners/earnings    Referrer-only — earned/estimated totals, commission bands, per-referral breakdown

@@ -5,9 +5,8 @@
 // the exact NavGroup / AdminNavItem / Role shapes and the active-matcher from
 // adminNav so the two sidebars share one implementation.
 //
-// Tasks (/team/tasks) and Calendar (/team/calendar) land in Task 5 — the nav
-// points at them ahead of the pages existing (same "scaffold ahead" precedent
-// as adminNav's Tasks/Announcements entries).
+// Tasks (/team/tasks) and Calendar (/team/calendar) landed in Task 5 — both
+// pages exist alongside this nav entry.
 
 import { type AdminNavItem, isAdminNavActive, type NavGroup, type Role } from '~/data/adminNav'
 

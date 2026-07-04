@@ -126,6 +126,42 @@ class AdminTasksTest extends TestCase
             ->assertJsonPath('data.priority', 'high');
     }
 
+    public function test_unassigning_an_in_progress_task_resets_it_to_open(): void
+    {
+        // Mirrors the team's own "release" edge — clearing the assignee mid-flight
+        // must send the task back to the pool, not just orphan it in place.
+        $founder = User::factory()->founder()->create();
+        $engineer = User::factory()->engineer()->create();
+        $task = Task::factory()->assignedTo($engineer)->inProgress()->create(['created_by' => $founder->id]);
+
+        $this->patchJson("/api/v1/admin/tasks/{$task->id}", [
+            'assignee_id' => null,
+        ], $this->adminHeaders($founder))
+            ->assertOk()
+            ->assertJsonPath('data.assignee_id', null)
+            ->assertJsonPath('data.status', 'open');
+
+        $this->assertNull($task->fresh()->assignee_id);
+        $this->assertSame('open', $task->fresh()->status);
+    }
+
+    public function test_unassigning_a_completed_task_is_rejected(): void
+    {
+        // Completed/payment_pending/paid tasks are historical records — who did
+        // the work stays on the row, so unassigning is a 422, not a silent drop.
+        $founder = User::factory()->founder()->create();
+        $engineer = User::factory()->engineer()->create();
+        $task = Task::factory()->assignedTo($engineer)->completed()->create(['created_by' => $founder->id]);
+
+        $this->patchJson("/api/v1/admin/tasks/{$task->id}", [
+            'assignee_id' => null,
+        ], $this->adminHeaders($founder))
+            ->assertUnprocessable();
+
+        $this->assertSame($engineer->id, $task->fresh()->assignee_id);
+        $this->assertSame('completed', $task->fresh()->status);
+    }
+
     public function test_mark_paid_from_payment_pending_stamps_paid_at(): void
     {
         $founder = User::factory()->founder()->create();
