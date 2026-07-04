@@ -6,7 +6,9 @@ use App\Enums\PaymentGateway;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\PaymentType;
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -22,9 +24,25 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Payment extends Model
 {
-    use SoftDeletes;
+    use HasFactory, RecordsActivity, SoftDeletes;
 
     protected $guarded = [];
+
+    protected static function booted(): void
+    {
+        // Log every ledger movement as it lands. Auth::id() resolves to the acting
+        // admin on manual entries and to null on a gateway/webhook write — so
+        // gateway payments enter the audit trail with actor_id = null for free.
+        static::created(function (Payment $payment) {
+            $action = $payment->type === PaymentType::Refund ? 'payment.refunded' : 'payment.recorded';
+            $payment->logActivity($action, [
+                'amount_myr' => (float) $payment->amount_myr,
+                'gateway' => $payment->gateway->value,
+                'method' => $payment->method->value,
+                'order_id' => $payment->order_id,
+            ]);
+        });
+    }
 
     protected $casts = [
         'type' => PaymentType::class,

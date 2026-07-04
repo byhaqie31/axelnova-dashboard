@@ -1,0 +1,100 @@
+name: CI
+
+# Quality + security gates on every PR targeting main. Complements
+# build-check.yml (which only proves the Docker images build):
+#   backend  → Pint (style), PHPUnit against MySQL 8, composer audit (CVEs)
+#   frontend → ESLint, vue-tsc typecheck, npm audit (prod deps, high+)
+# Both jobs always run — the repos are small and skipped-job/required-check
+# interactions on path filters cause more pain than the minutes saved.
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (pint + phpunit + audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          # Must match the database pinned in backend/phpunit.xml.
+          MYSQL_DATABASE: axelnova_dashboard_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, mbstring, bcmath, intl, zip
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Pint (code style)
+        run: vendor/bin/pint --test
+
+      - name: PHPUnit
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: vendor/bin/phpunit
+
+      # Known-CVE scan. The three Laravel-11 framework advisories that are only
+      # fixed in Laravel 12 are acknowledged in composer.json (config.audit.ignore)
+      # with re-check notes — any NEW advisory still fails this step.
+      - name: Composer audit
+        run: composer audit --no-interaction
+
+  frontend:
+    name: Frontend (eslint + typecheck + audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Typecheck (vue-tsc)
+        run: npm run typecheck
+
+      # Production-dependency CVEs only (high and above). Dev-tool advisories
+      # don't ship to users and would block PRs for noise.
+      - name: npm audit
+        run: npm audit --omit=dev --audit-level=high

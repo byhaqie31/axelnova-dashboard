@@ -97,7 +97,8 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
 <template>
   <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/inquiries" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/inquiries" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All inquiries
     </NuxtLink>
@@ -110,7 +111,8 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
       <div class="space-y-6">
 
         <!-- Header -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
             <div>
@@ -136,7 +138,8 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
         </div>
 
         <!-- Project hints -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Project</p>
           <div class="grid sm:grid-cols-3 gap-4">
@@ -156,7 +159,8 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
         </div>
 
         <!-- Message -->
-        <div class="rounded-2xl border p-6"
+        <div
+class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Details</p>
           <p class="text-[14px] leading-relaxed whitespace-pre-line" style="color: var(--color-text);">{{ inquiry.message }}</p>
@@ -168,20 +172,23 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
       <div class="lg:sticky lg:top-20 space-y-4">
 
         <!-- Quotation: linked, or a choice of build-new / link-existing -->
-        <div class="rounded-2xl border p-5 space-y-3"
+        <div
+class="rounded-2xl border p-5 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Quotation</p>
 
           <!-- Linked -->
           <template v-if="inquiry.quotation_id">
-            <div class="rounded-xl border px-4 py-3"
+            <div
+class="rounded-xl border px-4 py-3"
               :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
               <p class="text-[11px]" style="color: var(--color-text-tertiary);">Linked quotation</p>
               <NuxtLink :to="`/admin/quotations/${inquiry.quotation_id}`" class="text-[13px] font-mono font-medium" style="color: var(--color-accent);">
                 {{ inquiry.quotation_reference ?? `#${inquiry.quotation_id}` }}
               </NuxtLink>
             </div>
-            <button type="button"
+            <button
+type="button"
               class="btn-pill btn-pill-ghost w-full justify-center text-[13px]"
               :class="{ 'opacity-50': unlinking }"
               :disabled="unlinking"
@@ -192,7 +199,8 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
 
           <!-- Not linked: build a new one, or link one that already exists -->
           <template v-else>
-            <NuxtLink :to="`/admin/quotations/new?inquiry=${inquiry.id}`"
+            <NuxtLink
+:to="`/admin/quotations/new?inquiry=${inquiry.id}`"
               class="btn-pill btn-pill-accent w-full justify-center text-[13px]">
               Build new quotation →
             </NuxtLink>
@@ -204,11 +212,13 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
         </div>
 
         <!-- Status -->
-        <div class="rounded-2xl border p-5"
+        <div
+class="rounded-2xl border p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Update status</p>
           <div class="flex flex-wrap gap-2">
-            <button v-for="s in statusOptions" :key="s" type="button"
+            <button
+v-for="s in statusOptions" :key="s" type="button"
               class="status-pill status-pill-button"
               :class="{ 'opacity-50': statusLoading }"
               :data-status="inquiry.status === s ? s : ''"
@@ -224,16 +234,19 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
         </div>
 
         <!-- Actions -->
-        <div class="rounded-2xl border p-5 space-y-3"
+        <div
+class="rounded-2xl border p-5 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Actions</p>
 
-          <a :href="`mailto:${inquiry.email}?subject=Re: your project inquiry`"
+          <a
+:href="`mailto:${inquiry.email}?subject=Re: your project inquiry`"
             class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
             Reply by email
           </a>
 
-          <a v-if="inquiry.phone"
+          <a
+v-if="inquiry.phone"
             :href="`https://wa.me/${inquiry.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(inquiry.name)}%2C%20thanks%20for%20your%20project%20inquiry.`"
             target="_blank" rel="noopener"
             class="btn-pill btn-pill-success w-full justify-center text-[13px]">
@@ -242,7 +255,8 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
         </div>
 
         <!-- Audit -->
-        <div class="rounded-xl border px-4 py-3.5 space-y-2"
+        <div
+class="rounded-xl border px-4 py-3.5 space-y-2"
           :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
           <div class="flex justify-between">
             <span class="text-[11px]" style="color: var(--color-text-tertiary);">Submitted</span>

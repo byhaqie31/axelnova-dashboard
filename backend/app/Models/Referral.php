@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Referral extends Model
 {
-    use SoftDeletes;
+    use RecordsActivity, SoftDeletes;
 
     /**
      * Relationship tier → commission band (percent of final project value).
@@ -21,6 +22,7 @@ class Referral extends Model
     ];
 
     protected $fillable = [
+        'referral_partner_id',
         'referrer_name',
         'referrer_email',
         'referrer_phone',
@@ -37,6 +39,8 @@ class Referral extends Model
         'commission_email_sent_at',
         'ip_address',
         'user_agent',
+        'quotation_id',
+        'commission_pct',
     ];
 
     protected function casts(): array
@@ -45,12 +49,36 @@ class Referral extends Model
             'commission_tier_pct' => 'integer',
             'agreed_terms' => 'boolean',
             'commission_email_sent_at' => 'datetime',
+            'commission_pct' => 'integer',
         ];
     }
 
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'linked_order_id');
+    }
+
+    /** The normalized referrer this lead belongs to (null during transition). */
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(Referrer::class, 'referral_partner_id');
+    }
+
+    public function quotation(): BelongsTo
+    {
+        return $this->belongsTo(Quotation::class);
+    }
+
+    /** Confirmed rate if set, else the tier estimate. */
+    public function effectivePct(): int
+    {
+        return (int) ($this->commission_pct ?? $this->commission_tier_pct);
+    }
+
+    /** The order this referral earns on — reached via its quotation anchor (falls back to legacy link). */
+    public function orderViaQuotation(): ?Order
+    {
+        return $this->quotation?->order ?? $this->order;
     }
 
     /** Resolve the commission band for a relationship tier (defaults to the cold band). */

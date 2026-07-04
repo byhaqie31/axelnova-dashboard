@@ -2,18 +2,35 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    public function handle(Request $request, Closure $next, string $role): Response
+    /**
+     * Gate a route by role or tier. Each parameter is either a bare role
+     * ('founder', 'marketer', …) or a tier keyword that expands to its member
+     * roles — 'cockpit' → founder, 'workspace' → founder/marketer/engineer.
+     * Passing several parameters (`role:founder,marketer`) allows any of them.
+     */
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        if (!$request->user() || $request->user()->role !== $role) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        return $next($request);
+        $allowed = collect($roles)->flatMap(fn (string $role) => match ($role) {
+            'cockpit' => User::COCKPIT_ROLES,
+            'workspace' => User::WORKSPACE_ROLES,
+            default => [$role],
+        })->unique();
+
+        return $allowed->contains($user->role)
+            ? $next($request)
+            : response()->json(['message' => 'Forbidden.'], 403);
     }
 }

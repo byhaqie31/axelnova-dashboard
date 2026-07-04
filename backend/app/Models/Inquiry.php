@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Inquiry extends Model
 {
-    use SoftDeletes;
+    use RecordsActivity, SoftDeletes;
 
     protected $fillable = [
         'client_id',
+        'referral_partner_id',
         'name',
         'email',
         'phone',
@@ -35,5 +37,11 @@ class Inquiry extends Model
     public function quotation(): BelongsTo
     {
         return $this->belongsTo(Quotation::class);
+    }
+
+    /** The referrer whose ?ref link brought this inquiry in (null = public/organic). */
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(Referrer::class, 'referral_partner_id');
     }
 }

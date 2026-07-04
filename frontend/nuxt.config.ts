@@ -16,6 +16,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   modules: [
+    '@nuxt/eslint',
     '@nuxt/ui',
     '@vueuse/nuxt',
     '@nuxtjs/google-fonts',
@@ -60,6 +61,22 @@ export default defineNuxtConfig({
 
   hooks: {
     'pages:extend': stripPublicPrefix,
+  },
+
+  // Baseline security headers on every SSR/asset response. SAMEORIGIN (not
+  // DENY) so on-site previews of our own pages keep working; the API sets its
+  // own headers via backend middleware.
+  routeRules: {
+    '/**': {
+      headers: {
+        'X-Frame-Options': 'SAMEORIGIN',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+      },
+    },
+    // Task 9: the single-page portal became a multi-page portal — keep old
+    // bookmarks/emails pointing at /partners/portal working.
+    '/partners/portal': { redirect: { to: '/partners/home', statusCode: 301 } },
   },
 
   app: {

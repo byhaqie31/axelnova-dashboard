@@ -76,7 +76,8 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
     <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button class="absolute inset-0 cursor-default" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);" aria-label="Close" @click="emit('close')" />
 
-      <div class="relative w-full max-w-lg rounded-2xl border p-6 max-h-[90vh] overflow-y-auto"
+      <div
+class="relative w-full max-w-lg rounded-2xl border p-6 max-h-[90vh] overflow-y-auto"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
         <div class="flex items-center justify-between mb-5">
           <p class="text-[16px] font-semibold tracking-tight" style="color: var(--color-text);">{{ isEdit ? 'Edit client' : 'New client' }}</p>

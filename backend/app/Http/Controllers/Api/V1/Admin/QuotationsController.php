@@ -10,10 +10,12 @@ use App\Models\Client;
 use App\Models\Inquiry;
 use App\Models\Order;
 use App\Models\Quotation;
+use App\Models\Referral;
 use App\Services\Quoting\DocumentMapper;
 use App\Services\Quoting\EstimateResult;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
+use App\Services\Referrals\ReferralAttributionService;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class QuotationsController extends Controller
@@ -32,7 +35,7 @@ class QuotationsController extends Controller
      */
     public function preview(Request $request): JsonResponse
     {
-        $quotation = new Quotation();
+        $quotation = new Quotation;
         $quotation->forceFill([
             'name' => $request->input('name'),
             'email' => $request->input('email'),
@@ -101,7 +104,7 @@ class QuotationsController extends Controller
             $quotation->update(['status' => 'expired']);
         }
 
-        $quotation->load('addons', 'order');
+        $quotation->load('addons', 'order', 'updatedBy', 'referrer');
 
         return new QuotationResource($quotation);
     }
@@ -130,12 +133,17 @@ class QuotationsController extends Controller
             $this->syncAddons($quotation, $input->addonKeys, $engine);
 
             if (! empty($data['inquiry_id'])) {
-                Inquiry::where('id', $data['inquiry_id'])
-                    ->update(['quotation_id' => $quotation->id, 'status' => 'quoted']);
+                $inquiry = Inquiry::find($data['inquiry_id']);
+                if ($inquiry) {
+                    $inquiry->update(['quotation_id' => $quotation->id, 'status' => 'quoted']);
+                    app(ReferralAttributionService::class)->attribute($quotation, $inquiry);
+                }
             }
 
             return $quotation;
         });
+
+        $quotation->logActivity('quotation.created', ['reference_code' => $quotation->reference_code]);
 
         return new QuotationResource($quotation->load('addons', 'order'));
     }
@@ -157,6 +165,8 @@ class QuotationsController extends Controller
             $quotation->update($this->pricedAttributes($client, $input, $engine, $estimate, $data));
             $this->syncAddons($quotation, $input->addonKeys, $engine);
         });
+
+        $quotation->logActivity('quotation.updated');
 
         return new QuotationResource($quotation->load('addons', 'order'));
     }
@@ -186,6 +196,8 @@ class QuotationsController extends Controller
             ->where('status', '!=', 'quoted')
             ->update(['status' => 'quoted']);
 
+        $quotation->logActivity('quotation.sent', ['emailed' => $request->boolean('email', true)]);
+
         return response()->json([
             'message' => 'Quotation sent to the client.',
             'data' => new QuotationResource($quotation->load('addons', 'order')),
@@ -198,7 +210,9 @@ class QuotationsController extends Controller
             'status' => ['required', 'in:draft,sent,accepted,rejected,expired'],
         ]);
 
+        $from = $quotation->status;
         $quotation->update(['status' => $request->status]);
+        $quotation->logActivity('quotation.status', ['from' => $from, 'to' => $quotation->status]);
 
         return response()->json(['message' => 'Status updated.', 'status' => $quotation->status]);
     }
@@ -217,8 +231,7 @@ class QuotationsController extends Controller
 
         if ($quotation->status === 'expired' && ($expiresAt === null || $expiresAt->isFuture())) {
             $quotation->status = 'sent';
-        }
-        elseif ($quotation->status === 'sent' && $expiresAt !== null && $expiresAt->isPast()) {
+        } elseif ($quotation->status === 'sent' && $expiresAt !== null && $expiresAt->isPast()) {
             $quotation->status = 'expired';
         }
 
@@ -232,6 +245,9 @@ class QuotationsController extends Controller
 
     public function accept(Request $request, Quotation $quotation): JsonResponse
     {
+        // Founder-only: converting an accepted quote into an order.
+        Gate::authorize('accept-quote');
+
         if ($quotation->status === 'accepted') {
             return response()->json(['message' => 'Already accepted.', 'order_id' => $quotation->order?->id], 422);
         }
@@ -240,10 +256,14 @@ class QuotationsController extends Controller
             return response()->json(['message' => 'Quotation has no client linked.'], 422);
         }
 
-        $order = DB::transaction(function () use ($quotation) {
+        $request->validate([
+            'commission_pct' => ['nullable', 'integer', 'min:5', 'max:15'],
+        ]);
+
+        $order = DB::transaction(function () use ($request, $quotation) {
             $quotation->update(['status' => 'accepted']);
 
-            return Order::create([
+            $order = Order::create([
                 'order_number' => ReferenceCodeGenerator::generate(DocumentType::Order),
                 'quotation_id' => $quotation->id,
                 'client_id' => $quotation->client_id,
@@ -255,7 +275,19 @@ class QuotationsController extends Controller
                 'due_at' => $quotation->dueDateFrom(),
                 'status' => 'pending',
             ]);
+
+            $referral = Referral::where('quotation_id', $quotation->id)->first();
+            if ($referral) {
+                $referral->update([
+                    'commission_pct' => $request->integer('commission_pct') ?: $referral->commission_tier_pct,
+                ]);
+            }
+
+            return $order;
         });
+
+        $quotation->logActivity('quotation.accepted', ['order_number' => $order->order_number]);
+        $order->logActivity('order.created', ['from_quotation' => $quotation->reference_code]);
 
         return response()->json([
             'message' => 'Quotation accepted. Order created.',
@@ -347,5 +379,4 @@ class QuotationsController extends Controller
             }
         }
     }
-
 }

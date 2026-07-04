@@ -19,6 +19,8 @@ interface QuotationLike {
   expires_at?: string | null
   form_payload: Record<string, any> | null
   document: Record<string, any> | null
+  referral_partner_id?: number | null
+  referrer?: { name: string; relationship_tier: string; commission_pct: number } | null
 }
 
 const props = defineProps<{
@@ -531,12 +533,22 @@ async function deliver(channel: 'email' | 'download') {
   }
 }
 
+// Referral-attributed quotes let the founder confirm the commission % on accept —
+// defaults to the referrer's tier estimate (or 10 if the nested referrer summary
+// isn't loaded), clamped 5–15. Non-referral quotes never show or send this field.
+const isReferralAttributed = computed(() => !!props.quotation?.referral_partner_id)
+const commissionPct = ref(10)
+watch(() => props.quotation?.referral_partner_id, () => {
+  commissionPct.value = props.quotation?.referrer?.commission_pct ?? 10
+}, { immediate: true })
+
 async function accept() {
   if (!isEdit.value) return
   accepting.value = true
   error.value = ''
   try {
-    const res = await apiFetch<{ order_id: number }>(`/api/v1/admin/quotations/${props.quotation!.id}/accept`, { method: 'POST' })
+    const body = isReferralAttributed.value ? { commission_pct: commissionPct.value } : undefined
+    const res = await apiFetch<{ order_id: number }>(`/api/v1/admin/quotations/${props.quotation!.id}/accept`, { method: 'POST', body })
     toast.success('Order created', 'Quotation accepted and converted to an order.')
     emit('accepted', res.order_id)
   }
@@ -576,11 +588,13 @@ async function revert() {
         <div class="flex items-center justify-between mb-4">
           <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Client</p>
           <div class="flex gap-1.5">
-            <button type="button" class="standard-pill" :style="client.mode === 'search'
+            <button
+type="button" class="standard-pill" :style="client.mode === 'search'
               ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
               : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
               @click="clearClient">Existing</button>
-            <button type="button" class="standard-pill" :style="client.mode === 'new'
+            <button
+type="button" class="standard-pill" :style="client.mode === 'new'
               ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
               : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
               @click="newClient">New</button>
@@ -589,7 +603,8 @@ async function revert() {
 
         <!-- Existing: search / selected -->
         <div v-if="client.mode === 'search'">
-          <div v-if="client.client_id" class="flex items-center justify-between rounded-xl border px-4 py-3"
+          <div
+v-if="client.client_id" class="flex items-center justify-between rounded-xl border px-4 py-3"
             :style="{ borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">
             <div>
               <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ client.name }}</p>
@@ -598,10 +613,12 @@ async function revert() {
             <button type="button" class="text-[12px]" style="color: var(--color-accent);" @click="clearClient">Change</button>
           </div>
           <div v-else class="relative">
-            <input id="qb-client" v-model="clientSearch" type="text" placeholder="Search clients by name or email…" class="contact-input w-full"
-              :style="{ borderColor: errors.client ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <input
+id="qb-client" v-model="clientSearch" type="text" placeholder="Search clients by name or email…" class="contact-input w-full"
+              :style="{ borderColor: errors.client ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
             <p v-if="errors.client" class="text-[11px] mt-1.5" style="color: var(--color-danger);">{{ errors.client }}</p>
-            <ul v-if="clientResults.length" class="absolute z-20 left-0 right-0 mt-1.5 rounded-xl border p-1 max-h-60 overflow-y-auto"
+            <ul
+v-if="clientResults.length" class="absolute z-20 left-0 right-0 mt-1.5 rounded-xl border p-1 max-h-60 overflow-y-auto"
               :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }">
               <li v-for="c in clientResults" :key="c.id">
                 <button type="button" class="w-full text-left px-2.5 py-2 rounded-md transition-colors hover:bg-(--color-bg-secondary)" @click="pickClient(c)">
@@ -618,21 +635,21 @@ async function revert() {
         <div v-else class="grid sm:grid-cols-2 gap-4">
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Name <span style="color: var(--color-danger);">*</span></label>
-            <input id="qb-name" v-model="client.name" type="text" class="contact-input w-full" :style="{ borderColor: errors.name ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <input id="qb-name" v-model="client.name" type="text" class="contact-input w-full" :style="{ borderColor: errors.name ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
             <p v-if="errors.name" class="text-[11px]" style="color: var(--color-danger);">{{ errors.name }}</p>
           </div>
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email <span style="color: var(--color-danger);">*</span></label>
-            <input id="qb-email" v-model="client.email" type="email" class="contact-input w-full" :style="{ borderColor: errors.email ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <input id="qb-email" v-model="client.email" type="email" class="contact-input w-full" :style="{ borderColor: errors.email ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
             <p v-if="errors.email" class="text-[11px]" style="color: var(--color-danger);">{{ errors.email }}</p>
           </div>
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Phone</label>
-            <input v-model="client.phone" type="tel" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <input v-model="client.phone" type="tel" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           </div>
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Company</label>
-            <input v-model="client.company" type="text" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <input v-model="client.company" type="text" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           </div>
         </div>
       </section>
@@ -653,7 +670,7 @@ async function revert() {
         <div class="grid gap-4">
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Project title</label>
-            <input v-model="doc.project" type="text" placeholder="e.g. Brand website — design & front-end build" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+            <input v-model="doc.project" type="text" placeholder="e.g. Brand website — design & front-end build" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           </div>
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Intro</label>
@@ -673,24 +690,24 @@ async function revert() {
           <div v-for="(it, i) in doc.items" :key="i" class="rounded-xl border p-3 mb-2 space-y-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
             <div>
               <span class="line-label">Title <span style="color: var(--color-danger);">*</span></span>
-              <input :id="`qb-item-${i}`" v-model="it.title" type="text" placeholder="Title" class="contact-input w-full text-[13px]" :style="{ borderColor: errors.items[i] ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+              <input :id="`qb-item-${i}`" v-model="it.title" type="text" placeholder="Title" class="contact-input w-full text-[13px]" :style="{ borderColor: errors.items[i] ? 'var(--color-danger)' : 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
               <p v-if="errors.items[i]" class="text-[11px] mt-1" style="color: var(--color-danger);">{{ errors.items[i] }}</p>
             </div>
-            <input v-model="it.desc" type="text" placeholder="Description (optional)" class="contact-input w-full text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-elevated)' }" />
+            <input v-model="it.desc" type="text" placeholder="Description (optional)" class="contact-input w-full text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-elevated)' }" >
             <div class="flex flex-wrap items-end gap-x-2 gap-y-3">
               <div class="w-16">
                 <span class="line-label">Qty</span>
-                <input v-model.number="it.qty" type="number" min="0" step="0.5" class="contact-input w-full text-[13px] text-center" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+                <input v-model.number="it.qty" type="number" min="0" step="0.5" class="contact-input w-full text-[13px] text-center" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
               </div>
               <div class="flex-1 min-w-20">
                 <span class="line-label">Unit</span>
-                <input v-model="it.unit" type="text" placeholder="project, page, hr…" class="contact-input w-full text-[13px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+                <input v-model="it.unit" type="text" placeholder="project, page, hr…" class="contact-input w-full text-[13px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
               </div>
               <div class="w-32">
                 <span class="line-label">Rate</span>
                 <div class="relative">
                   <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none" style="color: var(--color-text-tertiary);">RM</span>
-                  <input v-model.number="it.rate" type="number" min="0" step="50" class="contact-input w-full text-[13px] pl-9 text-right" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+                  <input v-model.number="it.rate" type="number" min="0" step="50" class="contact-input w-full text-[13px] pl-9 text-right" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
                 </div>
               </div>
             </div>
@@ -712,13 +729,13 @@ async function revert() {
           </div>
         </div>
 
-        <AdminQuoteTermsDeposit v-model:terms="doc.termsText" v-model:depositPct="doc.deposit_pct" />
+        <AdminQuoteTermsDeposit v-model:terms="doc.termsText" v-model:deposit-pct="doc.deposit_pct" />
 
         <div class="space-y-1.5 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
           <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
             Valid until <span class="font-normal" style="color: var(--color-text-tertiary);">(optional)</span>
           </label>
-          <input v-model="validUntil" type="date" class="contact-input w-full sm:w-56" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input v-model="validUntil" type="date" class="contact-input w-full sm:w-56" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p class="text-[11px]" style="color: var(--color-text-tertiary);">Leave blank to default to {{ config?.valid_for_days ?? 30 }} days after sending.</p>
         </div>
       </section>
@@ -794,7 +811,8 @@ async function revert() {
               {{ sending ? 'Sending…' : 'Send to client' }}
             </button>
             <div v-if="sendMenuOpen" class="fixed inset-0 z-10" @click="sendMenuOpen = false" />
-            <div v-if="sendMenuOpen" class="absolute left-0 right-0 mt-2 z-20 rounded-xl border p-1.5 space-y-1"
+            <div
+v-if="sendMenuOpen" class="absolute left-0 right-0 mt-2 z-20 rounded-xl border p-1.5 space-y-1"
               :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }">
               <button type="button" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text);" @click="deliver('email')">
                 <UIcon name="i-lucide-mail" class="size-4" /> Email to client
@@ -808,9 +826,19 @@ async function revert() {
           <button v-if="dirty" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="saving" @click="save">
             {{ saving ? 'Saving…' : 'Save changes' }}
           </button>
-          <button v-else type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
-            {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
-          </button>
+          <template v-else>
+            <div v-if="isReferralAttributed">
+              <label for="qb-commission-pct" class="text-[11px] font-medium uppercase tracking-wider mb-1 block" style="color: var(--color-text-tertiary);">
+                Commission % <span v-if="props.quotation?.referrer" class="normal-case font-normal" style="color: var(--color-text-secondary);">— {{ props.quotation.referrer.name }}</span>
+              </label>
+              <input
+id="qb-commission-pct" v-model.number="commissionPct" type="number" min="5" max="15" class="contact-input w-full text-[13px]"
+                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
+            </div>
+            <button type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="accepting" @click="accept">
+              {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
+            </button>
+          </template>
         </template>
       </div>
 

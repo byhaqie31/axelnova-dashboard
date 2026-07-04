@@ -6,19 +6,44 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreReferralRequest;
 use App\Mail\ReferralReceivedMail;
 use App\Models\Referral;
+use App\Models\Referrer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Mail;
 
 class ReferralController extends Controller
 {
+    /**
+     * Public onboarding submit (approve-first). One POST does two things:
+     *   1. creates or reuses the Referrer (matched on email) as status = pending;
+     *   2. creates the referred company as a Referral, visible immediately.
+     *
+     * NO passcode is issued here — the passcode email fires only when a marketer
+     * approves the referrer (Team\ReferralPartnersController@approve). A returning
+     * active referrer stays active; this never re-onboards them.
+     */
     public function store(StoreReferralRequest $request): JsonResponse
     {
         $tier = $request->input('relationship_tier');
 
+        $referrer = Referrer::firstOrNew(['email' => $request->input('referrer_email')]);
+
+        if (! $referrer->exists) {
+            $referrer->fill([
+                'code' => Referrer::makeUniqueCode(),
+                'name' => $request->input('referrer_name'),
+                'phone' => $request->input('referrer_phone'),
+                'relationship_tier' => $tier,
+                'commission_pct' => Referrer::commissionPctFor($tier),
+                'agreed_terms' => $request->boolean('agreed_terms'),
+                'status' => 'pending',
+            ])->save();
+        }
+
         $referral = Referral::create([
-            'referrer_name' => $request->input('referrer_name'),
-            'referrer_email' => $request->input('referrer_email'),
-            'referrer_phone' => $request->input('referrer_phone'),
+            'referral_partner_id' => $referrer->id,
+            'referrer_name' => $referrer->name,
+            'referrer_email' => $referrer->email,
+            'referrer_phone' => $referrer->phone,
             'business_name' => $request->input('business_name'),
             'business_contact_name' => $request->input('business_contact_name'),
             'business_email' => $request->input('business_email'),
@@ -32,8 +57,9 @@ class ReferralController extends Controller
             'user_agent' => $request->userAgent(),
         ]);
 
-        // Queued acknowledgement back to the person who made the referral.
-        Mail::to($referral->referrer_email, $referral->referrer_name)->send(new ReferralReceivedMail($referral));
+        // Queued acknowledgement back to the person who made the referral. This is
+        // NOT the passcode email — that only follows a marketer approval.
+        Mail::to($referrer->email, $referrer->name)->send(new ReferralReceivedMail($referral));
 
         return response()->json([
             'data' => [

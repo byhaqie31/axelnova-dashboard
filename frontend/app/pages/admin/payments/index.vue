@@ -151,7 +151,8 @@ function methodLabel(v: string) {
       <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" class="ml-auto" />
     </div>
 
-    <div v-if="filters.order_id" class="flex items-center justify-between gap-3 mb-5 rounded-xl border px-4 py-2.5"
+    <div
+v-if="filters.order_id" class="flex items-center justify-between gap-3 mb-5 rounded-xl border px-4 py-2.5"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
       <p class="text-[12px]" style="color: var(--color-text-secondary);">Filtered to one order.</p>
       <div class="flex items-center gap-2">
@@ -164,7 +165,8 @@ function methodLabel(v: string) {
 
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading payments…</div>
 
-    <div v-else-if="!payments.length" class="rounded-2xl border p-12 text-center"
+    <div
+v-else-if="!payments.length" class="rounded-2xl border p-12 text-center"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
       <UIcon name="i-lucide-wallet" class="size-8 mb-3 mx-auto" :style="{ color: 'var(--color-text-tertiary)' }" />
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">No payments yet</p>
@@ -178,14 +180,16 @@ function methodLabel(v: string) {
       <table class="w-full text-left">
         <thead>
           <tr>
-            <th v-for="h in ['Payment', 'Client', 'Order', 'Amount', 'Method', 'Status', 'Date']" :key="h"
+            <th
+v-for="h in ['Payment', 'Client', 'Order', 'Amount', 'Method', 'Status', 'Date']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in payments" :key="p.id"
+          <tr
+v-for="p in payments" :key="p.id"
             class="admin-table-row"
             @click="navigateTo(`/admin/payments/${p.id}`)">
             <td class="px-4 py-3.5">
@@ -200,7 +204,8 @@ function methodLabel(v: string) {
               <span class="font-mono text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">{{ p.order_number ?? '—' }}</span>
             </td>
             <td class="px-4 py-3.5">
-              <p class="text-[13px] font-semibold"
+              <p
+class="text-[13px] font-semibold"
                 :style="{ color: Number(p.amount_myr) < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">
                 {{ Number(p.amount_myr) < 0 ? '−' : '' }}{{ fmtMyr(p.amount_myr) }}
               </p>
@@ -240,7 +245,8 @@ function methodLabel(v: string) {
         </div>
         <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ p.name ?? '—' }}</p>
         <div class="flex items-center justify-between gap-3 pt-2 mt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <p class="text-[14px] font-semibold"
+          <p
+class="text-[14px] font-semibold"
             :style="{ color: Number(p.amount_myr) < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">
             {{ Number(p.amount_myr) < 0 ? '−' : '' }}{{ fmtMyr(p.amount_myr) }}
           </p>

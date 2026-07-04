@@ -27,10 +27,14 @@ interface Quotation {
   viewed_at: string | null
   sent_at: string | null
   expires_at: string | null
+  updated_at: string | null
+  updated_by: { id: number, name: string } | null
   public_token: string | null
   form_payload: Record<string, any> | null
   document: Record<string, any> | null
   addons: { key: string; label: string; amount_myr: string }[]
+  referral_partner_id: number | null
+  referrer: { name: string; relationship_tier: string; commission_pct: number } | null
 }
 
 const quotation = ref<Quotation | null>(null)
@@ -75,12 +79,22 @@ function applyQuotation(data: Record<string, any>) {
 const isDraft = computed(() => quotation.value?.status === 'draft')
 const isDetailed = computed(() => quotation.value?.document?.layout === 'detailed')
 
+// Referral-attributed quotes let the founder confirm the commission % on accept —
+// defaults to the referrer's tier estimate (or 10 if the nested referrer summary
+// isn't loaded), clamped 5–15. Non-referral quotes never show or send this field.
+const isReferralAttributed = computed(() => !!quotation.value?.referral_partner_id)
+const commissionPct = ref(10)
+watch(() => quotation.value?.referral_partner_id, () => {
+  commissionPct.value = quotation.value?.referrer?.commission_pct ?? 10
+}, { immediate: true })
+
 async function acceptQuotation() {
   if (!quotation.value) return
   acceptLoading.value = true
   try {
+    const body = isReferralAttributed.value ? { commission_pct: commissionPct.value } : undefined
     const res = await apiFetch<{ message: string; order_id: number; order_number: string }>(
-      `/api/v1/admin/quotations/${quotation.value.id}/accept`, { method: 'POST' },
+      `/api/v1/admin/quotations/${quotation.value.id}/accept`, { method: 'POST', body },
     )
     toast.success('Order created', `${res.order_number} created from this quotation.`)
     navigateTo(`/admin/orders/${res.order_id}`)
@@ -170,7 +184,8 @@ async function saveExpiry() {
 <template>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All quotations
     </NuxtLink>
@@ -221,6 +236,12 @@ async function saveExpiry() {
                 <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Sent</p>
                 <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(quotation.sent_at) }}</p>
               </div>
+              <div v-if="quotation.updated_by">
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Last updated by</p>
+                <p class="text-[13px]" style="color: var(--color-text);">
+                  {{ quotation.updated_by.name }}<span v-if="quotation.updated_at" style="color: var(--color-text-tertiary);"> · {{ fmtDate(quotation.updated_at) }}</span>
+                </p>
+              </div>
               <div v-if="quotation.expires_at || canEditExpiry">
                 <p class="text-[11px] font-medium uppercase tracking-wider mb-1 flex items-center gap-1.5" style="color: var(--color-text-tertiary);">
                   {{ quotation.status === 'expired' ? 'Expired' : 'Valid until' }}
@@ -229,7 +250,7 @@ async function saveExpiry() {
                   </button>
                 </p>
                 <div v-if="expiryEditing" class="flex items-center gap-1.5">
-                  <input v-model="expiryDraft" type="date" class="contact-input text-[12px] py-1 px-2" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+                  <input v-model="expiryDraft" type="date" class="contact-input text-[12px] py-1 px-2" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
                   <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors" :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }" :disabled="expiryLoading" aria-label="Save validity date" @click="saveExpiry">
                     <UIcon :name="expiryLoading ? 'i-lucide-loader-circle' : 'i-lucide-check'" class="size-3.5" :class="{ 'animate-spin': expiryLoading }" />
                   </button>
@@ -292,6 +313,14 @@ async function saveExpiry() {
 
             <!-- Outcomes for a live sent quote: accept (→ order) or reject. Expiry is automatic. -->
             <template v-if="quotation.status === 'sent'">
+              <div v-if="isReferralAttributed">
+                <label for="commission-pct" class="text-[11px] font-medium uppercase tracking-wider mb-1 block" style="color: var(--color-text-tertiary);">
+                  Commission % <span v-if="quotation.referrer" class="normal-case font-normal" style="color: var(--color-text-secondary);">— {{ quotation.referrer.name }}</span>
+                </label>
+                <input
+id="commission-pct" v-model.number="commissionPct" type="number" min="5" max="15" class="contact-input w-full text-[13px]"
+                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
+              </div>
               <button class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="acceptLoading || rejectLoading" @click="acceptQuotation">
                 {{ acceptLoading ? 'Creating order…' : 'Proceed & Create Order' }}
               </button>
@@ -306,7 +335,8 @@ async function saveExpiry() {
             </button>
 
             <a :href="`mailto:${quotation.email}?subject=Re: your quote ${quotation.reference_code}`" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">Email Client</a>
-            <a v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
+            <a
+v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
               target="_blank" rel="noopener" class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
           </div>
         </div>

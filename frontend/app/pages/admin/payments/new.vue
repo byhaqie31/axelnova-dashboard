@@ -97,7 +97,8 @@ function fmtMyr(amount: string | number) {
 
 <template>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink :to="orderId ? `/admin/orders/${orderId}` : '/admin/payments'"
+    <NuxtLink
+:to="orderId ? `/admin/orders/${orderId}` : '/admin/payments'"
       class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70" :style="{ color: 'var(--color-text-secondary)' }">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> {{ orderId ? 'Back to order' : 'All payments' }}
     </NuxtLink>
@@ -112,7 +113,8 @@ function fmtMyr(amount: string | number) {
         <span v-if="Number(order.remaining_myr) > 0"> · {{ fmtMyr(order.remaining_myr) }} remaining</span>
       </p>
 
-      <div class="rounded-2xl border p-6 space-y-5"
+      <div
+class="rounded-2xl border p-6 space-y-5"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <div class="grid sm:grid-cols-2 gap-3">
           <label class="block">
@@ -128,7 +130,8 @@ function fmtMyr(amount: string | number) {
         <div>
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Method</span>
           <div class="flex flex-wrap gap-1.5 mt-1.5">
-            <button v-for="m in methodOptions" :key="m.value" type="button" class="standard-pill"
+            <button
+v-for="m in methodOptions" :key="m.value" type="button" class="standard-pill"
               :style="form.method === m.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}"
               @click="form.method = m.value">{{ m.label }}</button>
           </div>
@@ -152,7 +155,8 @@ function fmtMyr(amount: string | number) {
 
         <p class="text-[11px]" style="color: var(--color-text-tertiary);">Recording a payment updates the order's paid total and any allocated invoice automatically. Issue a receipt afterward from the payment's page.</p>
 
-        <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
+        <button
+type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]"
           :class="{ 'opacity-50': saving }" :disabled="saving" @click="record">
           {{ saving ? 'Recording…' : 'Record payment' }}
         </button>

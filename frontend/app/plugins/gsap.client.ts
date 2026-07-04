@@ -22,11 +22,15 @@ export default defineNuxtPlugin((nuxtApp) => {
       if (!link || !lenis) return
       const hash = link.getAttribute('href')
       if (!hash || hash === '#') return
-      let target: HTMLElement | null = null
-      try {
-        target = document.querySelector<HTMLElement>(hash)
-      }
-      catch { return }
+      // querySelector throws on malformed selectors (e.g. "#1foo") — treat as no target.
+      const target = (() => {
+        try {
+          return document.querySelector<HTMLElement>(hash)
+        }
+        catch {
+          return null
+        }
+      })()
       if (!target) return
       e.preventDefault()
       lenis.scrollTo(target, { duration: 1.1, offset: -64 })

@@ -1,28 +1,42 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\ActivityController;
+use App\Http\Controllers\Api\V1\Admin\AnalyticsController;
+use App\Http\Controllers\Api\V1\Admin\AnnouncementsController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
+use App\Http\Controllers\Api\V1\Admin\ExpensesController;
 use App\Http\Controllers\Api\V1\Admin\InquiriesController;
 use App\Http\Controllers\Api\V1\Admin\InvoicesController;
 use App\Http\Controllers\Api\V1\Admin\OrdersController;
 use App\Http\Controllers\Api\V1\Admin\PaymentsController;
+use App\Http\Controllers\Api\V1\Admin\PayrollController;
 use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
+use App\Http\Controllers\Api\V1\Admin\ReferralPartnersController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceAddonsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
-use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
+use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
+use App\Http\Controllers\Api\V1\Admin\TasksController;
+use App\Http\Controllers\Api\V1\Admin\UsersController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\InquiryController;
+use App\Http\Controllers\Api\V1\LikesController;
+use App\Http\Controllers\Api\V1\Partner\AuthController as PartnerAuthController;
+use App\Http\Controllers\Api\V1\Partner\DashboardController as PartnerDashboardController;
 use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
 use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
 use App\Http\Controllers\Api\V1\QuoteRequestController;
-use App\Http\Controllers\Api\V1\LikesController;
 use App\Http\Controllers\Api\V1\ReferralController;
+use App\Http\Controllers\Api\V1\Team\AnnouncementsController as TeamAnnouncementsController;
+use App\Http\Controllers\Api\V1\Team\AuthController as TeamAuthController;
+use App\Http\Controllers\Api\V1\Team\PayrollController as TeamPayrollController;
+use App\Http\Controllers\Api\V1\Team\TasksController as TeamTasksController;
 use App\Http\Controllers\Api\V1\TrackingController;
-use App\Http\Controllers\Api\V1\Admin\AnalyticsController;
+use App\Http\Middleware\LogAdminActivity;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
@@ -78,13 +92,34 @@ Route::middleware($trackThrottle)->group(function () {
 $loginThrottle = app()->environment('production') ? 'throttle:10,1' : 'throttle:1000,1';
 Route::middleware($loginThrottle)->group(function () {
     Route::post('/v1/admin/login', [AuthController::class, 'login'])->name('admin.login');
+
+    // Workspace login — same brute-force throttle. Admits every internal role
+    // (marketer/engineer land here since they get 403 on the cockpit login).
+    Route::post('/v1/team/login', [TeamAuthController::class, 'login'])->name('team.login');
+
+    // Workspace "forgot password" — no self-service reset; a matching email
+    // notifies the founder (services.admin.email) to reset it from Users.
+    Route::post('/v1/team/forgot-password', [TeamAuthController::class, 'forgotPassword'])->name('team.forgot-password');
+
+    // Partner portal login — the isolated `external` guard on external_accounts.
+    // Same brute-force throttle; covers both partner types (referrer + investor),
+    // active accounts only, with an issued passcode.
+    Route::post('/v1/partner/login', [PartnerAuthController::class, 'login'])->name('partner.login');
+
+    // Self-service passcode reset: a correct active email auto-emails a new passcode
+    // (and notifies the founder). Same throttle bounds abuse.
+    Route::post('/v1/partner/forgot-passcode', [PartnerAuthController::class, 'forgotPasscode'])->name('partner.forgot-passcode');
 });
 
-// Admin — Sanctum SPA (stateful via cookie + CSRF) + role:admin
+// Admin cockpit — Sanctum SPA (stateful via cookie + CSRF), cockpit tier only
+// (founder). Workspace roles (marketer/engineer) get 403 here and use
+// /v1/team/* instead (Phase 3b).
 Route::middleware([
     EnsureFrontendRequestsAreStateful::class,
     'auth:sanctum',
-    'role:admin',
+    'abilities:cockpit',
+    'role:cockpit',
+    LogAdminActivity::class,
 ])
     ->prefix('v1/admin')
     ->name('admin.')
@@ -92,14 +127,62 @@ Route::middleware([
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/me', [AuthController::class, 'me'])->name('me');
 
+        // Admin → Team jump: exchange the cockpit session for a workspace token
+        // (same account) so the portal link signs in directly. Audited per call.
+        Route::post('/team-session', [AuthController::class, 'teamSession'])->name('team-session');
+
+        // Team provisioning — founder-only (Gate: manage-users, enforced in-controller).
+        Route::get('/users', [UsersController::class, 'index'])->name('users.index');
+        Route::post('/users', [UsersController::class, 'store'])->name('users.store');
+        Route::patch('/users/{user}', [UsersController::class, 'update'])->name('users.update');
+        Route::post('/users/{user}/deactivate', [UsersController::class, 'deactivate'])->name('users.deactivate');
+        Route::post('/users/{user}/reactivate', [UsersController::class, 'reactivate'])->name('users.reactivate');
+
         // Customers (clients) — typeahead for the builder + the Customers spine
         Route::get('/clients', [ClientsController::class, 'index'])->name('clients.index');
         Route::post('/clients', [ClientsController::class, 'store'])->name('clients.store');
         Route::get('/clients/{client}', [ClientsController::class, 'show'])->name('clients.show');
         Route::put('/clients/{client}', [ClientsController::class, 'update'])->name('clients.update');
 
-        // Analytics overview (traffic / engagement)
+        // Analytics overview (traffic / engagement) + revenue attribution
         Route::get('/analytics/overview', [AnalyticsController::class, 'overview'])->name('analytics.overview');
+        Route::get('/analytics/attribution', [AnalyticsController::class, 'attribution'])->name('analytics.attribution');
+
+        // Activity feed — the audit trail (founder, per the cockpit group)
+        Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
+
+        // Payroll ledger (Task 7) — founder-only via the view-all-payroll gate
+        // in-controller; everyone else reads their own payslips at
+        // /v1/team/payslips. `store` GENERATES a payslip (allowance snapshot + Σ
+        // pending task extras); `preview` is the generation dry-run; `settle`
+        // stamps paid_at + flips the linked task extras to paid. `/preview` must
+        // precede the {payrollEntry} bind.
+        Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+        Route::get('/payroll/preview', [PayrollController::class, 'preview'])->name('payroll.preview');
+        Route::post('/payroll', [PayrollController::class, 'store'])->name('payroll.store');
+        Route::post('/payroll/{payrollEntry}/settle', [PayrollController::class, 'settle'])->name('payroll.settle');
+
+        // Marketing-spend ledger (Phase 5, record-only) — the founder enters
+        // their own and sees every row (the full roll-up).
+        Route::get('/marketing-expenses', [ExpensesController::class, 'index'])->name('marketing-expenses.index');
+        Route::post('/marketing-expenses', [ExpensesController::class, 'store'])->name('marketing-expenses.store');
+
+        // Tasks (Task 5) — author, assign or leave in the pool, track the
+        // lifecycle, mark the extra-pay bonus paid. The team works its tasks
+        // from /v1/team/tasks; the state machine lives in the two controllers.
+        Route::get('/tasks', [TasksController::class, 'index'])->name('tasks.index');
+        Route::post('/tasks', [TasksController::class, 'store'])->name('tasks.store');
+        Route::get('/tasks/{task}', [TasksController::class, 'show'])->name('tasks.show');
+        Route::patch('/tasks/{task}', [TasksController::class, 'update'])->name('tasks.update');
+        Route::post('/tasks/{task}/mark-paid', [TasksController::class, 'markPaid'])->name('tasks.mark-paid');
+        Route::delete('/tasks/{task}', [TasksController::class, 'destroy'])->name('tasks.destroy');
+
+        // Announcements (Task 6) — post/edit company notices. No delete: the
+        // team's read-only feed lives at /v1/team/announcements; "unpublish"
+        // (published toggle → false) reverts a row to draft instead.
+        Route::get('/announcements', [AnnouncementsController::class, 'index'])->name('announcements.index');
+        Route::post('/announcements', [AnnouncementsController::class, 'store'])->name('announcements.store');
+        Route::patch('/announcements/{announcement}', [AnnouncementsController::class, 'update'])->name('announcements.update');
 
         Route::get('/quotations', [QuotationsController::class, 'index'])->name('quotations.index');
         Route::post('/quotations', [QuotationsController::class, 'store'])->name('quotations.store');
@@ -140,6 +223,16 @@ Route::middleware([
         Route::post('/referrals/{referral}/status', [ReferralsController::class, 'updateStatus'])->name('referrals.status');
         Route::post('/referrals/{referral}/link-order', [ReferralsController::class, 'linkOrder'])->name('referrals.link-order');
         Route::post('/referrals/{referral}/commission-email', [ReferralsController::class, 'sendCommissionEmail'])->name('referrals.commission-email');
+        Route::post('/referrals/{referral}/tie-quotation', [ReferralsController::class, 'tieQuotation'])->name('referrals.tie-quotation');
+        Route::post('/referrals/{referral}/untie-quotation', [ReferralsController::class, 'untieQuotation'])->name('referrals.untie-quotation');
+
+        // Referral partners (the affiliate accounts). Approve issues + emails the
+        // first passcode; reset-passcode regenerates it. The passcode is never
+        // returned here — only emailed. No self-service reset exists.
+        Route::get('/referral-partners', [ReferralPartnersController::class, 'index'])->name('referral-partners.index');
+        Route::get('/referral-partners/{referralPartner}', [ReferralPartnersController::class, 'show'])->name('referral-partners.show');
+        Route::post('/referral-partners/{referralPartner}/approve', [ReferralPartnersController::class, 'approve'])->name('referral-partners.approve');
+        Route::post('/referral-partners/{referralPartner}/reset-passcode', [ReferralPartnersController::class, 'resetPasscode'])->name('referral-partners.reset-passcode');
 
         // Project inquiries
         Route::get('/inquiries', [InquiriesController::class, 'index'])->name('inquiries.index');
@@ -182,4 +275,66 @@ Route::middleware([
         Route::get('/projects/{project}', [ProjectsController::class, 'show'])->name('projects.show');
         Route::put('/projects/{project}', [ProjectsController::class, 'update'])->name('projects.update');
         Route::delete('/projects/{project}', [ProjectsController::class, 'destroy'])->name('projects.destroy');
+    });
+
+// Team workspace — Sanctum, workspace tier (three internal roles: founder/
+// marketer/engineer). The team no longer touches admin-owned operational data
+// (Task 4 of the portal restructure dropped inquiry triage, the referral
+// programme, and marketing spend entry — those stay cockpit-only). What's
+// left is personal: your own session/profile, your own payslips, and
+// tasks/calendar/announcements.
+Route::middleware([
+    EnsureFrontendRequestsAreStateful::class,
+    'auth:sanctum',
+    'abilities:workspace',
+    'role:workspace',
+])
+    ->prefix('v1/team')
+    ->name('team.')
+    ->group(function () {
+        Route::post('/logout', [TeamAuthController::class, 'logout'])->name('logout');
+        Route::get('/me', [TeamAuthController::class, 'me'])->name('me');
+        Route::patch('/me', [TeamAuthController::class, 'updateMe'])->name('me.update');
+
+        // Own payslips (Phase 5) — every internal role reads only their own rows;
+        // the founder's full ledger lives at /v1/admin/payroll.
+        Route::get('/payslips', [TeamPayrollController::class, 'index'])->name('payslips.index');
+
+        // Tasks (Task 5) — the kanban + calendar feed ({pool, mine}), claiming
+        // from the pool, and moving your OWN tasks through the state machine.
+        // Admin-owned edits (shape/pay/mark-paid/delete) stay on /v1/admin/tasks.
+        Route::get('/tasks', [TeamTasksController::class, 'index'])->name('tasks.index');
+        Route::post('/tasks/{task}/claim', [TeamTasksController::class, 'claim'])->name('tasks.claim');
+        Route::patch('/tasks/{task}/status', [TeamTasksController::class, 'updateStatus'])->name('tasks.status');
+
+        // Announcements (Task 6) — read-only feed: published + audience in
+        // ('team', 'all'). 'partners' rows are for a later phase (the partner
+        // portal) and are deliberately excluded here.
+        Route::get('/announcements', [TeamAnnouncementsController::class, 'index'])->name('announcements.index');
+    });
+
+// Partner portal — the third, isolated surface, shared by BOTH partner kinds
+// (referrer + investor) since Task 9. Pure bearer tokens on the `external` guard
+// (ExternalAccount / external_accounts), deliberately WITHOUT the stateful-cookie
+// middleware the cockpit/workspace use. An ExternalAccount token authenticates
+// only here: the `sanctum` guard (provider = users) behind /v1/admin and /v1/team
+// rejects it, and a User token is rejected here. Everything is scoped to the
+// token's own data; type-specific endpoints add `partner.type:{referrer|investor}`.
+Route::middleware(['auth:external', 'abilities:partner'])
+    ->prefix('v1/partner')
+    ->name('partner.')
+    ->group(function () {
+        Route::post('/logout', [PartnerAuthController::class, 'logout'])->name('logout');
+        Route::get('/me', [PartnerAuthController::class, 'me'])->name('me');
+
+        // Referrer-only: own leads + derived earnings + the ?ref link, and the
+        // context-aware "refer another". An investor token 403s here.
+        Route::middleware('partner.type:referrer')->group(function () {
+            Route::get('/dashboard', [PartnerDashboardController::class, 'index'])->name('dashboard');
+            Route::post('/referrals', [PartnerDashboardController::class, 'storeReferral'])->name('referrals.store');
+        });
+
+        // Investor-only content endpoints (documents / reports) are deliberately
+        // absent — those surfaces are premium empty states until an investor
+        // content model exists (admin investor CRUD is future work).
     });

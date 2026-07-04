@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Models\Referral;
 use App\Services\Quoting\DocumentIssuer;
 use App\Services\Quoting\DocumentMapper;
 use Illuminate\Http\JsonResponse;
@@ -25,13 +26,13 @@ class OrdersController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhereHas('client', function ($c) use ($search) {
-                      $c->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('quotation', function ($c) use ($search) {
-                      $c->where('reference_code', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('client', function ($c) use ($search) {
+                        $c->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('quotation', function ($c) use ($search) {
+                        $c->where('reference_code', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -40,7 +41,7 @@ class OrdersController extends Controller
 
     public function show(Order $order): OrderResource
     {
-        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments']);
+        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments', 'updatedBy']);
 
         return new OrderResource($order);
     }
@@ -74,6 +75,7 @@ class OrdersController extends Controller
         ]);
 
         $order->update(['due_at' => $data['due_at'] ?? null]);
+        $order->logActivity('order.schedule', ['due_at' => $order->due_at?->toDateString()]);
         $order->load(['client', 'quotation']);
 
         return response()->json([
@@ -116,6 +118,10 @@ class OrdersController extends Controller
         $order->loadMissing('quotation');
 
         $document = DocumentIssuer::issueInvoice($order, $data);
+        $document->logActivity('invoice.issued', [
+            'invoice_number' => $document->invoice_number,
+            'order_number' => $order->order_number,
+        ]);
 
         $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments']);
 
@@ -165,17 +171,26 @@ class OrdersController extends Controller
         $updates = ['status' => $next];
 
         // Stamp the relevant timestamp on first transition into each phase.
-        if ($next === 'in_progress' && !$order->started_at) {
+        if ($next === 'in_progress' && ! $order->started_at) {
             $updates['started_at'] = now();
         }
-        if ($next === 'delivered' && !$order->delivered_at) {
+        if ($next === 'delivered' && ! $order->delivered_at) {
             $updates['delivered_at'] = now();
         }
-        if ($next === 'completed' && !$order->completed_at) {
+        if ($next === 'completed' && ! $order->completed_at) {
             $updates['completed_at'] = now();
         }
 
+        $from = $order->status;
         $order->update($updates);
+        $order->logActivity('order.status', ['from' => $from, 'to' => $order->status]);
+
+        if ($order->status === 'cancelled' && $order->quotation_id) {
+            Referral::where('quotation_id', $order->quotation_id)
+                ->where('status', 'converted')
+                ->update(['status' => 'draft']);
+        }
+
         $order->load(['client', 'quotation']);
 
         return response()->json([

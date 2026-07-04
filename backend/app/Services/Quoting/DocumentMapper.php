@@ -111,7 +111,7 @@ class DocumentMapper
             'terms' => $terms,
             'pay' => [
                 'online' => self::BANK['online'],
-                'bank' => self::BANK['name'] . ' — ' . self::BANK['holder'],
+                'bank' => self::BANK['name'].' — '.self::BANK['holder'],
                 'acct' => self::BANK['acct'],
             ],
         ];
@@ -170,7 +170,7 @@ class DocumentMapper
         // Line items → summary rows, then subtotal, discounts/promo, and the total.
         $rows = array_map(fn ($it) => [
             'label' => (string) ($it['title'] ?? 'Item')
-                . (! empty($it['desc']) ? " ({$it['desc']})" : ''),
+                .(! empty($it['desc']) ? " ({$it['desc']})" : ''),
             'price' => (float) ($it['qty'] ?? 1) * (float) ($it['rate'] ?? 0),
         ], $items);
         $rows[] = ['label' => 'Subtotal', 'price' => $subtotal];
@@ -206,8 +206,8 @@ class DocumentMapper
                 'label' => 'Balance due on completion',
                 'value' => $balance,
                 'accent' => true,
-                'note' => 'Payable to ' . self::BANK['name'] . ' ' . self::BANK['acct']
-                    . ' (' . self::BANK['holder'] . '), or by card / FPX online banking.',
+                'note' => 'Payable to '.self::BANK['name'].' '.self::BANK['acct']
+                    .' ('.self::BANK['holder'].'), or by card / FPX online banking.',
             ]);
         }
 
@@ -290,8 +290,8 @@ class DocumentMapper
                 'label' => 'Amount due',
                 'value' => $net,
                 'accent' => true,
-                'note' => 'Payable to ' . self::BANK['name'] . ' ' . self::BANK['acct']
-                    . ' (' . self::BANK['holder'] . '), or by card / FPX online banking.',
+                'note' => 'Payable to '.self::BANK['name'].' '.self::BANK['acct']
+                    .' ('.self::BANK['holder'].'), or by card / FPX online banking.',
             ])];
             $status = $input['statusLabel'] ?? "{$billLabel} invoice";
         }
@@ -352,7 +352,7 @@ class DocumentMapper
         $amount = $type === 'percent' ? round($base * min($v, 100) / 100, 2) : $v;
         $label = $code ?: $fallbackLabel;
         if ($type === 'percent') {
-            $label .= ' (' . rtrim(rtrim(number_format($v, 2), '0'), '.') . '%)';
+            $label .= ' ('.rtrim(rtrim(number_format($v, 2), '0'), '.').'%)';
         }
 
         return [$amount, $label];

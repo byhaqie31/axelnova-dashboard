@@ -176,7 +176,8 @@ onMounted(async () => {
 <template>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
-    <NuxtLink to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All services
     </NuxtLink>
@@ -187,7 +188,7 @@ onMounted(async () => {
       </h1>
       <div v-if="!loading" class="flex items-center gap-2 shrink-0">
         <NuxtLink to="/admin/services" class="btn-pill btn-pill-ghost text-[13px]">Cancel</NuxtLink>
-        <button type="button" @click="save" :disabled="saving" class="btn-pill btn-pill-accent text-[13px]">
+        <button type="button" :disabled="saving" class="btn-pill btn-pill-accent text-[13px]" @click="save">
           {{ saving ? 'Saving…' : isNew ? 'Create category' : 'Save changes' }}
         </button>
       </div>
@@ -195,21 +196,24 @@ onMounted(async () => {
 
     <p v-if="message" class="mb-4 text-[13px]" :style="{ color: 'var(--color-danger)' }">{{ message }}</p>
 
-    <form v-if="!loading" class="rounded-2xl border p-6 space-y-5"
+    <form
+v-if="!loading" class="rounded-2xl border p-6 space-y-5"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
       @submit.prevent="save">
 
       <div class="grid sm:grid-cols-2 gap-4">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Slug *</label>
-          <input v-model="form.slug" type="text" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="form.slug" type="text" required class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p v-if="errors.slug?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.slug[0] }}</p>
         </div>
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Name *</label>
-          <input v-model="form.name" type="text" required class="contact-input w-full"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+          <input
+v-model="form.name" type="text" required class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p v-if="errors.name?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.name[0] }}</p>
         </div>
       </div>
@@ -217,13 +221,14 @@ onMounted(async () => {
       <div>
         <label class="text-[12px] font-medium block mb-2" :style="{ color: 'var(--color-text-secondary)' }">Icon *</label>
         <div class="grid grid-cols-6 sm:grid-cols-9 gap-1.5">
-          <button v-for="ic in serviceIcons" :key="ic.name" type="button"
+          <button
+v-for="ic in serviceIcons" :key="ic.name" type="button"
             :title="ic.label" :aria-label="ic.label"
-            @click="form.icon = ic.name"
             class="aspect-square rounded-lg border inline-flex items-center justify-center transition-colors"
             :style="form.icon === ic.name
               ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-              : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
+              : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
+            @click="form.icon = ic.name">
             <UIcon :name="ic.name" class="size-4" />
           </button>
         </div>
@@ -236,42 +241,47 @@ onMounted(async () => {
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Description *</label>
-        <textarea v-model="form.description" required rows="3" class="contact-input w-full"
+        <textarea
+v-model="form.description" required rows="3" class="contact-input w-full"
           :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
       </div>
 
       <div>
         <label class="text-[12px] font-medium block mb-2" :style="{ color: 'var(--color-text-secondary)' }">Sort order</label>
         <div class="flex items-center gap-1.5 flex-wrap">
-          <button type="button" :disabled="(form.sort_order ?? 0) <= 0" @click="nudgeSort(-1)"
-            class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
+          <button
+type="button" :disabled="(form.sort_order ?? 0) <= 0" class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
             :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }"
-            aria-label="Move position left">
+            aria-label="Move position left"
+            @click="nudgeSort(-1)">
             <UIcon name="i-lucide-chevron-left" class="size-4" />
           </button>
 
-          <button v-for="n in occupiedSortOrders" :key="n" type="button" @click="setSort(n)"
-            class="size-9 rounded-lg border flex items-center justify-center text-[13px] font-medium tabular-nums transition-colors"
+          <button
+v-for="n in occupiedSortOrders" :key="n" type="button" class="size-9 rounded-lg border flex items-center justify-center text-[13px] font-medium tabular-nums transition-colors"
             :style="form.sort_order === n
               ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)' }
               : { borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text)' }"
-            :aria-label="`Set position ${n}`">
+            :aria-label="`Set position ${n}`"
+            @click="setSort(n)">
             {{ n }}
           </button>
 
-          <button type="button" @click="setSort(nextAvailableSort)"
-            class="size-9 rounded-lg flex items-center justify-center transition-colors"
+          <button
+type="button" class="size-9 rounded-lg flex items-center justify-center transition-colors"
             :style="form.sort_order === nextAvailableSort
               ? { border: '1px solid var(--color-accent)', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)' }
               : { border: '1px dashed var(--color-border)', color: 'var(--color-text-tertiary)' }"
-            aria-label="Auto-append at end">
+            aria-label="Auto-append at end"
+            @click="setSort(nextAvailableSort)">
             <UIcon name="i-lucide-plus" class="size-4" />
           </button>
 
-          <button type="button" :disabled="(form.sort_order ?? 0) >= nextAvailableSort" @click="nudgeSort(1)"
-            class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
+          <button
+type="button" :disabled="(form.sort_order ?? 0) >= nextAvailableSort" class="size-9 rounded-lg border flex items-center justify-center transition-opacity disabled:opacity-30"
             :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }"
-            aria-label="Move position right">
+            aria-label="Move position right"
+            @click="nudgeSort(1)">
             <UIcon name="i-lucide-chevron-right" class="size-4" />
           </button>
         </div>
@@ -281,12 +291,14 @@ onMounted(async () => {
       </div>
 
       <div class="space-y-2 pt-1">
-        <button type="button" @click="form.active = !form.active"
-          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+        <button
+type="button" class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
           :style="form.active
             ? { borderColor: 'var(--color-success)', background: 'var(--color-bg-elevated)' }
-            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+          @click="form.active = !form.active">
+          <span
+class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
             :style="form.active
               ? { background: 'var(--color-success-soft)', color: 'var(--color-success)' }
               : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
@@ -296,23 +308,27 @@ onMounted(async () => {
             <span class="block text-[13px] font-medium" :style="{ color: form.active ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Active</span>
             <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Visible on the public services page</span>
           </span>
-          <span class="relative inline-block rounded-full transition-colors shrink-0"
+          <span
+class="relative inline-block rounded-full transition-colors shrink-0"
             :style="{
               background: form.active ? 'var(--color-success)' : '#d1d5db',
               height: '1.25rem',
               width: '2.25rem',
             }">
-            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
-              :style="{ left: form.active ? '1.125rem' : '0.125rem' }"></span>
+            <span
+class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.active ? '1.125rem' : '0.125rem' }"/>
           </span>
         </button>
 
-        <button type="button" @click="form.is_default = !form.is_default"
-          class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+        <button
+type="button" class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
           :style="form.is_default
             ? { borderColor: 'var(--color-accent)', background: 'var(--color-bg-elevated)' }
-            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-          <span class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+          @click="form.is_default = !form.is_default">
+          <span
+class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
             :style="form.is_default
               ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
               : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }">
@@ -322,28 +338,32 @@ onMounted(async () => {
             <span class="block text-[13px] font-medium" :style="{ color: form.is_default ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Default tab</span>
             <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Highlighted as the default on the services page (only one allowed)</span>
           </span>
-          <span class="relative inline-block rounded-full transition-colors shrink-0"
+          <span
+class="relative inline-block rounded-full transition-colors shrink-0"
             :style="{
               background: form.is_default ? 'var(--color-accent)' : '#d1d5db',
               height: '1.25rem',
               width: '2.25rem',
             }">
-            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
-              :style="{ left: form.is_default ? '1.125rem' : '0.125rem' }"></span>
+            <span
+class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
+              :style="{ left: form.is_default ? '1.125rem' : '0.125rem' }"/>
           </span>
         </button>
       </div>
     </form>
 
     <!-- New category: scope fields attach to a saved category, so they appear after creating it. -->
-    <p v-if="!loading && isNew" class="mt-6 rounded-2xl border border-dashed p-6 text-center text-[12px]"
+    <p
+v-if="!loading && isNew" class="mt-6 rounded-2xl border border-dashed p-6 text-center text-[12px]"
       :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }">
       <UIcon name="i-lucide-sliders-horizontal" class="size-4 inline-block mb-1" /><br>
       Scope fields (the quote-builder inputs for this category) can be added once you’ve created it — save first, then they’ll appear here.
     </p>
 
     <!-- Scope fields — the quote-builder inputs + pricing for this category. -->
-    <section v-if="!loading && !isNew" class="mt-6 rounded-2xl border p-6"
+    <section
+v-if="!loading && !isNew" class="mt-6 rounded-2xl border p-6"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <div class="mb-4">
         <h2 class="text-[15px] font-semibold" :style="{ color: 'var(--color-text)' }">Scope fields</h2>
@@ -357,35 +377,42 @@ onMounted(async () => {
       </p>
 
       <ul v-else class="rounded-xl border overflow-hidden" :style="{ borderColor: 'var(--color-border)' }">
-        <li v-for="f in scopeFields" :key="f.id"
+        <li
+v-for="f in scopeFields" :key="f.id"
           class="flex items-center gap-3 px-4 py-3 border-b last:border-b-0" :style="{ borderColor: 'var(--color-border)' }">
-          <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
+          <span
+class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
             :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">{{ f.type }}</span>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 flex-wrap">
               <p class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">{{ f.label }}</p>
-              <span v-if="!f.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+              <span
+v-if="!f.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                 :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Off</span>
             </div>
             <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">
               <code>{{ f.field_key }}</code> · {{ fieldPriceSummary(f) }}
             </p>
           </div>
-          <button type="button" @click="toggleFieldActive(f)"
-            class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">{{ f.active ? 'Disable' : 'Enable' }}</button>
-          <button type="button" @click="openEditField(f)"
-            class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">Edit</button>
-          <button type="button" @click="deleteField(f)"
-            class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
-            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }">Delete</button>
+          <button
+type="button" class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
+            @click="toggleFieldActive(f)">{{ f.active ? 'Disable' : 'Enable' }}</button>
+          <button
+type="button" class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
+            @click="openEditField(f)">Edit</button>
+          <button
+type="button" class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
+            @click="deleteField(f)">Delete</button>
         </li>
       </ul>
 
       <div class="flex justify-end mt-3">
-        <button type="button" @click="openNewField"
-          class="btn-pill btn-pill-ghost text-[12px] inline-flex items-center gap-1.5">
+        <button
+type="button" class="btn-pill btn-pill-ghost text-[12px] inline-flex items-center gap-1.5"
+          @click="openNewField">
           <UIcon name="i-lucide-plus" class="size-3.5" /> New scope field
         </button>
       </div>
@@ -393,7 +420,8 @@ onMounted(async () => {
 
     <div v-else-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
 
-    <ScopeFieldModal :open="modalOpen" :field="editingField" :category-id="Number(route.params.id)"
+    <ScopeFieldModal
+:open="modalOpen" :field="editingField" :category-id="Number(route.params.id)"
       @close="modalOpen = false" @saved="loadScopeFields" />
   </div>
 </template>

@@ -20,7 +20,7 @@ axelnova-dashboard/
     docker-compose.yml        Production-only frontend deploy (ghcr image)
   docker-compose.dev.yml      Local dev orchestrator — boots both apps on axelnova-shared
   docs/
-    global/                   ARCHITECTURE.md, DEPLOY.md, QUOTE_BUILDER.md, DOCUMENT-GENERATION.md, README.md (mirror)
+    global/                   ARCHITECTURE.md, DEPLOY.md, CI-AND-TESTING.md, QUOTE_BUILDER.md, DOCUMENT-GENERATION.md, README.md (mirror)
     frontend/                 UI-STANDARDS.md, *-COMPONENTS.md
     backend/                  README.md (Laravel-specific notes)
 ```

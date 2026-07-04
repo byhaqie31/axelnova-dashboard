@@ -64,7 +64,8 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
     <div v-if="p.options?.cards?.length" class="rounded-2xl border p-6" :style="cardStyle">
       <p class="text-[15px] font-semibold tracking-tight mb-4" style="color: var(--color-text);">{{ p.options.title || 'Package options' }}</p>
       <div class="grid sm:grid-cols-2 gap-3">
-        <div v-for="(c, ci) in p.options.cards" :key="`opt-${ci}`" class="rounded-xl border p-4"
+        <div
+v-for="(c, ci) in p.options.cards" :key="`opt-${ci}`" class="rounded-xl border p-4"
           :style="{ borderColor: c.accent ? 'var(--color-accent)' : 'var(--color-border)', background: 'var(--color-bg)' }">
           <p class="text-[11px] font-semibold uppercase tracking-wider" :style="{ color: c.accent ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }">{{ c.badge }}</p>
           <p class="text-[14px] font-semibold mt-1.5" style="color: var(--color-text);">{{ c.title }}</p>
@@ -100,15 +101,18 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
     <div v-if="p.summary?.rows?.length || p.panels?.length" class="rounded-2xl border p-6" :style="cardStyle">
       <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Summary</p>
       <div v-if="p.summary?.rows?.length" class="divide-y" style="border-color: var(--color-border);">
-        <div v-for="(r, ri) in p.summary.rows" :key="ri" class="flex items-center justify-between gap-4 py-2.5"
+        <div
+v-for="(r, ri) in p.summary.rows" :key="ri" class="flex items-center justify-between gap-4 py-2.5"
           :class="r.total ? 'border-t-2 mt-1 pt-3' : ''" :style="r.total ? { borderColor: 'var(--color-text)' } : {}">
           <span class="text-[13px]" :class="r.total ? 'font-semibold' : ''" style="color: var(--color-text);">{{ r.label }}</span>
-          <span class="text-[13px] font-medium tabular-nums" :class="r.total ? 'text-[15px] font-bold' : ''"
+          <span
+class="text-[13px] font-medium tabular-nums" :class="r.total ? 'text-[15px] font-bold' : ''"
             :style="{ color: (r.total || r.red) ? 'var(--color-accent)' : 'var(--color-text)' }">{{ r.priceText || fmtRm(r.price) }}</span>
         </div>
       </div>
       <div v-if="p.panels?.length" class="grid sm:grid-cols-2 gap-3 mt-4">
-        <div v-for="(pl, pi) in p.panels" :key="pi" class="rounded-xl border p-4"
+        <div
+v-for="(pl, pi) in p.panels" :key="pi" class="rounded-xl border p-4"
           :style="{ borderColor: pl.accent ? 'var(--color-accent)' : 'var(--color-border)', background: 'var(--color-bg)' }">
           <p class="text-[18px] font-bold tabular-nums" :style="{ color: pl.accent ? 'var(--color-accent)' : 'var(--color-text)' }">{{ fmtRm(pl.value) }}</p>
           <p class="text-[11px] font-semibold uppercase tracking-wider mt-1" style="color: var(--color-text-tertiary);">{{ pl.label }}</p>

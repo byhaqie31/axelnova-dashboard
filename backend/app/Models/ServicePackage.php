@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\ServicePackageObserver;
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[ObservedBy([ServicePackageObserver::class])]
 class ServicePackage extends Model
 {
+    use RecordsActivity;
+
     /** Anonymous likes (entity_likes table, scoped to this entity type). */
     public function likes(): HasMany
     {

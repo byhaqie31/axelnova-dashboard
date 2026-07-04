@@ -13,7 +13,7 @@ class AdminUserSeeder extends Seeder
         $password = config('admin.login_password') ?? env('ADMIN_LOGIN_PASSWORD');
         $name = env('ADMIN_NAME', 'Admin');
 
-        if (!$email || !$password) {
+        if (! $email || ! $password) {
             $this->command->warn('AdminUserSeeder skipped: set ADMIN_LOGIN_EMAIL and ADMIN_LOGIN_PASSWORD in .env');
 
             return;
@@ -24,10 +24,10 @@ class AdminUserSeeder extends Seeder
             [
                 'name' => $name,
                 'password' => $password,
-                'role' => 'admin',
+                'role' => 'founder',
             ],
         );
 
-        $this->command->info("Admin user ready: {$user->email}");
+        $this->command->info("Founder user ready: {$user->email}");
     }
 }

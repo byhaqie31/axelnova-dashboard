@@ -19,6 +19,7 @@ useHead({ link: [{ rel: 'canonical', href: `${siteUrl}/quote` }] })
 
 const runtimeConfig = useRuntimeConfig()
 const route = useRoute()
+const { withRef } = useReferralAttribution()
 
 const form = reactive({
   name: '',
@@ -64,8 +65,9 @@ async function handleSubmit() {
   error.value = ''
   try {
     // Backend is the source of truth — creates the tracked inquiry row,
-    // surfaced in /admin/inquiries.
-    await $fetch(`${runtimeConfig.public.apiBase}/api/v1/inquiries`, {
+    // surfaced in /admin/inquiries. Carry the referral code (?ref) so the
+    // inquiry is attributed to the referrer even across the API origin.
+    await $fetch(withRef(`${runtimeConfig.public.apiBase}/api/v1/inquiries`), {
       method: 'POST',
       headers: { Accept: 'application/json' },
       body: {

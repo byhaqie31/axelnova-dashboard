@@ -21,7 +21,7 @@ axelnova-dashboard/
 | Database | MySQL 8 (shared via [axelnova-infra](../../../axelnova-infra/)) |
 | Queue | Laravel database queue |
 | Email | SMTP — Mailtrap in dev, Mailgun/Postmark/SES in prod |
-| Auth | Laravel Sanctum (token-based, admin only) |
+| Auth | Laravel Sanctum bearer tokens — three isolated surfaces (admin cockpit / team workspace / partner portal), each minting tokens with its own ability (`cockpit` / `workspace` / `partner`) enforced by the `abilities:` middleware. Admin → Team jump via `POST /v1/admin/team-session` token exchange |
 
 ## Database tables
 
@@ -32,7 +32,7 @@ axelnova-dashboard/
 | `pricing_configs` | Versioned pricing formula JSON — only one row `active=true` at a time |
 | `quote_requests` | Lead submissions from the public quote builder |
 | `quote_request_addons` | Denormalised add-ons selected per quote request |
-| `users` | Admin users (authenticated via Sanctum) |
+| `users` | Team accounts (authenticated via Sanctum). `role` = founder/marketer/engineer (COCKPIT_ROLES/WORKSPACE_ROLES on the model); `availability` (Task 4, self-service, available\|busy); `monthly_allowance_myr` (Task 7, nullable, snapshotted onto payslips); `deactivated_at` (Task 8 — nullable persistent lockout, set/cleared from `/admin/users`, checked at login on both `/v1/admin` and `/v1/team`) |
 
 ### Planned (Phase 4+)
 
@@ -60,6 +60,22 @@ axelnova-dashboard/
 | `gateway_events` | Raw inbound webhook log + idempotency gate for the Billplz/Stripe phases (empty until then) |
 | `receipts.payment_id` | Receipts now anchor to the payment that produced them (1 payment : 1 receipt) |
 
+### Team workspace (portal restructure, Task 5/6/7)
+
+| Table | Purpose |
+|-------|---------|
+| `tasks` | The tasks engine — delegated work with an optional extra-pay bonus. `assignee_id` null = the pick-up pool; status spine `open → in_progress → completed \| payment_pending → paid` (completing with `pay_amount_myr` set forks to `payment_pending` automatically; admin mark-paid OR payslip settlement writes `paid`). `payroll_entry_id` (nullable FK, nullOnDelete) stamps which payslip settles the extra — the per-task double-count guard: generation only picks up `payment_pending` + unlinked tasks, and ad-hoc mark-paid rejects a linked task (422). `notes` is the append-only timestamped team log. Soft-deletes. The team Calendar is a view over this table (deadline + completed_at) — no table of its own |
+| `payroll_entries` | The payslip ledger (Task 7). One row per member per period (**UNIQUE (user_id, period_label)** — the per-period double-count guard). Itemised as `allowance_snapshot_myr` (the member's `users.monthly_allowance_myr` FROZEN at generation; null = none on file, distinct from 0) + `task_extras_myr` (Σ of the linked pending task bonuses), with `gross_myr` kept as the TOTAL so legacy consumers stay valid. `paid_at` is the sole settlement marker (no status column); settling flips the linked task extras to `paid`. Pre-Task-7 rows carry a hand-entered gross with null snapshot / 0 extras — the UI reads them as `legacy` and renders gross-only. **The settled payslip IS the team-comp expense record** — there is no general finance/expenses/P&L module in this repo (only `marketing_expenses` + this table; `payments` is client revenue), so nothing double-counts; P&L aggregation is future work. Statutory maths (EPF/SOCSO/EIS/PCB) stays out of scope |
+| `announcements` | Company notices authored from the cockpit (Task 6). `audience` scopes visibility once published: `team` (workspace only), `partners` (**forward hook** — the partner portal doesn't read this table yet), or `all` (both). `published_at` null = draft; publishing sets it once (re-publishing an already-published row keeps the original timestamp; toggling off reverts to draft). No soft-deletes, no delete endpoint — "unpublish" is the only retraction verb |
+
+### Partner portal (portal restructure, Task 9 — type-aware referrer + investor)
+
+| Table | Purpose |
+|-------|---------|
+| `external_accounts` | The unified partner-portal identity — one authenticatable row per login, `type` enum (`referrer` \| `investor`), unique `email`, hashed 8-digit `password` passcode (nullable until credentialed), `status` (`active` \| `suspended`), `last_login_at`. The `external` Sanctum guard (config/auth.php) authenticates against this table and nowhere else; the old `referral` guard on `referral_partners` is gone. Passcodes are minted by staff (approve / reset-passcode) or self-service forgot-passcode, and only ever surfaced by email |
+| `referral_partners` | Now a plain referrer **profile** (code, tier, commission, business status `pending\|active\|paused`) linked to its account via `external_account_id` (nullable FK, nullOnDelete — null until approved/credentialed). Its legacy `password`/`last_login_at` columns remain physically for rollback safety but are nulled/unused |
+| `investors` | The investor profile — `external_account_id` FK (cascadeOnDelete), name, company, notes. No content model yet (portal Documents/Reports are premium empty states); admin investor CRUD is future work |
+
 ## API routes
 
 All routes prefixed with `/api`:
@@ -71,6 +87,83 @@ GET  /v1/admin/leads                 Sanctum + admin role
 GET  /v1/admin/leads/{id}            Sanctum + admin role
 POST /v1/admin/leads/{id}/status     Sanctum + admin role
 POST /v1/admin/leads/{id}/convert    Sanctum + admin role
+
+# Auth surfaces (cockpit / workspace / partner — isolated token abilities)
+POST /v1/admin/login                 Public, throttled — mints ['cockpit'] token (founder role only)
+POST /v1/team/login                  Public, throttled — mints ['workspace'] token (all internal roles)
+POST /v1/partner/login               Public, throttled — mints ['partner'] token on the `external`
+                                     guard (external_accounts — referrer OR investor, Task 9)
+POST /v1/partner/forgot-passcode     Public, throttled — self-service passcode reissue (active
+                                     accounts of either type; silent for unknown emails)
+POST /v1/admin/team-session          Cockpit — exchanges the admin session for a fresh workspace
+                                     token (the admin→team direct sign-in; audited per call)
+
+# Partner portal (/v1/partner/*, auth:external + abilities:partner — Task 9).
+# Shared endpoints serve both types; referrer-only ones add partner.type:referrer
+# middleware and 403 an investor token. No investor content endpoints yet.
+GET  /v1/partner/me                  Shared — {type, email, profile: referrer|investor fields}
+POST /v1/partner/logout              Shared — revokes the current token
+GET  /v1/partner/dashboard           Referrer-only — own leads + derived earnings + the ?ref link
+POST /v1/partner/referrals           Referrer-only — context-aware "refer another business"
+
+# Team workspace (/v1/team/*, Sanctum + workspace role) — Task 4 of the portal
+# restructure dropped inquiry triage, the referral programme, and marketing
+# spend entry; the team no longer touches admin-owned operational data.
+GET   /v1/team/me                    Self profile (name, email, role, tier, availability)
+PATCH /v1/team/me                    Self-service update — {name?, availability: 'available'|'busy'}
+GET   /v1/team/payslips              Own payslips (breakdown) + `pending_extras` (own completed-with-pay
+                                     tasks not yet on a slip). Founder's full ledger is /v1/admin/payroll
+GET   /v1/team/tasks                 {pool, mine} — the kanban/calendar feed in one round-trip
+POST  /v1/team/tasks/{id}/claim      Pick up a pool task (assignee=me + in_progress; 409 if taken)
+PATCH /v1/team/tasks/{id}/status     Own tasks only — {status: in_progress|completed|open, note?};
+                                     completing with pay forks to payment_pending; 'open' releases
+                                     back to the pool; notes append as "[Y-m-d H:i] Name: note"
+GET   /v1/team/announcements         Read-only feed — published + audience in (team, all), newest-
+                                     published first. Drafts and 'partners'-only rows never appear
+
+# Tasks engine (cockpit side — Task 5)
+GET    /v1/admin/tasks               Filters: status, priority, assignee_id ('unassigned' = pool), q
+POST   /v1/admin/tasks               Create (assign now or leave in the pool; status always 'open')
+GET    /v1/admin/tasks/{id}          Detail
+PATCH  /v1/admin/tasks/{id}          Edit shape (title/desc/assignee/pay/duration/deadline/priority) —
+                                     never status; assignment keeps status (the assignee starts it)
+POST   /v1/admin/tasks/{id}/mark-paid  payment_pending (or completed-with-pay) → paid + paid_at (ad-hoc,
+                                     no payslip); a task marked paid this way is never swept into a payslip,
+                                     and a payslip-LINKED task is rejected here (422 — settle the slip
+                                     instead), so the two payout paths stay mutually exclusive
+DELETE /v1/admin/tasks/{id}          Soft delete (vanishes from team lists)
+
+# Payroll / payslips (cockpit side — Task 7; founder-only via view-all-payroll)
+GET    /v1/admin/payroll             Full ledger (paginate; ?user_id filter), each row itemised
+GET    /v1/admin/payroll/preview     Dry-run for a member (?user_id, &period_label?): allowance on file +
+                                     count/sum of unlinked payment_pending extras + projected gross;
+                                     `period_taken` flags an existing (user, period) slip (null if no period)
+POST   /v1/admin/payroll             GENERATE a payslip {user_id, period_label, method?, note?} —
+                                     snapshots allowance, sweeps + links the member's unlinked
+                                     payment_pending task extras, gross = allowance(0-if-null) + extras.
+                                     Duplicate period → 422; empty slip (no allowance, no extras) → 422
+POST   /v1/admin/payroll/{id}/settle Stamp paid_at (+ method?) and flip the linked task extras to paid.
+                                     Already-settled → 422 (idempotent guard)
+
+# Team provisioning (cockpit side — Task 8; founder-only via manage-users)
+GET    /v1/admin/users               Roster, alphabetical (name, email, role, tier, availability,
+                                     monthly_allowance_myr, deactivated_at, created_at)
+POST   /v1/admin/users               Create {name, email, password (min 12), role, monthly_allowance_myr?}
+PATCH  /v1/admin/users/{user}        Edit {name?, role?, monthly_allowance_myr?} — a role CHANGE revokes
+                                     the teammate's tokens; renaming/re-budgeting the allowance doesn't.
+                                     Demoting the platform's last founder → 422
+POST   /v1/admin/users/{user}/deactivate    Persistent lockout (`deactivated_at` + revokes tokens).
+                                     Self-deactivation → 422; already-deactivated → 422 (idempotent guard)
+POST   /v1/admin/users/{user}/reactivate    Clears the lockout; already-active → 422
+
+# Announcements (cockpit side — Task 6)
+GET    /v1/admin/announcements       All rows, newest first (creator eager-loaded)
+POST   /v1/admin/announcements       Create — title/body/audience required; published boolean sets
+                                     published_at to now() or null
+PATCH  /v1/admin/announcements/{id}  Edit title/body/audience and/or toggle `published` — publishing
+                                     a draft stamps published_at once; re-publishing an already-
+                                     published row keeps its original timestamp; unpublishing clears
+                                     it back to null (draft). No delete endpoint.
 
 # Document generation (see DOCUMENT-GENERATION.md)
 POST /v1/admin/orders/{order}/documents   Sanctum — issue an invoice/receipt
@@ -97,6 +190,41 @@ GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?rang
 /admin/login          Admin auth
 /admin/leads          Lead list (Sanctum-protected)
 /admin/leads/[id]     Lead detail + actions
+/admin/users          Team provisioning — create (marketer|engineer only; founder not creatable from
+                      the UI, though the backend whitelist still allows it), edit (name/role/allowance;
+                      founder rows keep a locked role), deactivate/reactivate (confirm dialog)
+/admin/tasks          Tasks engine — create/assign/edit (slideover), mark bonus paid, delete
+/admin/announcements  Announcements — post/edit (slideover), publish toggle (§12.2). No delete
+/admin/payroll        Payroll — generate a payslip (member + period, with live preview), itemised
+                      ledger (allowance/extras/gross), Settle (confirm). Legacy rows render gross-only
+
+# Team workspace (/team/*) — Task 4 reframed this to five personal
+# destinations; inquiries/referrals/marketing pages were removed (admin-owned).
+/team/login           Team auth
+/team/forgot          "Forgot password" — notifies the founder, no self-service reset
+/team                 Home — company announcements feed (published + audience team|all, newest first)
+/team/tasks           Tasks kanban — Available → In progress → Complete (payment is a card badge, not a column)
+/team/calendar        Calendar — month view over task deadlines + completed-date log (no table of its own)
+/team/payslips        Own payslips (allowance/extras/gross breakdown) + a "Pending extras" block on top
+/team/profile         Self-service profile — display name + availability (Available|Busy)
+
+# /partners is the PUBLIC marketing landing (pages/public/partners/index.vue,
+# stripPublicPrefix'd), not the portal — a route collision with the logged-in
+# dashboard was resolved by moving the dashboard to /partners/home. A
+# logged-in partner hitting bare /partners is auto-forwarded there client-side
+# (localStorage token check in the public page's onMounted; SSR-safe, no SEO
+# impact). Task 9 made the portal type-aware (referrer + investor share one
+# login); the old single /partners/portal page 301s to /partners/home.
+# partnersNav flags each item shared|referrer|investor; the partner-type route
+# middleware bounces the wrong type to /partners/home (the API 403s regardless).
+/partners/login       Partner auth — email + 8-digit passcode (glass card, both types)
+/partners/forgot      Self-service passcode reissue
+/partners/home        Dashboard — referrer: stats trio + ?ref link; investor: portfolio-coming-online
+/partners/profile     Shared — type badge + email; referrer: code/tier/commission; investor: company
+/partners/referrals   Referrer-only — referral list + "refer another" form
+/partners/earnings    Referrer-only — earned/estimated totals, commission bands, per-referral breakdown
+/partners/documents   Investor-only — deal-room shelf (premium empty state; no content model yet)
+/partners/reports     Investor-only — performance reports (premium empty state; no content model yet)
 ```
 
 ## Key services

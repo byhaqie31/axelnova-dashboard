@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class ServiceAddonsController extends Controller
@@ -37,6 +38,7 @@ class ServiceAddonsController extends Controller
                 [],
                 (int) ($data['sort_order'] ?? 0),
             );
+
             return ServiceAddon::create($data);
         });
 
@@ -60,6 +62,8 @@ class ServiceAddonsController extends Controller
 
     public function destroy(ServiceAddon $serviceAddon): JsonResponse
     {
+        Gate::authorize('hard-delete');
+
         DB::transaction(function () use ($serviceAddon) {
             $oldOrder = (int) $serviceAddon->sort_order;
             $serviceAddon->delete();

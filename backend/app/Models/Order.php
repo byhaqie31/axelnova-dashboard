@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use SoftDeletes;
+    use HasFactory, RecordsActivity, SoftDeletes;
 
     protected $fillable = [
         'order_number',
@@ -62,8 +64,13 @@ class Order extends Model
         return Attribute::get(function () {
             $paid = (float) $this->amount_paid_myr;
             $total = (float) $this->final_amount_myr;
-            if ($paid <= 0) return 'unpaid';
-            if ($total > 0 && $paid >= $total) return 'paid';
+            if ($paid <= 0) {
+                return 'unpaid';
+            }
+            if ($total > 0 && $paid >= $total) {
+                return 'paid';
+            }
+
             return 'deposit_paid';
         });
     }

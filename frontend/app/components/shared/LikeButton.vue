@@ -64,7 +64,7 @@ async function toggle() {
     count.value = res.count
     const map = readMap()
     if (res.liked) map[storeKey.value] = true
-    else delete map[storeKey.value]
+    else Reflect.deleteProperty(map, storeKey.value)
     localStorage.setItem(STORE, JSON.stringify(map))
   }
   catch {

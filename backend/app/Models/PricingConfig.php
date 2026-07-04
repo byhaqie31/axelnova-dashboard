@@ -4,12 +4,15 @@ namespace App\Models;
 
 use App\Observers\PricingConfigObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[ObservedBy([PricingConfigObserver::class])]
 class PricingConfig extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['version', 'config', 'active', 'notes'];
 
     protected function casts(): array

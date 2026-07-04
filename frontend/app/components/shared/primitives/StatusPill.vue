@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type EntityType = 'lead' | 'quotation' | 'project' | 'invoice' | 'milestone'
+type EntityType = 'lead' | 'quotation' | 'project' | 'invoice' | 'milestone' | 'referral' | 'referral_partner' | 'task' | 'user'
 type Tone = 'neutral' | 'info' | 'warn' | 'success' | 'danger'
 
 const props = defineProps<{
@@ -46,6 +46,36 @@ const map: Record<EntityType, Record<string, Tone>> = {
     review: 'warn',
     completed: 'success',
     blocked: 'danger',
+  },
+  // Referral submission lifecycle (admin.referrals table).
+  referral: {
+    new: 'info',
+    contacted: 'warn',
+    qualified: 'info',
+    draft: 'neutral',
+    converted: 'success',
+    rejected: 'danger',
+  },
+  // Referral partner account lifecycle (admin.referral_partners table).
+  referral_partner: {
+    pending: 'warn',
+    active: 'success',
+    paused: 'neutral',
+  },
+  // Task workflow (Task 5 — tasks table). payment_pending is the "work done,
+  // bonus owed" state, hence warn; paid closes the money loop.
+  task: {
+    open: 'neutral',
+    in_progress: 'info',
+    completed: 'success',
+    payment_pending: 'warn',
+    paid: 'success',
+  },
+  // Team account lifecycle (Task 8 — users.deactivated_at). Derived client-side
+  // from the timestamp, not a stored enum — see /admin/users.
+  user: {
+    active: 'success',
+    deactivated: 'danger',
   },
 }
 

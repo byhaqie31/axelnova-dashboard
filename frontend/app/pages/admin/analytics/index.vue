@@ -62,11 +62,13 @@ const planned = [
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Traffic, engagement, and conversion signals.</p>
       </div>
       <div class="flex gap-1.5">
-        <button type="button" class="standard-pill" :style="range === '7d'
+        <button
+type="button" class="standard-pill" :style="range === '7d'
           ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
           : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
           @click="range = '7d'">Last 7 days</button>
-        <button type="button" class="standard-pill" :style="range === '30d'
+        <button
+type="button" class="standard-pill" :style="range === '30d'
           ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
           : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
           @click="range = '30d'">Last 30 days</button>

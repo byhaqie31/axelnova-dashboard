@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class ServiceCategoriesController extends Controller
@@ -40,8 +41,11 @@ class ServiceCategoriesController extends Controller
             if ($category->is_default) {
                 ServiceCategory::where('id', '!=', $category->id)->update(['is_default' => false]);
             }
+
             return $category;
         });
+
+        $category->logActivity('service_category.created', ['name' => $category->name]);
 
         return new ServiceCategoryResource($category);
     }
@@ -60,12 +64,17 @@ class ServiceCategoriesController extends Controller
             }
         });
 
+        $serviceCategory->logActivity('service_category.updated', ['name' => $serviceCategory->name]);
+
         return new ServiceCategoryResource($serviceCategory);
     }
 
     public function destroy(ServiceCategory $serviceCategory): JsonResponse
     {
+        Gate::authorize('hard-delete');
+
         DB::transaction(function () use ($serviceCategory) {
+            $serviceCategory->logActivity('service_category.deleted', ['name' => $serviceCategory->name]);
             $oldOrder = (int) $serviceCategory->sort_order;
             $serviceCategory->delete();
             SortOrder::removeFromScope(ServiceCategory::class, [], $oldOrder);

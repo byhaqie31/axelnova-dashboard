@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Payment;
+use App\Models\Referral;
 
 /**
  * The single writer of the derived paid caches (`orders.amount_paid_myr`,
@@ -39,6 +40,19 @@ class PaymentObserver
             // refund can never drive the cache negative.
             $paid = (float) $order->payments()->succeeded()->sum('amount_myr');
             $order->forceFill(['amount_paid_myr' => max(0, $paid)])->saveQuietly();
+
+            // A referral earns once the deposit lands, and stops if fully refunded.
+            if ($order->quotation_id) {
+                $referral = Referral::where('quotation_id', $order->quotation_id)->first();
+                if ($referral) {
+                    if ($paid > 0 && $referral->status === 'draft') {
+                        $referral->update(['status' => 'converted']);
+                        $referral->logActivity('referral.converted', ['order_id' => $order->id]);
+                    } elseif ($paid <= 0 && $referral->status === 'converted') {
+                        $referral->update(['status' => 'draft']);
+                    }
+                }
+            }
         }
 
         $invoice = $payment->invoice()->first();

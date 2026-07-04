@@ -56,11 +56,13 @@ onBeforeUnmount(() => { if (blobUrl) URL.revokeObjectURL(blobUrl) })
     <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-b shrink-0" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
       <div class="flex items-center gap-2 min-w-0">
         <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">PDF preview</p>
-        <span v-if="stale && !generating" class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+        <span
+v-if="stale && !generating" class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
           :style="{ color: 'var(--color-warning)', background: 'var(--color-warning-soft, var(--color-bg-secondary))' }">Draft changed</span>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
-        <button type="button" class="btn-pill btn-pill-ghost text-[11px]" style="height: 28px; padding: 0 12px;"
+        <button
+type="button" class="btn-pill btn-pill-ghost text-[11px]" style="height: 28px; padding: 0 12px;"
           :class="{ 'opacity-50': generating || !data }" :disabled="generating || !data" @click="generate">
           <UIcon :name="generating ? 'i-lucide-loader-circle' : 'i-lucide-refresh-cw'" class="size-3.5" :class="{ 'animate-spin': generating }" />
           {{ generating ? 'Generating…' : 'Refresh' }}
@@ -84,7 +86,8 @@ onBeforeUnmount(() => { if (blobUrl) URL.revokeObjectURL(blobUrl) })
       />
       <div v-else class="absolute inset-0 grid place-items-center text-center px-6" style="color: var(--color-text-tertiary);">
         <div>
-          <UIcon :name="generating ? 'i-lucide-loader-circle' : (failed ? 'i-lucide-triangle-alert' : 'i-lucide-file-text')"
+          <UIcon
+:name="generating ? 'i-lucide-loader-circle' : (failed ? 'i-lucide-triangle-alert' : 'i-lucide-file-text')"
             class="size-7 mx-auto mb-2" :class="{ 'animate-spin': generating }" />
           <p class="text-[12px]">
             {{ generating ? 'Generating preview…' : failed ? 'Couldn’t render the preview.' : (data ? 'Generating preview…' : 'Nothing to preview yet.') }}
@@ -93,7 +96,8 @@ onBeforeUnmount(() => { if (blobUrl) URL.revokeObjectURL(blobUrl) })
         </div>
       </div>
 
-      <div v-if="generating && pdfUrl" class="absolute top-2 right-2 text-[10px] px-2 py-1 rounded-full"
+      <div
+v-if="generating && pdfUrl" class="absolute top-2 right-2 text-[10px] px-2 py-1 rounded-full"
         :style="{ background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)', boxShadow: 'var(--shadow-card-hover)' }">
         Updating…
       </div>

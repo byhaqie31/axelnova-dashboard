@@ -12,19 +12,17 @@ frontend/.env.*
 !frontend/.env.production.example
 
 # ── Backend (Laravel) ────────────────────────────────────────
+# storage/ and bootstrap/cache contents are ignored by committed .gitignore
+# keepers INSIDE each dir — the empty skeleton must exist in fresh checkouts
+# (CI, new clones) or `artisan package:discover` fails on composer install.
 backend/vendor
-backend/storage/app/public
-backend/storage/framework/cache
-backend/storage/framework/sessions
-backend/storage/framework/views
-backend/bootstrap/cache
 backend/.env
 backend/.env.*
 !backend/.env.example
 !backend/.env.production.example
 
 # ── Logs ─────────────────────────────────────────────────────
-logs
+/logs
 *.log
 
 # ── Editor ───────────────────────────────────────────────────
@@ -39,3 +37,4 @@ logs
 
 # ── Claude Code ──────────────────────────────────────────────
 .claude/settings.local.json
+.superpowers/

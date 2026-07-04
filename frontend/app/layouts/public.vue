@@ -378,6 +378,9 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
         </div>
       </div>
     </footer>
+
+    <!-- Consent banner (functional axn_ref attribution cookie is gated on this). -->
+    <CookieConsent />
   </div>
 </template>
 

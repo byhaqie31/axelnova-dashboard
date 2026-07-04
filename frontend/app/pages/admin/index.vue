@@ -1,7 +1,7 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
-
 import { MOTION } from '~/utils/motion'
+
+definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
 const motion = useMotion()
@@ -208,7 +208,7 @@ const tiles = computed<StatTile[]>(() => [
     value: activeReferrals.value === null ? '—' : String(shown.refs),
     hint: 'Excludes rejected',
     icon: 'i-lucide-share-2',
-    to: '/admin/referrals',
+    to: '/admin/referrals?view=referrals',
     cta: 'View referrals',
   },
   {
@@ -350,7 +350,8 @@ const tiles = computed<StatTile[]>(() => [
       <table class="w-full text-left">
         <thead>
           <tr>
-            <th v-for="h in ['Name', 'Project type', 'Status', 'Received']" :key="h"
+            <th
+v-for="h in ['Name', 'Project type', 'Status', 'Received']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>

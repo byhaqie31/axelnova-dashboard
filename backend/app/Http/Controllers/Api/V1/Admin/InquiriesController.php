@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\InquiryResource;
 use App\Models\Inquiry;
+use App\Services\Referrals\ReferralAttributionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -56,7 +57,9 @@ class InquiriesController extends Controller
             'status' => ['required', 'in:new,reviewing,quoted,archived'],
         ]);
 
+        $from = $inquiry->status;
         $inquiry->update(['status' => $request->status]);
+        $inquiry->logActivity('inquiry.status', ['from' => $from, 'to' => $inquiry->status]);
 
         return response()->json(['message' => 'Status updated.', 'status' => $inquiry->status]);
     }
@@ -76,6 +79,10 @@ class InquiriesController extends Controller
             'quotation_id' => $data['quotation_id'],
             'status' => 'quoted',
         ]);
+
+        $inquiry = $inquiry->fresh();
+        app(ReferralAttributionService::class)
+            ->attribute($inquiry->quotation, $inquiry);
 
         return new InquiryResource($inquiry->load('quotation'));
     }

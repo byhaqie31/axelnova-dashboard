@@ -86,6 +86,13 @@ These flip automatically with `:root` / `.dark`. Use for any sticky overlay surf
 
 **Rule:** never bind these to `colorMode.value` in JS — drive them only through CSS variables to avoid hydration FOUC.
 
+### Component-family tokens
+
+Larger component families get their own prefixed token group in `main.css` (light + `.dark`), documented with the family's pattern section:
+
+- `--kanban-*` — team kanban board surfaces (§12.14)
+- `--calendar-*` — team calendar grid + day chips (§12.15)
+
 ---
 
 ## 3. Typography
@@ -159,6 +166,10 @@ All buttons are 44pt tall (Apple HIG touch target), pill-shaped (`border-radius:
 
 **Rule:** one primary CTA per screen. Secondary actions are ghost or silver; WhatsApp/positive actions use success green.
 
+**Form-control height parity.** Inputs, selects, and buttons share a **44px** control height so they line up on the same row — buttons via `.btn-pill` (44px), text fields via `.contact-input` (44px). Never pair a `.btn-pill` with an ad-hoc short input (they misalign, as the referral "Tie" control did): use `.contact-input`, or set the field to `height: 44px`. When an input + button don't fit comfortably side by side, stack them full-width instead of shrinking either below 44px.
+
+**Number inputs have no spinner.** The browser's up/down spin arrows are stripped globally in `main.css` — they never fit this UI. Use `type="number"` + `inputmode="numeric"` for a clean field with a numeric keypad on mobile.
+
 ### 6.1 Glass nav & chip surfaces
 
 Two pill-family surfaces for floating overlays (introduced by the hero `HeroEpoch`). Both are theme-driven so they read in light **and** dark — never bind their backgrounds to `colorMode` in JS.
@@ -221,6 +232,12 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 - Wraps the canonical `.brand-logo-glow` drop-shadow — never reimplement the gradient/glow inline
 - Used in `public.vue` header AND footer, `admin.vue` topbar, `portal.vue` header
 
+### `VideoBackground`
+- Full-bleed ambient mp4 layer behind page content — fixed, click-through, `z-index:-1`, `object-fit: cover`.
+- Solid `--color-bg` always paints underneath, so a failed load degrades to the app background.
+- Forces `muted` on mount (hydration can drop the prop and break autoplay); paused on first frame under `prefers-reduced-motion`.
+- Used by the admin / team / partner login screens, each passing its own `src` footage behind the liquid-glass sign-in card.
+
 ### `SectionHeader`
 - `eyebrow` (uppercase gradient)
 - `title` (h2)
@@ -236,7 +253,8 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 ### Domain primitives
 
 - **`PriceTag`** — MYR-formatted (Intl `ms-MY`). Props: `min`, `max?`, `prefix?`, `compact?`. Renders ranges with en-dash, prefixed values with em-dash separator.
-- **`StatusPill`** — status badge with semantic tone mapping. Props: `status`, `type` (`lead` | `quotation` | `project` | `invoice` | `milestone`). Reads existing CSS tokens (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`); no new color tokens introduced.
+- **`StatusPill`** — status badge with semantic tone mapping. Props: `status`, `type` (`lead` | `quotation` | `project` | `invoice` | `milestone` | `referral` | `referral_partner` | `task` | `user`). Reads existing CSS tokens (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`); no new color tokens introduced. `referral` / `referral_partner` were added for the `/admin/referrals` hub (Task 2 of the portal restructure) — first real adoption of this primitive; earlier admin pages still use the older `AdminStatusPill.vue` (data-attribute driven, `main.css` tokens) and haven't been migrated. `task` (Task 5 — the tasks engine) maps the workflow spine: `open` neutral, `in_progress` info, `completed`/`paid` success, `payment_pending` warn. `user` (Task 8 — `/admin/users`) is derived client-side from `deactivated_at`, not a stored enum: `active` success, `deactivated` danger. Role itself (founder/marketer/engineer) is a separate chip built from `data/workspaceRoles.ts`, not this primitive — founder gets a distinct warning/gold tone + crown icon.
+- **`TaskPayBadge`** — the task payment badge (Task 5, §12.14). Props: `state` (`none` | `pending` | `paid`), `amount` (RM, nullable). Renders **nothing** for `none` — payment is a card badge, never a kanban column, because most tasks carry no extra pay. `pending` reads warning, `paid` reads success; amount formatting matches `PriceTag` (Intl `ms-MY`, no cents). Shared by the admin tasks table, the team kanban card, and the calendar's completed log.
 - **`ReferenceCode`** — monospace document-code display (e.g. `AXNQ-2026-0012`) with click-to-copy via `useClipboard`. Renders any string; falls back to plain span when `copyable={false}`.
 - **`DateRange`** — Intl `en-MY` formatted dates. Formats: `short`, `long`, `relative`. Accepts optional `prefix` ("Valid until", "Issued").
 
@@ -431,6 +449,9 @@ Replaces `<select>` for finite enumerations: ETA units, statuses, units of measu
 **Where it applies today:**
 - `eta_unit` in [packages/[id].vue](frontend/app/pages/admin/services/packages/[id].vue) (4 options, generic accent tone)
 - `form.status` in [projects/[id].vue](frontend/app/pages/admin/projects/[id].vue) (4 options, per-status semantic tones)
+- `form.availability` in [team/profile.vue](frontend/app/pages/team/profile.vue) (2 options — Available/Busy, per-status semantic tones from [data/availabilityStatuses.ts](frontend/app/data/availabilityStatuses.ts); the same list drives the read-only dot/pill in [layouts/team.vue](frontend/app/layouts/team.vue))
+- `form.priority` in [admin/tasks/index.vue](frontend/app/pages/admin/tasks/index.vue) (3 options, per-priority semantic tones from [data/tasks.ts](frontend/app/data/tasks.ts))
+- `form.audience` in [admin/announcements/index.vue](frontend/app/pages/admin/announcements/index.vue) (3 options — Team/Partners/Everyone, per-audience semantic tones from [data/announcements.ts](frontend/app/data/announcements.ts); the same list drives the read-only audience pill in the list view)
 
 ### 12.7 Popover dropdown (variable / longer lists)
 
@@ -477,6 +498,10 @@ The `admin.vue` layout is the only place these patterns live; no need to duplica
 - The inner `<nav>` is `overflow-y-auto` so long nav lists scroll inside the pinned rail instead of pushing it taller than the viewport. Only the main content column scrolls with the page.
 
 **Sidebar nav items.** Use the global `.admin-nav-item` class (in `main.css`), not per-item inline `:style`. The selected state is driven by `:data-active="isAdminNavActive(item, route.path)"` — an attribute, not an inline background — so hover (`--color-bg-secondary`) still works on inactive items (an inline `background` would always beat a `:hover` class). Items are 44px tall, `14px` text, `size-4.5` icon, `12px` radius; active gets `--color-accent-soft` bg + accent text + `600` weight. The mobile drawer reuses the same class (including the Sign-out button).
+
+**Grouped, collapsible nav (Phase 3a; regrouped in Task 1 of the portal restructure).** `adminNav` is `NavGroup[]` (`data/adminNav.ts`) — seven workflow groups (Overview · Sales pipeline · Billing · Growth · Partners · Catalog · Workspace). Render via `visibleAdminNav(role)` (two-level role filter, group + item; permissive until Phase 0 wires a role). Group headers use the global `.admin-nav-group-label` class: muted `--color-text-tertiary`, `11px` uppercase, `0.06em` tracking, with a chevron that rotates `-90deg → 0` on open. The header **is** the collapse toggle. One accent only (the active item) — no per-group colors, no per-item badges. Open/closed state persists in the `axn_admin_nav_groups` cookie (SSR-resolved, default open); the group owning the active route is force-open and can't be collapsed (`groupHasActive` short-circuits `toggleGroup`). The collapsed desktop rail drops labels and flattens groups to icons separated by a hairline.
+
+**Collapsed-rail tooltips.** Every icon in the collapsed rail wraps its `NuxtLink` in a `UTooltip` (`:text="item.label"`, `:content="{ side: 'right', sideOffset: 10 }"`, `:delay-duration="150"`) so the icon names itself on hover. Style via the global `.admin-nav-tooltip` class passed as `:ui="{ content: 'admin-nav-tooltip' }"` — elevated surface (`--color-bg-elevated` + `--color-border` + `--shadow-lg`), `12px`/500 text, `8px` radius. Nuxt UI teleports the tooltip to `<body>`, which is why it works despite the rail's `overflow` clip and why it must carry its own tokened surface instead of inheriting from the sidebar. Don't fall back to the native `title` attribute (slow, unstyled, double-tooltips against this one). Both `admin.vue` and `team.vue` rails use the identical pattern.
 
 **Header brand marker.**
 - Uses the shared `<BrandMark to="/admin" wordmark="Admin Portal" />` (default variant — same `size-7.5` icon + `text-[15px]` wordmark as the public navbar) so the favicon + drop-shadow glow + gradient text treatment stay visually identical to public.
@@ -564,6 +589,73 @@ Every admin index page uses the **same filter row** so they read identically —
 3. [`<AdminStatusFilter>`](frontend/app/components/admin/StatusFilter.vue) — **right**, via `class="ml-auto"`, carrying `:total` (record count) + the primary Status filter.
 
 `Total | Status` always lives on the right and nothing else does; everything page-specific collapses into the funnel, keeping the row uncluttered at every width.
+
+### 12.12 Query-param pill tabs
+
+The standard "hub page with switchable views" pattern — introduced by the `/admin/referrals` merge (Task 2 of the portal restructure, merging the old `/admin/referral-partners` pages in as a "Referrers" tab alongside "Referrals"). Use this whenever an admin page needs 2–4 mutually-exclusive views of related data on one URL, instead of a native `<select>` or a router-tab library component.
+
+**Anatomy:** a bounded segmented track (`.tab-track`), not a loose row of pills — this is what reads as a single control rather than a filter group (contrast with §12.6, which is intentionally unbounded). Each `.tab-pill` is a plain `<button>`; the active one gets an elevated `--color-bg-elevated` fill + `--shadow-sm`, matching the "hotel lobby" restraint (no accent color, no underline animation — just a subtle raised state).
+
+```vue
+<div class="tab-track" role="tablist" aria-label="…">
+  <button
+    v-for="tab in TABS" :key="tab.value" type="button" role="tab"
+    :aria-selected="activeView === tab.value"
+    class="tab-pill"
+    @click="setView(tab.value)"
+  >{{ tab.label }}</button>
+</div>
+```
+
+**State contract — query-param is the single source of truth:**
+- Tab state lives in `?view=<value>`, read via `computed(() => normalizeView(route.query.view))` — not a separate `ref` kept in sync with a watcher. One source of truth avoids drift bugs.
+- `normalizeView()` maps anything that isn't a recognised value (missing, malformed, stale) to the **default** — the first tab. Never throw or redirect on a bad param; just render the default.
+- Switching tabs calls `router.replace({ query: { ...route.query, view } })` — **replace, not push**, so clicking between tabs doesn't spam browser-back history with one entry per click.
+- Because `route.query` is populated from the request URL during SSR, a hard refresh on a deep link (`/admin/referrals?view=referrers`) renders the correct tab server-side — no client-only flash.
+
+**Where it applies today:** `/admin/referrals` (`Referrers` | `Referrals`, default `Referrers`). First use — the CSS lives scoped on that page (`<style scoped>`), not yet in `main.css`. Promote `.tab-track`/`.tab-pill` to global classes (mirroring the §12.9 mobile-drawer precedent: single-use patterns stay scoped, promote once a second page needs them) if another hub page adopts this.
+
+### 12.13 Slideover panel
+
+A right-edge overlay for a detail view that's one click deep from a list row, without leaving the list — introduced by the same `/admin/referrals` merge (the old `/admin/referral-partners/[id].vue` full page became the Referrers tab's slideover). Chosen over `@nuxt/ui`'s `USlideover` because this codebase has no prior `USlideover` usage and its theming is Tailwind-slot based (`ui` prop overrides), which fights the CSS-var token system rather than consuming it; the bespoke `Teleport` + scrim + sliding-panel shape was already proven on this exact page (the quotation-picker drawer in `referrals/[id].vue`) and on confirm dialogs across admin pages, so generalising that shape keeps one visual language instead of introducing a second.
+
+**Anatomy:**
+- `Teleport to="body"` + `<Transition name="slideover">` wrapping a scrim (`.slideover-scrim`, `rgba(0,0,0,0.4)` + `blur(3px)`, click-through only via `@click.self` so clicks inside the panel don't close it) and the panel itself (`.slideover-panel`, `width: 100%; max-width: 480px`, right-aligned via the scrim's `flex justify-end`, `height: 100%`, `box-shadow: var(--shadow-lg)`).
+- Panel structure: `.slideover-head` (title/subtitle + `.slideover-close` circular icon button) → `.slideover-body` (`flex: 1; overflow-y: auto`) for the actual content.
+- At 375px the panel is naturally full-bleed (`100%` < `480px` cap); no separate mobile layout needed — this is why the pattern works without a `hidden md:block` / `md:hidden` split.
+
+**Motion:** dashboard register (§8) — scrim opacity `0.3s ease`, panel `transform: translateX(100% → 0)` over `0.35s cubic-bezier(0.32, 0.72, 0, 1)` (same curve as the quotation-picker drawer). Honor `prefers-reduced-motion: reduce` (drop both transitions).
+
+**Layering with a confirm dialog.** If an action inside the slideover needs a confirm-before-act step (e.g. approve / reset passcode), the confirm overlay must sit *above* the slideover: slideover scrim `z-index: 90`, confirm overlay `z-index: 100` (same two-layer convention as the tie/untie confirm above the quotation-picker drawer in `referrals/[id].vue`). Wire `Escape` to close the topmost layer first (confirm, if open) before the slideover.
+
+**Where it applies today:** `/admin/referrals` (Referrers tab → referrer detail), `/admin/tasks` (create/edit task panel — second adopter, Task 5), `/admin/announcements` (create/edit panel — third adopter, Task 6), and `/admin/users` (create/edit user panel — fourth adopter, Task 8; same class names + motion, CSS still scoped per page). Four scoped copies now exist, which is the trigger point for the "next page that adopts it" promotion rule above — promoting `.slideover-*` to global classes in `main.css` and stripping all four scoped copies is queued as a follow-up sweep, not done in this pass.
+
+### 12.14 Team kanban board
+
+The `/team/tasks` board (Task 5 — the tasks engine). Three **work** columns only — **Available → In progress → Complete** — moved by buttons, not drag-and-drop (premium-minimal, and buttons survive 375px + screen readers where DnD doesn't). **Payment is a card badge, never a column**: most tasks carry no extra pay, so a "payment" column would sit empty and misread the board as a money pipeline. The badge is the `TaskPayBadge` primitive (§7): `none` renders nothing; `pending`/`paid` render the RM amount + state chip (warning / success).
+
+**Tokens (`main.css`, light + `.dark`):** the `--kanban-*` family — `--kanban-col-bg` / `--kanban-col-border` (columns are quiet sunken wells) and `--kanban-card-bg` / `--kanban-card-border` (cards are elevated surfaces that pop off them, `--shadow-xs`). Never hardcode these surfaces.
+
+**Anatomy:** `.kanban-col` (16px radius well, 12px padding) → `.kanban-col-head` (icon + label + `.kanban-count` chip) → a `flex flex-col gap-2.5` stack of `.kanban-card`s (12px radius, 14px padding). Card contents top-to-bottom: title (13px semibold), 2-line clamped description, `.kanban-card-meta` row (priority tint chip from `data/tasks.ts`, relative deadline — overdue reads `--color-danger` — duration estimate, `TaskPayBadge`), then the action button(s).
+
+**Column semantics + actions:**
+- **Available** = the shared pool (open + unassigned, action **Pick up** → claim: assignee=me + in_progress in one gesture) *plus* my admin-assigned-but-unstarted tasks, listed first with an "Assigned to you" tag and a **Start** action.
+- **In progress** = my in-flight tasks. **Complete…** opens a dialog with a *required* note textarea (the note becomes a timestamped line on the task log); **Release** returns the task to the pool (unassigns).
+- **Complete** = my `completed` / `payment_pending` / `paid` tasks — read-only cards at `opacity: 0.82`, status via `StatusPill type="task"`.
+
+**Responsive:** desktop is a 3-col grid (`grid-cols-1 md:grid-cols-3`); below 768px the columns **stack vertically, Available first** — chosen over horizontal scroll-snap because a single scroll axis is calmer and the pool ("what can I grab?") deserves the first screenful.
+
+**A stale claim** (someone else picked the task up first) surfaces as a 409 → error toast + board refetch; the card simply disappears.
+
+### 12.15 Team calendar
+
+The `/team/calendar` month view (Task 5) — a **view over the tasks table** (deadlines + completed dates), no table of its own. Data comes from the same `GET /v1/team/tasks` feed as the kanban.
+
+**Tokens (`main.css`, light + `.dark`):** the `--calendar-*` family — `--calendar-cell-bg` / `--calendar-cell-muted-bg` (in-month vs neighbour-month cells), `--calendar-grid-border`, `--calendar-today-ring` (accent circle on today's day number / accent border on today's agenda card), and the chip pair `--calendar-chip-mine-{fg,bg}` (accent — my tasks) vs `--calendar-chip-pool-{fg,bg}` (neutral — unclaimed pool tasks), so "mine vs could-be-mine" is one glance.
+
+**Anatomy:** header row = title + month nav (`.cal-nav-btn` circular prev/next + a ghost **Today** pill + the month label). Desktop grid: Monday-first 7-col, weekday header strip, `.cal-cell` (min-height 96px) holding `.cal-daynum` (today gets the ring fill) and up to **3** `.cal-chip`s (truncated title + a 5px priority-tinted dot from `data/tasks.ts`) with a "+n more" overflow line. Below the grid, a **Completed in {month}** log: one row per task completed in the visible month — check icon + title + `TaskPayBadge` + completion date — inside a divided `--color-bg-elevated` card.
+
+**Responsive:** below 768px the grid gives way to a **stacked agenda list** (only the days of the visible month that carry deadlines, each a card with its chips; today's card border uses the today ring token) — chosen over dots-in-a-grid because a list needs no tap-to-reveal step at 375px.
 
 ---
 

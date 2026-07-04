@@ -25,6 +25,7 @@ This repo is documentation-rich. Don't duplicate what's already written:
 - [docs/global/README.md](../docs/global/README.md) — repo layout, full local-dev orchestration, common gotchas
 - [docs/global/ARCHITECTURE.md](../docs/global/ARCHITECTURE.md) — DB tables, API routes, frontend routes, queued job flow, key services
 - [docs/global/DEPLOY.md](../docs/global/DEPLOY.md) — VPS topology, CI deploy flow, rollback, ops cheatsheet
+- [docs/global/CI-AND-TESTING.md](../docs/global/CI-AND-TESTING.md) — PR quality gates (Pint/PHPUnit/ESLint/vue-tsc/audits), how to run the test suites, MySQL-only test DB, audit-ignore policy
 - [docs/global/QUOTE_BUILDER.md](../docs/global/QUOTE_BUILDER.md) — pricing formula, calculation order, how to update prices/packages/add-ons
 - [docs/global/PAYMENTS-LEDGER.md](../docs/global/PAYMENTS-LEDGER.md) — payments ledger model, `PaymentObserver` (sole writer of paid caches), `AXNI`/`AXNR`/`AXNP` numbering, build phases
 - [docs/frontend/UI-STANDARDS.md](../docs/frontend/UI-STANDARDS.md) — design tokens, color, typography, motion (single source of truth for UI decisions)

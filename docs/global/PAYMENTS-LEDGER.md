@@ -23,6 +23,7 @@ Design rules:
 - **Receipts anchor to the payment, never the invoice.** Trigger is `payment.succeeded`. `receipts.invoice_id` is kept for display/allocation only — so a deposit paid before any invoice exists still produces a receipt.
 - **Order/invoice paid amounts are derived caches.** Exactly one writer — `PaymentObserver`. No endpoint edits a paid amount directly (that was the old drift bug).
 - **No `transactions` table.** `payments` *is* the ledger; no double-entry machinery.
+- **`payments` is client REVENUE only.** Team compensation (payslips) lives in `payroll_entries` (Task 7 — allowance snapshot + settled task extras) and is deliberately **not** part of this ledger; the settled payslip is itself the team-comp expense record. See [ARCHITECTURE.md](./ARCHITECTURE.md#team-workspace-portal-restructure-task-567).
 
 ## Build status
 

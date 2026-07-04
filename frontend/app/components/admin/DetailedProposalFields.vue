@@ -152,10 +152,12 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
         <div class="flex items-center gap-2">
           <input v-model="g.eyebrow" type="text" placeholder="Eyebrow (optional, e.g. BASIC SEO)" class="contact-input flex-1 min-w-0 text-[12px]" :style="fieldStyle">
           <div class="inline-flex shrink-0 items-center rounded-lg border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
-            <button type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
+            <button
+type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
               :style="g.columns === 1 ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-secondary)' }"
               @click="g.columns = 1">1 col</button>
-            <button type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
+            <button
+type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
               :style="g.columns === 2 ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-secondary)' }"
               @click="g.columns = 2">2 col</button>
           </div>

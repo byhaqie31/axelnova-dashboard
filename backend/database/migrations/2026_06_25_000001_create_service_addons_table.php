@@ -28,7 +28,7 @@ return new class extends Migration
         // Promote the existing hardcoded add-ons immediately (prod auto-runs
         // migrations but not seeders) so the admin list and the builder agree on
         // deploy. Idempotent — re-running the seeder via db:seed is a no-op.
-        (new ServiceAddonsSeeder())->run();
+        (new ServiceAddonsSeeder)->run();
     }
 
     public function down(): void

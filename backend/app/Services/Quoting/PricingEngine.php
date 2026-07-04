@@ -88,7 +88,7 @@ final class PricingEngine
         $addonDefs = $this->buildAddons();
         $rushMultiplier = (float) ($cfg['rush_multiplier'] ?? 1.20);
 
-        if (!isset($packages[$input->packageKey])) {
+        if (! isset($packages[$input->packageKey])) {
             throw new InvalidArgumentException("Unknown package key: {$input->packageKey}");
         }
 
@@ -102,14 +102,14 @@ final class PricingEngine
         $breakdown = [['Base: '.($base['name'] ?? $input->packageKey), $min, $max]];
 
         foreach ($input->modifiers as $key => $value) {
-            if (!isset($modifierDefs[$key])) {
+            if (! isset($modifierDefs[$key])) {
                 continue;
             }
 
             $def = $modifierDefs[$key];
             $appliesTo = $def['applies_to'] ?? 'all';
 
-            if ($appliesTo !== 'all' && !in_array($input->packageKey, (array) $appliesTo, true)) {
+            if ($appliesTo !== 'all' && ! in_array($input->packageKey, (array) $appliesTo, true)) {
                 continue;
             }
 
@@ -137,7 +137,7 @@ final class PricingEngine
         $catSlug = $this->packageCategories()[$input->packageKey] ?? null;
         foreach ($this->buildScopeFields()[$catSlug] ?? [] as $field) {
             $appliesTo = $field['applies_to'];
-            if ($appliesTo !== 'all' && !in_array($input->packageKey, (array) $appliesTo, true)) {
+            if ($appliesTo !== 'all' && ! in_array($input->packageKey, (array) $appliesTo, true)) {
                 continue;
             }
             $fc = $field['config'];
@@ -173,7 +173,7 @@ final class PricingEngine
         }
 
         foreach ($input->addonKeys as $addonKey) {
-            if (!isset($addonDefs[$addonKey])) {
+            if (! isset($addonDefs[$addonKey])) {
                 continue;
             }
             $addon = $addonDefs[$addonKey];
@@ -258,7 +258,7 @@ final class PricingEngine
 
         foreach ($packages as $p) {
             $key = $p->quote_key['package'] ?? null;
-            if (!$key) {
+            if (! $key) {
                 continue;
             }
             $merged[$key] = [
@@ -293,7 +293,7 @@ final class PricingEngine
         $merged = [];
         // Legacy JSON add-ons that no DB row has taken over.
         foreach ($this->config->config['addons'] ?? [] as $key => $entry) {
-            if (!in_array($key, $claimed, true)) {
+            if (! in_array($key, $claimed, true)) {
                 $merged[$key] = [
                     'amount' => (float) ($entry['amount'] ?? 0),
                     'label' => (string) ($entry['label'] ?? Str::headline($key)),
@@ -334,14 +334,14 @@ final class PricingEngine
         $map = [];
         foreach ($rows as $f) {
             $slug = $f->category?->slug;
-            if (!$slug) {
+            if (! $slug) {
                 continue;
             }
             $map[$slug][] = [
                 'field_key' => $f->field_key,
                 'label' => $f->label,
                 'type' => $f->type,
-                'applies_to' => !empty($f->applies_to) ? $f->applies_to : 'all',
+                'applies_to' => ! empty($f->applies_to) ? $f->applies_to : 'all',
                 'config' => $f->config ?? [],
             ];
         }

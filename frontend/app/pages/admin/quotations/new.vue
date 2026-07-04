@@ -18,7 +18,8 @@ function onSaved(id: number) {
 
 <template>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+    <NuxtLink
+to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All quotations
     </NuxtLink>

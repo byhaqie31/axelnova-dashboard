@@ -56,7 +56,8 @@ watch(() => filters.search, () => {
 })
 watch(() => filters.page, () => fetchClients())
 
-function onSaved(c: Client) {
+// The modal emits its own (leaner) Client shape — only the id matters here.
+function onSaved(c: { id: number }) {
   // Jump straight to the new client's detail.
   navigateTo(`/admin/clients/${c.id}`)
 }
@@ -90,12 +91,14 @@ function fmtDate(iso: string) {
           <span class="text-[14px] font-bold tabular-nums leading-none" style="color: var(--color-text);">{{ meta.total }}</span>
         </span>
         <div class="inline-flex rounded-full border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-          <button type="button" class="size-7 rounded-full inline-flex items-center justify-center transition-colors"
+          <button
+type="button" class="size-7 rounded-full inline-flex items-center justify-center transition-colors"
             :style="view === 'grid' ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-tertiary)' }"
             aria-label="Grid view" @click="view = 'grid'">
             <UIcon name="i-lucide-layout-grid" class="size-3.5" />
           </button>
-          <button type="button" class="size-7 rounded-full inline-flex items-center justify-center transition-colors"
+          <button
+type="button" class="size-7 rounded-full inline-flex items-center justify-center transition-colors"
             :style="view === 'list' ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-tertiary)' }"
             aria-label="List view" @click="view = 'list'">
             <UIcon name="i-lucide-list" class="size-3.5" />
@@ -155,14 +158,16 @@ function fmtDate(iso: string) {
           <table class="w-full text-left">
             <thead>
               <tr>
-                <th v-for="h in ['Name', 'Email', 'Inquiries', 'Quotations', 'Orders', 'Since']" :key="h"
+                <th
+v-for="h in ['Name', 'Email', 'Inquiries', 'Quotations', 'Orders', 'Since']" :key="h"
                   class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
                   {{ h }}
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="c in clients" :key="c.id"
+              <tr
+v-for="c in clients" :key="c.id"
                 class="admin-table-row"
                 @click="navigateTo(`/admin/clients/${c.id}`)">
                 <td class="px-4 py-3.5">

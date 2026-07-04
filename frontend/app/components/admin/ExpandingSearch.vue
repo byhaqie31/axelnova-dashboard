@@ -16,7 +16,8 @@ const value = computed({
 
 <template>
   <div class="relative w-full sm:w-72">
-    <UIcon name="i-lucide-search" class="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+    <UIcon
+name="i-lucide-search" class="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
       :style="{ color: 'var(--color-text-tertiary)' }" />
     <input
       v-model="value"

@@ -41,7 +41,7 @@ return new class extends Migration
 
         // Step 7 — promote service_package_id to a proper FK now that service_packages exists.
         // Skip if a constraint already exists (rerun safety).
-        if (!$this->foreignKeyExists('quotations', 'service_package_id')) {
+        if (! $this->foreignKeyExists('quotations', 'service_package_id')) {
             Schema::table('quotations', function (Blueprint $table) {
                 $table->foreign('service_package_id')
                     ->references('id')
@@ -101,8 +101,8 @@ return new class extends Migration
     private function foreignKeyExists(string $table, string $column): bool
     {
         $exists = DB::selectOne(
-            "SELECT COUNT(*) AS c FROM information_schema.key_column_usage
-             WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? AND referenced_table_name IS NOT NULL",
+            'SELECT COUNT(*) AS c FROM information_schema.key_column_usage
+             WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? AND referenced_table_name IS NOT NULL',
             [$table, $column],
         );
 

@@ -49,7 +49,14 @@
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
-        "sort-packages": true
+        "sort-packages": true,
+        "audit": {
+            "ignore": {
+                "PKSA-m5cs-t1y6-qpcs": "Fixed only in Laravel 12 — app uses unguessable public_token links, not temporary signed URLs. Re-check at the L12 upgrade.",
+                "PKSA-3r5d-mb8f-1qw9": "Fixed only in Laravel 12 (CRLF in default email rule). Re-check at the L12 upgrade.",
+                "PKSA-mdq4-51ck-6kdq": "Duplicate advisory of PKSA-3r5d-mb8f-1qw9 (CVE-2026-48019). Re-check at the L12 upgrade."
+            }
+        }
     },
     "minimum-stability": "stable",
     "prefer-stable": true

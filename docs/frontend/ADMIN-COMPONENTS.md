@@ -46,12 +46,37 @@ pipeline: [DOCUMENT-GENERATION.md](../global/DOCUMENT-GENERATION.md).
 
 ### Referrals / Inquiries pages
 
-`pages/admin/referrals/{index,[id]}.vue` and `pages/admin/inquiries/{index,[id]}.vue`
-follow the standard list+detail pattern (UI-STANDARDS §12): `AdminExpandingSearch`,
-`AdminStatusFilter`, desktop table + mobile cards, status-pill button group, sticky
-action sidebar. New status-pill tokens were added in `main.css` + `AdminStatusPill.vue`:
+`pages/admin/inquiries/{index,[id]}.vue` follows the standard list+detail
+pattern (UI-STANDARDS §12): `AdminExpandingSearch`, `AdminStatusFilter`,
+desktop table + mobile cards, status-pill button group, sticky action
+sidebar. New status-pill tokens were added in `main.css` + `AdminStatusPill.vue`:
 `qualified`, `converted` (referrals); `reviewing`, `quoted`, `archived` (inquiries);
 `draft`, `sent`, `declined`, `expired` (quotation lifecycle).
+
+**`pages/admin/referrals/index.vue` — the Referrals hub.** Merges the old
+standalone `/admin/referral-partners/{index,[id]}` pages in as a "Referrers"
+tab alongside "Referrals" (Task 2 of the portal restructure — both tables
+(`referrals`, `referral_partners`) and their backend endpoints are unchanged;
+this was a UI-only merge). Two new patterns established here, documented in
+UI-STANDARDS §12.12–§12.13:
+
+- **Tabs** — a query-param pill tab group (`?view=referrers|referrals`,
+  default `referrers`). See §12.12.
+- **Referrer detail** — opens as a **slideover** from the Referrers tab
+  instead of navigating to a separate page (Qie can promote it back to a full
+  page later if it outgrows the panel). Includes the approve / reset-passcode
+  actions the old detail page had, funnelled through the same confirm-dialog
+  as the list row's quick actions. See §12.13.
+- `pages/admin/referrals/[id].vue` (a referral **submission**, not a
+  referrer) is unchanged — it stays a full page. Its "All referrals" back-link
+  now points at `/admin/referrals?view=referrals` (not the bare hub URL,
+  which defaults to the Referrers tab).
+- First real adoption of the `shared/primitives/StatusPill` domain primitive
+  (`type="referral"` / `type="referral_partner"`) and of `ReferenceCode` /
+  `DateRange` from the same folder — see §7 "Domain primitives". The dense
+  desktop table's "Code" column keeps its existing plain mono badge rather
+  than `ReferenceCode`'s copy-button treatment, reserved for the slideover's
+  more spacious detail context.
 
 **Inquiry → quotation (build _or_ link).** On `inquiries/[id].vue`, an unquoted
 inquiry offers two paths: **Build new quotation** (the builder, prefilled — see
@@ -64,3 +89,48 @@ linkable). Linking `POST`s `/v1/admin/inquiries/{inquiry}/quotation` (sets
 status → `reviewing`). Building still links on save via `QuotationsController@store`.
 The `inquiries.quotation_id` FK is one-to-many by design (a quote can cover related
 inquiries) — no uniqueness guard.
+
+### `pages/admin/mockups.vue` — Mockups page
+
+A dedicated page (sidebar: Overview → Mockups, right below Dashboard) listing
+**every** public client prototype from the registry at
+`https://axelnova.my/projects/registry.json` (CORS-open, fetched client-side on
+mount; fetch/filter/sort/fallback live in `composables/useMockupRegistry.ts`,
+shared with the public landing showcase — the page passes `limit: Infinity`
+where the landing keeps the featured six).
+
+- Excludes any registry row with `internal: true` (admin-only mockups must never
+  render), sorts by `updatedAt` desc.
+- Each card links to `https://axelnova.my/{slug}/` in a new tab; an **Open
+  listing** button in the header links to `https://axelnova.my/projects/`.
+- Card accent comes from the registry's `tint {h, c}` → `hsl(h, c*400%, 55%)`,
+  applied as a soft wash on the icon chip (full strength for the icon only).
+- Registry statuses reuse the `AdminStatusPill` vocabulary (`in-review` → `reviewing`,
+  `approved` → `accepted`) so `main.css` pill tokens stay the single source of truth.
+- If the live fetch fails, a frozen 6-item snapshot renders instead — the page
+  never breaks. Empty registry → quiet empty state; loading → shimmer skeleton
+  (disabled under reduced motion).
+
+### Sidebar "View more" launchpad (`layouts/admin.vue`)
+
+The desktop rail is **user-customizable**. **Overview** is `mandatory: true`
+in `data/adminNav.ts` (always in the rail, no pin control); every other group
+carries a pin: pinned groups sit in the rail, unpinned ones live only in the
+launchpad. Data defaults come from `defaultPinned` (omitted = pinned;
+currently **Growth**, **Partners**, and **Workspace** start unpinned — the
+latter two are Task 1's regroup of the former **Business** group, which no
+longer exists); the user's own choices
+are stored in the `axn_admin_nav_pinned` cookie — cookie-backed like the
+other sidebar prefs so it's SSR-resolved with no flash (a DB-backed pref can
+replace the cookie once Phase 0 user profiles land).
+
+A **View more** button pinned at the rail's bottom (chevron points right,
+toward the reveal) **transforms the whole bar**: the aside animates wider
+(464px) and the rail list swaps for a launchpad view — *every* group rendered
+as 4-column icon-tile grids with eyebrow labels, all on one surface. Each
+customizable group's header carries a pin toggle (accent = pinned) that
+updates the rail live. Toggling again (or Esc / click-away / navigating)
+restores the rail. Active tile highlighted; the View more button lights up
+when the current route lives in an unpinned group. Works from both expanded
+and collapsed rail states. The mobile drawer is unaffected — it scrolls and
+always lists every group.
