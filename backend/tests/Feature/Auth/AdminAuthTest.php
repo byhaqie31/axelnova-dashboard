@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,14 +29,13 @@ class AdminAuthTest extends TestCase
         $this->assertSame(['cockpit'], $token->abilities);
     }
 
-    public function test_partner_role_can_login_to_cockpit(): void
+    public function test_partner_is_no_longer_a_valid_role(): void
     {
-        $user = User::factory()->partner()->create();
+        // The `partner` RBAC role was dropped (users.role enum narrowed to
+        // founder/marketer/engineer) — the DB now rejects it outright.
+        $this->expectException(QueryException::class);
 
-        $this->postJson('/api/v1/admin/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ])->assertOk()->assertJsonPath('user.tier', 'cockpit');
+        User::factory()->create(['role' => 'partner']);
     }
 
     public function test_workspace_roles_cannot_login_to_cockpit(): void
@@ -48,6 +48,20 @@ class AdminAuthTest extends TestCase
                 'password' => 'password',
             ])->assertUnprocessable();
         }
+    }
+
+    public function test_a_deactivated_founder_cannot_login(): void
+    {
+        // Task 8 — /admin/users deactivation is a persistent lockout
+        // (`deactivated_at`), not just a signed-out session.
+        $user = User::factory()->founder()->create(['deactivated_at' => now()]);
+
+        $this->postJson('/api/v1/admin/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertUnprocessable();
+
+        $this->assertSame(0, $user->tokens()->count());
     }
 
     public function test_wrong_password_is_rejected(): void

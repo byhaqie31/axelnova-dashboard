@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 /**
  * The audit feed — the append-only activity_log, newest first. Cockpit-visible
- * (founder + partner) via the route group; no per-action gate.
+ * (founder) via the route group; no per-action gate.
  */
 class ActivityController extends Controller
 {

@@ -5,7 +5,7 @@
 // metadata now so Phase 0 (RBAC) can filter without re-touching this file;
 // until a role is wired through `/admin/me`, `visibleAdminNav()` is permissive.
 
-export type Role = 'founder' | 'partner' | 'marketer' | 'engineer'
+export type Role = 'founder' | 'marketer' | 'engineer'
 
 export interface AdminNavItem {
   to: string
@@ -59,7 +59,7 @@ export const adminNav: NavGroup[] = [
     defaultPinned: false,
     items: [
       { to: '/admin/analytics', label: 'Analytics', icon: 'i-lucide-chart-line', matchPrefix: '/admin/analytics' },
-      // Marketing-spend ledger (Phase 5, record-only) — founder + partner see all.
+      // Marketing-spend ledger (Phase 5, record-only) — founder sees all.
       { to: '/admin/marketing', label: 'Marketing', icon: 'i-lucide-megaphone', matchPrefix: '/admin/marketing' },
     ],
   },
@@ -70,7 +70,7 @@ export const adminNav: NavGroup[] = [
     defaultPinned: false,
     items: [
       { to: '/admin/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/admin/referrals' },
-      { to: '/admin/investors', label: 'Investors', icon: 'i-lucide-handshake', matchPrefix: '/admin/investors', roles: ['founder', 'partner'] },
+      { to: '/admin/investors', label: 'Investors', icon: 'i-lucide-handshake', matchPrefix: '/admin/investors', roles: ['founder'] },
     ],
   },
   {
@@ -84,14 +84,14 @@ export const adminNav: NavGroup[] = [
     // Renamed from "Business" (Task 1 of the portal restructure) — internal
     // team/ops surfaces. Investors moved out to Partners above.
     label: 'Workspace',
-    roles: ['founder', 'partner'],
+    roles: ['founder'],
     defaultPinned: false,
     items: [
-      // Users lands in Phase 0 / Task 8 — nav is scaffolded ahead so that
-      // phase only adds the page, not the nav entry.
+      // Team provisioning (Task 8) — create/edit/deactivate teammates, set the
+      // monthly allowance. Founder-only.
       { to: '/admin/users', label: 'Users', icon: 'i-lucide-user-cog', matchPrefix: '/admin/users', roles: ['founder'] },
-      // Payroll ledger (Phase 5 / Task 7, record-only) — founder-only; partners
-      // read their own payslips on /team like everyone else.
+      // Payroll ledger (Phase 5 / Task 7, record-only) — founder-only; everyone
+      // else reads their own payslips on /team.
       { to: '/admin/payroll', label: 'Payroll', icon: 'i-lucide-banknote', matchPrefix: '/admin/payroll', roles: ['founder'] },
       // Tasks + Announcements land in Task 5 / Task 6 — nav is scaffolded
       // ahead so those tasks only add the pages, not the nav entries.

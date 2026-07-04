@@ -5,7 +5,7 @@ export default defineNuxtRouteMiddleware((to) => {
   const token = localStorage.getItem('axn_partner_token')
   if (!token) {
     // Remember where the partner was headed so login can send them back.
-    const query = to.fullPath !== '/partners/portal' ? { redirect: to.fullPath } : undefined
+    const query = to.fullPath !== '/partners' ? { redirect: to.fullPath } : undefined
     return navigateTo({ path: '/partners/login', query })
   }
 })

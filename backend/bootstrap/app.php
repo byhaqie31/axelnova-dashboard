@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\EnsurePartnerType;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -31,6 +32,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => CheckRole::class,
+            // Partner-portal type gate — referrer-only / investor-only endpoints
+            // (runs after auth:external). e.g. 'partner.type:referrer'.
+            'partner.type' => EnsurePartnerType::class,
             // Sanctum token-ability gate. `role:` checks WHO the user is;
             // `abilities:` checks WHICH surface the token was minted for
             // (cockpit / workspace / partner) — without it, a cockpit user's

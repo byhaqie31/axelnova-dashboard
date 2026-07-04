@@ -9,9 +9,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
- * Marketing-spend ledger, cockpit view (Phase 5, record-only): founder +
- * partner see every row and may enter their own. The marketer's enter/see-own
- * surface is Team\ExpensesController — same table, scoped query.
+ * Marketing-spend ledger, cockpit view (Phase 5, record-only): the founder
+ * sees every row and may enter their own. The team's own enter/see-own surface
+ * (Team\ExpensesController) was removed in Task 4 of the portal restructure —
+ * the workspace no longer touches operational/financial data, so this is now
+ * the only entry point for the ledger.
  */
 class ExpensesController extends Controller
 {

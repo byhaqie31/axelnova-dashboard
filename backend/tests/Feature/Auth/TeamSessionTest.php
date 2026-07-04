@@ -51,6 +51,21 @@ class TeamSessionTest extends TestCase
             ->assertJsonPath('email', $founder->email);
     }
 
+    public function test_a_deactivated_founder_cannot_exchange_for_a_team_token(): void
+    {
+        // Defense-in-depth (Task 8): deactivation revokes every token, but if
+        // one ever survived, the exchange must not mint around the lockout.
+        $founder = User::factory()->founder()->create();
+        $adminToken = $founder->createToken('admin-spa', ['cockpit'])->plainTextToken;
+        $founder->forceFill(['deactivated_at' => now()])->save();
+
+        $this->postJson('/api/v1/admin/team-session', [], [
+            'Authorization' => "Bearer {$adminToken}",
+        ])->assertForbidden();
+
+        $this->assertSame(1, $founder->tokens()->count()); // no new token minted
+    }
+
     public function test_a_team_token_cannot_mint_further_sessions(): void
     {
         $founder = User::factory()->founder()->create();

@@ -2,27 +2,28 @@
 
 namespace App\Mail;
 
-use App\Models\Referrer;
+use App\Models\ExternalAccount;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Heads-up to the founder that a partner used self-service "forgot passcode" and a
- * fresh passcode was auto-issued to them. Carries NO passcode — it's just a notice.
- * Sent synchronously so it doesn't depend on the queue worker.
+ * Heads-up to the founder that a partner (referrer OR investor) used self-service
+ * "forgot passcode" and a fresh passcode was auto-issued to them. Carries NO
+ * passcode — it's just a notice. Sent synchronously so it doesn't depend on the
+ * queue worker.
  */
 class PartnerResetRequestedMail extends Mailable
 {
     use SerializesModels;
 
-    public function __construct(public readonly Referrer $referrer) {}
+    public function __construct(public readonly ExternalAccount $account) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Partner passcode reset — '.$this->referrer->name,
+            subject: 'Partner passcode reset — '.$this->account->displayName(),
         );
     }
 
@@ -30,7 +31,10 @@ class PartnerResetRequestedMail extends Mailable
     {
         return new Content(
             markdown: 'mail.partner-reset-requested',
-            with: ['referrer' => $this->referrer],
+            with: [
+                'account' => $this->account,
+                'name' => $this->account->displayName(),
+            ],
         );
     }
 }

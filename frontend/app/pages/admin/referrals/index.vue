@@ -73,7 +73,10 @@ interface Partner {
 
 const partners = ref<Partner[]>([])
 const partnersMeta = ref<ListMeta | null>(null)
-const partnersLoading = ref(false)
+// Starts true: the fetch only kicks off in onMounted (never runs during
+// SSR), so a false default would render the empty state first on the
+// server and on first client paint — before flipping to loading, then data.
+const partnersLoading = ref(true)
 const partnersError = ref('')
 const partnersLoaded = ref(false)
 
@@ -172,13 +175,18 @@ async function fetchPartnerDetail(id: number) {
   partnerDetailError.value = ''
   try {
     const res = await apiFetch<{ data: PartnerDetail }>(`/api/v1/admin/referral-partners/${id}`)
+    // Slideover may have closed or moved to another partner while this was
+    // in flight — a slower response for a stale id must never clobber the
+    // currently-shown partner (or a closed panel).
+    if (slideoverPartnerId.value !== id) return
     partnerDetail.value = res.data
   }
   catch {
+    if (slideoverPartnerId.value !== id) return
     partnerDetailError.value = 'Failed to load referrer. Check your session.'
   }
   finally {
-    partnerDetailLoading.value = false
+    if (slideoverPartnerId.value === id) partnerDetailLoading.value = false
   }
 }
 
@@ -269,7 +277,8 @@ interface Referral {
 
 const referrals = ref<Referral[]>([])
 const referralsMeta = ref<ListMeta | null>(null)
-const referralsLoading = ref(false)
+// Same SSR-false-empty-state guard as partnersLoading above.
+const referralsLoading = ref(true)
 const referralsError = ref('')
 const referralsLoaded = ref(false)
 
@@ -646,7 +655,11 @@ v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-
                       </span>
                       <span v-else class="text-[12px]" style="color: var(--color-text-tertiary);">—</span>
                       <span class="text-[12px] tabular-nums" style="color: var(--color-text);">
-                        {{ r.status === 'converted' ? fmtMyr(r.earned_myr) : `${r.effective_pct}%` }}
+                        <template v-if="r.status === 'converted'">
+                          {{ fmtMyr(r.earned_myr) }}
+                          <span style="color: var(--color-text-tertiary);">· {{ r.effective_pct }}%</span>
+                        </template>
+                        <template v-else>{{ r.effective_pct }}%</template>
                       </span>
                     </div>
                   </button>

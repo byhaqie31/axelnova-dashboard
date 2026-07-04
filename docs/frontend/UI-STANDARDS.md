@@ -86,6 +86,13 @@ These flip automatically with `:root` / `.dark`. Use for any sticky overlay surf
 
 **Rule:** never bind these to `colorMode.value` in JS — drive them only through CSS variables to avoid hydration FOUC.
 
+### Component-family tokens
+
+Larger component families get their own prefixed token group in `main.css` (light + `.dark`), documented with the family's pattern section:
+
+- `--kanban-*` — team kanban board surfaces (§12.14)
+- `--calendar-*` — team calendar grid + day chips (§12.15)
+
 ---
 
 ## 3. Typography
@@ -246,7 +253,8 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 ### Domain primitives
 
 - **`PriceTag`** — MYR-formatted (Intl `ms-MY`). Props: `min`, `max?`, `prefix?`, `compact?`. Renders ranges with en-dash, prefixed values with em-dash separator.
-- **`StatusPill`** — status badge with semantic tone mapping. Props: `status`, `type` (`lead` | `quotation` | `project` | `invoice` | `milestone` | `referral` | `referral_partner`). Reads existing CSS tokens (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`); no new color tokens introduced. `referral` / `referral_partner` were added for the `/admin/referrals` hub (Task 2 of the portal restructure) — first real adoption of this primitive; earlier admin pages still use the older `AdminStatusPill.vue` (data-attribute driven, `main.css` tokens) and haven't been migrated.
+- **`StatusPill`** — status badge with semantic tone mapping. Props: `status`, `type` (`lead` | `quotation` | `project` | `invoice` | `milestone` | `referral` | `referral_partner` | `task` | `user`). Reads existing CSS tokens (`--color-accent`, `--color-success`, `--color-warning`, `--color-danger`); no new color tokens introduced. `referral` / `referral_partner` were added for the `/admin/referrals` hub (Task 2 of the portal restructure) — first real adoption of this primitive; earlier admin pages still use the older `AdminStatusPill.vue` (data-attribute driven, `main.css` tokens) and haven't been migrated. `task` (Task 5 — the tasks engine) maps the workflow spine: `open` neutral, `in_progress` info, `completed`/`paid` success, `payment_pending` warn. `user` (Task 8 — `/admin/users`) is derived client-side from `deactivated_at`, not a stored enum: `active` success, `deactivated` danger. Role itself (founder/marketer/engineer) is a separate chip built from `data/workspaceRoles.ts`, not this primitive — founder gets a distinct warning/gold tone + crown icon.
+- **`TaskPayBadge`** — the task payment badge (Task 5, §12.14). Props: `state` (`none` | `pending` | `paid`), `amount` (RM, nullable). Renders **nothing** for `none` — payment is a card badge, never a kanban column, because most tasks carry no extra pay. `pending` reads warning, `paid` reads success; amount formatting matches `PriceTag` (Intl `ms-MY`, no cents). Shared by the admin tasks table, the team kanban card, and the calendar's completed log.
 - **`ReferenceCode`** — monospace document-code display (e.g. `AXNQ-2026-0012`) with click-to-copy via `useClipboard`. Renders any string; falls back to plain span when `copyable={false}`.
 - **`DateRange`** — Intl `en-MY` formatted dates. Formats: `short`, `long`, `relative`. Accepts optional `prefix` ("Valid until", "Issued").
 
@@ -441,6 +449,9 @@ Replaces `<select>` for finite enumerations: ETA units, statuses, units of measu
 **Where it applies today:**
 - `eta_unit` in [packages/[id].vue](frontend/app/pages/admin/services/packages/[id].vue) (4 options, generic accent tone)
 - `form.status` in [projects/[id].vue](frontend/app/pages/admin/projects/[id].vue) (4 options, per-status semantic tones)
+- `form.availability` in [team/profile.vue](frontend/app/pages/team/profile.vue) (2 options — Available/Busy, per-status semantic tones from [data/availabilityStatuses.ts](frontend/app/data/availabilityStatuses.ts); the same list drives the read-only dot/pill in [layouts/team.vue](frontend/app/layouts/team.vue))
+- `form.priority` in [admin/tasks/index.vue](frontend/app/pages/admin/tasks/index.vue) (3 options, per-priority semantic tones from [data/tasks.ts](frontend/app/data/tasks.ts))
+- `form.audience` in [admin/announcements/index.vue](frontend/app/pages/admin/announcements/index.vue) (3 options — Team/Partners/Everyone, per-audience semantic tones from [data/announcements.ts](frontend/app/data/announcements.ts); the same list drives the read-only audience pill in the list view)
 
 ### 12.7 Popover dropdown (variable / longer lists)
 
@@ -617,7 +628,34 @@ A right-edge overlay for a detail view that's one click deep from a list row, wi
 
 **Layering with a confirm dialog.** If an action inside the slideover needs a confirm-before-act step (e.g. approve / reset passcode), the confirm overlay must sit *above* the slideover: slideover scrim `z-index: 90`, confirm overlay `z-index: 100` (same two-layer convention as the tie/untie confirm above the quotation-picker drawer in `referrals/[id].vue`). Wire `Escape` to close the topmost layer first (confirm, if open) before the slideover.
 
-**Where it applies today:** `/admin/referrals` (Referrers tab → referrer detail). First use — CSS lives scoped on that page. Promote to global classes in `main.css` once a second page needs a slideover (same rule-of-three deferral as §12.12).
+**Where it applies today:** `/admin/referrals` (Referrers tab → referrer detail), `/admin/tasks` (create/edit task panel — second adopter, Task 5), and `/admin/announcements` (create/edit panel — third adopter, Task 6; same class names + motion, CSS still scoped per page). Next page that adopts it should promote `.slideover-*` to global classes in `main.css` and strip all three scoped copies.
+
+### 12.14 Team kanban board
+
+The `/team/tasks` board (Task 5 — the tasks engine). Three **work** columns only — **Available → In progress → Complete** — moved by buttons, not drag-and-drop (premium-minimal, and buttons survive 375px + screen readers where DnD doesn't). **Payment is a card badge, never a column**: most tasks carry no extra pay, so a "payment" column would sit empty and misread the board as a money pipeline. The badge is the `TaskPayBadge` primitive (§7): `none` renders nothing; `pending`/`paid` render the RM amount + state chip (warning / success).
+
+**Tokens (`main.css`, light + `.dark`):** the `--kanban-*` family — `--kanban-col-bg` / `--kanban-col-border` (columns are quiet sunken wells) and `--kanban-card-bg` / `--kanban-card-border` (cards are elevated surfaces that pop off them, `--shadow-xs`). Never hardcode these surfaces.
+
+**Anatomy:** `.kanban-col` (16px radius well, 12px padding) → `.kanban-col-head` (icon + label + `.kanban-count` chip) → a `flex flex-col gap-2.5` stack of `.kanban-card`s (12px radius, 14px padding). Card contents top-to-bottom: title (13px semibold), 2-line clamped description, `.kanban-card-meta` row (priority tint chip from `data/tasks.ts`, relative deadline — overdue reads `--color-danger` — duration estimate, `TaskPayBadge`), then the action button(s).
+
+**Column semantics + actions:**
+- **Available** = the shared pool (open + unassigned, action **Pick up** → claim: assignee=me + in_progress in one gesture) *plus* my admin-assigned-but-unstarted tasks, listed first with an "Assigned to you" tag and a **Start** action.
+- **In progress** = my in-flight tasks. **Complete…** opens a dialog with a *required* note textarea (the note becomes a timestamped line on the task log); **Release** returns the task to the pool (unassigns).
+- **Complete** = my `completed` / `payment_pending` / `paid` tasks — read-only cards at `opacity: 0.82`, status via `StatusPill type="task"`.
+
+**Responsive:** desktop is a 3-col grid (`grid-cols-1 md:grid-cols-3`); below 768px the columns **stack vertically, Available first** — chosen over horizontal scroll-snap because a single scroll axis is calmer and the pool ("what can I grab?") deserves the first screenful.
+
+**A stale claim** (someone else picked the task up first) surfaces as a 409 → error toast + board refetch; the card simply disappears.
+
+### 12.15 Team calendar
+
+The `/team/calendar` month view (Task 5) — a **view over the tasks table** (deadlines + completed dates), no table of its own. Data comes from the same `GET /v1/team/tasks` feed as the kanban.
+
+**Tokens (`main.css`, light + `.dark`):** the `--calendar-*` family — `--calendar-cell-bg` / `--calendar-cell-muted-bg` (in-month vs neighbour-month cells), `--calendar-grid-border`, `--calendar-today-ring` (accent circle on today's day number / accent border on today's agenda card), and the chip pair `--calendar-chip-mine-{fg,bg}` (accent — my tasks) vs `--calendar-chip-pool-{fg,bg}` (neutral — unclaimed pool tasks), so "mine vs could-be-mine" is one glance.
+
+**Anatomy:** header row = title + month nav (`.cal-nav-btn` circular prev/next + a ghost **Today** pill + the month label). Desktop grid: Monday-first 7-col, weekday header strip, `.cal-cell` (min-height 96px) holding `.cal-daynum` (today gets the ring fill) and up to **3** `.cal-chip`s (truncated title + a 5px priority-tinted dot from `data/tasks.ts`) with a "+n more" overflow line. Below the grid, a **Completed in {month}** log: one row per task completed in the visible month — check icon + title + `TaskPayBadge` + completion date — inside a divided `--color-bg-elevated` card.
+
+**Responsive:** below 768px the grid gives way to a **stacked agenda list** (only the days of the visible month that carry deadlines, each a card with its chips; today's card border uses the today ring token) — chosen over dots-in-a-grid because a list needs no tap-to-reveal step at 375px.
 
 ---
 

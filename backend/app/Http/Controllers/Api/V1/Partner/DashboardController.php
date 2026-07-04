@@ -3,23 +3,44 @@
 namespace App\Http\Controllers\Api\V1\Partner;
 
 use App\Http\Controllers\Controller;
+use App\Models\ExternalAccount;
 use App\Models\Referral;
 use App\Models\Referrer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
- * The partner's own read-mostly portal. Every query is scoped to the authenticated
- * referrer ($request->user()) — a partner can only ever see their own leads and
- * earnings. Commission is DERIVED here (pct × collected order value), never stored,
- * and payout stays manual (Section 3: no funds-transfer engine is built).
+ * The referrer's own read-mostly portal (referrer-only — the route group's
+ * `partner.type:referrer` middleware 403s investor tokens). Every query is scoped
+ * to the referrer profile behind the authenticated ExternalAccount — a partner can
+ * only ever see their own leads and earnings. Commission is DERIVED here (pct ×
+ * collected order value), never stored, and payout stays manual (Section 3: no
+ * funds-transfer engine is built).
  */
 class DashboardController extends Controller
 {
+    /**
+     * Resolve the referrer profile behind the authenticated account. The type
+     * middleware guarantees a referrer-typed token; a missing profile row would
+     * be a data error, surfaced as 403 rather than a 500.
+     */
+    private function referrerFor(Request $request): Referrer
+    {
+        /** @var ExternalAccount $account */
+        $account = $request->user();
+        $referrer = $account->referrer;
+
+        if (! $referrer) {
+            throw new HttpException(403, 'No referrer profile is linked to this account.');
+        }
+
+        return $referrer;
+    }
+
     public function index(Request $request): JsonResponse
     {
-        /** @var Referrer $referrer */
-        $referrer = $request->user();
+        $referrer = $this->referrerFor($request);
 
         $referrals = $referrer->referrals()->with('quotation.order')->latest('created_at')->get();
         $earned = 0.0;
@@ -81,8 +102,7 @@ class DashboardController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        /** @var Referrer $referrer */
-        $referrer = $request->user();
+        $referrer = $this->referrerFor($request);
         $tier = $data['relationship_tier'];
 
         $referral = Referral::create([

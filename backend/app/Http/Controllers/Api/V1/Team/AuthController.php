@@ -10,13 +10,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Workspace auth (the /team surface). Mirrors the admin AuthController but admits
- * the full workspace tier — founder + partner + marketer + engineer — since every
+ * the full workspace tier — founder + marketer + engineer — since every
  * internal role works here. Tokens are scoped ['workspace']; the cockpit-only
  * actions live behind /v1/admin (role:cockpit) and are unreachable from here.
+ * Also owns self-service profile updates (`updateMe`) — a natural extension of
+ * `me()`, which already presents "my own" session/profile data.
  */
 class AuthController extends Controller
 {
@@ -30,8 +33,9 @@ class AuthController extends Controller
         $user = User::where('email', $credentials['email'])->first();
 
         // Any internal role signs in here (all four are workspace-eligible). Bad
-        // credentials or a role outside the enum are rejected uniformly.
-        if (! $user || ! Hash::check($credentials['password'], $user->password) || ! $user->isWorkspace()) {
+        // credentials, a role outside the enum, or a deactivated account
+        // (Task 8 — /admin/users) are all rejected uniformly.
+        if (! $user || ! Hash::check($credentials['password'], $user->password) || ! $user->isWorkspace() || $user->isDeactivated()) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials.'],
             ]);
@@ -92,6 +96,25 @@ class AuthController extends Controller
         return response()->json($this->present($request->user()));
     }
 
+    /**
+     * Self-service profile update — the Profile page's display name +
+     * availability status. Self-only by construction: there's no user-id
+     * route param, it always acts on `$request->user()`.
+     */
+    public function updateMe(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'name' => ['sometimes', 'string', 'min:2', 'max:150'],
+            'availability' => ['sometimes', Rule::in(['available', 'busy'])],
+        ]);
+
+        $user->update($data);
+
+        return response()->json($this->present($user->fresh()));
+    }
+
     private function present(User $user): array
     {
         return [
@@ -100,6 +123,7 @@ class AuthController extends Controller
             'email' => $user->email,
             'role' => $user->role,
             'tier' => $user->tier(),
+            'availability' => $user->availability,
         ];
     }
 }

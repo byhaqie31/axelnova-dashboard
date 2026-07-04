@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\V1\Partner;
 use App\Http\Controllers\Controller;
 use App\Mail\PartnerPasscodeMail;
 use App\Mail\PartnerResetRequestedMail;
-use App\Models\Referrer;
+use App\Models\ExternalAccount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,11 +13,12 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Partner-portal auth — the third surface, on the isolated `referral` guard. Pure
- * bearer tokens (no stateful cookie/CSRF): a token minted here is a Referrer token,
- * which the `sanctum` guard (provider = users) behind /admin + /team rejects. Only
- * an approved (active) referrer with an issued passcode can sign in. There is no
- * self-service reset — a lost passcode is reissued by staff.
+ * Partner-portal auth — the third surface, on the isolated `external` guard
+ * (external_accounts: the unified referrer + investor identity, Task 9). Pure
+ * bearer tokens (no stateful cookie/CSRF): a token minted here is an
+ * ExternalAccount token, which the `sanctum` guard (provider = users) behind
+ * /admin + /team rejects. Only an active account with an issued passcode can
+ * sign in — a referrer profile that was never approved has no account at all.
  */
 class AuthController extends Controller
 {
@@ -28,37 +29,37 @@ class AuthController extends Controller
             'passcode' => ['required', 'string'],
         ]);
 
-        $referrer = Referrer::where('email', $credentials['email'])->first();
+        $account = ExternalAccount::where('email', $credentials['email'])->first();
 
-        // Uniform rejection for: unknown email, not-yet-approved, no passcode issued,
+        // Uniform rejection for: unknown email, suspended, no passcode issued,
         // or wrong passcode — never leak which condition failed.
-        if (! $referrer
-            || ! $referrer->isActive()
-            || ! $referrer->password
-            || ! Hash::check($credentials['passcode'], $referrer->password)) {
+        if (! $account
+            || ! $account->isActive()
+            || ! $account->password
+            || ! Hash::check($credentials['passcode'], $account->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials.'],
             ]);
         }
 
-        $referrer->forceFill(['last_login_at' => now()])->saveQuietly();
+        $account->forceFill(['last_login_at' => now()])->saveQuietly();
 
         // Read-scoped ability; global sanctum expiration (SANCTUM_EXPIRATION_MINUTES)
         // gives every partner token an expiry.
-        $token = $referrer->createToken('partner-portal', ['partner'])->plainTextToken;
+        $token = $account->createToken('partner-portal', ['partner'])->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'partner' => $this->present($referrer),
+            'partner' => $this->present($account),
         ]);
     }
 
     /**
-     * Self-service passcode reset. A correct, active email auto-issues a fresh
-     * passcode straight to the partner's own inbox — and notifies the founder that
-     * it happened. The response is identical whether or not the email matches, so
-     * this never reveals who holds an account. (This intentionally relaxes the
-     * "staff-only reset" rule; brute-force/abuse is bounded by the login throttle.)
+     * Self-service passcode reset for both partner kinds. A correct, active email
+     * auto-issues a fresh passcode straight to the partner's own inbox — and
+     * notifies the founder that it happened. The response is identical whether or
+     * not the email matches, so this never reveals who holds an account. (Abuse
+     * is bounded by the login-throttle group this route sits in.)
      */
     public function forgotPasscode(Request $request): JsonResponse
     {
@@ -66,21 +67,24 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $referrer = Referrer::where('email', $data['email'])->where('status', 'active')->first();
+        $account = ExternalAccount::where('email', $data['email'])->where('status', 'active')->first();
 
-        if ($referrer) {
-            $passcode = Referrer::makePasscode();
+        if ($account) {
+            $passcode = ExternalAccount::makePasscode();
 
-            $referrer->update(['password' => $passcode]);
-            $referrer->logActivity('referral_partner.passcode_self_reset');
+            $account->update(['password' => $passcode]);
+
+            // Audit on the referrer profile (it carries updated_by + the activity
+            // trail); investor accounts have no audited profile yet.
+            $account->referrer?->logActivity('referral_partner.passcode_self_reset');
 
             // The new passcode only ever lands in the partner's own inbox.
-            Mail::to($referrer->email, $referrer->name)->send(new PartnerPasscodeMail($referrer, $passcode));
+            Mail::to($account->email, $account->displayName())->send(new PartnerPasscodeMail($account, $passcode));
 
             // Keep the founder informed (heads-up; the reset already happened).
             $adminEmail = config('services.admin.email') ?: config('mail.from.address');
             if ($adminEmail) {
-                Mail::to($adminEmail)->send(new PartnerResetRequestedMail($referrer));
+                Mail::to($adminEmail)->send(new PartnerResetRequestedMail($account));
             }
         }
 
@@ -101,15 +105,37 @@ class AuthController extends Controller
         return response()->json($this->present($request->user()));
     }
 
-    private function present(Referrer $referrer): array
+    /**
+     * Type-aware presentation: {type, email, profile} where profile carries the
+     * referrer fields (code/tier/commission) or the investor fields (company).
+     */
+    private function present(ExternalAccount $account): array
     {
+        $profile = null;
+
+        if ($account->isReferrer() && $account->referrer) {
+            $referrer = $account->referrer;
+            $profile = [
+                'id' => $referrer->id,
+                'name' => $referrer->name,
+                'code' => $referrer->code,
+                'relationship_tier' => $referrer->relationship_tier,
+                'commission_pct' => $referrer->commission_pct,
+            ];
+        } elseif ($account->isInvestor() && $account->investor) {
+            $investor = $account->investor;
+            $profile = [
+                'id' => $investor->id,
+                'name' => $investor->name,
+                'company' => $investor->company,
+            ];
+        }
+
         return [
-            'id' => $referrer->id,
-            'name' => $referrer->name,
-            'email' => $referrer->email,
-            'code' => $referrer->code,
-            'relationship_tier' => $referrer->relationship_tier,
-            'commission_pct' => $referrer->commission_pct,
+            'id' => $account->id,
+            'type' => $account->type,
+            'email' => $account->email,
+            'profile' => $profile,
         ];
     }
 }

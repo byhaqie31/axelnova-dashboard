@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Phase 5 — the marketing-spend ledger, record-only. `entered_by` is both the
  * attribution and the visibility scope: the marketer sees only their own rows
- * (/v1/team), founder + partner see the full roll-up (/v1/admin).
+ * (/v1/team), the founder sees the full roll-up (/v1/admin).
  */
 return new class extends Migration
 {

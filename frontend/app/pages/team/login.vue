@@ -62,7 +62,7 @@ async function handleLogin() {
               <h1 class="text-[26px] font-bold tracking-tight text-gradient">Team Workspace</h1>
             </div>
             <p class="text-[13px] text-center" style="color: var(--color-text-secondary);">
-              Sign in to triage inquiries and manage referrals.
+              Sign in to your team workspace.
             </p>
           </div>
 

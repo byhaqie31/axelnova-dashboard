@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Referrer;
+use App\Models\ExternalAccount;
 use App\Models\User;
 
 return [
@@ -23,9 +23,10 @@ return [
     |
     | Three surfaces, two backends. `/admin` + `/team` authenticate against the
     | `users` table via the `sanctum` guard (scoped to the `users` provider, so a
-    | leaked Referrer token can never satisfy it — Sanctum's Guard rejects a
+    | leaked partner token can never satisfy it — Sanctum's Guard rejects a
     | tokenable whose model doesn't match the guard's provider). The `/partners`
-    | portal uses the isolated `referral` guard on the `referral_partners` table.
+    | portal uses the isolated `external` guard on the `external_accounts` table
+    | (the unified referrer + investor identity, Task 9).
     |
     | Publishing this file makes the previously-implicit `sanctum` guard explicit:
     | Sanctum injected it with `provider => null` (any tokenable), which we now pin
@@ -44,11 +45,11 @@ return [
             'provider' => 'users',
         ],
 
-        // Isolated affiliate guard — /v1/partner/* only. Tokens minted for a
-        // Referrer authenticate here and nowhere else.
-        'referral' => [
+        // Isolated partner guard — /v1/partner/* only. Tokens minted for an
+        // ExternalAccount (referrer OR investor) authenticate here and nowhere else.
+        'external' => [
             'driver' => 'sanctum',
-            'provider' => 'referrers',
+            'provider' => 'external_accounts',
         ],
     ],
 
@@ -64,9 +65,9 @@ return [
             'model' => env('AUTH_MODEL', User::class),
         ],
 
-        'referrers' => [
+        'external_accounts' => [
             'driver' => 'eloquent',
-            'model' => Referrer::class,
+            'model' => ExternalAccount::class,
         ],
     ],
 

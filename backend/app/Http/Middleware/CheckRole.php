@@ -12,8 +12,8 @@ class CheckRole
     /**
      * Gate a route by role or tier. Each parameter is either a bare role
      * ('founder', 'marketer', …) or a tier keyword that expands to its member
-     * roles — 'cockpit' → founder/partner, 'workspace' → all four. Passing
-     * several parameters (`role:founder,marketer`) allows any of them.
+     * roles — 'cockpit' → founder, 'workspace' → founder/marketer/engineer.
+     * Passing several parameters (`role:founder,marketer`) allows any of them.
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {

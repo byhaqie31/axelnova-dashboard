@@ -1,25 +1,27 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
+import { isAdminNavActive, visiblePartnersNav } from '~/data/partnersNav'
 
-// Minimal partner-portal shell: a single topbar (brand + who's signed in + sign out)
-// over the content slot. No sidebar — the portal is intentionally read-mostly.
-interface Me { id: number, name: string, email: string, code: string, commission_pct: number }
+// Partner-portal shell: topbar (brand + who's signed in + sign out) over a
+// horizontal, type-filtered nav strip (Task 9 — the portal is type-aware:
+// referrers see Referrals/Earnings, investors see Documents/Reports, everyone
+// gets Dashboard/Profile). Reads the shared /v1/partner/me singleton
+// (usePartnerMe) — the same ref the pages use — and renders the shared items
+// only until it resolves, so the shell stays sane pre-login/pre-fetch.
+const { logout } = usePartnerAuth()
+const { me, refresh: fetchMe } = usePartnerMe()
 
-const { apiFetch, logout } = usePartnerAuth()
-const me = ref<Me | null>(null)
+const route = useRoute()
 
-async function fetchMe() {
-  try {
-    me.value = await apiFetch<Me>('/api/v1/partner/me')
-  }
-  catch {
-    // Non-fatal — the partner-auth middleware bounces on hard auth failures.
-  }
-}
+onMounted(() => {
+  // Login/forgot use layout:false — anything under this layout is authed, so
+  // the fetch is safe; failures are non-fatal (middleware handles hard 401s).
+  fetchMe()
+})
 
-onMounted(fetchMe)
+const navItems = computed(() => visiblePartnersNav(me.value?.type))
 
-const firstName = computed(() => me.value?.name?.split(' ')[0] ?? '')
+const firstName = computed(() => me.value?.profile?.name?.split(' ')[0] ?? '')
 </script>
 
 <template>
@@ -44,6 +46,22 @@ const firstName = computed(() => me.value?.name?.split(' ')[0] ?? '')
           </button>
         </div>
       </div>
+
+      <!-- Type-filtered nav strip — scrolls horizontally on narrow screens. -->
+      <nav class="max-w-5xl mx-auto px-5 sm:px-6 partner-nav-scroll" aria-label="Partner portal">
+        <div class="flex items-center gap-1 -mb-px">
+          <NuxtLink
+            v-for="item in navItems"
+            :key="item.to"
+            :to="item.to"
+            class="partner-nav-item"
+            :data-active="isAdminNavActive(item, route.path)"
+          >
+            <UIcon :name="item.icon" class="size-4 shrink-0" />
+            <span>{{ item.label }}</span>
+          </NuxtLink>
+        </div>
+      </nav>
     </header>
 
     <main class="flex-1 w-full max-w-5xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
@@ -72,5 +90,35 @@ const firstName = computed(() => me.value?.name?.split(' ')[0] ?? '')
 .partner-signout:hover {
   background: var(--color-bg-secondary);
   color: var(--color-text);
+}
+
+/* Horizontal nav strip — underline marks the active destination. */
+.partner-nav-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.partner-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.partner-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 12px;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.partner-nav-item:hover {
+  color: var(--color-text);
+}
+.partner-nav-item[data-active="true"] {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
 }
 </style>

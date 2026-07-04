@@ -25,9 +25,10 @@ class ReferrerResource extends JsonResource
             'commission_pct' => $this->commission_pct,
             'status' => $this->status,
             'agreed_terms' => $this->agreed_terms,
-            'has_passcode' => filled($this->password),
+            // Task 9: credentials live on the linked external account.
+            'has_passcode' => filled($this->account?->password),
             'referrals_count' => $this->whenCounted('referrals'),
-            'last_login_at' => $this->last_login_at?->toISOString(),
+            'last_login_at' => $this->account?->last_login_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

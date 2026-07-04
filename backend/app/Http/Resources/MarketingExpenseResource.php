@@ -6,9 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * A marketing-spend row. Shared by the cockpit's full roll-up (with `enteredBy`
- * loaded) and the marketer's own-rows view (relation unloaded — their own name
- * would be noise).
+ * A marketing-spend row for the cockpit's full roll-up (Admin\ExpensesController,
+ * with `enteredBy` loaded). The team's own-rows view was removed in Task 4 of
+ * the portal restructure — this is now the only surface that renders it.
  */
 class MarketingExpenseResource extends JsonResource
 {

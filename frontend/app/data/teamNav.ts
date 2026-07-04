@@ -1,58 +1,36 @@
-// Workspace (/team) sidebar IA. Reuses the exact NavGroup / AdminNavItem / Role
-// shapes and the active-matcher from Phase 3a's adminNav — the workspace is just a
-// leaner surface, not a different structure. Role metadata rides along so the two-
-// level filter (group + item) works the moment `/team/me` returns a role: the
-// referral programme belongs to the marketer, so engineers don't see it, while
-// founder/partner (who also enter /team) keep it.
+// Workspace (/team) sidebar IA. Reframed by Task 4 of the portal & workspace
+// restructure: the team no longer touches admin-owned operational data
+// (inquiries, the referral programme, marketing spend all dropped), so the
+// nav shrank to five personal destinations, flat, no role gating. Still reuses
+// the exact NavGroup / AdminNavItem / Role shapes and the active-matcher from
+// adminNav so the two sidebars share one implementation.
+//
+// Tasks (/team/tasks) and Calendar (/team/calendar) land in Task 5 — the nav
+// points at them ahead of the pages existing (same "scaffold ahead" precedent
+// as adminNav's Tasks/Announcements entries).
 
 import { type AdminNavItem, isAdminNavActive, type NavGroup, type Role } from '~/data/adminNav'
 
 export type { AdminNavItem, NavGroup, Role }
 export { isAdminNavActive }
 
-// Roles that own the referral programme (matches the /v1/team/referrals gate).
-const PROGRAMME_ROLES: Role[] = ['founder', 'partner', 'marketer']
-
 export const teamNav: NavGroup[] = [
   {
-    label: 'Overview',
+    label: 'Workspace',
     items: [
-      { to: '/team', label: 'Dashboard', icon: 'i-lucide-layout-dashboard' },
-    ],
-  },
-  {
-    label: 'Work',
-    items: [
-      { to: '/team/inquiries', label: 'Inquiries', icon: 'i-lucide-inbox', matchPrefix: '/team/inquiries' },
-    ],
-  },
-  {
-    label: 'Growth',
-    roles: PROGRAMME_ROLES,
-    items: [
-      { to: '/team/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/team/referrals', roles: PROGRAMME_ROLES },
-      // Marketing spend (Phase 5, record-only) — enter own + see own here;
-      // the full roll-up is the cockpit's /admin/marketing.
-      { to: '/team/marketing', label: 'Marketing', icon: 'i-lucide-megaphone', matchPrefix: '/team/marketing', roles: PROGRAMME_ROLES },
-    ],
-  },
-  {
-    label: 'Personal',
-    items: [
-      // Payslips lands in Phase 5 (in-system payroll). Nav scaffolded ahead so the
-      // phase only fills the page. Everyone sees their own payslip.
+      { to: '/team', label: 'Home', icon: 'i-lucide-house' },
+      { to: '/team/tasks', label: 'Tasks', icon: 'i-lucide-list-todo', matchPrefix: '/team/tasks' },
+      { to: '/team/calendar', label: 'Calendar', icon: 'i-lucide-calendar', matchPrefix: '/team/calendar' },
       { to: '/team/payslips', label: 'Payslips', icon: 'i-lucide-wallet', matchPrefix: '/team/payslips' },
+      { to: '/team/profile', label: 'Profile', icon: 'i-lucide-user', matchPrefix: '/team/profile' },
     ],
   },
 ]
 
-// Two-level role filter (group + item), permissive until `/team/me` returns a role
-// — identical semantics to visibleAdminNav so both surfaces behave the same. Groups
-// left empty after filtering are dropped.
-export function visibleTeamNav(role?: Role): NavGroup[] {
-  const allows = (roles?: Role[]) => !roles || role == null || roles.includes(role)
+// No role gating left in the workspace nav — every internal role sees the
+// same five destinations. Kept as a named export (rather than inlining
+// `teamNav` at call sites) so a future role-scoped item can reintroduce
+// filtering here without touching team.vue.
+export function visibleTeamNav(_role?: Role): NavGroup[] {
   return teamNav
-    .filter(group => allows(group.roles))
-    .map(group => ({ ...group, items: group.items.filter(item => allows(item.roles)) }))
-    .filter(group => group.items.length > 0)
 }

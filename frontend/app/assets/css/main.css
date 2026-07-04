@@ -124,6 +124,24 @@
   --status-refunded-bg:   rgba(255, 159, 10, 0.12);
   --status-failed-fg:     #FF3B30;
   --status-failed-bg:     rgba(255, 59, 48, 0.10);
+
+  /* Kanban board (team tasks — UI-STANDARDS §12.14). Columns are quiet sunken
+     wells; cards are elevated surfaces that pop off them. */
+  --kanban-col-bg: #F0F0F4;
+  --kanban-col-border: rgba(0, 0, 0, 0.05);
+  --kanban-card-bg: #FFFFFF;
+  --kanban-card-border: rgba(0, 0, 0, 0.08);
+
+  /* Calendar (team deadlines — UI-STANDARDS §12.15). Month grid + day chips;
+     'mine' chips read accent, 'pool' chips read neutral. */
+  --calendar-cell-bg: #FFFFFF;
+  --calendar-cell-muted-bg: #FBFBFD;
+  --calendar-grid-border: rgba(0, 0, 0, 0.07);
+  --calendar-today-ring: #0071E3;
+  --calendar-chip-mine-bg: rgba(0, 113, 227, 0.10);
+  --calendar-chip-mine-fg: #0071E3;
+  --calendar-chip-pool-bg: rgba(134, 134, 139, 0.12);
+  --calendar-chip-pool-fg: #6E6E73;
 }
 
 .dark {
@@ -220,6 +238,22 @@
   --status-refunded-bg:   rgba(255, 179, 64, 0.16);
   --status-failed-fg:     #FF6961;
   --status-failed-bg:     rgba(255, 105, 97, 0.16);
+
+  /* Kanban board — dark: columns sink below the page, cards ride the elevated tone */
+  --kanban-col-bg: #0D1226;
+  --kanban-col-border: rgba(255, 255, 255, 0.06);
+  --kanban-card-bg: #141B33;
+  --kanban-card-border: rgba(255, 255, 255, 0.10);
+
+  /* Calendar — dark */
+  --calendar-cell-bg: #10162B;
+  --calendar-cell-muted-bg: #0C1122;
+  --calendar-grid-border: rgba(255, 255, 255, 0.08);
+  --calendar-today-ring: #2997FF;
+  --calendar-chip-mine-bg: rgba(41, 151, 255, 0.16);
+  --calendar-chip-mine-fg: #2997FF;
+  --calendar-chip-pool-bg: rgba(161, 161, 166, 0.18);
+  --calendar-chip-pool-fg: #A1A1A6;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

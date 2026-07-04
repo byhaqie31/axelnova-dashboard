@@ -19,8 +19,9 @@ class ReferrerDetailResource extends JsonResource
             'relationship_tier' => $this->relationship_tier,
             'commission_tiers' => Referral::COMMISSION_TIERS,
             'status' => $this->status,
-            'has_passcode' => filled($this->password),
-            'last_login_at' => $this->last_login_at?->toISOString(),
+            // Task 9: credentials live on the linked external account.
+            'has_passcode' => filled($this->account?->password),
+            'last_login_at' => $this->account?->last_login_at?->toISOString(),
             'stats' => $this->additional['stats'] ?? null,
             'referrals' => ReferralResource::collection($this->whenLoaded('referrals')),
         ];

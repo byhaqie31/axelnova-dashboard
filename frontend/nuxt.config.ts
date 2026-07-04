@@ -74,6 +74,9 @@ export default defineNuxtConfig({
         'Referrer-Policy': 'strict-origin-when-cross-origin',
       },
     },
+    // Task 9: the single-page portal became a multi-page portal — keep old
+    // bookmarks/emails pointing at /partners/portal working.
+    '/partners/portal': { redirect: { to: '/partners', statusCode: 301 } },
   },
 
   app: {

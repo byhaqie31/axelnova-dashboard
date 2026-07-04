@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
-import { visibleTeamNav, isAdminNavActive, type NavGroup, type Role } from '~/data/teamNav'
+import { availabilityMeta as findAvailabilityMeta } from '~/data/availabilityStatuses'
+import { visibleTeamNav, isAdminNavActive, type NavGroup } from '~/data/teamNav'
 
 useSeoMeta({ robots: 'noindex, nofollow' })
 
@@ -16,18 +17,27 @@ const sidebarCollapsed = useCookie<boolean>('axn_team_sidebar_collapsed', { defa
 const navGroupsOpen = useCookie<Record<string, boolean>>('axn_team_nav_groups', { default: () => ({}) })
 
 const route = useRoute()
-const { apiFetch, logout } = useTeamAuth()
+const { logout } = useTeamAuth()
 
-interface Me { id: number, name: string, email: string, role?: Role, tier?: string }
-const me = ref<Me | null>(null)
+// Shared /v1/team/me state (composables/useTeamMe.ts) — the same ref the Home
+// and Profile pages read/write, so saving a new availability status on
+// /team/profile updates this header instantly, no reload needed.
+const { me, refresh: fetchMe } = useTeamMe()
 
-// Nav is role-filtered the moment /team/me resolves (permissive until then).
-const navGroups = computed<NavGroup[]>(() => visibleTeamNav(me.value?.role))
+// Nav no longer role-gates (Task 4) — every internal role sees the same five
+// destinations.
+const navGroups = computed<NavGroup[]>(() => visibleTeamNav())
 
 const roleLabel = computed(() => {
   const r = me.value?.role
   return r ? r.charAt(0).toUpperCase() + r.slice(1) : ''
 })
+
+// Availability status (Profile page, Task 4) — surfaced as a small dot on the
+// avatar + a pill in the account dropdown so a teammate's status is visible
+// without opening /team/profile. Shares its option list with the Profile
+// page's pill picker (data/availabilityStatuses.ts).
+const availabilityMeta = computed(() => findAvailabilityMeta(me.value?.availability))
 
 function groupHasActive(group: NavGroup): boolean {
   return group.items.some(item => isAdminNavActive(item, route.path))
@@ -41,14 +51,6 @@ function toggleGroup(group: NavGroup): void {
   navGroupsOpen.value = { ...navGroupsOpen.value, [group.label]: !isGroupOpen(group) }
 }
 
-async function fetchMe() {
-  try {
-    me.value = await apiFetch<Me>('/api/v1/team/me')
-  }
-  catch {
-    // Non-fatal — middleware bounces to /team/login on hard auth failures.
-  }
-}
 onMounted(fetchMe)
 
 watch(() => route.fullPath, () => {
@@ -106,13 +108,21 @@ useHead({ title: 'Team Workspace' })
           <div ref="profileWrap" class="relative">
           <button
             type="button"
-            class="size-9 rounded-full inline-flex items-center justify-center border transition-colors hover:bg-(--color-bg-secondary)"
+            class="relative size-9 rounded-full inline-flex items-center justify-center border transition-colors hover:bg-(--color-bg-secondary)"
             :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }"
             :aria-expanded="profileOpen"
             aria-label="Account menu"
             @click="profileOpen = !profileOpen"
           >
             <UIcon name="i-lucide-user" class="size-4" />
+            <!-- Availability dot (Profile page) — visible without opening the menu. -->
+            <span
+              v-if="availabilityMeta"
+              class="absolute bottom-0 right-0 size-2.5 rounded-full border-2"
+              :style="{ background: availabilityMeta.color, borderColor: 'var(--color-bg)' }"
+              :aria-label="availabilityMeta.label"
+              role="status"
+            />
           </button>
 
           <Transition name="dropdown-panel">
@@ -139,14 +149,24 @@ useHead({ title: 'Team Workspace' })
                 <p class="text-[12px] mt-0.5 break-all" :style="{ color: 'var(--color-text-tertiary)' }">
                   {{ me?.email ?? '' }}
                 </p>
-                <span
-                  v-if="roleLabel"
-                  class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded inline-flex items-center gap-1 mt-2"
-                  :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }"
-                >
-                  <UIcon name="i-lucide-badge-check" class="size-3" />
-                  {{ roleLabel }}
-                </span>
+                <div class="flex items-center gap-1.5 mt-2 flex-wrap justify-center">
+                  <span
+                    v-if="roleLabel"
+                    class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded inline-flex items-center gap-1"
+                    :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }"
+                  >
+                    <UIcon name="i-lucide-badge-check" class="size-3" />
+                    {{ roleLabel }}
+                  </span>
+                  <span
+                    v-if="availabilityMeta"
+                    class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded inline-flex items-center gap-1"
+                    :style="{ color: availabilityMeta.color, background: 'var(--color-bg-secondary)' }"
+                  >
+                    <span class="size-1.5 rounded-full" :style="{ background: availabilityMeta.color }" />
+                    {{ availabilityMeta.label }}
+                  </span>
+                </div>
               </div>
 
               <div class="border-t" :style="{ borderColor: 'var(--color-border)' }">

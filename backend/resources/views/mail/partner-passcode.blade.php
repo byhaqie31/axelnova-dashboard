@@ -1,20 +1,20 @@
 @component('mail::message')
 # Your Partner Portal access is ready
 
-Hi {{ $referrer->name }},
+Hi {{ $name !== '' ? $name : 'there' }},
 
-Your referral partner account with **Axel Nova Ventures** has been approved. You can now sign in to track your referrals and earnings, and refer more businesses.
+Your partner account with **Axel Nova Ventures** is ready. You can now sign in to the Partner Portal.
 
 Use these details to log in:
 
-- **Email:** {{ $referrer->email }}
+- **Email:** {{ $account->email }}
 - **Passcode:** `{{ $passcode }}`
 
 @component('mail::button', ['url' => $loginUrl])
 Open the Partner Portal
 @endcomponent
 
-For your security, keep this passcode private. We never display it anywhere else, so store it somewhere safe. If you ever lose it, reply to this email and we'll issue a new one — there's no self-service reset.
+For your security, keep this passcode private. We never display it anywhere else, so store it somewhere safe. If you ever lose it, use "Forgot passcode" on the login page and a fresh one will be emailed to you.
 
 Thanks for partnering with us.
 
