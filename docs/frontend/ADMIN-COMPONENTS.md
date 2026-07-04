@@ -92,7 +92,9 @@ The desktop rail is **user-customizable**. **Overview** is `mandatory: true`
 in `data/adminNav.ts` (always in the rail, no pin control); every other group
 carries a pin: pinned groups sit in the rail, unpinned ones live only in the
 launchpad. Data defaults come from `defaultPinned` (omitted = pinned;
-currently **Growth** and **Business** start unpinned); the user's own choices
+currently **Growth**, **Partners**, and **Workspace** start unpinned — the
+latter two are Task 1's regroup of the former **Business** group, which no
+longer exists); the user's own choices
 are stored in the `axn_admin_nav_pinned` cookie — cookie-backed like the
 other sidebar prefs so it's SSR-resolved with no flash (a DB-backed pref can
 replace the cookie once Phase 0 user profiles land).

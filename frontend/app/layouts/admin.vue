@@ -17,6 +17,16 @@ const sidebarCollapsed = useCookie<boolean>('axn_admin_sidebar_collapsed', { def
 // owns the active route is always forced open regardless of the stored value.
 const navGroupsOpen = useCookie<Record<string, boolean>>('axn_admin_nav_groups', { default: () => ({}) })
 
+// One-time migration: Task 1 of the portal restructure renamed the "Business"
+// group to "Workspace". Both cookies key on the group label, so the rename
+// would silently orphan any stored "Business" value — carry it over once.
+function migrateGroupLabel(cookie: Ref<Record<string, boolean>>) {
+  if (!('Business' in cookie.value)) return
+  const { Business, ...rest } = cookie.value
+  cookie.value = 'Workspace' in rest ? rest : { ...rest, Workspace: Business }
+}
+migrateGroupLabel(navGroupsOpen)
+
 const route = useRoute()
 const { logout, apiFetch, jumpToTeam } = useAdminAuth()
 
@@ -24,13 +34,14 @@ interface Me { id: number, name: string, email: string, role?: Role }
 const me = ref<Me | null>(null)
 
 // Role stays undefined until Phase 0 adds it to `/admin/me`; visibleAdminNav is
-// permissive meanwhile, so all six groups render for the current founder.
+// permissive meanwhile, so all seven groups render for the current founder.
 const navGroups = computed<NavGroup[]>(() => visibleAdminNav(me.value?.role))
 
 // The rail is customizable: Overview is mandatory, every other group can be
 // pinned/unpinned from the launchpad. Unpinned groups live only in "View
 // more". Cookie-backed like the other sidebar prefs (SSR-resolved, no flash).
 const navPinned = useCookie<Record<string, boolean>>('axn_admin_nav_pinned', { default: () => ({}) })
+migrateGroupLabel(navPinned)
 const isPinned = (group: NavGroup) => isGroupPinned(group, navPinned.value)
 function togglePin(group: NavGroup) {
   if (group.mandatory) return

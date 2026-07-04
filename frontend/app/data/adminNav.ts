@@ -1,6 +1,8 @@
-// Admin sidebar information architecture. Grouped by workflow (Phase 3a of the
-// dashboard revamp — see docs/global/DASHBOARD-REVAMP-PLAN.md). Roles are carried
-// as metadata now so Phase 0 (RBAC) can filter without re-touching this file;
+// Admin sidebar information architecture. Grouped by workflow — originally
+// Phase 3a of the dashboard revamp (see docs/global/DASHBOARD-REVAMP-PLAN.md),
+// regrouped into 7 sections by Task 1 of the portal & workspace restructure
+// (see .superpowers/sdd/portal-restructure-plan.md). Roles are carried as
+// metadata now so Phase 0 (RBAC) can filter without re-touching this file;
 // until a role is wired through `/admin/me`, `visibleAdminNav()` is permissive.
 
 export type Role = 'founder' | 'partner' | 'marketer' | 'engineer'
@@ -56,11 +58,19 @@ export const adminNav: NavGroup[] = [
     label: 'Growth',
     defaultPinned: false,
     items: [
-      { to: '/admin/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/admin/referrals' },
-      { to: '/admin/referral-partners', label: 'Partners', icon: 'i-lucide-user-check', matchPrefix: '/admin/referral-partners' },
       { to: '/admin/analytics', label: 'Analytics', icon: 'i-lucide-chart-line', matchPrefix: '/admin/analytics' },
       // Marketing-spend ledger (Phase 5, record-only) — founder + partner see all.
       { to: '/admin/marketing', label: 'Marketing', icon: 'i-lucide-megaphone', matchPrefix: '/admin/marketing' },
+    ],
+  },
+  {
+    // External-relationship surfaces — referrers and investors both live here.
+    // Referrals moved out of Growth; Investors moved out of Business/Workspace.
+    label: 'Partners',
+    defaultPinned: false,
+    items: [
+      { to: '/admin/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/admin/referrals' },
+      { to: '/admin/investors', label: 'Investors', icon: 'i-lucide-handshake', matchPrefix: '/admin/investors', roles: ['founder', 'partner'] },
     ],
   },
   {
@@ -71,18 +81,23 @@ export const adminNav: NavGroup[] = [
     ],
   },
   {
-    label: 'Business',
+    // Renamed from "Business" (Task 1 of the portal restructure) — internal
+    // team/ops surfaces. Investors moved out to Partners above.
+    label: 'Workspace',
     roles: ['founder', 'partner'],
     defaultPinned: false,
     items: [
-      // Users + Activity land in Phase 0 / Phase 1 — nav is scaffolded ahead so
-      // those phases only add the page, not the nav entry.
+      // Users lands in Phase 0 / Task 8 — nav is scaffolded ahead so that
+      // phase only adds the page, not the nav entry.
       { to: '/admin/users', label: 'Users', icon: 'i-lucide-user-cog', matchPrefix: '/admin/users', roles: ['founder'] },
-      // Payroll ledger (Phase 5, record-only) — founder-only; partners read
-      // their own payslips on /team like everyone else.
+      // Payroll ledger (Phase 5 / Task 7, record-only) — founder-only; partners
+      // read their own payslips on /team like everyone else.
       { to: '/admin/payroll', label: 'Payroll', icon: 'i-lucide-banknote', matchPrefix: '/admin/payroll', roles: ['founder'] },
+      // Tasks + Announcements land in Task 5 / Task 6 — nav is scaffolded
+      // ahead so those tasks only add the pages, not the nav entries.
+      { to: '/admin/tasks', label: 'Tasks', icon: 'i-lucide-list-todo', matchPrefix: '/admin/tasks' },
+      { to: '/admin/announcements', label: 'Announcements', icon: 'i-lucide-radio', matchPrefix: '/admin/announcements' },
       { to: '/admin/activity', label: 'Activity', icon: 'i-lucide-history', matchPrefix: '/admin/activity' },
-      { to: '/admin/investors', label: 'Investors', icon: 'i-lucide-handshake', matchPrefix: '/admin/investors' },
     ],
   },
 ]
