@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Users;
 
+use App\Mail\TeamWelcomeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -71,6 +73,25 @@ class AdminUsersTest extends TestCase
 
             $this->assertDatabaseHas('users', ['email' => "new-{$role}@example.com", 'role' => $role]);
         }
+    }
+
+    public function test_creating_a_teammate_queues_a_welcome_email_with_their_credentials(): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/v1/admin/users', [
+            'name' => 'New Hire',
+            'email' => 'new-hire@example.com',
+            'password' => 'a-secure-password-123',
+            'role' => 'marketer',
+            'monthly_allowance_myr' => 1800,
+        ], $this->adminHeaders())->assertCreated();
+
+        Mail::assertQueued(TeamWelcomeMail::class, function (TeamWelcomeMail $mail) {
+            return $mail->hasTo('new-hire@example.com')
+                && $mail->user->name === 'New Hire'
+                && $mail->password === 'a-secure-password-123';
+        });
     }
 
     public function test_the_backend_still_allows_a_founder_to_provision_another_founder(): void

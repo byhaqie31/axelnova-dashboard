@@ -149,6 +149,9 @@ POST   /v1/admin/payroll/{id}/settle Stamp paid_at (+ method?) and flip the link
 GET    /v1/admin/users               Roster, alphabetical (name, email, role, tier, availability,
                                      monthly_allowance_myr, deactivated_at, created_at)
 POST   /v1/admin/users               Create {name, email, password (min 12), role, monthly_allowance_myr?}
+                                     — queues TeamWelcomeMail to the new teammate (motivational welcome +
+                                     their email/temp-password + Team Portal link); a mail failure is
+                                     logged, never fails provisioning (founder also sees creds one-time in UI)
 PATCH  /v1/admin/users/{user}        Edit {name?, role?, monthly_allowance_myr?} — a role CHANGE revokes
                                      the teammate's tokens; renaming/re-budgeting the allowance doesn't.
                                      Demoting the platform's last founder → 422

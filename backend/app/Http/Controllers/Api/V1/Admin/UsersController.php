@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TeamWelcomeMail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 
 /**
@@ -37,7 +40,22 @@ class UsersController extends Controller
             'monthly_allowance_myr' => ['nullable', 'integer', 'min:0', 'max:1000000'],
         ]);
 
-        return response()->json($this->present(User::create($data)), 201);
+        $user = User::create($data);
+
+        // Welcome the teammate with their sign-in details ($data['password'] is
+        // still the plaintext — the model only ever stores its hash). Queued,
+        // and never allowed to fail provisioning: the founder also sees the
+        // one-time credentials on-screen as a fallback if delivery hiccups.
+        try {
+            Mail::to($user->email, $user->name)->send(new TeamWelcomeMail($user, $data['password']));
+        } catch (\Throwable $e) {
+            Log::warning('Welcome email could not be queued for new teammate.', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json($this->present($user), 201);
     }
 
     /** Rename, change role, or adjust the monthly allowance. */
