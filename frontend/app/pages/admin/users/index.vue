@@ -126,7 +126,8 @@ const form = reactive({
   email: '',
   password: '',
   role: 'marketer' as 'marketer' | 'engineer',
-  allowance: '',
+  // '' when blank; Vue auto-casts type="number" v-model input to number once digits are typed
+  allowance: '' as string | number,
 })
 
 // A freshly-created account's one-time credentials — shown in place of the
@@ -175,7 +176,7 @@ async function save() {
     toast.error('Name required', 'Give the teammate a name.')
     return
   }
-  const allowance = form.allowance.trim() ? Math.round(Number(form.allowance)) : null
+  const allowance = form.allowance === '' ? null : Math.round(Number(form.allowance))
 
   if (editingUser.value === null) {
     if (!form.email.trim()) {
