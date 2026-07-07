@@ -50,6 +50,12 @@ class DraftQuotationRequest extends FormRequest
             'packages.*.addon_keys' => ['nullable', 'array'],
             'packages.*.addon_keys.*' => ['string'],
 
+            // Document presentation fields written onto document.project / .intro
+            // (the quotation's title + lead-in shown on the PDF). Optional — the
+            // mapper falls back to a sensible default project when omitted.
+            'project' => ['nullable', 'string', 'max:200'],
+            'intro' => ['nullable', 'string', 'max:2000'],
+
             // Bespoke line items (also allowed as extras on a priced quote —
             // stored, never added to the engine estimate).
             'line_items' => ['nullable', 'array'],

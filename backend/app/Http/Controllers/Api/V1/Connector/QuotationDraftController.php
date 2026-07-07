@@ -94,6 +94,10 @@ class QuotationDraftController extends Controller
             // Bespoke never applies a rush uplift (its total is the line-item sum).
             $seeded = (new DocumentSeeder($engine))->seed($estimate, ! $isBespoke && $rush, $lineItems);
             $document = array_merge($seeded['document'], [
+                // Presentation fields the PDF renders (the mapper falls back to a
+                // default project title when project is null).
+                'project' => ($data['project'] ?? null) ?: null,
+                'intro' => ($data['intro'] ?? null) ?: null,
                 'created_via' => 'mcp_connector',
                 'assumptions' => array_values(array_merge($data['assumptions'] ?? [], $seeded['assumptions'])),
                 'open_questions' => array_values($data['open_questions'] ?? []),
@@ -208,6 +212,8 @@ class QuotationDraftController extends Controller
                 'company' => $quotation->company,
             ],
             'package_key' => $quotation->package_key,
+            'project' => $document['project'] ?? null,
+            'intro' => $document['intro'] ?? null,
             'estimate' => [
                 'min_myr' => (float) $quotation->estimate_min_myr,
                 'max_myr' => (float) $quotation->estimate_max_myr,

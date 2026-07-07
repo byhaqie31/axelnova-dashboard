@@ -345,6 +345,23 @@ class ConnectorDraftTest extends TestCase
         $this->assertSame('test_landing', $q->package_key);
     }
 
+    public function test_draft_accepts_and_stores_project_title_and_intro(): void
+    {
+        $res = $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Titled Co', 'email' => 'titled@example.com'],
+            'package_key' => 'test_landing',
+            'project' => 'Acme brand website',
+            'intro' => 'A fast, clean marketing site.',
+        ], $this->connectorHeader())->assertCreated();
+
+        $res->assertJsonPath('data.project', 'Acme brand website');
+        $res->assertJsonPath('data.intro', 'A fast, clean marketing site.');
+
+        $q = Quotation::where('reference_code', $res->json('data.reference_code'))->firstOrFail();
+        $this->assertSame('Acme brand website', $q->document['project']);
+        $this->assertSame('A fast, clean marketing site.', $q->document['intro']);
+    }
+
     public function test_rejects_both_packages_and_top_level_package_key(): void
     {
         $this->postJson('/api/v1/connector/quotations/draft', [

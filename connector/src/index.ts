@@ -101,6 +101,16 @@ export class AxelNovaMCP extends McpAgent<Env> {
           .describe(
             "Required (non-empty) when package_key is null — these ARE the bespoke quote (total = their sum). On a priced quote they are stored as extras for the founder and are NOT added to the engine estimate.",
           ),
+        project: z
+          .string()
+          .optional()
+          .describe(
+            "Quotation project title shown on the PDF, e.g. 'Brand website — design & front-end build'. Optional; a sensible default is used if omitted.",
+          ),
+        intro: z
+          .string()
+          .optional()
+          .describe("A one–two sentence lead-in shown under the project title on the PDF. Optional."),
         assumptions: z
           .array(z.string())
           .optional()
