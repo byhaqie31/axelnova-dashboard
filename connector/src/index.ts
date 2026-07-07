@@ -40,6 +40,9 @@ export class AxelNovaMCP extends McpAgent<Env> {
         "Creates a DRAFT only — it never sends anything to the client; the founder reviews and delivers it.",
         "Use package_key: null with line_items for bespoke projects that don't fit a catalog package.",
         "When package_key is set, modifiers/addon_keys/rush price it through the same engine as the public quote funnel; any line_items are stored as extras and NOT added to that estimate.",
+        "For a quote spanning several catalog packages, pass packages[] (each entry its own package_key + modifiers + addon_keys) INSTEAD of the top-level package_key — the estimate sums the packages and the ETA is the longest. rush is still one flag for the whole quote.",
+        "For a rich, presentation-grade proposal (grouped scope sections + What's included + option cards + a care plan), pass the `detailed` object INSTEAD — it is self-priced from its section amounts and must not be combined with package_key/packages/line_items.",
+        "project and intro set the document's title + lead-in on the PDF for any mode.",
         "Put every guess in assumptions and every unknown in open_questions so the founder can verify them.",
         "Call list_catalog first to get the valid keys. On a validation error, read the returned message — it lists the valid keys — and retry.",
       ].join(" "),
@@ -56,21 +59,38 @@ export class AxelNovaMCP extends McpAgent<Env> {
           .string()
           .nullable()
           .optional()
-          .describe("A package key from list_catalog, or null for a fully bespoke quote priced only from line_items."),
+          .describe(
+            "Single-package quote: a package key from list_catalog. Use null for a fully bespoke quote priced only from line_items. For multiple packages, use packages[] instead (not both).",
+          ),
         modifiers: z
           .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
           .optional()
           .describe(
-            "Only when package_key is set. Map of modifier key → value: boolean for toggles, an integer for number/slider fields, or the option value for selects. Keys must be valid for the chosen package (see that package's `modifiers` in list_catalog).",
+            "Only with the single top-level package_key. Map of modifier key → value: boolean for toggles, an integer for number/slider fields, or the option value for selects. Keys must be valid for the chosen package (see that package's `modifiers` in list_catalog).",
           ),
         addon_keys: z
           .array(z.string())
           .optional()
-          .describe("Only when package_key is set. Add-on keys from list_catalog.addons."),
+          .describe("Only with the single top-level package_key. Add-on keys from list_catalog.addons."),
+        packages: z
+          .array(
+            z.object({
+              package_key: z.string().describe("A package key from list_catalog."),
+              modifiers: z
+                .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
+                .optional()
+                .describe("Modifier keys valid for THIS package (see its `modifiers` in list_catalog)."),
+              addon_keys: z.array(z.string()).optional().describe("Add-on keys from list_catalog.addons."),
+            }),
+          )
+          .optional()
+          .describe(
+            "Multi-package quote: one entry per catalog package, each with its own modifiers + add-ons. The estimate sums all packages and the ETA is the longest. Use this OR the top-level package_key, never both. Omit for a bespoke quote.",
+          ),
         rush: z
           .boolean()
           .optional()
-          .describe("Rush delivery — always raises the price, and shortens the timeline for week/month ETAs."),
+          .describe("Rush delivery for the whole quote — always raises the price, and shortens the timeline for week/month ETAs."),
         line_items: z
           .array(
             z.object({
@@ -82,6 +102,75 @@ export class AxelNovaMCP extends McpAgent<Env> {
           .optional()
           .describe(
             "Required (non-empty) when package_key is null — these ARE the bespoke quote (total = their sum). On a priced quote they are stored as extras for the founder and are NOT added to the engine estimate.",
+          ),
+        project: z
+          .string()
+          .optional()
+          .describe(
+            "Quotation project title shown on the PDF, e.g. 'Brand website — design & front-end build'. Optional; a sensible default is used if omitted.",
+          ),
+        intro: z
+          .string()
+          .optional()
+          .describe("A one–two sentence lead-in shown under the project title on the PDF. Optional."),
+        detailed: z
+          .object({
+            subtitle: z.string().optional().describe("Short subtitle under the title, e.g. 'Website quotation'."),
+            deposit_pct: z.number().int().min(0).max(100).optional().describe("Deposit %, default 50."),
+            sections: z
+              .array(
+                z.object({
+                  title: z.string().describe("Section heading, e.g. 'Design' or 'Build'."),
+                  rows: z.array(
+                    z.object({
+                      title: z.string(),
+                      detail: z.string().nullable().optional(),
+                      amount_myr: z.number().nonnegative(),
+                    }),
+                  ),
+                }),
+              )
+              .describe("The priced scope, grouped into sections. The quote total is the SUM of every row's amount_myr."),
+            included: z
+              .array(
+                z.object({
+                  eyebrow: z.string().optional(),
+                  items: z.array(z.string()).describe("Bullet points."),
+                  columns: z.union([z.literal(1), z.literal(2)]).optional(),
+                  note: z.string().optional(),
+                }),
+              )
+              .optional()
+              .describe("'What's included' tick-list groups."),
+            options: z
+              .array(
+                z.object({
+                  badge: z.string().optional().describe("e.g. 'OPTION A'."),
+                  title: z.string(),
+                  sub: z.string().optional(),
+                  amount_myr: z.number().nonnegative(),
+                  was_myr: z.number().nonnegative().optional().describe("Strikethrough 'was' price."),
+                  price_note: z.string().optional().describe("e.g. 'one-time'."),
+                  recommended: z.boolean().optional().describe("Highlights this card as the recommended pick."),
+                }),
+              )
+              .optional()
+              .describe("Side-by-side option cards the client chooses between."),
+            care: z
+              .array(
+                z.object({
+                  label: z.string(),
+                  detail: z.string().optional(),
+                  amount_myr: z.number().nonnegative(),
+                  period: z.enum(["month", "year"]).optional(),
+                }),
+              )
+              .optional()
+              .describe("Ongoing care / support plan rows."),
+          })
+          .optional()
+          .describe(
+            "A rich, self-priced DETAILED proposal (scope sections + What's included + option cards + care plan). Priced from the section row amounts — do NOT combine with package_key/packages/line_items.",
           ),
         assumptions: z
           .array(z.string())

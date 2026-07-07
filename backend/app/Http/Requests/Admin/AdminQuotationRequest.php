@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Services\Quoting\PricingEngine;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -31,9 +32,18 @@ class AdminQuotationRequest extends FormRequest
             'company' => ['nullable', 'string', 'max:200'],
 
             // Pricing inputs — re-priced server-side with the same engine as the funnel.
-            // A detailed quote is priced by its own composed sections, so the internal
-            // pricing-basis package is optional there; standard quotes still require one.
-            'package_key' => ['required_unless:document.layout,detailed', 'nullable', 'string', Rule::in($validPackageKeys)],
+            // Two accepted shapes (presence enforced in withValidator, not here, so a
+            // detailed quote needs neither): the canonical multi-package `packages[]`,
+            // or the single-package sugar (`package_key` + scope_values/modifiers/addon_keys).
+            'packages' => ['nullable', 'array'],
+            'packages.*.package_key' => ['required_with:packages', 'string', Rule::in($validPackageKeys)],
+            'packages.*.service_package_id' => ['nullable', 'integer'],
+            'packages.*.scope_values' => ['nullable', 'array'],
+            'packages.*.modifiers' => ['nullable', 'array'],
+            'packages.*.addon_keys' => ['nullable', 'array'],
+            'packages.*.addon_keys.*' => ['string', Rule::in($validAddonKeys)],
+
+            'package_key' => ['nullable', 'string', Rule::in($validPackageKeys)],
             'modifiers' => ['nullable', 'array'],
             // Scope-field values keyed by field_key — loose (the engine gates each
             // key by applies_to, same as modifiers).
@@ -72,5 +82,28 @@ class AdminQuotationRequest extends FormRequest
             // Link back to the inquiry this was built from.
             'inquiry_id' => ['nullable', 'integer', 'exists:inquiries,id'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            // A standard quote needs a pricing basis — either the canonical
+            // packages[] or the single-package package_key. A detailed quote is
+            // priced from its own composed sections, so neither is required.
+            $isDetailed = $this->input('document.layout') === 'detailed';
+            $hasPackages = ! empty($this->input('packages'));
+            $hasPackageKey = filled($this->input('package_key'));
+
+            if (! $isDetailed && ! $hasPackages && ! $hasPackageKey) {
+                $validator->errors()->add(
+                    'package_key',
+                    'A package is required unless the document layout is "detailed". Provide packages[] or package_key.',
+                );
+            }
+        });
     }
 }

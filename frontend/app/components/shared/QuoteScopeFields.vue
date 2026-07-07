@@ -9,6 +9,8 @@ import { seedScopeDefaults } from '~/composables/quoteScope'
 // service_scope_fields) — rendered generically by type.
 const props = defineProps<{
   state: QuoteScopeState
+  /** Quote-level rush flag (one per quotation) — drives this block's estimate. */
+  rush?: boolean
   /** Show the red required-asterisk on the package label (standard quotes). */
   requirePackage?: boolean
   /** Validation message to surface under the package picker, set by the parent. */
@@ -43,7 +45,7 @@ watch(categoryFields, (fields) => {
 
 const estimate = computed<EstimateResult | null>(() => {
   if (!props.state.packageKey || !config.value) return null
-  return calculate(props.state.packageKey, props.state.scopeValues, props.state.addonKeys, props.state.rush)
+  return calculate(props.state.packageKey, props.state.scopeValues, props.state.addonKeys, !!props.rush)
 })
 
 watch(estimate, v => emit('update:estimate', v), { immediate: true })
@@ -191,18 +193,7 @@ class="text-[12px] font-semibold shrink-0 ml-3"
           </button>
         </div>
       </section>
-
-      <!-- Rush -->
-      <section v-if="state.packageKey">
-        <label class="quote-toggle flex items-center gap-3">
-          <input v-model="state.rush" type="checkbox" class="sr-only" >
-          <span class="quote-toggle-track" :class="{ active: state.rush }"/>
-          <span>
-            <span class="text-[13px] font-medium" style="color: var(--color-text);">Rush delivery</span>
-            <span class="text-[12px] ml-2" style="color: var(--color-text-tertiary);">(+20%, timeline reduced ~30%)</span>
-          </span>
-        </label>
-      </section>
+      <!-- Rush is a single quote-level flag, owned by the parent (QuotationBuilder). -->
     </template>
   </div>
 </template>

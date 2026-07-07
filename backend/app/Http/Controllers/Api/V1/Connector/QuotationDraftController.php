@@ -7,8 +7,9 @@ use App\Http\Requests\Connector\DraftQuotationRequest;
 use App\Models\Client;
 use App\Models\Quotation;
 use App\Services\Connector\ConnectorCatalog;
+use App\Services\Quoting\DetailedDocumentBuilder;
+use App\Services\Quoting\DocumentSeeder;
 use App\Services\Quoting\PricingEngine;
-use App\Services\Quoting\QuoteRequestInput;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
 use Illuminate\Http\JsonResponse;
@@ -42,10 +43,11 @@ class QuotationDraftController extends Controller
         $catalog = new ConnectorCatalog;
         $engine = PricingEngine::active();
 
-        $packageKey = ($data['package_key'] ?? null) ?: null;
+        $rawPackages = $this->rawPackages($data);
+        $rush = (bool) ($data['rush'] ?? false);
         $lineItems = $this->normaliseLineItems($data['line_items'] ?? []);
 
-        $quotation = DB::transaction(function () use ($request, $data, $catalog, $engine, $packageKey, $lineItems) {
+        $quotation = DB::transaction(function () use ($request, $data, $catalog, $engine, $rawPackages, $rush, $lineItems) {
             // Upsert the client by email — same dedup pattern as the public funnel.
             $client = Client::firstOrCreate(
                 ['email' => $data['client']['email']],
@@ -56,48 +58,82 @@ class QuotationDraftController extends Controller
                 ],
             );
 
-            $estimate = null;
-            $engineModifiers = [];
-            $scopeValues = [];
-            $addonKeys = [];
-
-            if ($packageKey !== null) {
-                // Route the flat `modifiers` map onto the engine's two inputs.
-                $split = $catalog->splitModifiers($packageKey, (array) ($data['modifiers'] ?? []));
-                $engineModifiers = $split['modifiers'];
-                $scopeValues = $split['scope_values'];
-                $addonKeys = array_values($data['addon_keys'] ?? []);
-
-                $estimate = $engine->calculate(new QuoteRequestInput(
-                    name: $client->name,
-                    email: $client->email,
-                    phone: (string) ($client->phone ?? ''),
-                    company: $client->company,
-                    packageKey: $packageKey,
-                    modifiers: $engineModifiers,
-                    addonKeys: $addonKeys,
-                    rush: (bool) ($data['rush'] ?? false),
-                    scopeValues: $scopeValues,
-                ));
-
-                $minMyr = $estimate->minMyr;
-                $maxMyr = $estimate->maxMyr;
-                $etaValue = $estimate->etaValue;
-                $etaUnit = $estimate->etaUnit;
+            if (! empty($data['detailed']) && is_array($data['detailed'])) {
+                // Detailed proposal — self-priced from its own sections (no engine, no
+                // packages). Built into the canonical detailed document shape the admin
+                // builder + PDF already render; ETA left for the admin (0/'week' sentinel).
+                $built = (new DetailedDocumentBuilder)->build(
+                    $data['detailed'],
+                    ($data['project'] ?? null) ?: null,
+                    ($data['intro'] ?? null) ?: null,
+                );
+                $document = array_merge($built['document'], [
+                    // Mirror project/intro at the document top level too, for the
+                    // connector read-back view (the PDF reads them from payload).
+                    'project' => ($data['project'] ?? null) ?: null,
+                    'intro' => ($data['intro'] ?? null) ?: null,
+                    'created_via' => 'mcp_connector',
+                    'assumptions' => array_values($data['assumptions'] ?? []),
+                    'open_questions' => array_values($data['open_questions'] ?? []),
+                    'notes' => $data['notes'] ?? null,
+                ]);
+                $minMyr = $maxMyr = $built['total'];
+                $etaValue = 0;
+                $etaUnit = 'week';
+                $packages = [];
+                $first = null;
+                $breakdown = [];
             } else {
-                // Bespoke: the sum of the line items IS the agreed range.
-                $minMyr = $maxMyr = array_sum(array_column($lineItems, 'amount_myr'));
-                $etaValue = 0;      // 0/'week' = the codebase's "no ETA yet" sentinel
-                $etaUnit = 'week';  // (columns are NOT NULL); admin fills the timeline
-            }
+                // Resolve to the canonical packages[] the whole system reads: split each
+                // package's flat `modifiers` map onto the engine's modifiers/scope_values
+                // and resolve its service_package_id.
+                $packages = array_map(function (array $rp) use ($catalog, $engine): array {
+                    $key = (string) $rp['package_key'];
+                    $split = $catalog->splitModifiers($key, (array) ($rp['modifiers'] ?? []));
 
-            $document = [
-                'created_via' => 'mcp_connector',
-                'line_items' => $lineItems,
-                'assumptions' => array_values($data['assumptions'] ?? []),
-                'open_questions' => array_values($data['open_questions'] ?? []),
-                'notes' => $data['notes'] ?? null,
-            ];
+                    return [
+                        'package_key' => $key,
+                        'service_package_id' => $engine->packageId($key),
+                        'scope_values' => $split['scope_values'],
+                        'modifiers' => $split['modifiers'],
+                        'addon_keys' => array_values((array) ($rp['addon_keys'] ?? [])),
+                    ];
+                }, $rawPackages);
+
+                $isBespoke = $packages === [];
+                $estimate = $engine->calculateMulti($packages, $rush);
+
+                if ($isBespoke) {
+                    // Bespoke: the sum of the line items IS the agreed range; ETA left as
+                    // the 0/'week' "no ETA yet" sentinel (columns are NOT NULL).
+                    $minMyr = $maxMyr = array_sum(array_column($lineItems, 'amount_myr'));
+                    $etaValue = 0;
+                    $etaUnit = 'week';
+                } else {
+                    $minMyr = $estimate->minMyr;
+                    $maxMyr = $estimate->maxMyr;
+                    $etaValue = $estimate->etaValue;
+                    $etaUnit = $estimate->etaUnit;
+                }
+
+                // Seed the canonical document (document.items — what the PDF renders). A
+                // fresh connector row always seeds; line_items ride along as extra lines.
+                // Bespoke never applies a rush uplift (its total is the line-item sum).
+                $seeded = (new DocumentSeeder($engine))->seed($estimate, ! $isBespoke && $rush, $lineItems);
+                $document = array_merge($seeded['document'], [
+                    // Presentation fields the PDF renders (the mapper falls back to a
+                    // default project title when project is null).
+                    'project' => ($data['project'] ?? null) ?: null,
+                    'intro' => ($data['intro'] ?? null) ?: null,
+                    'created_via' => 'mcp_connector',
+                    'assumptions' => array_values(array_merge($data['assumptions'] ?? [], $seeded['assumptions'])),
+                    'open_questions' => array_values($data['open_questions'] ?? []),
+                    'notes' => $data['notes'] ?? null,
+                ]);
+
+                $first = $packages[0] ?? null;
+                $breakdown = $estimate->breakdown;
+            }
 
             $quotation = Quotation::create([
                 'reference_code' => ReferenceCodeGenerator::generate(DocumentType::Quotation),
@@ -109,19 +145,18 @@ class QuotationDraftController extends Controller
                 'email' => $client->email,
                 'phone' => $client->phone,
                 'company' => $client->company,
-                'package_key' => $packageKey,
+                'package_key' => $first['package_key'] ?? null,
+                'service_package_id' => $first['service_package_id'] ?? null,
                 'pricing_config_id' => $engine->getConfig()->id,
-                // The full request body (audit trail) + the builder-hydration keys
-                // so the admin can reopen and re-price the draft in the quote builder.
+                // Canonical multi-package form_payload (see FormPayloadNormalizer) +
+                // the full request body as an audit trail, so the admin can reopen
+                // and re-price the draft in the quote builder.
                 'form_payload' => [
                     'request' => $request->all(),
-                    'package_key' => $packageKey,
-                    'modifiers' => $engineModifiers,
-                    'scope_values' => $scopeValues,
-                    'addon_keys' => $addonKeys,
-                    'rush' => (bool) ($data['rush'] ?? false),
-                    'breakdown' => $estimate?->breakdown ?? [],
-                    'created_via' => 'mcp_connector',
+                    'packages' => $packages,
+                    'rush' => $rush,
+                    'breakdown' => $breakdown,
+                    'source_meta' => ['created_via' => 'mcp_connector'],
                 ],
                 'document' => $document,
                 'estimate_min_myr' => $minMyr,
@@ -131,9 +166,10 @@ class QuotationDraftController extends Controller
                 'submitted_at' => now(),
             ]);
 
-            // Priced path: persist add-on rows (mirrors the funnel) so the admin
-            // detail + PDF show them.
-            if ($packageKey !== null && $addonKeys !== []) {
+            // Persist add-on rows (union across packages) so the admin detail + PDF
+            // show them.
+            $addonKeys = collect($packages)->flatMap(fn (array $p): array => $p['addon_keys'])->unique()->values()->all();
+            if ($addonKeys !== []) {
                 $addonDefs = $engine->addons();
                 foreach ($addonKeys as $key) {
                     if (isset($addonDefs[$key])) {
@@ -205,13 +241,16 @@ class QuotationDraftController extends Controller
                 'company' => $quotation->company,
             ],
             'package_key' => $quotation->package_key,
+            'layout' => $document['layout'] ?? 'standard',
+            'project' => $document['project'] ?? null,
+            'intro' => $document['intro'] ?? null,
             'estimate' => [
                 'min_myr' => (float) $quotation->estimate_min_myr,
                 'max_myr' => (float) $quotation->estimate_max_myr,
                 'eta_value' => $hasEta ? (int) $quotation->estimate_eta_value : null,
                 'eta_unit' => $hasEta ? $quotation->estimate_eta_unit : null,
             ],
-            'line_items' => $document['line_items'] ?? [],
+            'line_items' => self::lineItemsView($document),
             'assumptions' => $document['assumptions'] ?? [],
             'open_questions' => $document['open_questions'] ?? [],
             'notes' => $document['notes'] ?? null,
@@ -228,8 +267,8 @@ class QuotationDraftController extends Controller
     }
 
     /**
-     * Coerce the request's line items to a stable stored shape. Used for both the
-     * bespoke total and the extras stored on a priced draft.
+     * Coerce the request's line items to a stable shape. Used for both the bespoke
+     * total and the extras seeded onto a priced draft's document.
      *
      * @return list<array{label: string, description: ?string, amount_myr: float}>
      */
@@ -240,5 +279,59 @@ class QuotationDraftController extends Controller
             'description' => $item['description'] ?? null,
             'amount_myr' => (float) $item['amount_myr'],
         ], $items));
+    }
+
+    /**
+     * Normalise the request into a list of raw package entries: the canonical
+     * packages[] when present, else the single top-level package (sugar), else []
+     * for a fully bespoke quote.
+     *
+     * @return list<array{package_key: string, modifiers: array, addon_keys: list<string>}>
+     */
+    private function rawPackages(array $data): array
+    {
+        if (! empty($data['packages']) && is_array($data['packages'])) {
+            return array_values(array_map(fn (array $p): array => [
+                'package_key' => (string) ($p['package_key'] ?? ''),
+                'modifiers' => (array) ($p['modifiers'] ?? []),
+                'addon_keys' => array_values((array) ($p['addon_keys'] ?? [])),
+            ], array_filter($data['packages'], 'is_array')));
+        }
+
+        $key = ($data['package_key'] ?? null) ?: null;
+        if ($key === null) {
+            return [];
+        }
+
+        return [[
+            'package_key' => (string) $key,
+            'modifiers' => (array) ($data['modifiers'] ?? []),
+            'addon_keys' => array_values((array) ($data['addon_keys'] ?? [])),
+        ]];
+    }
+
+    /**
+     * The connector-facing line_items view. Reads the canonical document.items
+     * (what the PDF renders), falling back to the legacy connector document.line_items
+     * for rows created before the shape unified.
+     *
+     * @param  array<string, mixed>  $document
+     * @return list<array{label: string, description: ?string, amount_myr: float}>
+     */
+    private static function lineItemsView(array $document): array
+    {
+        if (! empty($document['items']) && is_array($document['items'])) {
+            return array_values(array_map(fn (array $it): array => [
+                'label' => (string) ($it['title'] ?? 'Item'),
+                'description' => $it['desc'] ?? null,
+                'amount_myr' => (float) ($it['rate'] ?? 0) * (float) ($it['qty'] ?? 1),
+            ], $document['items']));
+        }
+
+        return array_values(array_map(fn (array $it): array => [
+            'label' => (string) ($it['label'] ?? 'Item'),
+            'description' => $it['description'] ?? null,
+            'amount_myr' => (float) ($it['amount_myr'] ?? 0),
+        ], $document['line_items'] ?? []));
     }
 }

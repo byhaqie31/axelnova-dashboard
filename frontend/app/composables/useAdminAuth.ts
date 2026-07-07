@@ -1,36 +1,13 @@
+import { createTokenAuth } from '~/composables/useTokenAuth'
+
+// Admin-cockpit auth (token key `axn_admin_token`, login `/admin/login`). A thin
+// wrapper over the shared createTokenAuth engine — which owns token storage, the
+// Bearer header, and the 401 → login interceptor — plus the admin-only extras below.
 export function useAdminAuth() {
-  const runtimeConfig = useRuntimeConfig()
-
-  function getToken(): string | null {
-    if (import.meta.server) return null
-    return localStorage.getItem('axn_admin_token')
-  }
-
-  function setToken(token: string) {
-    localStorage.setItem('axn_admin_token', token)
-  }
-
-  function clearToken() {
-    localStorage.removeItem('axn_admin_token')
-  }
-
-  function authHeaders(): Record<string, string> {
-    const token = getToken()
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  }
-
-  async function apiFetch<T>(path: string, opts: Parameters<typeof $fetch>[1] = {}): Promise<T> {
-    // Cast around nitro's typed-route inference: a template-literal URL sends
-    // vue-tsc into "excessive stack depth" comparing route unions.
-    const fetcher = $fetch as (url: string, o?: Parameters<typeof $fetch>[1]) => Promise<unknown>
-    return await fetcher(`${runtimeConfig.public.apiBase}${path}`, {
-      ...opts,
-      headers: { ...authHeaders(), ...(opts.headers as Record<string, string> ?? {}) },
-    }) as T
-  }
+  const auth = createTokenAuth({ tokenKey: 'axn_admin_token', loginPath: '/admin/login' })
 
   async function logout() {
-    clearToken()
+    auth.clearToken()
     await navigateTo('/admin/login')
   }
 
@@ -46,7 +23,7 @@ export function useAdminAuth() {
     const tab = window.open('about:blank', '_blank')
     let target = '/team/login'
     try {
-      const { token } = await apiFetch<{ token: string }>('/api/v1/admin/team-session', { method: 'POST' })
+      const { token } = await auth.apiFetch<{ token: string }>('/api/v1/admin/team-session', { method: 'POST' })
       setTeamToken(token)
       target = '/team'
     }
@@ -57,5 +34,5 @@ export function useAdminAuth() {
     else await navigateTo(target)
   }
 
-  return { getToken, setToken, clearToken, authHeaders, apiFetch, logout, jumpToTeam }
+  return { ...auth, logout, jumpToTeam }
 }

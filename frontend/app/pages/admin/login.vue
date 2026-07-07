@@ -23,6 +23,10 @@ const redirectTo = computed(() => {
   return typeof r === 'string' && r.startsWith('/admin') && !r.startsWith('//') ? r : '/admin'
 })
 
+// The auth interceptor sets ?expired=1 when it bounces the user here after the API
+// rejected a stale token — surface a gentle notice so the redirect isn't confusing.
+const sessionExpired = computed(() => route.query.expired === '1')
+
 async function handleLogin() {
   if (!email.value || !password.value) return
   loading.value = true
@@ -66,6 +70,11 @@ async function handleLogin() {
               Sign in to manage projects, quotations and orders.
             </p>
           </div>
+
+          <p v-if="sessionExpired" class="text-[12px] flex items-center justify-center gap-1.5" style="color: var(--color-warning);">
+            <UIcon name="i-lucide-alert-triangle" class="size-4 shrink-0" />
+            Your session expired — please sign in again.
+          </p>
 
           <form class="space-y-5" @submit.prevent="handleLogin">
             <div class="space-y-1.5">

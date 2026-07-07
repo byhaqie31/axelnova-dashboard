@@ -9,6 +9,7 @@
 import StatusPill from '~/components/shared/primitives/StatusPill.vue'
 import TaskPayBadge from '~/components/shared/primitives/TaskPayBadge.vue'
 import { taskPriorityMeta, type TaskRecord, type TeamTasksFeed } from '~/data/tasks'
+import TaskDetailDrawer from '~/components/team/TaskDetailDrawer.vue'
 
 definePageMeta({ layout: 'team', middleware: 'team-auth' })
 useHead({ title: 'Tasks — Team' })
@@ -56,6 +57,25 @@ const availableCount = computed(() => pool.value.length + myStartable.value.leng
 
 // ── Actions ──────────────────────────────────────────────────────────────
 const actingId = ref<number | null>(null)
+
+// ── Detail drawer — read-only full view of a card (§12.13 slideover). The
+// variant decides which single action the footer offers (pool and startable
+// both have status `open` but different verbs). Acting closes the drawer and
+// hands off to the shared handler below.
+type DetailVariant = 'pool' | 'startable' | 'in_progress' | 'done'
+const detailTask = ref<TaskRecord | null>(null)
+const detailVariant = ref<DetailVariant>('pool')
+
+function openDetail(task: TaskRecord, variant: DetailVariant) {
+  detailTask.value = task
+  detailVariant.value = variant
+}
+
+function onDetailAction(fn: (t: TaskRecord) => void) {
+  const t = detailTask.value
+  detailTask.value = null
+  if (t) fn(t)
+}
 
 async function claim(task: TaskRecord) {
   if (actingId.value !== null) return
@@ -145,7 +165,14 @@ async function submitComplete() {
   }
 }
 
-onKeyStroke('Escape', () => { if (completing.value && !submittingComplete.value) completing.value = null })
+// Escape closes the topmost layer: the Complete dialog first, then the drawer.
+onKeyStroke('Escape', () => {
+  if (completing.value) {
+    if (!submittingComplete.value) completing.value = null
+    return
+  }
+  if (detailTask.value) detailTask.value = null
+})
 
 // Relative deadline label; overdue reads danger.
 function deadlineInfo(iso: string | null): { label: string, overdue: boolean } | null {
@@ -186,7 +213,10 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
 
         <div v-else class="flex flex-col gap-2.5">
           <!-- My admin-assigned, not-yet-started tasks come first: they're mine to start. -->
-          <article v-for="t in myStartable" :key="`mine-${t.id}`" class="kanban-card">
+          <article
+            v-for="t in myStartable" :key="`mine-${t.id}`" class="kanban-card"
+            role="button" tabindex="0" @click="openDetail(t, 'startable')"
+            @keydown.enter="openDetail(t, 'startable')" @keydown.space.prevent="openDetail(t, 'startable')">
             <div class="flex items-start justify-between gap-2 mb-1.5">
               <h3 class="kanban-card-title">{{ t.title }}</h3>
               <span
@@ -206,12 +236,15 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
             </div>
             <button
               type="button" class="btn-pill btn-pill-accent text-[12px] w-full justify-center mt-3"
-              :disabled="actingId !== null" @click="start(t)">
+              :disabled="actingId !== null" @click.stop="start(t)">
               {{ actingId === t.id ? 'Starting…' : 'Start' }}
             </button>
           </article>
 
-          <article v-for="t in pool" :key="t.id" class="kanban-card">
+          <article
+            v-for="t in pool" :key="t.id" class="kanban-card"
+            role="button" tabindex="0" @click="openDetail(t, 'pool')"
+            @keydown.enter="openDetail(t, 'pool')" @keydown.space.prevent="openDetail(t, 'pool')">
             <h3 class="kanban-card-title mb-1.5">{{ t.title }}</h3>
             <p v-if="t.description" class="kanban-card-desc">{{ t.description }}</p>
             <div class="kanban-card-meta">
@@ -226,7 +259,7 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
             </div>
             <button
               type="button" class="btn-pill btn-pill-primary text-[12px] w-full justify-center mt-3"
-              :disabled="actingId !== null" @click="claim(t)">
+              :disabled="actingId !== null" @click.stop="claim(t)">
               {{ actingId === t.id ? 'Picking up…' : 'Pick up' }}
             </button>
           </article>
@@ -244,7 +277,10 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
         <p v-if="!inProgress.length" class="kanban-empty">Nothing in flight. Pick something up.</p>
 
         <div v-else class="flex flex-col gap-2.5">
-          <article v-for="t in inProgress" :key="t.id" class="kanban-card">
+          <article
+            v-for="t in inProgress" :key="t.id" class="kanban-card"
+            role="button" tabindex="0" @click="openDetail(t, 'in_progress')"
+            @keydown.enter="openDetail(t, 'in_progress')" @keydown.space.prevent="openDetail(t, 'in_progress')">
             <h3 class="kanban-card-title mb-1.5">{{ t.title }}</h3>
             <p v-if="t.description" class="kanban-card-desc">{{ t.description }}</p>
             <div class="kanban-card-meta">
@@ -260,12 +296,12 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
             <div class="flex gap-2 mt-3">
               <button
                 type="button" class="btn-pill btn-pill-primary text-[12px] flex-1 justify-center"
-                :disabled="actingId !== null" @click="openComplete(t)">
+                :disabled="actingId !== null" @click.stop="openComplete(t)">
                 Complete…
               </button>
               <button
                 type="button" class="btn-pill btn-pill-ghost text-[12px]"
-                :disabled="actingId !== null" @click="release(t)">
+                :disabled="actingId !== null" @click.stop="release(t)">
                 {{ actingId === t.id ? '…' : 'Release' }}
               </button>
             </div>
@@ -284,7 +320,10 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
         <p v-if="!complete.length" class="kanban-empty">Completed tasks land here.</p>
 
         <div v-else class="flex flex-col gap-2.5">
-          <article v-for="t in complete" :key="t.id" class="kanban-card kanban-card-done">
+          <article
+            v-for="t in complete" :key="t.id" class="kanban-card kanban-card-done"
+            role="button" tabindex="0" @click="openDetail(t, 'done')"
+            @keydown.enter="openDetail(t, 'done')" @keydown.space.prevent="openDetail(t, 'done')">
             <div class="flex items-start justify-between gap-2 mb-1.5">
               <h3 class="kanban-card-title">{{ t.title }}</h3>
               <StatusPill :status="t.status" type="task" />
@@ -299,6 +338,18 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
         </div>
       </section>
     </div>
+
+    <!-- Read-only detail drawer — full description + notes + the one contextual
+         action. Acting closes it and hands off to the shared card handlers. -->
+    <TaskDetailDrawer
+      :task="detailTask"
+      :variant="detailVariant"
+      :busy="actingId !== null"
+      @close="detailTask = null"
+      @pickup="onDetailAction(claim)"
+      @start="onDetailAction(start)"
+      @complete="onDetailAction(openComplete)"
+      @release="onDetailAction(release)" />
 
     <!-- Complete… dialog — required note -->
     <Teleport to="body">
@@ -383,6 +434,21 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
   background: var(--kanban-card-bg);
   box-shadow: var(--shadow-xs);
   padding: 14px;
+  /* Whole card opens the read-only detail drawer; inner buttons @click.stop. */
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.kanban-card:hover {
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.kanban-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kanban-card { transition: none; }
+  .kanban-card:hover { transform: none; }
 }
 .kanban-card-done {
   opacity: 0.82;

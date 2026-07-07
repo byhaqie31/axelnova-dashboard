@@ -47,6 +47,28 @@ class QuoteRequestController extends Controller
                 ],
             );
 
+            // The public funnel is single-package: wrap it into the canonical
+            // packages[] shape (see FormPayloadNormalizer) so the funnel, the admin
+            // builder, and the MCP connector all store ONE shape. The estimate math,
+            // the HTTP response, and the customer email are unchanged — the grouped
+            // breakdown flattens back to the same tuples the email renders.
+            $package = [
+                'package_key' => $input->packageKey,
+                'service_package_id' => $engine->packageId($input->packageKey),
+                'scope_values' => $input->scopeValues,
+                'modifiers' => $input->modifiers,
+                'addon_keys' => $input->addonKeys,
+            ];
+            $breakdownGroup = [[
+                'package_key' => $input->packageKey,
+                'name' => $engine->packageName($input->packageKey),
+                'min' => $estimate->minMyr,
+                'max' => $estimate->maxMyr,
+                'eta_value' => $estimate->etaValue,
+                'eta_unit' => $estimate->etaUnit,
+                'lines' => $estimate->breakdown,
+            ]];
+
             $quotation = Quotation::create([
                 'reference_code' => $refCode,
                 'client_id' => $client->id,
@@ -55,14 +77,13 @@ class QuoteRequestController extends Controller
                 'phone' => $input->phone,
                 'company' => $input->company,
                 'package_key' => $input->packageKey,
+                'service_package_id' => $package['service_package_id'],
                 'pricing_config_id' => $engine->getConfig()->id,
                 'form_payload' => array_merge($request->input('form_payload', []), [
-                    'package_key' => $input->packageKey,
-                    'modifiers' => $input->modifiers,
-                    'scope_values' => $input->scopeValues,
-                    'addon_keys' => $input->addonKeys,
+                    'packages' => [$package],
                     'rush' => $input->rush,
-                    'breakdown' => $estimate->breakdown,
+                    'breakdown' => $breakdownGroup,
+                    'source_meta' => ['created_via' => 'quote_funnel'],
                 ]),
                 'estimate_min_myr' => $estimate->minMyr,
                 'estimate_max_myr' => $estimate->maxMyr,

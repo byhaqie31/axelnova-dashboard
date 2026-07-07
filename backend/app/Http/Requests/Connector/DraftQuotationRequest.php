@@ -34,12 +34,27 @@ class DraftQuotationRequest extends FormRequest
             'client.phone' => ['nullable', 'string', 'max:30'],
             'client.company' => ['nullable', 'string', 'max:200'],
 
-            // Pricing basis. null = fully bespoke (validated in after()).
+            // Pricing basis. null / omitted = fully bespoke (validated in after()).
+            // Single-package sugar — a convenience for a one-entry packages[].
             'package_key' => ['nullable', 'string'],
             'modifiers' => ['nullable', 'array'],
             'addon_keys' => ['nullable', 'array'],
             'addon_keys.*' => ['string'],
             'rush' => ['nullable', 'boolean'],
+
+            // Canonical multi-package shape. Each entry is a package + its own
+            // modifiers/add-ons; mutually exclusive with the top-level sugar.
+            'packages' => ['nullable', 'array'],
+            'packages.*.package_key' => ['required_with:packages', 'string'],
+            'packages.*.modifiers' => ['nullable', 'array'],
+            'packages.*.addon_keys' => ['nullable', 'array'],
+            'packages.*.addon_keys.*' => ['string'],
+
+            // Document presentation fields written onto document.project / .intro
+            // (the quotation's title + lead-in shown on the PDF). Optional — the
+            // mapper falls back to a sensible default project when omitted.
+            'project' => ['nullable', 'string', 'max:200'],
+            'intro' => ['nullable', 'string', 'max:2000'],
 
             // Bespoke line items (also allowed as extras on a priced quote —
             // stored, never added to the engine estimate).
@@ -47,6 +62,40 @@ class DraftQuotationRequest extends FormRequest
             'line_items.*.label' => ['required_with:line_items', 'string', 'max:200'],
             'line_items.*.description' => ['nullable', 'string', 'max:1000'],
             'line_items.*.amount_myr' => ['required_with:line_items', 'numeric', 'min:0'],
+
+            // Detailed proposal — the connector's richest mode: a self-priced,
+            // multi-section proposal (scope sections + "What's included" + option
+            // cards + care plan). Priced from the section row amounts, NOT the
+            // engine; mutually exclusive with package_key/packages/line_items
+            // (enforced in after()).
+            'detailed' => ['nullable', 'array'],
+            'detailed.subtitle' => ['nullable', 'string', 'max:200'],
+            'detailed.deposit_pct' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'detailed.sections' => ['required_with:detailed', 'array', 'min:1'],
+            'detailed.sections.*.title' => ['required', 'string', 'max:200'],
+            'detailed.sections.*.rows' => ['required', 'array', 'min:1'],
+            'detailed.sections.*.rows.*.title' => ['required', 'string', 'max:200'],
+            'detailed.sections.*.rows.*.detail' => ['nullable', 'string', 'max:1000'],
+            'detailed.sections.*.rows.*.amount_myr' => ['required', 'numeric', 'min:0'],
+            'detailed.included' => ['nullable', 'array'],
+            'detailed.included.*.eyebrow' => ['nullable', 'string', 'max:120'],
+            'detailed.included.*.items' => ['required_with:detailed.included', 'array', 'min:1'],
+            'detailed.included.*.items.*' => ['string', 'max:300'],
+            'detailed.included.*.columns' => ['nullable', 'integer', 'in:1,2'],
+            'detailed.included.*.note' => ['nullable', 'string', 'max:300'],
+            'detailed.options' => ['nullable', 'array'],
+            'detailed.options.*.badge' => ['nullable', 'string', 'max:40'],
+            'detailed.options.*.title' => ['required_with:detailed.options', 'string', 'max:200'],
+            'detailed.options.*.sub' => ['nullable', 'string', 'max:200'],
+            'detailed.options.*.amount_myr' => ['required_with:detailed.options', 'numeric', 'min:0'],
+            'detailed.options.*.was_myr' => ['nullable', 'numeric', 'min:0'],
+            'detailed.options.*.price_note' => ['nullable', 'string', 'max:60'],
+            'detailed.options.*.recommended' => ['nullable', 'boolean'],
+            'detailed.care' => ['nullable', 'array'],
+            'detailed.care.*.label' => ['required_with:detailed.care', 'string', 'max:120'],
+            'detailed.care.*.detail' => ['nullable', 'string', 'max:200'],
+            'detailed.care.*.amount_myr' => ['required_with:detailed.care', 'numeric', 'min:0'],
+            'detailed.care.*.period' => ['nullable', 'string', 'in:month,year'],
 
             // AI's review aids — stored on the draft for the admin.
             'assumptions' => ['nullable', 'array'],
@@ -67,13 +116,52 @@ class DraftQuotationRequest extends FormRequest
             }
 
             $catalog = new ConnectorCatalog;
-            $packageKey = $this->input('package_key');
-            $packageKey = ($packageKey === '' ? null : $packageKey);
-            $modifiers = (array) $this->input('modifiers', []);
-            $addonKeys = (array) $this->input('addon_keys', []);
+            $packages = $this->input('packages');
+            $topKey = $this->input('package_key');
+            $topKey = ($topKey === '' ? null : $topKey);
             $lineItems = (array) $this->input('line_items', []);
 
-            if ($packageKey === null) {
+            // Detailed proposal is self-priced from its own sections — it's a mode of
+            // its own and can't be combined with any engine/bespoke pricing basis.
+            if (! empty($this->input('detailed')) && is_array($this->input('detailed'))) {
+                if ($topKey !== null || ! empty($packages) || $this->input('modifiers') || $this->input('addon_keys') || $lineItems !== []) {
+                    $validator->errors()->add(
+                        'detailed',
+                        'A detailed proposal is self-priced from its own sections — do not also send package_key / packages / modifiers / addon_keys / line_items. Use one pricing mode per draft.',
+                    );
+                }
+
+                return;
+            }
+
+            // Multi-package: validate each entry; the top-level sugar is off-limits.
+            if (! empty($packages) && is_array($packages)) {
+                if ($topKey !== null || $this->input('modifiers') || $this->input('addon_keys')) {
+                    $validator->errors()->add(
+                        'packages',
+                        'Provide EITHER packages[] (multi-package) OR the top-level package_key/modifiers/addon_keys (single package), not both.',
+                    );
+
+                    return;
+                }
+                foreach ($packages as $i => $p) {
+                    $key = is_array($p) ? ($p['package_key'] ?? null) : null;
+                    if (! is_string($key) || ! $catalog->isQuotable($key)) {
+                        $validator->errors()->add("packages.{$i}.package_key", $this->unknownPackageMessage((string) $key, $catalog));
+
+                        continue;
+                    }
+                    $this->checkModifiers($validator, $catalog, $key, (array) ($p['modifiers'] ?? []), "packages.{$i}.modifiers");
+                    $this->checkAddons($validator, $catalog, (array) ($p['addon_keys'] ?? []), "packages.{$i}.addon_keys");
+                }
+
+                return;
+            }
+
+            $modifiers = (array) $this->input('modifiers', []);
+            $addonKeys = (array) $this->input('addon_keys', []);
+
+            if ($topKey === null) {
                 // Fully bespoke — line items are the whole quote.
                 if ($lineItems === []) {
                     $validator->errors()->add(
@@ -97,41 +185,56 @@ class DraftQuotationRequest extends FormRequest
                 return;
             }
 
-            // Priced path — the package must exist and be quotable.
-            if (! $catalog->isQuotable($packageKey)) {
-                $validator->errors()->add(
-                    'package_key',
-                    "Unknown package_key '{$packageKey}'. Call list_catalog for the current keys. Valid quotable package keys: "
-                        .implode(', ', $catalog->packageKeys())
-                        .'. Pass package_key: null for a fully bespoke quote.',
-                );
+            // Priced path (single-package sugar) — the package must be quotable.
+            if (! $catalog->isQuotable($topKey)) {
+                $validator->errors()->add('package_key', $this->unknownPackageMessage($topKey, $catalog));
 
                 return;
             }
 
-            if ($modifiers !== []) {
-                $validKeys = $catalog->validModifierKeys($packageKey);
-                $unknown = array_values(array_diff(array_keys($modifiers), $validKeys));
-                if ($unknown !== []) {
-                    $validator->errors()->add(
-                        'modifiers',
-                        'Unknown modifier key(s) ['.implode(', ', $unknown)."] for package '{$packageKey}'. Valid modifier keys for this package: "
-                            .($validKeys === [] ? '(none)' : implode(', ', $validKeys)).'.',
-                    );
-                }
-            }
-
-            if ($addonKeys !== []) {
-                $validKeys = $catalog->validAddonKeys();
-                $unknown = array_values(array_diff($addonKeys, $validKeys));
-                if ($unknown !== []) {
-                    $validator->errors()->add(
-                        'addon_keys',
-                        'Unknown add-on key(s) ['.implode(', ', $unknown).']. Valid add-on keys: '
-                            .($validKeys === [] ? '(none)' : implode(', ', $validKeys)).'.',
-                    );
-                }
-            }
+            $this->checkModifiers($validator, $catalog, $topKey, $modifiers, 'modifiers');
+            $this->checkAddons($validator, $catalog, $addonKeys, 'addon_keys');
         });
+    }
+
+    private function unknownPackageMessage(string $key, ConnectorCatalog $catalog): string
+    {
+        return "Unknown package_key '{$key}'. Call list_catalog for the current keys. Valid quotable package keys: "
+            .implode(', ', $catalog->packageKeys())
+            .'. Pass package_key: null (single, no packages[]) for a fully bespoke quote.';
+    }
+
+    /** @param  array<string, mixed>  $modifiers */
+    private function checkModifiers(Validator $validator, ConnectorCatalog $catalog, string $packageKey, array $modifiers, string $path): void
+    {
+        if ($modifiers === []) {
+            return;
+        }
+        $validKeys = $catalog->validModifierKeys($packageKey);
+        $unknown = array_values(array_diff(array_keys($modifiers), $validKeys));
+        if ($unknown !== []) {
+            $validator->errors()->add(
+                $path,
+                'Unknown modifier key(s) ['.implode(', ', $unknown)."] for package '{$packageKey}'. Valid modifier keys for this package: "
+                    .($validKeys === [] ? '(none)' : implode(', ', $validKeys)).'.',
+            );
+        }
+    }
+
+    /** @param  list<string>  $addonKeys */
+    private function checkAddons(Validator $validator, ConnectorCatalog $catalog, array $addonKeys, string $path): void
+    {
+        if ($addonKeys === []) {
+            return;
+        }
+        $validKeys = $catalog->validAddonKeys();
+        $unknown = array_values(array_diff($addonKeys, $validKeys));
+        if ($unknown !== []) {
+            $validator->errors()->add(
+                $path,
+                'Unknown add-on key(s) ['.implode(', ', $unknown).']. Valid add-on keys: '
+                    .($validKeys === [] ? '(none)' : implode(', ', $validKeys)).'.',
+            );
+        }
     }
 }

@@ -34,7 +34,7 @@ Backend code: `app/Http/Controllers/Api/V1/Connector/{CatalogController,Quotatio
 | Tool | Maps to | Notes |
 |---|---|---|
 | `list_catalog` | `GET /catalog` | **Call first.** Returns valid package/modifier/add-on keys. |
-| `create_draft_quotation` | `POST /quotations/draft` | Creates a DRAFT only — never sends to the client. `package_key: null` + `line_items` = bespoke. |
+| `create_draft_quotation` | `POST /quotations/draft` | Creates a DRAFT only — never sends to the client. Single-package (`package_key`), multi-package (`packages[]`), or bespoke (`line_items`, no package). |
 | `get_quotation` | `GET /quotations/{ref}` | Read-back by reference code. |
 
 ### Draft request contract
@@ -42,22 +42,52 @@ Backend code: `app/Http/Controllers/Api/V1/Connector/{CatalogController,Quotatio
 ```jsonc
 {
   "client": { "name": "…", "email": "…", "phone": null, "company": null },  // name + email required
+
+  // Single-package sugar (a convenience for a one-entry packages[]):
   "package_key": "web_business" | null,          // null = fully bespoke
-  "modifiers": { "cms": true, "extra_page": 7 }, // only when package_key set; keys must be valid for the package
-  "addon_keys": ["seo"],                          // only when package_key set
-  "rush": false,
-  "line_items": [                                 // REQUIRED (non-empty) when package_key is null
+  "modifiers": { "cms": true, "extra_page": 7 }, // only with the top-level package_key; keys must be valid for it
+  "addon_keys": ["seo"],                          // only with the top-level package_key
+
+  // OR the canonical multi-package shape (mutually exclusive with the sugar above):
+  "packages": [
+    { "package_key": "web_business", "modifiers": { "cms": true }, "addon_keys": ["seo"] },
+    { "package_key": "dash_starter" }
+  ],
+
+  "rush": false,                                  // one flag for the whole quote
+  "line_items": [                                 // REQUIRED (non-empty) when there is no package (bespoke)
     { "label": "Custom booking engine", "description": "…", "amount_myr": 12000 }
   ],
+
+  // OR a rich, self-priced DETAILED proposal (mutually exclusive with package/packages/line_items):
+  "detailed": {
+    "subtitle": "Website quotation",
+    "deposit_pct": 50,
+    "sections": [                                  // the priced scope; quote total = Σ every row's amount_myr
+      { "title": "Design", "rows": [ { "title": "Brand + UI", "detail": "…", "amount_myr": 3500 } ] }
+    ],
+    "included": [ { "eyebrow": "SEO", "items": ["…"], "columns": 2 } ],   // "What's included" groups
+    "options":  [ { "badge": "OPTION A", "title": "Standard", "amount_myr": 13000, "recommended": true } ], // option cards
+    "care":     [ { "label": "Basic", "detail": "…", "amount_myr": 250, "period": "month" } ]   // care plan
+  },
+
+  "project": "Brand website — design & build",    // optional: document title on the PDF (any mode)
+  "intro": "A fast, clean marketing site.",        // optional: lead-in under the title (any mode)
   "assumptions": ["…"],                            // the AI's guesses — for admin review
   "open_questions": ["…"],                         // what to confirm with the client
   "notes": "…"
 }
 ```
 
-**Priced path (`package_key` set).** Re-priced through the same `PricingEngine` as the public funnel: `estimate_min/max_myr` + ETA come from the engine. The connector's flat `modifiers` map is split onto the engine's two inputs — admin-managed **scope fields** → `scope_values`, legacy JSON **modifiers** → `modifiers` (a scope field wins over a legacy key of the same name). Any `line_items` are stored as extras in the `document`, **not** added to the estimate. Add-ons are persisted as `quotation_addons` rows.
+**Priced path (a package is set).** Each package is re-priced through the same `PricingEngine` as the public funnel; a multi-package quote **sums** the per-package min/max and takes the **longest** ETA. Each package's flat `modifiers` map is split onto the engine's two inputs — admin-managed **scope fields** → `scope_values`, legacy JSON **modifiers** → `modifiers` (a scope field wins over a legacy key of the same name). Add-ons are persisted as `quotation_addons` rows. The draft is stored in the **canonical multi-package `form_payload`** (`packages[]` with resolved `service_package_id`, top-level `rush`, grouped `breakdown`, `source_meta.created_via`) and a **seeded `document`** — see [QUOTE_BUILDER.md](./QUOTE_BUILDER.md). Because the document is seeded (via the shared `DocumentSeeder`), a connector draft opens fully hydrated in the admin builder and the PDF previews with real numbers. Any `line_items` ride along as **extra document lines** (added to `document.items`), never folded into the engine estimate.
 
-**Bespoke path (`package_key` null).** `estimate_min_myr = estimate_max_myr = Σ line_items.amount_myr`. ETA is stored as the codebase's `0`/`week` "no ETA yet" sentinel (the columns are `NOT NULL`) and surfaced as `null` — the admin sets the real timeline. Rejected if `line_items` is empty.
+**Bespoke path (no package).** `estimate_min_myr = estimate_max_myr = Σ line_items.amount_myr`; the `line_items` become the document. ETA is stored as the codebase's `0`/`week` "no ETA yet" sentinel (the columns are `NOT NULL`) and surfaced as `null` — the admin sets the real timeline. Rejected if `line_items` is empty. `modifiers`/`addon_keys`/`packages` are rejected on a bespoke quote.
+
+**Detailed path (`detailed` set).** The connector's richest mode — a self-priced, presentation-grade proposal: grouped scope `sections` (each `rows[].amount_myr` priced), plus optional `included` tick-list groups, `options` cards, and a `care` plan. Priced from the section totals (`estimate_min = estimate_max = Σ section amounts`), NOT the engine — so `detailed` is **mutually exclusive** with `package_key`/`packages`/`line_items`. Built by [`DetailedDocumentBuilder`](../../backend/app/Services/Quoting/DetailedDocumentBuilder.php) into the same `layout: 'detailed'` `document.payload` shape the admin detailed builder produces, so it re-opens in the admin builder's detailed mode and the PDF renders the full proposal. ETA left as the `0`/`week` sentinel. `deposit_pct` defaults to 50.
+
+**Document title / intro (any mode).** `project` and `intro` set `document.project` / `document.intro` (the quotation's title + lead-in on the PDF). Optional — the mapper falls back to a default project title when `project` is omitted.
+
+> **Shape note.** `get_quotation` still returns `line_items` (now derived from `document.items`); the old connector-only `document.line_items` key is retired but legacy rows still read back.
 
 **Instructive validation.** Unknown package / modifier / add-on keys → **422** whose message *lists the valid keys*. The Worker passes the Laravel body through verbatim, so Claude reads the message and self-corrects. Every draft lands `status=draft`, `source=admin`, with an `AXNQ-YYYY-NNNN` reference code, and `document.created_via = mcp_connector`. The response includes the estimate and the admin URL (`/admin/quotations/{id}`).
 

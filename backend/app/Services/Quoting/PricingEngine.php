@@ -30,6 +30,9 @@ final class PricingEngine
     /** Memoised packageKey (quote_key.package) → category slug map. */
     private ?array $packageCategory = null;
 
+    /** Memoised packageKey (quote_key.package) → ['id' => int, 'tagline' => ?string] map. */
+    private ?array $packageMeta = null;
+
     public function __construct(private readonly PricingConfig $config) {}
 
     public static function active(): self
@@ -78,6 +81,107 @@ final class PricingEngine
     public function addons(): array
     {
         return $this->buildAddons();
+    }
+
+    /**
+     * Resolve a quote package key (quote_key.package) to its admin-managed
+     * service_packages row id, or null for legacy JSON-only packages that have no
+     * DB row (they still price via the config fallback). Writers stamp this into
+     * the canonical packages[] entry + the scalar service_package_id column so a
+     * connector/funnel draft opens fully hydrated in the admin builder.
+     */
+    public function packageId(string $key): ?int
+    {
+        return $this->buildPackageMeta()[$key]['id'] ?? null;
+    }
+
+    /**
+     * Catalog tagline for a package (DB row), or null. Used by DocumentSeeder as
+     * the description on the seeded base line item.
+     */
+    public function packageTagline(string $key): ?string
+    {
+        return $this->buildPackageMeta()[$key]['tagline'] ?? null;
+    }
+
+    /**
+     * Price a multi-package quotation: map over the packages, price each with the
+     * SAME single-package calculate() (order unchanged), sum the min/max, and take
+     * the longest package ETA (compared in days; the winner's original value/unit
+     * kept). Breakdown is grouped per package. Rounding stays per-package (each
+     * calculate() rounds to RM 50), then summed. An empty packages[] (fully bespoke
+     * / line-items-only) yields RM 0 and the 0/'week' "no ETA" sentinel.
+     *
+     * @param  list<array{package_key?: ?string, scope_values?: array, modifiers?: array, addon_keys?: array}>  $packages
+     */
+    public function calculateMulti(array $packages, bool $rush): MultiEstimateResult
+    {
+        $sumMin = 0;
+        $sumMax = 0;
+        $groups = [];
+        $winnerDays = -1.0;
+        $etaValue = 0;
+        $etaUnit = 'week';
+
+        foreach ($packages as $pkg) {
+            $key = ($pkg['package_key'] ?? null) ?: null;
+            if ($key === null) {
+                continue;
+            }
+
+            $result = $this->calculate(new QuoteRequestInput(
+                name: '',
+                email: '',
+                phone: '',
+                company: null,
+                packageKey: $key,
+                modifiers: (array) ($pkg['modifiers'] ?? []),
+                addonKeys: array_values((array) ($pkg['addon_keys'] ?? [])),
+                rush: $rush,
+                scopeValues: (array) ($pkg['scope_values'] ?? []),
+            ));
+
+            $sumMin += $result->minMyr;
+            $sumMax += $result->maxMyr;
+
+            // Longest (post-rush) ETA wins; ties keep the first package (stable).
+            $days = self::etaToDays($result->etaValue, $result->etaUnit);
+            if ($days > $winnerDays) {
+                $winnerDays = $days;
+                $etaValue = $result->etaValue;
+                $etaUnit = $result->etaUnit;
+            }
+
+            $groups[] = [
+                'package_key' => $key,
+                'name' => $this->packageName($key),
+                'min' => $result->minMyr,
+                'max' => $result->maxMyr,
+                'eta_value' => $result->etaValue,
+                'eta_unit' => $result->etaUnit,
+                'lines' => $result->breakdown,
+            ];
+        }
+
+        return new MultiEstimateResult(
+            minMyr: $sumMin,
+            maxMyr: $sumMax,
+            // No priced package (bespoke) → the 0/'week' "no ETA yet" sentinel.
+            etaValue: $winnerDays >= 0 ? $etaValue : 0,
+            etaUnit: $winnerDays >= 0 ? $etaUnit : 'week',
+            breakdown: $groups,
+        );
+    }
+
+    /** Normalise an ETA to days so heterogeneous units compare for the winner. */
+    private static function etaToDays(int $value, string $unit): float
+    {
+        return match ($unit) {
+            'hour' => $value / 24,
+            'day' => (float) $value,
+            'month' => $value * 30.0,
+            default => $value * 7.0, // week (and any unexpected unit)
+        };
     }
 
     public function calculate(QuoteRequestInput $input): EstimateResult
@@ -369,6 +473,31 @@ final class PricingEngine
         }
 
         return $this->packageCategory = $map;
+    }
+
+    /**
+     * Map each quote package key (quote_key.package) to its service_packages row
+     * id + tagline. Only DB-managed packages appear; legacy JSON-only keys resolve
+     * to null (no row). Backs packageId() / packageTagline().
+     *
+     * @return array<string, array{id: int, tagline: ?string}>
+     */
+    private function buildPackageMeta(): array
+    {
+        if ($this->packageMeta !== null) {
+            return $this->packageMeta;
+        }
+
+        $map = [];
+        $packages = ServicePackage::whereNotNull('quote_key')->get(['id', 'quote_key', 'tagline']);
+        foreach ($packages as $p) {
+            $key = $p->quote_key['package'] ?? null;
+            if ($key) {
+                $map[$key] = ['id' => (int) $p->id, 'tagline' => $p->tagline];
+            }
+        }
+
+        return $this->packageMeta = $map;
     }
 
     /**

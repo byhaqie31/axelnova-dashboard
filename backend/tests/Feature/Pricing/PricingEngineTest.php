@@ -249,4 +249,78 @@ class PricingEngineTest extends TestCase
         $this->assertSame(1800, $result->minMyr);
         $this->assertSame(2800, $result->maxMyr);
     }
+
+    public function test_multi_package_sums_prices_and_takes_the_longest_eta(): void
+    {
+        $engine = $this->engine([
+            'base_packages' => [
+                'pkg_two_weeks' => ['min' => 1000, 'max' => 2000, 'eta_value' => 2, 'eta_unit' => 'week'],
+                'pkg_ten_days' => ['min' => 500, 'max' => 800, 'eta_value' => 10, 'eta_unit' => 'day'],
+            ],
+        ]);
+
+        $result = $engine->calculateMulti([
+            ['package_key' => 'pkg_two_weeks'],
+            ['package_key' => 'pkg_ten_days'],
+        ], false);
+
+        $this->assertSame(1500, $result->minMyr);   // 1000 + 500
+        $this->assertSame(2800, $result->maxMyr);   // 2000 + 800
+        // 2 weeks (14d) > 10 days → the winner keeps its own value + unit.
+        $this->assertSame(2, $result->etaValue);
+        $this->assertSame('week', $result->etaUnit);
+        // Breakdown is grouped per package, in input order.
+        $this->assertCount(2, $result->breakdown);
+        $this->assertSame('pkg_two_weeks', $result->breakdown[0]['package_key']);
+        $this->assertSame(1000, $result->breakdown[0]['min']);
+    }
+
+    public function test_multi_package_eta_winner_compares_across_units(): void
+    {
+        $engine = $this->engine([
+            'base_packages' => [
+                'pkg_two_weeks' => ['min' => 1000, 'max' => 2000, 'eta_value' => 2, 'eta_unit' => 'week'],
+                'pkg_thirty_days' => ['min' => 100, 'max' => 100, 'eta_value' => 30, 'eta_unit' => 'day'],
+            ],
+        ]);
+
+        $result = $engine->calculateMulti([
+            ['package_key' => 'pkg_two_weeks'],
+            ['package_key' => 'pkg_thirty_days'],
+        ], false);
+
+        // 30 days > 2 weeks (14d) → the day package's ETA wins despite the unit gap.
+        $this->assertSame(30, $result->etaValue);
+        $this->assertSame('day', $result->etaUnit);
+    }
+
+    public function test_multi_package_with_no_packages_is_zero_with_no_eta_sentinel(): void
+    {
+        $result = $this->engine()->calculateMulti([], false);
+
+        $this->assertSame(0, $result->minMyr);
+        $this->assertSame(0, $result->maxMyr);
+        $this->assertSame(0, $result->etaValue);
+        $this->assertSame('week', $result->etaUnit);
+        $this->assertSame([], $result->breakdown);
+    }
+
+    public function test_multi_package_rush_multiplies_each_and_leaves_lines_pre_rush(): void
+    {
+        $engine = $this->engine([
+            'base_packages' => [
+                'pkg_a' => ['min' => 1000, 'max' => 2000, 'eta_value' => 2, 'eta_unit' => 'week'],
+            ],
+        ]);
+
+        $result = $engine->calculateMulti([['package_key' => 'pkg_a']], true);
+
+        // 1000 × 1.2 = 1200; 2000 × 1.2 = 2400; eta floor(2 × 0.7) = 1.
+        $this->assertSame(1200, $result->minMyr);
+        $this->assertSame(2400, $result->maxMyr);
+        $this->assertSame(1, $result->etaValue);
+        // The seeder relies on the group lines being PRE-rush (base line un-multiplied).
+        $this->assertSame(1000.0, $result->breakdown[0]['lines'][0][1]);
+        $this->assertSame(2000.0, $result->breakdown[0]['lines'][0][2]);
+    }
 }

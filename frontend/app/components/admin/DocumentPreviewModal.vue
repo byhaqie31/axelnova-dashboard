@@ -24,9 +24,9 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
 <template>
   <button
     type="button"
-    class="btn-pill text-[12px]"
-    :class="[variant === 'primary' ? 'btn-pill-primary' : 'btn-pill-ghost', block ? 'w-full justify-center' : '']"
-    style="height: 34px; padding: 0 16px;"
+    class="btn-pill"
+    :class="[variant === 'primary' ? 'btn-pill-primary' : 'btn-pill-ghost', block ? 'w-full justify-center text-[13px]' : 'text-[12px]']"
+    :style="block ? undefined : { height: '34px', padding: '0 16px' }"
     :disabled="disabled"
     @click="open = true"
   >
