@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Quoting\FormPayloadNormalizer;
 use App\Support\RecordsActivity;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -203,5 +204,30 @@ class Quotation extends Model
         $plural = $value === 1 ? $unit : "{$unit}s";
 
         return "{$value} {$plural}";
+    }
+
+    /**
+     * The canonical multi-package reader view of this row's form_payload,
+     * regardless of which of the historical shapes it was written in (funnel,
+     * legacy admin, connector, or new multi-package). Every backend render path
+     * reads through this so all shapes look identical downstream.
+     *
+     * @return array{packages: list<array>, rush: bool, breakdown: list<array>, source_meta: array{created_via: ?string}}
+     */
+    public function normalizedForm(): array
+    {
+        return FormPayloadNormalizer::normalize($this->form_payload, $this->package_key, $this->document);
+    }
+
+    /**
+     * Flat `[label, min, max]` breakdown tuples from whatever breakdown shape is
+     * stored (grouped-per-package or legacy-flat). The customer email and the
+     * DocumentMapper line-item fallback consume this.
+     *
+     * @return list<array{0: string, 1: float, 2: float}>
+     */
+    public function flatBreakdown(): array
+    {
+        return FormPayloadNormalizer::flattenBreakdown($this->form_payload['breakdown'] ?? []);
     }
 }

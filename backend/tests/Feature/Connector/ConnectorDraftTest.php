@@ -253,4 +253,106 @@ class ConnectorDraftTest extends TestCase
         $this->getJson('/api/v1/connector/quotations/'.$quotation->reference_code, $this->tokenHeader(['connector:read']))
             ->assertNotFound();
     }
+
+    public function test_priced_draft_seeds_a_pdf_ready_canonical_document(): void
+    {
+        $res = $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Acme', 'email' => 'seeded@example.com'],
+            'package_key' => 'test_landing',
+            'modifiers' => ['test_pages' => 8],
+            'addon_keys' => ['seo'],
+        ], $this->connectorHeader())->assertCreated();
+
+        $q = Quotation::where('reference_code', $res->json('data.reference_code'))->firstOrFail();
+        $doc = $q->document;
+
+        // Canonical standard document the PDF renders (document.items, not the old
+        // connector-only document.line_items).
+        $this->assertSame('standard', $doc['layout']);
+        $this->assertArrayNotHasKey('line_items', $doc);
+        // Base at midpoint(1500, 2500) = 2000, then the +3 pages scope line and the seo add-on.
+        $this->assertSame('Landing', $doc['items'][0]['title']);
+        $this->assertSame(2000, $doc['items'][0]['rate']);
+        $this->assertContains('Addon: SEO setup', array_column($doc['items'], 'title'));
+        $this->assertContains(600, array_map('intval', array_column($doc['items'], 'rate'))); // seo, exact
+        // created_via + the midpoint assumption survive on the document.
+        $this->assertSame('mcp_connector', $doc['created_via']);
+        $this->assertStringContainsString('midpoint RM 2,000', $doc['assumptions'][0]);
+
+        // Canonical form_payload carries packages[] with a resolved service_package_id.
+        $this->assertCount(1, $q->form_payload['packages']);
+        $this->assertSame('test_landing', $q->form_payload['packages'][0]['package_key']);
+        $this->assertNotNull($q->form_payload['packages'][0]['service_package_id']);
+        $this->assertNotNull($q->service_package_id);
+        $this->assertSame('mcp_connector', $q->form_payload['source_meta']['created_via']);
+    }
+
+    public function test_priced_draft_line_items_ride_along_as_document_lines_without_changing_the_price(): void
+    {
+        $res = $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Acme', 'email' => 'extras@example.com'],
+            'package_key' => 'test_landing',
+            'line_items' => [['label' => 'Copywriting', 'amount_myr' => 800]],
+        ], $this->connectorHeader())->assertCreated();
+
+        $q = Quotation::where('reference_code', $res->json('data.reference_code'))->firstOrFail();
+
+        $this->assertContains('Copywriting', array_column($q->document['items'], 'title'));
+        // Extras never inflate the engine estimate (base-only range 1500–2500).
+        $this->assertEquals(1500, $q->estimate_min_myr);
+        $this->assertEquals(2500, $q->estimate_max_myr);
+    }
+
+    public function test_multi_package_draft_sums_and_seeds_one_base_line_per_package(): void
+    {
+        $category = ServiceCategory::where('slug', 'test-web')->firstOrFail();
+        ServicePackage::forceCreate([
+            'service_category_id' => $category->id,
+            'slug' => 'test-second-db',
+            'name' => 'Second',
+            'tagline' => 'A second package',
+            'price_min_myr' => 1000,
+            'price_max_myr' => 1000,
+            'unit' => 'project',
+            'duration_text' => '1 week',
+            'features' => [],
+            'quote_key' => ['package' => 'test_second'],
+            'eta_value' => 1,
+            'eta_unit' => 'week',
+            'active' => true,
+        ]);
+        Cache::flush();
+
+        $res = $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Multi', 'email' => 'multi@example.com'],
+            'packages' => [
+                ['package_key' => 'test_landing'],
+                ['package_key' => 'test_second'],
+            ],
+        ], $this->connectorHeader())->assertCreated();
+
+        $q = Quotation::where('reference_code', $res->json('data.reference_code'))->firstOrFail();
+
+        // Summed: (1500 + 1000) .. (2500 + 1000).
+        $this->assertEquals(2500, $q->estimate_min_myr);
+        $this->assertEquals(3500, $q->estimate_max_myr);
+        $this->assertCount(2, $q->form_payload['packages']);
+        // One base line per package (midpoints 2000 and 1000).
+        $titles = array_column($q->document['items'], 'title');
+        $this->assertContains('Landing', $titles);
+        $this->assertContains('Second', $titles);
+        // Scalar column carries the first package.
+        $this->assertSame('test_landing', $q->package_key);
+    }
+
+    public function test_rejects_both_packages_and_top_level_package_key(): void
+    {
+        $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Both Co', 'email' => 'both@example.com'],
+            'package_key' => 'test_landing',
+            'packages' => [['package_key' => 'test_landing']],
+        ], $this->connectorHeader())
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('packages');
+    }
 }

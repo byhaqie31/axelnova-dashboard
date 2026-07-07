@@ -7,13 +7,14 @@ import type { ScopeField } from '~/composables/usePricingEngine'
 
 export type ScopeValue = number | boolean | string
 
+// One package block in the multi-package builder. Rush is NOT here — it's a
+// single quote-level flag (see the canonical form_payload: rush is top-level).
 export interface QuoteScopeState {
   categoryKey: string
   packageKey: string
   /** Values keyed by scope-field `field_key` (e.g. { extra_page: 7, cms: true }). */
   scopeValues: Record<string, ScopeValue>
   addonKeys: string[]
-  rush: boolean
 }
 
 export function defaultQuoteScope(): QuoteScopeState {
@@ -22,13 +23,47 @@ export function defaultQuoteScope(): QuoteScopeState {
     packageKey: '',
     scopeValues: {},
     addonKeys: [],
-    rush: false,
   }
 }
 
-/** Flatten the scope state into the form_payload shape the backend stores. */
-export function scopeToPayload(s: QuoteScopeState): Record<string, unknown> {
-  return { scope_values: s.scopeValues }
+/** One entry of the canonical form_payload.packages[] shape. */
+export interface NormalizedPackage {
+  package_key: string
+  scope_values: Record<string, ScopeValue>
+  addon_keys: string[]
+}
+
+/**
+ * TS port of the backend FormPayloadNormalizer — turn ANY stored form_payload
+ * shape (new multi-package, current single scope_values, legacy flat, or MCP
+ * connector) into the canonical packages[] the builder hydrates from. Rush is read
+ * separately (fp.rush) since it's quote-level. Keep in sync with the PHP one.
+ */
+export function normalizePackages(
+  fp: Record<string, any> | null | undefined,
+  fallbackPackageKey?: string | null,
+): NormalizedPackage[] {
+  const p = fp ?? {}
+
+  if (Array.isArray(p.packages) && p.packages.length) {
+    return p.packages
+      .map((x: any): NormalizedPackage => ({
+        package_key: x?.package_key ?? '',
+        scope_values: x?.scope_values ?? {},
+        addon_keys: Array.isArray(x?.addon_keys) ? x.addon_keys : [],
+      }))
+      .filter((x: NormalizedPackage) => x.package_key)
+  }
+
+  const key = p.package_key ?? fallbackPackageKey ?? ''
+  if (!key) return []
+
+  return [{
+    package_key: key,
+    // New single-package rows store scope_values; older ones stored flat fields.
+    scope_values: p.scope_values ?? legacyToScopeValues(p),
+    addon_keys: Array.isArray(p.addon_keys) ? p.addon_keys : [],
+  }]
 }
 
 /**

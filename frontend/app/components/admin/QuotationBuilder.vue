@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import QuoteScopeFields from '~/components/shared/QuoteScopeFields.vue'
 import DetailedProposalFields from '~/components/admin/DetailedProposalFields.vue'
-import type { QuoteScopeState } from '~/composables/quoteScope'
-import type { EstimateResult } from '~/composables/usePricingEngine'
-import { defaultQuoteScope, scopeToPayload, legacyToScopeValues } from '~/composables/quoteScope'
+import type { QuoteScopeState, NormalizedPackage } from '~/composables/quoteScope'
+import type { EstimateResult, EtaUnit } from '~/composables/usePricingEngine'
+import { defaultQuoteScope, normalizePackages } from '~/composables/quoteScope'
 
 interface QuotationLike {
   id: number
@@ -16,6 +16,10 @@ interface QuotationLike {
   phone: string | null
   company: string | null
   package_key: string | null
+  estimate_min_myr?: string | number | null
+  estimate_max_myr?: string | number | null
+  estimate_eta_value?: number | null
+  estimate_eta_unit?: string | null
   expires_at?: string | null
   form_payload: Record<string, any> | null
   document: Record<string, any> | null
@@ -35,7 +39,7 @@ const emit = defineEmits<{
 }>()
 
 const { apiFetch } = useAdminAuth()
-const { config, loadConfig, invalidateConfig, fmtMyr, formatEta } = usePricingEngine()
+const { config, loadConfig, invalidateConfig, fmtMyr, formatEta, calculate } = usePricingEngine()
 // The builder is the authoring surface — always reflect the current catalog
 // (package / add-on prices edited in /admin/services). Drop the session cache in
 // setup, before the scope child mounts and refetches, so it's one fresh fetch.
@@ -101,10 +105,86 @@ function clearClient() {
   client.mode = 'search'
 }
 
-// ── Scope + estimate ────────────────────────────────────────────────────────
-const scope = reactive<QuoteScopeState>(defaultQuoteScope())
-const estimate = ref<EstimateResult | null>(null)
-// scope.scopeValues is the source of truth — <QuoteScopeFields> mutates it in place.
+// ── Packages + estimate (multi-package) ──────────────────────────────────────
+// One QuoteScopeState per package block; rush is a single quote-level flag. Each
+// <QuoteScopeFields> mutates its own block in place. The estimate is the sum of the
+// per-package engine results (ETA = the longest), computed here from the blocks.
+const packages = ref<QuoteScopeState[]>([defaultQuoteScope()])
+const rush = ref(false)
+
+function addPackage() {
+  packages.value.push(defaultQuoteScope())
+}
+function removePackage(i: number) {
+  packages.value.splice(i, 1)
+  if (packages.value.length === 0) packages.value.push(defaultQuoteScope())
+}
+
+// Derive a package's category from the loaded catalog — this is what lights up the
+// category pill for a connector/legacy draft that never stored a category_key.
+function categoryForPackage(key: string): string {
+  for (const c of config.value?.categories ?? []) {
+    if (c.packages.some(p => p.key === key)) return c.key
+  }
+  return ''
+}
+
+// Per-package live engine estimate (null for a block with no package chosen yet).
+const liveEstimates = computed<(EstimateResult | null)[]>(() =>
+  packages.value.map(p => (p.packageKey && config.value)
+    ? calculate(p.packageKey, p.scopeValues, p.addonKeys, rush.value)
+    : null),
+)
+
+const etaToDays = (v: number, u: string) => u === 'hour' ? v / 24 : u === 'day' ? v : u === 'month' ? v * 30 : v * 7
+
+// Summed live estimate across all packages; ETA = the longest package (in days).
+const liveEstimate = computed<EstimateResult | null>(() => {
+  const valid = liveEstimates.value.filter((e): e is EstimateResult => !!e)
+  if (!valid.length) return null
+  const winner = valid.reduce((a, b) => etaToDays(b.etaValue, b.etaUnit) > etaToDays(a.etaValue, a.etaUnit) ? b : a)
+  return {
+    minMyr: valid.reduce((s, e) => s + e.minMyr, 0),
+    maxMyr: valid.reduce((s, e) => s + e.maxMyr, 0),
+    etaValue: winner.etaValue,
+    etaUnit: winner.etaUnit as EtaUnit,
+    breakdown: [],
+  }
+})
+
+// The estimate stored on the row (what the backend last computed / seeded).
+const storedEstimate = computed<EstimateResult | null>(() => {
+  const q = props.quotation
+  if (!q || q.estimate_min_myr == null) return null
+  return {
+    minMyr: Number(q.estimate_min_myr),
+    maxMyr: Number(q.estimate_max_myr),
+    etaValue: Number(q.estimate_eta_value ?? 0),
+    etaUnit: (q.estimate_eta_unit ?? 'week') as EtaUnit,
+    breakdown: [],
+  }
+})
+
+// Locked decision #5: on load, show the STORED estimate; only switch to the live
+// recompute once a pricing input actually changes. New quotes always show live.
+const baselineReady = ref(false)
+const pricingDirty = ref(false)
+const pricingKey = computed(() => JSON.stringify({
+  p: packages.value.map(p => ({ k: p.packageKey, s: p.scopeValues, a: p.addonKeys })),
+  r: rush.value,
+}))
+watch(pricingKey, () => { if (baselineReady.value) pricingDirty.value = true })
+
+const showLiveEstimate = computed(() => !isEdit.value || pricingDirty.value)
+const headlineEstimate = computed<EstimateResult | null>(() =>
+  showLiveEstimate.value ? liveEstimate.value : storedEstimate.value)
+
+// Per-package mini-breakdown for the sidebar (label + range per package).
+const packageBreakdown = computed(() =>
+  packages.value
+    .map((p, i) => ({ name: p.packageKey ? packageMeta(p.packageKey).name : '', estimate: liveEstimates.value[i] }))
+    .filter((x): x is { name: string; estimate: EstimateResult } => !!x.name && !!x.estimate),
+)
 
 // ── Detailed proposal (optional inline upgrade) ──────────────────────────────
 // When on, the quote saves as layout:'detailed' — the line items become the
@@ -143,15 +223,6 @@ const grandTotal = computed(() =>
   doc.items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.rate) || 0), 0),
 )
 
-// Estimate breakdown lines (each scope field + add-on on top of the base package)
-// for the sidebar summary. The base is the headline range, so it's skipped here.
-const estimateLines = computed(() =>
-  (estimate.value?.breakdown ?? []).slice(1).map(([label, , max]) => ({
-    label: label.replace(/^\+\s*/, ''),
-    price: max as number,
-  })),
-)
-
 function packageMeta(key: string): { name: string; tagline: string } {
   for (const c of config.value?.categories ?? []) {
     const p = c.packages.find(p => p.key === key)
@@ -160,35 +231,56 @@ function packageMeta(key: string): { name: string; tagline: string } {
   return { name: key, tagline: '' }
 }
 
-// JSON of doc.items right after a seed — lets us detect whether the admin has
-// since edited the lines (so we don't clobber manual edits when auto-syncing).
-const seedSnapshot = ref('')
+// The canonical packages[] the backend prices / seeds from (empty blocks dropped).
+function canonicalPackages() {
+  return packages.value
+    .filter(p => p.packageKey)
+    .map(p => ({ package_key: p.packageKey, scope_values: p.scopeValues, addon_keys: p.addonKeys }))
+}
+const hasPackages = computed(() => packages.value.some(p => p.packageKey))
 
-// Build line items from the live estimate breakdown (base + each scope field +
-// add-ons), so the document mirrors the scope. Rush is a multiplier, not a line.
-function seedItems() {
-  if (!config.value || !scope.packageKey || !estimate.value) return
-  const items: LineItem[] = []
-  for (const [label, , max] of estimate.value.breakdown) {
-    if (label.startsWith('Rush ')) continue
-    if (label.startsWith('Base: ')) {
-      const meta = packageMeta(scope.packageKey)
-      items.push({ title: meta.name, desc: meta.tagline, qty: 1, unit: 'project', rate: max })
-      continue
-    }
-    if (max <= 0) continue
-    items.push({ title: label.replace(/^\+\s*/, ''), desc: '', qty: 1, unit: '', rate: max })
+// JSON of doc.items right after a seed — lets us detect whether the admin has since
+// edited the lines (so we don't clobber manual edits when re-seeding).
+const seedSnapshot = ref('')
+const seeding = ref(false)
+
+// Seed the document's line items from ALL packages via the SHARED backend
+// DocumentSeeder (the same service the MCP connector uses) — base at range
+// midpoint, modifiers/add-ons at exact amount, a rush line if on. Confirms before
+// replacing hand-edited lines; `auto` skips the confirm (a pristine re-sync).
+async function seedItems(opts: { auto?: boolean } = {}) {
+  const pkgs = canonicalPackages()
+  if (!pkgs.length) return
+  if (!opts.auto && doc.items.length && JSON.stringify(doc.items) !== seedSnapshot.value) {
+    if (!window.confirm('Replace the current line items with freshly seeded ones from the scope?')) return
   }
-  doc.items = items
-  seedSnapshot.value = JSON.stringify(items)
+  seeding.value = true
+  try {
+    const res = await apiFetch<{ document: { items?: LineItem[] } }>(
+      '/api/v1/admin/quotations/seed-document', { method: 'POST', body: { packages: pkgs, rush: rush.value } })
+    doc.items = (res.document.items ?? []).map((it: any) => ({
+      title: it.title ?? '', desc: it.desc ?? '', qty: Number(it.qty ?? 1), unit: it.unit ?? '', rate: Number(it.rate ?? 0),
+    }))
+    seedSnapshot.value = JSON.stringify(doc.items)
+    if (!opts.auto) toast.success('Seeded from scope', `${doc.items.length} line item${doc.items.length === 1 ? '' : 's'} generated. Adjust before sending.`)
+  }
+  catch (e: any) {
+    if (!opts.auto) toast.error('Couldn’t seed line items', e?.data?.message || 'Failed to seed from scope.')
+  }
+  finally {
+    seeding.value = false
+  }
 }
 
 // Keep the document in lock-step with the scope WHILE it's still a pristine seed.
-// Once the admin hand-edits a line (items ≠ snapshot), we stop auto-syncing so we
-// never overwrite their work; re-clicking "Seed line items from scope" resumes it.
-watch(estimate, () => {
-  if (!detailed.value && seedSnapshot.value && JSON.stringify(doc.items) === seedSnapshot.value) {
-    seedItems()
+// Once the admin hand-edits a line (items ≠ snapshot) we stop, so their work is
+// never overwritten; re-clicking "Seed line items from scope" resumes it.
+let seedTimer: ReturnType<typeof setTimeout> | undefined
+watch(pricingKey, () => {
+  if (detailed.value || !seedSnapshot.value) return
+  if (JSON.stringify(doc.items) === seedSnapshot.value) {
+    clearTimeout(seedTimer)
+    seedTimer = setTimeout(() => seedItems({ auto: true }), 400)
   }
 })
 
@@ -200,15 +292,21 @@ function removeItem(i: number) {
 }
 
 // ── Hydrate (edit / inquiry prefill) ────────────────────────────────────────
-function hydrateScope(fp: Record<string, any>, packageKey: string | null) {
-  Object.assign(scope, defaultQuoteScope(), {
-    categoryKey: fp.category_key ?? '',
-    packageKey: packageKey ?? '',
-    // New drafts store scope_values; older drafts stored flat fields — map them.
-    scopeValues: fp.scope_values ?? legacyToScopeValues(fp),
-    addonKeys: fp.addon_keys ?? [],
-    rush: fp.rush ?? false,
-  })
+// Turn ANY stored form_payload shape into the multi-package blocks: normalize to
+// packages[], then derive each block's category from the catalog (self-heals a
+// connector / legacy draft that never stored a category_key). Rush is quote-level.
+function hydratePackages(fp: Record<string, any>, packageKey: string | null) {
+  const normalized: NormalizedPackage[] = normalizePackages(fp, packageKey)
+  const source: NormalizedPackage[] = normalized.length
+    ? normalized
+    : [{ package_key: '', scope_values: {}, addon_keys: [] }]
+  packages.value = source.map(np => ({
+    categoryKey: np.package_key ? categoryForPackage(np.package_key) : '',
+    packageKey: np.package_key,
+    scopeValues: { ...np.scope_values },
+    addonKeys: [...np.addon_keys],
+  }))
+  rush.value = !!fp.rush
 }
 
 // Hydrate the whole form from a saved quotation — used on mount and on revert.
@@ -220,7 +318,7 @@ function loadFromQuotation(q: QuotationLike) {
   client.phone = q.phone ?? ''
   client.company = q.company ?? ''
   validUntil.value = q.expires_at ? q.expires_at.slice(0, 10) : ''
-  hydrateScope(q.form_payload ?? {}, q.package_key)
+  hydratePackages(q.form_payload ?? {}, q.package_key)
   const d = q.document ?? {}
   if (d.layout === 'detailed' && d.payload) {
     // Detailed quote: flatten the scope sections back into editable line items
@@ -254,6 +352,36 @@ function loadFromQuotation(q: QuotationLike) {
   }
 }
 
+// ── Draft context (connector provenance / assumptions / open questions) ──────
+// Read-only surface for a draft's authoring context — chiefly a connector-created
+// draft (its "Via connector" badge + the AI's assumptions/open questions/notes).
+const draftContext = computed(() => {
+  const q = props.quotation
+  if (!q) return null
+  const d = q.document ?? {}
+  const fp = q.form_payload ?? {}
+  const createdVia: string | null = fp.source_meta?.created_via ?? fp.created_via ?? d.created_via ?? null
+  const assumptions: string[] = Array.isArray(d.assumptions) ? d.assumptions : []
+  const openQuestions: string[] = Array.isArray(d.open_questions) ? d.open_questions : []
+  const notes: string | null = d.notes ?? null
+  const isConnector = createdVia === 'mcp_connector'
+  // Render only when there's context worth showing (or it's a connector draft).
+  if (!isConnector && !assumptions.length && !openQuestions.length && !notes) return null
+  return { createdVia, isConnector, assumptions, openQuestions, notes }
+})
+
+function createdViaLabel(v: string | null): string {
+  switch (v) {
+    case 'mcp_connector': return 'Via connector'
+    case 'quote_funnel': return 'Via quote funnel'
+    case 'admin': return 'Built in admin'
+    default: return 'Draft'
+  }
+}
+
+// Visual-only pre-send checklist ticks over the open questions (not persisted).
+const checkedQuestions = ref<Record<number, boolean>>({})
+
 onMounted(async () => {
   await loadConfig()
 
@@ -283,6 +411,10 @@ onMounted(async () => {
   await nextTick()
   // Snapshot the loaded form so the Save button can detect real edits (`dirty`).
   baseline.value = formFingerprint()
+  // Pricing inputs have settled (scope defaults seeded) — from here a change is a
+  // real edit, so the estimate panel may switch from the stored value to the live
+  // recompute (locked decision #5).
+  baselineReady.value = true
 })
 
 // ── Actions ─────────────────────────────────────────────────────────────────
@@ -326,7 +458,7 @@ function validate(): boolean {
       if (!client.email.includes('@')) { errors.email = 'A valid email is required.'; firstId ||= 'qb-email' }
     }
   }
-  if (!detailed.value && !scope.packageKey) { errors.package = 'Pick a package.'; firstId ||= 'qb-package' }
+  if (!detailed.value && !canonicalPackages().length) { errors.package = 'Pick a package.'; firstId ||= 'qb-package' }
   doc.items.forEach((it, i) => {
     if (!it.title.trim()) { errors.items[i] = 'Title is required.'; firstId ||= `qb-item-${i}` }
   })
@@ -352,7 +484,7 @@ function mapServerErrors(se?: Record<string, string[]>) {
 
 // Clear a field's error as soon as the user addresses it.
 watch(() => [client.name, client.email, client.client_id, client.mode], () => { errors.name = ''; errors.email = ''; errors.client = '' })
-watch(() => scope.packageKey, () => { errors.package = '' })
+watch(() => packages.value.map(p => p.packageKey).join(','), () => { errors.package = '' })
 watch(() => doc.items.map(i => i.title), () => { errors.items = {} })
 
 function buildPayload() {
@@ -363,12 +495,11 @@ function buildPayload() {
     email: client.email || null,
     phone: client.phone || null,
     company: client.company || null,
-    package_key: scope.packageKey || null,
-    scope_values: scope.scopeValues,
-    addon_keys: scope.addonKeys,
-    rush: scope.rush,
+    // Canonical multi-package shape — the backend resolves service_package_id and
+    // stamps the canonical form_payload (packages[]/rush/breakdown/source_meta).
+    packages: canonicalPackages(),
+    rush: rush.value,
     expires_at: validUntil.value || null,
-    form_payload: { ...scopeToPayload(scope), category_key: scope.categoryKey },
     inquiry_id: props.inquiryId ?? null,
   }
 
@@ -654,17 +785,102 @@ v-if="clientResults.length" class="absolute z-20 left-0 right-0 mt-1.5 rounded-x
         </div>
       </section>
 
-      <!-- Package & scope -->
-      <section id="qb-package" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Package &amp; scope</p>
-        <QuoteScopeFields :state="scope" :require-package="!detailed" :package-error="errors.package" @update:estimate="estimate = $event" />
+      <!-- Draft context (connector provenance / assumptions / open questions) -->
+      <section v-if="draftContext" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Draft context</p>
+          <span
+v-if="draftContext.createdVia"
+            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+            :style="draftContext.isConnector
+              ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+              : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">
+            <UIcon :name="draftContext.isConnector ? 'i-lucide-bot' : 'i-lucide-pen-line'" class="size-3.5" />
+            {{ createdViaLabel(draftContext.createdVia) }}
+          </span>
+        </div>
+
+        <div class="space-y-5">
+          <div v-if="draftContext.assumptions.length">
+            <p class="text-[12px] font-medium mb-2" style="color: var(--color-text-secondary);">Assumptions</p>
+            <ul class="space-y-1.5">
+              <li v-for="(a, i) in draftContext.assumptions" :key="i" class="flex gap-2 text-[12px]" style="color: var(--color-text-secondary);">
+                <UIcon name="i-lucide-info" class="size-3.5 shrink-0 mt-0.5" style="color: var(--color-text-tertiary);" />
+                <span>{{ a }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div v-if="draftContext.openQuestions.length">
+            <p class="text-[12px] font-medium mb-2" style="color: var(--color-text-secondary);">
+              Open questions <span class="font-normal" style="color: var(--color-text-tertiary);">— confirm before sending</span>
+            </p>
+            <ul class="space-y-1.5">
+              <li v-for="(q, i) in draftContext.openQuestions" :key="i">
+                <label class="flex gap-2.5 items-start cursor-pointer text-[12px]">
+                  <input v-model="checkedQuestions[i]" type="checkbox" class="mt-0.5 size-3.5 shrink-0" style="accent-color: var(--color-accent);" >
+                  <span :style="{ color: checkedQuestions[i] ? 'var(--color-text-tertiary)' : 'var(--color-text-secondary)', textDecoration: checkedQuestions[i] ? 'line-through' : 'none' }">{{ q }}</span>
+                </label>
+              </li>
+            </ul>
+          </div>
+
+          <div v-if="draftContext.notes">
+            <p class="text-[12px] font-medium mb-1.5" style="color: var(--color-text-secondary);">Notes</p>
+            <p class="text-[12px] whitespace-pre-line" style="color: var(--color-text-secondary);">{{ draftContext.notes }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Packages & scope — repeatable, one block per package (multi-package quote) -->
+      <section id="qb-package" class="space-y-4">
+        <div
+v-for="(pkg, i) in packages" :key="i" class="rounded-2xl border p-6"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="flex items-center justify-between mb-5">
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">
+              Package &amp; scope<span v-if="packages.length > 1"> · {{ i + 1 }}</span>
+            </p>
+            <button
+v-if="packages.length > 1" type="button"
+              class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary)"
+              :style="{ color: 'var(--color-danger)' }" @click="removePackage(i)">
+              <UIcon name="i-lucide-trash-2" class="size-3.5" /> Remove
+            </button>
+          </div>
+          <QuoteScopeFields
+:state="pkg" :rush="rush" :require-package="!detailed"
+            :package-error="i === 0 ? errors.package : ''" />
+        </div>
+
+        <button
+type="button"
+          class="w-full rounded-2xl border border-dashed px-4 py-3.5 text-[13px] font-medium transition-colors hover:bg-(--color-bg-secondary) flex items-center justify-center gap-2"
+          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
+          @click="addPackage">
+          <UIcon name="i-lucide-plus" class="size-4" /> Add another package
+        </button>
+
+        <!-- Rush — one quote-level flag applied to every package. -->
+        <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input v-model="rush" type="checkbox" class="sr-only" >
+            <span class="rush-track" :class="{ active: rush }" />
+            <span>
+              <span class="text-[13px] font-medium" style="color: var(--color-text);">Rush delivery</span>
+              <span class="text-[12px] ml-2" style="color: var(--color-text-tertiary);">(+20%, week/month timelines reduced ~30%)</span>
+            </span>
+          </label>
+        </div>
       </section>
 
       <!-- Quotation document -->
       <section class="rounded-2xl border p-6 space-y-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <div class="flex items-center justify-between">
           <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Quotation document</p>
-          <button type="button" class="btn-pill btn-pill-ghost text-[12px]" :disabled="!scope.packageKey" @click="seedItems">Seed line items from scope</button>
+          <button type="button" class="btn-pill btn-pill-ghost text-[12px]" :disabled="!hasPackages || seeding" @click="seedItems()">
+            {{ seeding ? 'Seeding…' : 'Seed line items from scope' }}
+          </button>
         </div>
 
         <div class="grid gap-4">
@@ -769,20 +985,23 @@ v-if="clientResults.length" class="absolute z-20 left-0 right-0 mt-1.5 rounded-x
     <div class="lg:sticky lg:top-20 space-y-4">
       <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Estimate (guide)</p>
-        <div v-if="estimate">
+        <div v-if="headlineEstimate">
           <p class="text-[26px] font-bold tracking-tight leading-none mb-1" style="color: var(--color-text);">
-            {{ fmtMyr(estimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ fmtMyr(estimate.maxMyr) }}
+            {{ fmtMyr(headlineEstimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ fmtMyr(headlineEstimate.maxMyr) }}
           </p>
-          <p class="text-[12px]" style="color: var(--color-text-secondary);">{{ formatEta(estimate.etaValue, estimate.etaUnit) }} · engine estimate</p>
+          <p class="text-[12px]" style="color: var(--color-text-secondary);">
+            {{ formatEta(headlineEstimate.etaValue, headlineEstimate.etaUnit) }} · {{ showLiveEstimate ? 'engine estimate' : 'stored estimate' }}
+          </p>
 
-          <!-- Per-scope / add-on contributions driving the estimate. -->
-          <div v-if="estimateLines.length" class="mt-3 pt-3 border-t space-y-1.5" style="border-color: var(--color-border);">
-            <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Scope &amp; add-ons</p>
-            <div v-for="(line, i) in estimateLines" :key="i" class="flex items-center justify-between gap-3 text-[12px]">
-              <span class="truncate" style="color: var(--color-text-secondary);">{{ line.label }}</span>
-              <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ line.price > 0 ? `+RM ${line.price.toLocaleString()}` : '—' }}</span>
+          <!-- Per-package mini-breakdown (label + range), shown with the live recompute. -->
+          <div v-if="showLiveEstimate && packageBreakdown.length" class="mt-3 pt-3 border-t space-y-1.5" style="border-color: var(--color-border);">
+            <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Per package</p>
+            <div v-for="(line, i) in packageBreakdown" :key="i" class="flex items-center justify-between gap-3 text-[12px]">
+              <span class="truncate" style="color: var(--color-text-secondary);">{{ line.name }}</span>
+              <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ fmtMyr(line.estimate.minMyr) }}–{{ fmtMyr(line.estimate.maxMyr) }}</span>
             </div>
           </div>
+          <p v-else-if="!showLiveEstimate" class="text-[11px] mt-2" style="color: var(--color-text-tertiary);">Edit a package to re-price.</p>
         </div>
         <p v-else class="text-[13px]" style="color: var(--color-text-secondary);">Pick a package to see the engine estimate.</p>
         <div class="mt-4 pt-4 border-t flex items-center justify-between" style="border-color: var(--color-border);">
@@ -858,5 +1077,37 @@ id="qb-commission-pct" v-model.number="commissionPct" type="number" min="5" max=
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-tertiary);
+}
+
+/* Quote-level rush switch (mirrors the scope-field toggle track). */
+.rush-track {
+  display: inline-flex;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--color-border-strong);
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.rush-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.15s ease;
+}
+
+.rush-track.active {
+  background: var(--color-accent);
+}
+
+.rush-track.active::after {
+  transform: translateX(16px);
 }
 </style>

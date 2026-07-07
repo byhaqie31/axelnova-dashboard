@@ -192,6 +192,7 @@ Route::middleware([
         Route::get('/quotations', [QuotationsController::class, 'index'])->name('quotations.index');
         Route::post('/quotations', [QuotationsController::class, 'store'])->name('quotations.store');
         Route::post('/quotations/preview', [QuotationsController::class, 'preview'])->name('quotations.preview');
+        Route::post('/quotations/seed-document', [QuotationsController::class, 'seedDocument'])->name('quotations.seed-document');
         Route::get('/quotations/{quotation}', [QuotationsController::class, 'show'])->name('quotations.show');
         Route::put('/quotations/{quotation}', [QuotationsController::class, 'update'])->name('quotations.update');
         Route::post('/quotations/{quotation}/status', [QuotationsController::class, 'updateStatus'])->name('quotations.status');

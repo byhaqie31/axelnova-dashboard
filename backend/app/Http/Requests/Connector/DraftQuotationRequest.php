@@ -34,12 +34,21 @@ class DraftQuotationRequest extends FormRequest
             'client.phone' => ['nullable', 'string', 'max:30'],
             'client.company' => ['nullable', 'string', 'max:200'],
 
-            // Pricing basis. null = fully bespoke (validated in after()).
+            // Pricing basis. null / omitted = fully bespoke (validated in after()).
+            // Single-package sugar — a convenience for a one-entry packages[].
             'package_key' => ['nullable', 'string'],
             'modifiers' => ['nullable', 'array'],
             'addon_keys' => ['nullable', 'array'],
             'addon_keys.*' => ['string'],
             'rush' => ['nullable', 'boolean'],
+
+            // Canonical multi-package shape. Each entry is a package + its own
+            // modifiers/add-ons; mutually exclusive with the top-level sugar.
+            'packages' => ['nullable', 'array'],
+            'packages.*.package_key' => ['required_with:packages', 'string'],
+            'packages.*.modifiers' => ['nullable', 'array'],
+            'packages.*.addon_keys' => ['nullable', 'array'],
+            'packages.*.addon_keys.*' => ['string'],
 
             // Bespoke line items (also allowed as extras on a priced quote —
             // stored, never added to the engine estimate).
@@ -67,13 +76,39 @@ class DraftQuotationRequest extends FormRequest
             }
 
             $catalog = new ConnectorCatalog;
-            $packageKey = $this->input('package_key');
-            $packageKey = ($packageKey === '' ? null : $packageKey);
-            $modifiers = (array) $this->input('modifiers', []);
-            $addonKeys = (array) $this->input('addon_keys', []);
+            $packages = $this->input('packages');
+            $topKey = $this->input('package_key');
+            $topKey = ($topKey === '' ? null : $topKey);
             $lineItems = (array) $this->input('line_items', []);
 
-            if ($packageKey === null) {
+            // Multi-package: validate each entry; the top-level sugar is off-limits.
+            if (! empty($packages) && is_array($packages)) {
+                if ($topKey !== null || $this->input('modifiers') || $this->input('addon_keys')) {
+                    $validator->errors()->add(
+                        'packages',
+                        'Provide EITHER packages[] (multi-package) OR the top-level package_key/modifiers/addon_keys (single package), not both.',
+                    );
+
+                    return;
+                }
+                foreach ($packages as $i => $p) {
+                    $key = is_array($p) ? ($p['package_key'] ?? null) : null;
+                    if (! is_string($key) || ! $catalog->isQuotable($key)) {
+                        $validator->errors()->add("packages.{$i}.package_key", $this->unknownPackageMessage((string) $key, $catalog));
+
+                        continue;
+                    }
+                    $this->checkModifiers($validator, $catalog, $key, (array) ($p['modifiers'] ?? []), "packages.{$i}.modifiers");
+                    $this->checkAddons($validator, $catalog, (array) ($p['addon_keys'] ?? []), "packages.{$i}.addon_keys");
+                }
+
+                return;
+            }
+
+            $modifiers = (array) $this->input('modifiers', []);
+            $addonKeys = (array) $this->input('addon_keys', []);
+
+            if ($topKey === null) {
                 // Fully bespoke — line items are the whole quote.
                 if ($lineItems === []) {
                     $validator->errors()->add(
@@ -97,41 +132,56 @@ class DraftQuotationRequest extends FormRequest
                 return;
             }
 
-            // Priced path — the package must exist and be quotable.
-            if (! $catalog->isQuotable($packageKey)) {
-                $validator->errors()->add(
-                    'package_key',
-                    "Unknown package_key '{$packageKey}'. Call list_catalog for the current keys. Valid quotable package keys: "
-                        .implode(', ', $catalog->packageKeys())
-                        .'. Pass package_key: null for a fully bespoke quote.',
-                );
+            // Priced path (single-package sugar) — the package must be quotable.
+            if (! $catalog->isQuotable($topKey)) {
+                $validator->errors()->add('package_key', $this->unknownPackageMessage($topKey, $catalog));
 
                 return;
             }
 
-            if ($modifiers !== []) {
-                $validKeys = $catalog->validModifierKeys($packageKey);
-                $unknown = array_values(array_diff(array_keys($modifiers), $validKeys));
-                if ($unknown !== []) {
-                    $validator->errors()->add(
-                        'modifiers',
-                        'Unknown modifier key(s) ['.implode(', ', $unknown)."] for package '{$packageKey}'. Valid modifier keys for this package: "
-                            .($validKeys === [] ? '(none)' : implode(', ', $validKeys)).'.',
-                    );
-                }
-            }
-
-            if ($addonKeys !== []) {
-                $validKeys = $catalog->validAddonKeys();
-                $unknown = array_values(array_diff($addonKeys, $validKeys));
-                if ($unknown !== []) {
-                    $validator->errors()->add(
-                        'addon_keys',
-                        'Unknown add-on key(s) ['.implode(', ', $unknown).']. Valid add-on keys: '
-                            .($validKeys === [] ? '(none)' : implode(', ', $validKeys)).'.',
-                    );
-                }
-            }
+            $this->checkModifiers($validator, $catalog, $topKey, $modifiers, 'modifiers');
+            $this->checkAddons($validator, $catalog, $addonKeys, 'addon_keys');
         });
+    }
+
+    private function unknownPackageMessage(string $key, ConnectorCatalog $catalog): string
+    {
+        return "Unknown package_key '{$key}'. Call list_catalog for the current keys. Valid quotable package keys: "
+            .implode(', ', $catalog->packageKeys())
+            .'. Pass package_key: null (single, no packages[]) for a fully bespoke quote.';
+    }
+
+    /** @param  array<string, mixed>  $modifiers */
+    private function checkModifiers(Validator $validator, ConnectorCatalog $catalog, string $packageKey, array $modifiers, string $path): void
+    {
+        if ($modifiers === []) {
+            return;
+        }
+        $validKeys = $catalog->validModifierKeys($packageKey);
+        $unknown = array_values(array_diff(array_keys($modifiers), $validKeys));
+        if ($unknown !== []) {
+            $validator->errors()->add(
+                $path,
+                'Unknown modifier key(s) ['.implode(', ', $unknown)."] for package '{$packageKey}'. Valid modifier keys for this package: "
+                    .($validKeys === [] ? '(none)' : implode(', ', $validKeys)).'.',
+            );
+        }
+    }
+
+    /** @param  list<string>  $addonKeys */
+    private function checkAddons(Validator $validator, ConnectorCatalog $catalog, array $addonKeys, string $path): void
+    {
+        if ($addonKeys === []) {
+            return;
+        }
+        $validKeys = $catalog->validAddonKeys();
+        $unknown = array_values(array_diff($addonKeys, $validKeys));
+        if ($unknown !== []) {
+            $validator->errors()->add(
+                $path,
+                'Unknown add-on key(s) ['.implode(', ', $unknown).']. Valid add-on keys: '
+                    .($validKeys === [] ? '(none)' : implode(', ', $validKeys)).'.',
+            );
+        }
     }
 }

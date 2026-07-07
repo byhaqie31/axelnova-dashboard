@@ -40,6 +40,7 @@ export class AxelNovaMCP extends McpAgent<Env> {
         "Creates a DRAFT only — it never sends anything to the client; the founder reviews and delivers it.",
         "Use package_key: null with line_items for bespoke projects that don't fit a catalog package.",
         "When package_key is set, modifiers/addon_keys/rush price it through the same engine as the public quote funnel; any line_items are stored as extras and NOT added to that estimate.",
+        "For a quote spanning several catalog packages, pass packages[] (each entry its own package_key + modifiers + addon_keys) INSTEAD of the top-level package_key — the estimate sums the packages and the ETA is the longest. rush is still one flag for the whole quote.",
         "Put every guess in assumptions and every unknown in open_questions so the founder can verify them.",
         "Call list_catalog first to get the valid keys. On a validation error, read the returned message — it lists the valid keys — and retry.",
       ].join(" "),
@@ -56,21 +57,38 @@ export class AxelNovaMCP extends McpAgent<Env> {
           .string()
           .nullable()
           .optional()
-          .describe("A package key from list_catalog, or null for a fully bespoke quote priced only from line_items."),
+          .describe(
+            "Single-package quote: a package key from list_catalog. Use null for a fully bespoke quote priced only from line_items. For multiple packages, use packages[] instead (not both).",
+          ),
         modifiers: z
           .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
           .optional()
           .describe(
-            "Only when package_key is set. Map of modifier key → value: boolean for toggles, an integer for number/slider fields, or the option value for selects. Keys must be valid for the chosen package (see that package's `modifiers` in list_catalog).",
+            "Only with the single top-level package_key. Map of modifier key → value: boolean for toggles, an integer for number/slider fields, or the option value for selects. Keys must be valid for the chosen package (see that package's `modifiers` in list_catalog).",
           ),
         addon_keys: z
           .array(z.string())
           .optional()
-          .describe("Only when package_key is set. Add-on keys from list_catalog.addons."),
+          .describe("Only with the single top-level package_key. Add-on keys from list_catalog.addons."),
+        packages: z
+          .array(
+            z.object({
+              package_key: z.string().describe("A package key from list_catalog."),
+              modifiers: z
+                .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
+                .optional()
+                .describe("Modifier keys valid for THIS package (see its `modifiers` in list_catalog)."),
+              addon_keys: z.array(z.string()).optional().describe("Add-on keys from list_catalog.addons."),
+            }),
+          )
+          .optional()
+          .describe(
+            "Multi-package quote: one entry per catalog package, each with its own modifiers + add-ons. The estimate sums all packages and the ETA is the longest. Use this OR the top-level package_key, never both. Omit for a bespoke quote.",
+          ),
         rush: z
           .boolean()
           .optional()
-          .describe("Rush delivery — always raises the price, and shortens the timeline for week/month ETAs."),
+          .describe("Rush delivery for the whole quote — always raises the price, and shortens the timeline for week/month ETAs."),
         line_items: z
           .array(
             z.object({

@@ -374,8 +374,10 @@ class DocumentMapper
             ], $doc['items']));
         }
 
-        // Fallback: breakdown tuples [label, min, max] → one line each at the upper figure.
-        $breakdown = $quotation->form_payload['breakdown'] ?? [];
+        // Fallback: breakdown tuples [label, min, max] → one line each at the upper
+        // figure. flatBreakdown() flattens the grouped-per-package shape (and legacy
+        // flat rows) to the same tuple list this loop has always consumed.
+        $breakdown = $quotation->flatBreakdown();
         $items = [];
         foreach ($breakdown as $line) {
             $rate = (float) ($line[2] ?? 0);

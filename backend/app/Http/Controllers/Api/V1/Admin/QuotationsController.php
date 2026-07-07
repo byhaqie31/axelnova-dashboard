@@ -12,9 +12,9 @@ use App\Models\Order;
 use App\Models\Quotation;
 use App\Models\Referral;
 use App\Services\Quoting\DocumentMapper;
-use App\Services\Quoting\EstimateResult;
+use App\Services\Quoting\DocumentSeeder;
+use App\Services\Quoting\MultiEstimateResult;
 use App\Services\Quoting\PricingEngine;
-use App\Services\Quoting\QuoteRequestInput;
 use App\Services\Referrals\ReferralAttributionService;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class QuotationsController extends Controller
 {
@@ -51,6 +52,42 @@ class QuotationsController extends Controller
         $quotation->setRelation('addons', collect());
 
         return response()->json(DocumentMapper::toDocumentData($quotation));
+    }
+
+    /**
+     * Seed a standard `document` from the builder's current scope, WITHOUT
+     * persisting. Runs the SAME shared DocumentSeeder the MCP connector uses, so
+     * the admin "Seed line items from scope" button and a connector draft produce
+     * byte-identical documents. Accepts the canonical packages[] (or single-package
+     * sugar); returns `{ document, assumptions }` for the builder to merge in.
+     */
+    public function seedDocument(Request $request): JsonResponse
+    {
+        $config = PricingEngine::cachedFrontendConfig();
+        $validPackageKeys = array_keys($config['base_packages'] ?? []);
+        $validAddonKeys = array_keys($config['addons'] ?? []);
+
+        $data = $request->validate([
+            'rush' => ['boolean'],
+            'packages' => ['nullable', 'array'],
+            'packages.*.package_key' => ['required_with:packages', 'string', Rule::in($validPackageKeys)],
+            'packages.*.scope_values' => ['nullable', 'array'],
+            'packages.*.modifiers' => ['nullable', 'array'],
+            'packages.*.addon_keys' => ['nullable', 'array'],
+            'packages.*.addon_keys.*' => ['string', Rule::in($validAddonKeys)],
+            'package_key' => ['nullable', 'string', Rule::in($validPackageKeys)],
+            'scope_values' => ['nullable', 'array'],
+            'modifiers' => ['nullable', 'array'],
+            'addon_keys' => ['nullable', 'array'],
+            'addon_keys.*' => ['string', Rule::in($validAddonKeys)],
+        ]);
+
+        $engine = PricingEngine::active();
+        $packages = $this->resolvePackages($data, $engine);
+        $rush = (bool) ($data['rush'] ?? false);
+        $estimate = $engine->calculateMulti($packages, $rush);
+
+        return response()->json((new DocumentSeeder($engine))->seed($estimate, $rush));
     }
 
     public function index(Request $request): AnonymousResourceCollection
@@ -116,11 +153,12 @@ class QuotationsController extends Controller
 
         $quotation = DB::transaction(function () use ($data, $engine) {
             $client = $this->resolveClient($data);
-            $input = $this->buildInput($client, $data);
-            $estimate = $input->packageKey ? $engine->calculate($input) : null;
+            $packages = $this->resolvePackages($data, $engine);
+            $rush = (bool) ($data['rush'] ?? false);
+            $estimate = $packages !== [] ? $engine->calculateMulti($packages, $rush) : null;
 
             $quotation = Quotation::create(array_merge(
-                $this->pricedAttributes($client, $input, $engine, $estimate, $data),
+                $this->pricedAttributes($client, $engine, $packages, $rush, $estimate, $data, 'admin'),
                 [
                     'reference_code' => ReferenceCodeGenerator::generate(DocumentType::Quotation),
                     'source' => ! empty($data['inquiry_id']) ? 'inquiry' : 'admin',
@@ -130,7 +168,7 @@ class QuotationsController extends Controller
                 ],
             ));
 
-            $this->syncAddons($quotation, $input->addonKeys, $engine);
+            $this->syncAddons($quotation, $this->allAddonKeys($packages), $engine);
 
             if (! empty($data['inquiry_id'])) {
                 $inquiry = Inquiry::find($data['inquiry_id']);
@@ -159,11 +197,15 @@ class QuotationsController extends Controller
 
         DB::transaction(function () use ($data, $engine, $quotation) {
             $client = $this->resolveClient($data);
-            $input = $this->buildInput($client, $data);
-            $estimate = $input->packageKey ? $engine->calculate($input) : null;
+            $packages = $this->resolvePackages($data, $engine);
+            $rush = (bool) ($data['rush'] ?? false);
+            $estimate = $packages !== [] ? $engine->calculateMulti($packages, $rush) : null;
+            // created_via is sticky — an admin editing a connector draft keeps its
+            // "Via connector" provenance on the Draft context panel.
+            $createdVia = $quotation->normalizedForm()['source_meta']['created_via'] ?? 'admin';
 
-            $quotation->update($this->pricedAttributes($client, $input, $engine, $estimate, $data));
-            $this->syncAddons($quotation, $input->addonKeys, $engine);
+            $quotation->update($this->pricedAttributes($client, $engine, $packages, $rush, $estimate, $data, $createdVia));
+            $this->syncAddons($quotation, $this->allAddonKeys($packages), $engine);
         });
 
         $quotation->logActivity('quotation.updated');
@@ -309,23 +351,59 @@ class QuotationsController extends Controller
         );
     }
 
-    private function buildInput(Client $client, array $data): QuoteRequestInput
+    /**
+     * Resolve the validated request into the canonical packages[] shape, filling
+     * each entry's service_package_id from the catalog (null for legacy JSON-only
+     * packages that have no DB row). Prefers the canonical packages[]; falls back
+     * to the single-package sugar (package_key + scope_values/modifiers/addon_keys).
+     * Unknown package keys are already rejected by AdminQuotationRequest.
+     *
+     * @return list<array{package_key: string, service_package_id: ?int, scope_values: array, modifiers: array, addon_keys: list<string>}>
+     */
+    private function resolvePackages(array $data, PricingEngine $engine): array
     {
-        return new QuoteRequestInput(
-            name: $client->name,
-            email: $client->email,
-            phone: $client->phone ?? '',
-            company: $client->company,
-            packageKey: $data['package_key'] ?? null,
-            modifiers: $data['modifiers'] ?? [],
-            addonKeys: $data['addon_keys'] ?? [],
-            rush: (bool) ($data['rush'] ?? false),
-            scopeValues: $data['scope_values'] ?? [],
-        );
+        $raw = ! empty($data['packages']) && is_array($data['packages'])
+            ? $data['packages']
+            : (filled($data['package_key'] ?? null)
+                ? [[
+                    'package_key' => $data['package_key'],
+                    'scope_values' => $data['scope_values'] ?? [],
+                    'modifiers' => $data['modifiers'] ?? [],
+                    'addon_keys' => $data['addon_keys'] ?? [],
+                ]]
+                : []);
+
+        return array_values(array_map(function ($p) use ($engine): array {
+            $key = (string) ($p['package_key'] ?? '');
+
+            return [
+                'package_key' => $key,
+                'service_package_id' => $engine->packageId($key),
+                'scope_values' => (array) ($p['scope_values'] ?? []),
+                'modifiers' => (array) ($p['modifiers'] ?? []),
+                'addon_keys' => array_values((array) ($p['addon_keys'] ?? [])),
+            ];
+        }, $raw));
+    }
+
+    /**
+     * Union of add-on keys across every package (add-ons persist per-quotation, not
+     * per-package, so a multi-package quote dedupes them).
+     *
+     * @param  list<array{addon_keys?: list<string>}>  $packages
+     * @return list<string>
+     */
+    private function allAddonKeys(array $packages): array
+    {
+        return collect($packages)
+            ->flatMap(fn (array $p): array => $p['addon_keys'] ?? [])
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /** The shared attribute set written on both create and update (the re-priced quotation). */
-    private function pricedAttributes(Client $client, QuoteRequestInput $input, PricingEngine $engine, ?EstimateResult $estimate, array $data): array
+    private function pricedAttributes(Client $client, PricingEngine $engine, array $packages, bool $rush, ?MultiEstimateResult $estimate, array $data, string $createdVia): array
     {
         $document = $data['document'] ?? null;
 
@@ -336,6 +414,7 @@ class QuotationsController extends Controller
         $detailedTotal = Quotation::sumDetailedSections($document);
         $minMyr = $detailedTotal ?? ($estimate?->minMyr ?? 0);
         $maxMyr = $detailedTotal ?? ($estimate?->maxMyr ?? 0);
+        $first = $packages[0] ?? null;
 
         return [
             'client_id' => $client->id,
@@ -343,15 +422,16 @@ class QuotationsController extends Controller
             'email' => $client->email,
             'phone' => $client->phone,
             'company' => $client->company,
-            'package_key' => $input->packageKey ?: null,
+            // Scalar columns carry the FIRST package (list display + back-compat).
+            'package_key' => $first['package_key'] ?? null,
+            'service_package_id' => $first['service_package_id'] ?? null,
             'pricing_config_id' => $engine->getConfig()->id,
+            // Canonical multi-package form_payload (see FormPayloadNormalizer).
             'form_payload' => array_merge($data['form_payload'] ?? [], [
-                'package_key' => $input->packageKey ?: null,
-                'modifiers' => $input->modifiers,
-                'scope_values' => $input->scopeValues,
-                'addon_keys' => $input->addonKeys,
-                'rush' => $input->rush,
+                'packages' => $packages,
+                'rush' => $rush,
                 'breakdown' => $estimate?->breakdown ?? [],
+                'source_meta' => ['created_via' => $createdVia],
             ]),
             'document' => $document,
             'estimate_min_myr' => $minMyr,

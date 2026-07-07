@@ -19,7 +19,9 @@ Download your quotation (PDF)
 @endif
 
 @php
-    $breakdown = $quote->form_payload['breakdown'] ?? [];
+    // Flatten the (grouped-per-package or legacy-flat) breakdown to [label,min,max]
+    // tuples — a single-package funnel quote renders exactly as before.
+    $breakdown = $quote->flatBreakdown();
 @endphp
 
 @if(!empty($breakdown))

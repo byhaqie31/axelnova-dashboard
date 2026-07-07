@@ -98,6 +98,48 @@ Rush: false
 
 ---
 
+## Canonical `form_payload` & multi-package quotations
+
+Quotation drafts are created three ways — the public `/quote` funnel, the admin edit form (`/admin/quotations/[id]`), and the MCP connector (`create_draft_quotation`). **All three now write ONE canonical `form_payload` shape, and every render path reads it back through one normalizer.** One write shape, three writers, one renderer.
+
+### The canonical shape
+
+```jsonc
+{
+  "packages": [
+    { "package_key": "web_business", "service_package_id": 6,
+      "scope_values": { "extra_page": 7 }, "modifiers": {}, "addon_keys": ["seo"] }
+  ],
+  "rush": false,                       // ONE flag for the whole quote (top-level)
+  "breakdown": [ /* grouped per package — see below */ ],
+  "source_meta": { "created_via": "quote_funnel" | "admin" | "mcp_connector" }
+}
+```
+
+- **Multi-package via `packages[]`.** No new table, no pivot. The scalar `package_key` + `service_package_id` columns store the **first** package (list-display + back-compat). The public funnel stays single-package (one entry).
+- **`service_package_id`** is resolved from `package_key` at write time by `PricingEngine::packageId()` (null for legacy JSON-only packages that have no DB row).
+- **`breakdown` is grouped per package**: a list of `{ package_key, name, min, max, eta_value, eta_unit, lines: [[label, min, max], …] }`. The `lines` are the existing single-package tuple shape and are **pre-rush** (rush is applied to the running total, never to the pushed lines).
+
+### The normalizer (backward compat — no migration)
+
+`App\Services\Quoting\FormPayloadNormalizer::normalize()` maps **any** historical shape → the canonical `packages[]` view: the old funnel flat shape, the current `scope_values` admin shape, the MCP connector shape, and the new multi-package shape. Existing rows are **not** migrated — they normalize on read. Every backend render path (`DocumentMapper`, the connector view, the admin resource) reads through `Quotation::normalizedForm()`; the frontend hydrates through the TS port `normalizePackages()` in `frontend/app/composables/quoteScope.ts` (**keep the two in sync**). `FormPayloadNormalizer::flattenBreakdown()` collapses a grouped (or legacy-flat) breakdown back to plain `[label, min, max]` tuples for the customer email and the `DocumentMapper` line-item fallback.
+
+### Multi-package pricing
+
+`PricingEngine::calculateMulti(packages[], rush)` maps over the packages, prices each with the unchanged single-package `calculate()` (order: base → modifiers → add-ons → rush → round), **sums** the min/max, and takes the **longest** ETA (units normalized to days for comparison; the winner's original value/unit is kept). Rounding stays per-package (the existing RM 50 rule), then summed. An empty `packages[]` (fully bespoke) yields RM 0 and the `0`/`week` "no ETA" sentinel.
+
+### DocumentSeeder — the shared line-item seeder
+
+`App\Services\Quoting\DocumentSeeder` builds the canonical **standard** `document` (the `document.items[]` shape the PDF renders) from a priced estimate. It is the single implementation behind **both** the admin "**Seed line items from scope**" button (`POST /v1/admin/quotations/seed-document`, non-persisting) **and** the MCP connector — so a connector draft arrives with a prefilled, PDF-ready document identical to what the admin button produces. Rules:
+
+- one line per **package base**, amount = **midpoint** of that package's min/max, rounded to nearest RM 50;
+- one line per active **modifier** / **add-on** at its **exact** fixed amount;
+- **rush** → a single "Rush delivery (+20%)" line = the uplift on the document subtotal (rounded to RM 50);
+- **deposit 50%**, the three standard terms, valid-until left null (`send()` defaults it to `valid_for_days`);
+- every midpoint-seeded base line appends a matching `assumptions` note ("… seeded at range midpoint RM X — adjust before sending").
+
+The connector **never overwrites an admin-edited document**: `DocumentSeeder::hasContent()` guards it, and the UI button confirms before replacing hand-edited lines.
+
 ## How to add a new offering (end-to-end)
 
 The fastest path uses the admin UI — no code or SQL.
