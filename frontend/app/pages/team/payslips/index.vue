@@ -77,7 +77,7 @@ function fmtMyr(amount: number | null) {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <h1 class="text-[28px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Payslips</h1>
     <p class="text-[14px] mb-8" style="color: var(--color-text-secondary);">Your payroll records — allowance plus settled task extras, amounts as agreed.</p>
 

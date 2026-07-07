@@ -120,10 +120,51 @@ function fmtDay(date: Date) {
 function fmtCompleted(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
 }
+
+// ── Task detail (click a deadline chip / agenda row) ─────────────────────
+const selected = ref<CalendarChip | null>(null)
+function openChip(chip: CalendarChip) {
+  selected.value = chip
+}
+function closeChip() {
+  selected.value = null
+}
+onKeyStroke('Escape', () => {
+  if (selected.value) closeChip()
+})
+
+const taskStatusLabel: Record<TaskRecord['status'], string> = {
+  open: 'Open',
+  in_progress: 'In progress',
+  completed: 'Completed',
+  payment_pending: 'Payment pending',
+  paid: 'Paid',
+}
+
+function fmtFullDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+// "Add to Google Calendar" — a zero-backend render link. A task deadline is
+// modelled as an all-day event (GCal treats the end date as exclusive, hence
+// the +1 day).
+function gcalUrl(task: TaskRecord): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const ymd = (d: Date) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
+  const start = new Date(task.deadline!)
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1)
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: task.title,
+    dates: `${ymd(start)}/${ymd(end)}`,
+    details: `Axel Nova Ventures task deadline${task.description ? `\n\n${task.description}` : ''}`,
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
         <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Calendar</h1>
@@ -171,16 +212,17 @@ function fmtCompleted(iso: string) {
               {{ day.date.getDate() }}
             </span>
             <div class="flex flex-col gap-1 mt-1 min-w-0">
-              <span
+              <button
                 v-for="chip in day.chips.slice(0, 3)" :key="`${chip.source}-${chip.task.id}`"
-                class="cal-chip"
+                type="button" class="cal-chip cal-chip-btn"
                 :style="chip.source === 'mine'
                   ? { color: 'var(--calendar-chip-mine-fg)', background: 'var(--calendar-chip-mine-bg)' }
                   : { color: 'var(--calendar-chip-pool-fg)', background: 'var(--calendar-chip-pool-bg)' }"
-                :title="`${chip.task.title}${chip.source === 'pool' ? ' (pool)' : ''}`">
+                :title="`${chip.task.title}${chip.source === 'pool' ? ' (pool)' : ''}`"
+                @click="openChip(chip)">
                 <span class="cal-chip-dot" :style="{ background: taskPriorityMeta(chip.task.priority)?.color }" />
                 {{ chip.task.title }}
-              </span>
+              </button>
               <span v-if="day.chips.length > 3" class="text-[10px] px-1" :style="{ color: 'var(--color-text-tertiary)' }">
                 +{{ day.chips.length - 3 }} more
               </span>
@@ -209,15 +251,16 @@ function fmtCompleted(iso: string) {
               {{ fmtDay(day.date) }}<span v-if="day.isToday"> · today</span>
             </p>
             <div class="flex flex-col gap-1.5">
-              <span
+              <button
                 v-for="chip in day.chips" :key="`${chip.source}-${chip.task.id}`"
-                class="cal-chip"
+                type="button" class="cal-chip cal-chip-btn"
                 :style="chip.source === 'mine'
                   ? { color: 'var(--calendar-chip-mine-fg)', background: 'var(--calendar-chip-mine-bg)' }
-                  : { color: 'var(--calendar-chip-pool-fg)', background: 'var(--calendar-chip-pool-bg)' }">
+                  : { color: 'var(--calendar-chip-pool-fg)', background: 'var(--calendar-chip-pool-bg)' }"
+                @click="openChip(chip)">
                 <span class="cal-chip-dot" :style="{ background: taskPriorityMeta(chip.task.priority)?.color }" />
                 {{ chip.task.title }}<span v-if="chip.source === 'pool'" class="opacity-70">&nbsp;· pool</span>
-              </span>
+              </button>
             </div>
           </div>
         </div>
@@ -253,6 +296,75 @@ function fmtCompleted(iso: string) {
         </div>
       </div>
     </template>
+
+    <!-- Task detail (click a deadline chip / agenda row) -->
+    <Teleport to="body">
+      <Transition name="slideover">
+        <div v-if="selected" class="slideover-scrim" @click.self="closeChip">
+          <aside class="slideover-panel" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }">
+            <div class="slideover-head">
+              <div class="min-w-0">
+                <p class="text-[17px] font-bold tracking-tight" style="color: var(--color-text);">{{ selected.task.title }}</p>
+                <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">
+                  {{ selected.source === 'mine' ? 'Your task' : 'Pool task — unclaimed' }}
+                </p>
+              </div>
+              <button type="button" class="slideover-close" aria-label="Close" @click="closeChip">
+                <UIcon name="i-lucide-x" class="size-4" />
+              </button>
+            </div>
+
+            <div class="slideover-body space-y-5">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-[12px]" style="color: var(--color-text-tertiary);">Deadline</span>
+                  <span class="text-[13px] font-medium text-right" style="color: var(--color-text);">
+                    {{ selected.task.deadline ? fmtFullDate(selected.task.deadline) : '—' }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-[12px]" style="color: var(--color-text-tertiary);">Priority</span>
+                  <span
+                    class="inline-flex items-center gap-1.5 text-[12px] font-medium px-2 py-0.5 rounded-full"
+                    :style="{ color: taskPriorityMeta(selected.task.priority)?.color, background: taskPriorityMeta(selected.task.priority)?.bg }">
+                    <span class="size-1.5 rounded-full" :style="{ background: taskPriorityMeta(selected.task.priority)?.color }" />
+                    {{ taskPriorityMeta(selected.task.priority)?.label }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-[12px]" style="color: var(--color-text-tertiary);">Status</span>
+                  <span class="text-[13px] font-medium" style="color: var(--color-text);">{{ taskStatusLabel[selected.task.status] }}</span>
+                </div>
+                <div v-if="selected.task.payment_state !== 'none'" class="flex items-center justify-between gap-3">
+                  <span class="text-[12px]" style="color: var(--color-text-tertiary);">Pay</span>
+                  <TaskPayBadge :state="selected.task.payment_state" :amount="selected.task.pay_amount_myr" />
+                </div>
+              </div>
+
+              <p
+                v-if="selected.task.description"
+                class="text-[13px] leading-relaxed whitespace-pre-line" style="color: var(--color-text-secondary);">
+                {{ selected.task.description }}
+              </p>
+
+              <div class="space-y-2 pt-1">
+                <NuxtLink to="/team/tasks" class="btn-pill btn-pill-primary w-full justify-center text-[13px]">
+                  <UIcon name="i-lucide-arrow-right" class="size-3.5" />
+                  Open in Tasks
+                </NuxtLink>
+                <a
+                  v-if="selected.task.deadline"
+                  :href="gcalUrl(selected.task)" target="_blank" rel="noopener noreferrer"
+                  class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
+                  <UIcon name="i-lucide-calendar-plus" class="size-3.5" />
+                  Add to Google Calendar
+                </a>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -320,5 +432,96 @@ function fmtCompleted(iso: string) {
   height: 5px;
   border-radius: 9999px;
   flex-shrink: 0;
+}
+
+/* Chips are buttons now (click → task detail). Reset the UA button chrome and
+   add hover/focus affordances; theme-agnostic so light + dark both read. */
+.cal-chip-btn {
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: box-shadow 0.15s ease;
+}
+.cal-chip-btn:hover {
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+.cal-chip-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--calendar-today-ring);
+}
+
+/* Slideover (§12.13) — same class names + motion as the admin panels so a
+   future promotion to main.css is a cut-paste. */
+.slideover-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+}
+.slideover-panel {
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+}
+.slideover-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+.slideover-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  color: var(--color-text-secondary);
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+.slideover-close:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+}
+.slideover-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+.slideover-enter-active,
+.slideover-leave-active {
+  transition: opacity 0.3s ease;
+}
+.slideover-enter-active .slideover-panel,
+.slideover-leave-active .slideover-panel {
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.slideover-enter-from,
+.slideover-leave-to {
+  opacity: 0;
+}
+.slideover-enter-from .slideover-panel,
+.slideover-leave-to .slideover-panel {
+  transform: translateX(100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .slideover-enter-active,
+  .slideover-leave-active,
+  .slideover-enter-active .slideover-panel,
+  .slideover-leave-active .slideover-panel {
+    transition: none;
+  }
 }
 </style>

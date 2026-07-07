@@ -68,7 +68,7 @@ const roleLabel = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <h1 class="text-[24px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Profile</h1>
     <p class="text-[14px] mb-8" style="color: var(--color-text-secondary);">Your account details and availability status.</p>
 
