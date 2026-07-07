@@ -657,6 +657,16 @@ The `/team/calendar` month view (Task 5) — a **view over the tasks table** (de
 
 **Responsive:** below 768px the grid gives way to a **stacked agenda list** (only the days of the visible month that carry deadlines, each a card with its chips; today's card border uses the today ring token) — chosen over dots-in-a-grid because a list needs no tap-to-reveal step at 375px.
 
+### 12.16 Data-table row actions
+
+Row action buttons in the admin data tables (§12.9) use `.btn-table-action` (in `main.css`), **not** the full-size `.btn-pill` — the base pill is 44px tall with 24px padding and reads oversized inside a dense cell. `.btn-table-action` is a small (28px) bordered pill of `icon + label`: neutral by default (Edit, Reset), `.is-accent` for positive actions (Approve, Reactivate, Mark paid), `.is-danger` for destructive ones (Deactivate, Delete). The accent/danger variants use **soft tints** (`--color-accent-soft` / `--color-danger-soft`), never the heavy filled-variant drop-shadows, so a row of actions stays quiet.
+
+**Rules:**
+- Every action is `<UIcon name="i-lucide-…" class="size-3.5" /> Label` — icon **and** wording (no icon-only buttons in tables; they read as ambiguous). Common map: Edit → `pencil`, Delete → `trash-2`, Deactivate → `user-x`, Reactivate → `user-check`, Approve → `check`, Reset → `refresh-cw`, Mark paid → `banknote`.
+- Any table with row actions carries an **"Actions"** column in its `<th>` list (last column).
+- `:disabled` is handled by the class (opacity + `not-allowed`) — don't add manual `opacity-*` / `cursor-not-allowed` utilities.
+- Applies today to `/admin/{users, tasks, referrals, announcements}` — the only admin tables with per-row buttons (every other list opens on row-click).
+
 ---
 
 ## 13. Updating this doc

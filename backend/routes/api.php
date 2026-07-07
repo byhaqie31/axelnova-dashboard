@@ -158,6 +158,7 @@ Route::middleware([
         // stamps paid_at + flips the linked task extras to paid. `/preview` must
         // precede the {payrollEntry} bind.
         Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+        Route::get('/payroll/roster', [PayrollController::class, 'roster'])->name('payroll.roster');
         Route::get('/payroll/preview', [PayrollController::class, 'preview'])->name('payroll.preview');
         Route::post('/payroll', [PayrollController::class, 'store'])->name('payroll.store');
         Route::post('/payroll/{payrollEntry}/settle', [PayrollController::class, 'settle'])->name('payroll.settle');

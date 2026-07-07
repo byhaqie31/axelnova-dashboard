@@ -426,11 +426,11 @@ v-for="h in ['Partner', 'Code', 'Tier', 'Referrals', 'Status', 'Last login', 'Ac
                 </td>
                 <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">{{ fmtDate(p.last_login_at) }}</td>
                 <td class="px-4 py-3.5">
-                  <button v-if="p.status === 'pending'" type="button" class="btn-pill btn-pill-accent text-[12px]" @click.stop="askAction(p, 'approve')">
-                    Approve
+                  <button v-if="p.status === 'pending'" type="button" class="btn-table-action is-accent" @click.stop="askAction(p, 'approve')">
+                    <UIcon name="i-lucide-check" class="size-3.5" />Approve
                   </button>
-                  <button v-else-if="p.status === 'active'" type="button" class="btn-pill btn-pill-ghost text-[12px]" @click.stop="askAction(p, 'reset')">
-                    Reset passcode
+                  <button v-else-if="p.status === 'active'" type="button" class="btn-table-action" @click.stop="askAction(p, 'reset')">
+                    <UIcon name="i-lucide-refresh-cw" class="size-3.5" />Reset passcode
                   </button>
                   <span v-else class="text-[12px]" style="color: var(--color-text-tertiary);">—</span>
                 </td>

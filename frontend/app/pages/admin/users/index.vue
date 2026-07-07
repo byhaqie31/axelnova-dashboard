@@ -373,18 +373,20 @@ onKeyStroke('Escape', () => {
               <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">{{ fmtDate(u.created_at) }}</td>
               <td class="px-4 py-3.5">
                 <div class="flex items-center gap-1.5">
-                  <button type="button" class="btn-pill btn-pill-ghost text-[12px]" @click.stop="openEdit(u)">Edit</button>
-                  <button
-                    v-if="u.deactivated_at" type="button" class="btn-pill btn-pill-accent text-[12px]"
-                    @click.stop="pendingAction = { user: u, kind: 'reactivate' }">
-                    Reactivate
+                  <button type="button" class="btn-table-action" @click.stop="openEdit(u)">
+                    <UIcon name="i-lucide-pencil" class="size-3.5" />Edit
                   </button>
                   <button
-                    v-else type="button" class="btn-pill btn-pill-danger text-[12px]"
-                    :disabled="!canDeactivate(u)" :class="{ 'opacity-40 cursor-not-allowed': !canDeactivate(u) }"
+                    v-if="u.deactivated_at" type="button" class="btn-table-action is-accent"
+                    @click.stop="pendingAction = { user: u, kind: 'reactivate' }">
+                    <UIcon name="i-lucide-user-check" class="size-3.5" />Reactivate
+                  </button>
+                  <button
+                    v-else type="button" class="btn-table-action is-danger"
+                    :disabled="!canDeactivate(u)"
                     :title="!canDeactivate(u) ? 'You can’t deactivate your own account' : undefined"
                     @click.stop="canDeactivate(u) && (pendingAction = { user: u, kind: 'deactivate' })">
-                    Deactivate
+                    <UIcon name="i-lucide-user-x" class="size-3.5" />Deactivate
                   </button>
                 </div>
               </td>

@@ -359,11 +359,11 @@ function fmtDeadline(iso: string | null) {
                 </div>
               </td>
               <td class="px-4 py-3.5">
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center gap-1.5 flex-wrap">
                   <button
-                    v-if="canMarkPaid(t)" type="button" class="btn-pill btn-pill-accent text-[12px]"
+                    v-if="canMarkPaid(t)" type="button" class="btn-table-action is-accent"
                     @click.stop="pendingAction = { task: t, kind: 'mark-paid' }">
-                    Mark paid
+                    <UIcon name="i-lucide-banknote" class="size-3.5" />Mark paid
                   </button>
                   <span
                     v-else-if="onPayslip(t)" class="inline-flex items-center gap-1 text-[11px] whitespace-nowrap"
@@ -371,12 +371,13 @@ function fmtDeadline(iso: string | null) {
                     <UIcon name="i-lucide-receipt" class="size-3" aria-hidden="true" />
                     on payslip{{ t.payroll_period_label ? ` ${t.payroll_period_label}` : '' }}
                   </span>
-                  <button type="button" class="btn-pill btn-pill-ghost text-[12px]" @click.stop="openEdit(t)">Edit</button>
+                  <button type="button" class="btn-table-action" @click.stop="openEdit(t)">
+                    <UIcon name="i-lucide-pencil" class="size-3.5" />Edit
+                  </button>
                   <button
-                    type="button" class="inline-flex items-center justify-center size-7 rounded-full transition-colors hover:bg-(--color-danger-soft)"
-                    :style="{ color: 'var(--color-text-tertiary)' }" aria-label="Delete task"
+                    type="button" class="btn-table-action is-danger" aria-label="Delete task"
                     @click.stop="pendingAction = { task: t, kind: 'delete' }">
-                    <UIcon name="i-lucide-trash-2" class="size-3.5" />
+                    <UIcon name="i-lucide-trash-2" class="size-3.5" />Delete
                   </button>
                 </div>
               </td>

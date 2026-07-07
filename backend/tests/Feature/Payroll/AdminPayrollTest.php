@@ -173,6 +173,49 @@ class AdminPayrollTest extends TestCase
             ->assertJsonPath('period_taken', false);
     }
 
+    public function test_roster_lists_each_teammate_with_allowance_extras_and_period_status(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->marketer()->create(['name' => 'Aisyah', 'monthly_allowance_myr' => 2500]);
+        Task::factory()->assignedTo($member)->paymentPending()->create(['pay_amount_myr' => 200]);
+        Task::factory()->assignedTo($member)->paymentPending()->create(['pay_amount_myr' => 50]);
+        // An in-progress bonus isn't owed yet — excluded from the extras sum.
+        Task::factory()->assignedTo($member)->inProgress()->withPay(999)->create();
+        PayrollEntry::factory()->create(['user_id' => $member->id, 'period_label' => '2026-07']);
+
+        $res = $this->getJson('/api/v1/admin/payroll/roster?period_label=2026-07', $this->adminHeaders($founder))
+            ->assertOk()
+            ->assertJsonPath('period_label', '2026-07');
+
+        $rows = collect($res->json('data'));
+        $row = $rows->firstWhere('user_id', $member->id);
+        $this->assertSame(2500, $row['monthly_allowance_myr']);
+        $this->assertSame(2, $row['pending_extras_count']);
+        $this->assertSame(250, $row['pending_extras_myr']);
+        $this->assertSame(2750, $row['projected_gross_myr']);
+        $this->assertTrue($row['period_taken']);
+        $this->assertFalse($row['deactivated']);
+        // The founder is on the roster too (own allowance/extras, here none).
+        $this->assertNotNull($rows->firstWhere('user_id', $founder->id));
+    }
+
+    public function test_roster_tags_a_deactivated_teammate_and_orders_them_last(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $active = User::factory()->marketer()->create(['name' => 'Aaa Active']);
+        $gone = User::factory()->marketer()->create(['name' => 'Bbb Gone', 'deactivated_at' => now()]);
+
+        $rows = collect($this->getJson('/api/v1/admin/payroll/roster', $this->adminHeaders($founder))
+            ->assertOk()->json('data'));
+
+        $goneRow = $rows->firstWhere('user_id', $gone->id);
+        $this->assertTrue($goneRow['deactivated']);
+        $this->assertNull($goneRow['period_taken']); // no period sent → null
+
+        $ids = $rows->pluck('user_id')->all();
+        $this->assertGreaterThan(array_search($active->id, $ids), array_search($gone->id, $ids));
+    }
+
     public function test_settle_stamps_paid_at_and_flips_linked_tasks(): void
     {
         $founder = User::factory()->founder()->create();
@@ -252,6 +295,7 @@ class AdminPayrollTest extends TestCase
         $entry = PayrollEntry::factory()->create(['user_id' => $marketer->id]);
 
         $this->getJson('/api/v1/admin/payroll', $headers)->assertForbidden();
+        $this->getJson('/api/v1/admin/payroll/roster', $headers)->assertForbidden();
         $this->getJson("/api/v1/admin/payroll/preview?user_id={$marketer->id}", $headers)->assertForbidden();
         $this->postJson('/api/v1/admin/payroll', ['user_id' => $marketer->id, 'period_label' => '2026-07'], $headers)->assertForbidden();
         $this->postJson("/api/v1/admin/payroll/{$entry->id}/settle", [], $headers)->assertForbidden();

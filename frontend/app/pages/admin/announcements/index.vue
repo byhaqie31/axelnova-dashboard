@@ -202,7 +202,9 @@ onKeyStroke('Escape', () => {
               </td>
               <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">{{ a.created_by_name ?? '—' }}</td>
               <td class="px-4 py-3.5">
-                <button type="button" class="btn-pill btn-pill-ghost text-[12px]" @click.stop="openEdit(a)">Edit</button>
+                <button type="button" class="btn-table-action" @click.stop="openEdit(a)">
+                  <UIcon name="i-lucide-pencil" class="size-3.5" />Edit
+                </button>
               </td>
             </tr>
           </tbody>

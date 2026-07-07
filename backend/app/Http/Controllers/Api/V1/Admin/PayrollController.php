@@ -83,6 +83,64 @@ class PayrollController extends Controller
     }
 
     /**
+     * The person-first roster: one row per teammate with their standing allowance,
+     * the count/sum of their pending task extras, the projected gross, and whether
+     * this period's slip already exists — so the founder can decide allowances and
+     * generate per individual from a single screen. Deactivated teammates are
+     * included (tagged) so their payslip history stays reachable, but generation
+     * still refuses them (see store()). Batched: two aggregate queries feed every
+     * row, no per-user N+1.
+     */
+    public function roster(Request $request): JsonResponse
+    {
+        Gate::authorize('view-all-payroll');
+
+        $data = $request->validate([
+            'period_label' => ['nullable', 'string', 'max:40'],
+        ]);
+        $period = isset($data['period_label']) && $data['period_label'] !== '' ? $data['period_label'] : null;
+
+        $users = User::query()->orderByRaw('deactivated_at IS NOT NULL')->orderBy('name')->get();
+
+        // Pending extras per assignee — one grouped query for the whole roster.
+        $extras = Task::query()
+            ->where('status', 'payment_pending')
+            ->whereNull('payroll_entry_id')
+            ->whereNotNull('pay_amount_myr')
+            ->selectRaw('assignee_id, COUNT(*) as cnt, COALESCE(SUM(pay_amount_myr), 0) as total')
+            ->groupBy('assignee_id')
+            ->get()
+            ->keyBy('assignee_id');
+
+        // Teammates who already have a slip for this period — one query.
+        $taken = $period
+            ? PayrollEntry::where('period_label', $period)->pluck('user_id')->flip()
+            : collect();
+
+        return response()->json([
+            'period_label' => $period,
+            'data' => $users->map(function (User $u) use ($extras, $taken, $period) {
+                $ex = $extras->get($u->id);
+                $count = (int) ($ex->cnt ?? 0);
+                $sum = (int) ($ex->total ?? 0);
+                $allowance = $u->monthly_allowance_myr;
+
+                return [
+                    'user_id' => $u->id,
+                    'name' => $u->name,
+                    'role' => $u->role,
+                    'deactivated' => $u->deactivated_at !== null,
+                    'monthly_allowance_myr' => $allowance,
+                    'pending_extras_count' => $count,
+                    'pending_extras_myr' => $sum,
+                    'projected_gross_myr' => (int) ($allowance ?? 0) + $sum,
+                    'period_taken' => $period ? $taken->has($u->id) : null,
+                ];
+            })->values(),
+        ]);
+    }
+
+    /**
      * Generate a payslip. Snapshots the member's allowance (null stays null —
      * "no allowance on file" is distinct from an explicit 0, but counts as 0 in
      * the sum), collects their unlinked payment_pending task extras under a lock,
