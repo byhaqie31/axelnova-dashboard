@@ -1,3 +1,5 @@
+import { createTokenAuth } from '~/composables/useTokenAuth'
+
 // Partner-portal auth (token key `axn_partner_token`, login `/partners/login`). A thin
 // wrapper over the shared createTokenAuth engine, on its own token key so the three
 // surfaces stay isolated: a partner token can't be replayed against /admin or /team,

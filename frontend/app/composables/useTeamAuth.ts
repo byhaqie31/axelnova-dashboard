@@ -1,3 +1,5 @@
+import { createTokenAuth } from '~/composables/useTokenAuth'
+
 // Workspace (/team) auth (token key `axn_team_token`, login `/team/login`). A thin
 // wrapper over the shared createTokenAuth engine, deliberately on its own token key
 // so a workspace session can't be replayed against /admin and vice-versa (a marketer

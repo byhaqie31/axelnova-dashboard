@@ -1,3 +1,5 @@
+import { createTokenAuth } from '~/composables/useTokenAuth'
+
 // Admin-cockpit auth (token key `axn_admin_token`, login `/admin/login`). A thin
 // wrapper over the shared createTokenAuth engine — which owns token storage, the
 // Bearer header, and the 401 → login interceptor — plus the admin-only extras below.
