@@ -21,7 +21,7 @@ axelnova-dashboard/
 | Database | MySQL 8 (shared via [axelnova-infra](../../../axelnova-infra/)) |
 | Queue | Laravel database queue |
 | Email | SMTP — Mailtrap in dev, Mailgun/Postmark/SES in prod |
-| Auth | Laravel Sanctum bearer tokens — three isolated surfaces (admin cockpit / team workspace / partner portal), each minting tokens with its own ability (`cockpit` / `workspace` / `partner`) enforced by the `abilities:` middleware. Admin → Team jump via `POST /v1/admin/team-session` token exchange |
+| Auth | Laravel Sanctum bearer tokens — three isolated user surfaces (admin cockpit / team workspace / partner portal), each minting tokens with its own ability (`cockpit` / `workspace` / `partner`) enforced by the `abilities:` middleware, plus a machine-only **MCP connector** surface (`connector:read`/`connector:draft` — see [MCP-CONNECTOR.md](./MCP-CONNECTOR.md)). Admin → Team jump via `POST /v1/admin/team-session` token exchange |
 
 ## Database tables
 
@@ -171,6 +171,15 @@ PATCH  /v1/admin/announcements/{id}  Edit title/body/audience and/or toggle `pub
                                      a draft stamps published_at once; re-publishing an already-
                                      published row keeps its original timestamp; unpublishing clears
                                      it back to null (draft). No delete endpoint.
+
+# MCP connector (/v1/connector/*, auth:sanctum + abilities:connector:*) — see MCP-CONNECTOR.md.
+# A fourth, isolated surface for the remote MCP server (mcp.axelnova.tech) that lets
+# Claude draft quotations. Draft-only: tokens carry connector:read/connector:draft,
+# never cockpit — so a connector token is rejected by every /v1/admin route, and each
+# endpoint opens exactly its own ability.
+GET  /v1/connector/catalog                connector:read  — merged quote catalog (packages/modifiers/addons/rush)
+POST /v1/connector/quotations/draft       connector:draft — create a DRAFT quotation (priced or bespoke)
+GET  /v1/connector/quotations/{ref}       connector:read  — read back a connector-created draft (AXNQ code)
 
 # Document generation (see DOCUMENT-GENERATION.md)
 POST /v1/admin/orders/{order}/documents   Sanctum — issue an invoice/receipt

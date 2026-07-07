@@ -21,6 +21,8 @@ use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
 use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\TasksController;
 use App\Http\Controllers\Api\V1\Admin\UsersController;
+use App\Http\Controllers\Api\V1\Connector\CatalogController as ConnectorCatalogController;
+use App\Http\Controllers\Api\V1\Connector\QuotationDraftController as ConnectorQuotationDraftController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\InquiryController;
 use App\Http\Controllers\Api\V1\LikesController;
@@ -340,4 +342,29 @@ Route::middleware(['auth:external', 'abilities:partner'])
         // Investor-only content endpoints (documents / reports) are deliberately
         // absent — those surfaces are premium empty states until an investor
         // content model exists (admin investor CRUD is future work).
+    });
+
+// MCP connector — a fourth, deliberately NARROW surface for the remote MCP server
+// (mcp.axelnova.tech), which lets Claude draft quotations from a client brief.
+// Pure Sanctum bearer tokens minted with connector abilities ONLY
+// (connector:read / connector:draft) — never `cockpit`, so a connector token is
+// rejected by every /v1/admin route (abilities:cockpit), and an admin cockpit
+// token is rejected here. Draft-only by design: read the catalog, create a DRAFT
+// quotation, read a connector-created draft back. It CANNOT change status, accept
+// a quote, or touch orders/clients/services/payments — and there is no delete.
+// Routes deny by default; each ability opens exactly its own endpoints.
+Route::middleware('auth:sanctum')
+    ->prefix('v1/connector')
+    ->name('connector.')
+    ->group(function () {
+        // Read surface — the catalog + read-back of connector-created drafts.
+        Route::middleware('abilities:connector:read')->group(function () {
+            Route::get('/catalog', [ConnectorCatalogController::class, 'index'])->name('catalog');
+            Route::get('/quotations/{reference_code}', [ConnectorQuotationDraftController::class, 'show'])->name('quotations.show');
+        });
+
+        // Write surface — create a DRAFT quotation (priced or fully bespoke).
+        Route::middleware('abilities:connector:draft')->group(function () {
+            Route::post('/quotations/draft', [ConnectorQuotationDraftController::class, 'store'])->name('quotations.draft');
+        });
     });
