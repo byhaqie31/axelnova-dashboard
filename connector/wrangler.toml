@@ -27,7 +27,7 @@ new_sqlite_classes = ["AxelNovaMCP"]
 #   npx wrangler kv namespace create OAUTH_KV
 [[kv_namespaces]]
 binding = "OAUTH_KV"
-id = "REPLACE_WITH_OAUTH_KV_NAMESPACE_ID"
+id = "714c31ca4b414ce4b79c802efd8ef7dd"
 
 # --- Secrets (never committed) ----------------------------------------------
 # Set via `npx wrangler secret put <NAME>` before first deploy:
