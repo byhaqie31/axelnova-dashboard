@@ -45,6 +45,34 @@ class AdminUsersTest extends TestCase
         $this->assertNull($aisyah['deactivated_at']);
     }
 
+    public function test_founder_can_view_a_full_user_profile_with_self_filled_fields(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->marketer()->create([
+            'monthly_allowance_myr' => 2500,
+            'phone' => '0123456789',
+            'bank_name' => 'Maybank',
+        ]);
+
+        $this->getJson("/api/v1/admin/users/{$member->id}", $this->adminHeaders($founder))
+            ->assertOk()
+            ->assertJsonPath('id', $member->id)
+            ->assertJsonPath('monthly_allowance_myr', 2500)
+            ->assertJsonPath('phone', '0123456789')
+            ->assertJsonPath('bank_name', 'Maybank')
+            ->assertJsonPath('profile_complete', false)
+            ->assertJsonPath('bank_account_number', null);
+    }
+
+    public function test_a_workspace_role_cannot_view_a_user_profile(): void
+    {
+        $member = User::factory()->marketer()->create();
+        $token = $member->createToken('team-spa', ['workspace'])->plainTextToken;
+
+        $this->getJson("/api/v1/admin/users/{$member->id}", ['Authorization' => "Bearer {$token}"])
+            ->assertForbidden();
+    }
+
     public function test_a_workspace_role_cannot_reach_the_users_endpoints(): void
     {
         $marketer = User::factory()->marketer()->create();

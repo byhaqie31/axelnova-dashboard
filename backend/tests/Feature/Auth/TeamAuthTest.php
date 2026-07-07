@@ -81,6 +81,62 @@ class TeamAuthTest extends TestCase
         $this->assertSame('busy', $user->fresh()->availability);
     }
 
+    public function test_a_teammate_can_fill_bank_and_address_and_it_flips_profile_complete(): void
+    {
+        $user = User::factory()->marketer()->create();
+        $token = $user->createToken('team-spa', ['workspace'])->plainTextToken;
+        $headers = ['Authorization' => "Bearer {$token}"];
+
+        // Nothing filled yet → incomplete.
+        $this->getJson('/api/v1/team/me', $headers)
+            ->assertOk()
+            ->assertJsonPath('profile_complete', false)
+            ->assertJsonPath('phone', null);
+
+        $this->patchJson('/api/v1/team/me', [
+            'phone' => '0123456789',
+            'bank_name' => 'Maybank',
+            'bank_account_number' => '512345678901',
+            'bank_account_holder' => 'Aisyah Binti Rahman',
+            'address_line1' => '12 Jalan Ceria',
+            'city' => 'Shah Alam',
+            'postcode' => '40000',
+            'state' => 'Selangor',
+            'country' => 'Malaysia',
+        ], $headers)
+            ->assertOk()
+            ->assertJsonPath('bank_name', 'Maybank')
+            ->assertJsonPath('profile_complete', true)
+            ->assertJsonPath('profile_missing', []);
+
+        $this->assertSame('512345678901', $user->fresh()->bank_account_number);
+    }
+
+    public function test_profile_missing_lists_the_still_blank_required_fields(): void
+    {
+        $user = User::factory()->marketer()->create(['phone' => '0123456789']);
+        $token = $user->createToken('team-spa', ['workspace'])->plainTextToken;
+
+        $res = $this->getJson('/api/v1/team/me', ['Authorization' => "Bearer {$token}"])->assertOk();
+        $missing = $res->json('profile_missing');
+
+        $this->assertContains('Bank name', $missing);
+        $this->assertNotContains('Phone number', $missing); // already filled
+        $this->assertFalse($res->json('profile_complete'));
+    }
+
+    public function test_a_teammate_can_clear_a_profile_field_back_to_null(): void
+    {
+        $user = User::factory()->marketer()->create(['phone' => '0123456789']);
+        $token = $user->createToken('team-spa', ['workspace'])->plainTextToken;
+
+        $this->patchJson('/api/v1/team/me', ['phone' => null], ['Authorization' => "Bearer {$token}"])
+            ->assertOk()
+            ->assertJsonPath('phone', null);
+
+        $this->assertNull($user->fresh()->phone);
+    }
+
     public function test_updating_the_profile_rejects_an_invalid_availability_value(): void
     {
         $user = User::factory()->marketer()->create();

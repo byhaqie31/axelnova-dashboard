@@ -216,6 +216,49 @@ class AdminPayrollTest extends TestCase
         $this->assertGreaterThan(array_search($active->id, $ids), array_search($gone->id, $ids));
     }
 
+    public function test_roster_returns_a_dashboard_summary(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $a = User::factory()->marketer()->create(['monthly_allowance_myr' => 2000]);
+        $b = User::factory()->engineer()->create(['monthly_allowance_myr' => 1500]);
+        // `a` already has this period's slip; two paid slips this year. Pin
+        // created_by so the factory doesn't spawn phantom creator users (which
+        // would inflate the headcount).
+        PayrollEntry::factory()->create(['user_id' => $a->id, 'created_by' => $founder->id, 'period_label' => '2026-07', 'gross_myr' => 2000, 'paid_at' => now()]);
+        PayrollEntry::factory()->create(['user_id' => $a->id, 'created_by' => $founder->id, 'period_label' => '2026-06', 'gross_myr' => 2000, 'paid_at' => now()]);
+
+        $summary = $this->getJson('/api/v1/admin/payroll/roster?period_label=2026-07', $this->adminHeaders($founder))
+            ->assertOk()->json('summary');
+
+        $this->assertSame(3500, $summary['projected_total_myr']); // 2000 + 1500 (founder 0)
+        $this->assertSame(1, $summary['generated_count']);        // a is taken
+        $this->assertSame(1, $summary['pending_count']);          // b eligible; founder has nothing to pay
+        $this->assertSame(4000, $summary['paid_this_year_myr']);  // two paid 2000 slips in 2026
+        $this->assertSame(2026, $summary['year']);
+        $this->assertSame(3, $summary['headcount']);
+    }
+
+    public function test_user_detail_returns_history_and_per_year_aggregates(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->marketer()->create();
+        PayrollEntry::factory()->create(['user_id' => $member->id, 'period_label' => '2026-07', 'allowance_snapshot_myr' => 2000, 'task_extras_myr' => 250, 'gross_myr' => 2250, 'paid_at' => now()]);
+        PayrollEntry::factory()->create(['user_id' => $member->id, 'period_label' => '2026-06', 'allowance_snapshot_myr' => 2000, 'task_extras_myr' => 0, 'gross_myr' => 2000, 'paid_at' => null]);
+        PayrollEntry::factory()->create(['user_id' => $member->id, 'period_label' => '2025-12', 'allowance_snapshot_myr' => 1800, 'task_extras_myr' => 0, 'gross_myr' => 1800, 'paid_at' => now()]);
+
+        $res = $this->getJson("/api/v1/admin/payroll/user/{$member->id}", $this->adminHeaders($founder))->assertOk();
+
+        $res->assertJsonPath('user.id', $member->id);
+        $this->assertSame([2026, 2025], $res->json('years'));
+        $this->assertSame(4250, $res->json('summary_by_year.2026.gross_total_myr'));
+        $this->assertSame(2250, $res->json('summary_by_year.2026.paid_total_myr'));
+        $this->assertSame(2000, $res->json('summary_by_year.2026.pending_total_myr'));
+        $this->assertSame(250, $res->json('summary_by_year.2026.extras_total_myr'));
+        $this->assertSame(1800, $res->json('summary_by_year.2025.gross_total_myr'));
+        $this->assertCount(3, $res->json('entries'));
+        $this->assertSame('2026-07', $res->json('entries.0.period_label')); // newest first
+    }
+
     public function test_settle_stamps_paid_at_and_flips_linked_tasks(): void
     {
         $founder = User::factory()->founder()->create();
@@ -296,6 +339,7 @@ class AdminPayrollTest extends TestCase
 
         $this->getJson('/api/v1/admin/payroll', $headers)->assertForbidden();
         $this->getJson('/api/v1/admin/payroll/roster', $headers)->assertForbidden();
+        $this->getJson("/api/v1/admin/payroll/user/{$marketer->id}", $headers)->assertForbidden();
         $this->getJson("/api/v1/admin/payroll/preview?user_id={$marketer->id}", $headers)->assertForbidden();
         $this->postJson('/api/v1/admin/payroll', ['user_id' => $marketer->id, 'period_label' => '2026-07'], $headers)->assertForbidden();
         $this->postJson("/api/v1/admin/payroll/{$entry->id}/settle", [], $headers)->assertForbidden();

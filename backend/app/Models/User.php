@@ -23,7 +23,29 @@ class User extends Authenticatable
      */
     public const WORKSPACE_ROLES = ['founder', 'marketer', 'engineer'];
 
-    protected $fillable = ['name', 'email', 'password', 'role', 'availability', 'monthly_allowance_myr'];
+    protected $fillable = [
+        'name', 'email', 'password', 'role', 'availability', 'monthly_allowance_myr',
+        // Teammate-filled profile (self-serve on /team/profile) — contact, bank, address.
+        'phone', 'bank_name', 'bank_account_number', 'bank_account_holder',
+        'address_line1', 'address_line2', 'city', 'postcode', 'state', 'country',
+    ];
+
+    /**
+     * Profile fields a teammate must fill for their record to count as complete —
+     * key => human label. `address_line2` is deliberately optional. Drives the
+     * completeness flag on /team/me and the onboarding to-do on the team home.
+     */
+    public const PROFILE_REQUIRED = [
+        'phone' => 'Phone number',
+        'bank_name' => 'Bank name',
+        'bank_account_number' => 'Bank account number',
+        'bank_account_holder' => 'Account holder name',
+        'address_line1' => 'Address',
+        'city' => 'City',
+        'postcode' => 'Postcode',
+        'state' => 'State',
+        'country' => 'Country',
+    ];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -63,5 +85,20 @@ class User extends Authenticatable
     public function isDeactivated(): bool
     {
         return $this->deactivated_at !== null;
+    }
+
+    /** Human labels of the required profile fields still blank (empty = complete). */
+    public function profileMissing(): array
+    {
+        return collect(self::PROFILE_REQUIRED)
+            ->reject(fn (string $label, string $key) => filled($this->{$key}))
+            ->values()
+            ->all();
+    }
+
+    /** True once every required profile field is filled. */
+    public function profileComplete(): bool
+    {
+        return $this->profileMissing() === [];
     }
 }

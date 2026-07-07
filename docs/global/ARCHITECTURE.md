@@ -148,6 +148,10 @@ POST   /v1/admin/payroll/{id}/settle Stamp paid_at (+ method?) and flip the link
 # Team provisioning (cockpit side — Task 8; founder-only via manage-users)
 GET    /v1/admin/users               Roster, alphabetical (name, email, role, tier, availability,
                                      monthly_allowance_myr, deactivated_at, created_at)
+GET    /v1/admin/users/{user}        Full profile for the /admin/users/[id] detail page — roster fields
+                                     PLUS the teammate's self-filled phone/bank/address (off the list
+                                     payload) + `profile_complete`/`profile_missing`. Founder reads only;
+                                     bank/address are filled by the teammate on /team/profile (self-serve)
 POST   /v1/admin/users               Create {name, email, password (min 12), role, monthly_allowance_myr?}
                                      — queues TeamWelcomeMail to the new teammate (motivational welcome +
                                      their email/temp-password + Team Portal link); a mail failure is

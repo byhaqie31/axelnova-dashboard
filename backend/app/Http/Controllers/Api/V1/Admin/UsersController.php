@@ -27,6 +27,31 @@ class UsersController extends Controller
         );
     }
 
+    /**
+     * Full profile for the founder's user detail page — the lean roster fields
+     * plus the teammate's self-filled contact / bank / address (kept off the
+     * list payload; only surfaced on the single-record view) and completeness.
+     */
+    public function show(User $user): JsonResponse
+    {
+        Gate::authorize('manage-users');
+
+        return response()->json($this->present($user) + [
+            'phone' => $user->phone,
+            'bank_name' => $user->bank_name,
+            'bank_account_number' => $user->bank_account_number,
+            'bank_account_holder' => $user->bank_account_holder,
+            'address_line1' => $user->address_line1,
+            'address_line2' => $user->address_line2,
+            'city' => $user->city,
+            'postcode' => $user->postcode,
+            'state' => $user->state,
+            'country' => $user->country,
+            'profile_complete' => $user->profileComplete(),
+            'profile_missing' => $user->profileMissing(),
+        ]);
+    }
+
     /** Provision a teammate. Password is hashed by the model's `hashed` cast. */
     public function store(Request $request): JsonResponse
     {

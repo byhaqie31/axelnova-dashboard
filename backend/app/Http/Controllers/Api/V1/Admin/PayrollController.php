@@ -117,26 +117,83 @@ class PayrollController extends Controller
             ? PayrollEntry::where('period_label', $period)->pluck('user_id')->flip()
             : collect();
 
+        $rows = $users->map(function (User $u) use ($extras, $taken, $period) {
+            $ex = $extras->get($u->id);
+            $sum = (int) ($ex->total ?? 0);
+            $allowance = $u->monthly_allowance_myr;
+
+            return [
+                'user_id' => $u->id,
+                'name' => $u->name,
+                'role' => $u->role,
+                'deactivated' => $u->deactivated_at !== null,
+                'monthly_allowance_myr' => $allowance,
+                'pending_extras_count' => (int) ($ex->cnt ?? 0),
+                'pending_extras_myr' => $sum,
+                'projected_gross_myr' => (int) ($allowance ?? 0) + $sum,
+                'period_taken' => $period ? $taken->has($u->id) : null,
+            ];
+        })->values();
+
+        // Dashboard summary — this-period figures over ACTIVE teammates, plus the
+        // year-to-date paid total for the period's year.
+        $active = $rows->reject(fn (array $r) => $r['deactivated']);
+        $year = $period ? substr($period, 0, 4) : null;
+        $paidThisYear = $year
+            ? (int) PayrollEntry::whereNotNull('paid_at')->where('period_label', 'like', $year.'-%')->sum('gross_myr')
+            : 0;
+
         return response()->json([
             'period_label' => $period,
-            'data' => $users->map(function (User $u) use ($extras, $taken, $period) {
-                $ex = $extras->get($u->id);
-                $count = (int) ($ex->cnt ?? 0);
-                $sum = (int) ($ex->total ?? 0);
-                $allowance = $u->monthly_allowance_myr;
+            'summary' => [
+                'projected_total_myr' => (int) $active->sum('projected_gross_myr'),
+                'generated_count' => $active->where('period_taken', true)->count(),
+                'pending_count' => $active->filter(fn (array $r) => $r['period_taken'] === false && $r['projected_gross_myr'] >= 1)->count(),
+                'paid_this_year_myr' => $paidThisYear,
+                'year' => $year ? (int) $year : null,
+                'headcount' => $active->count(),
+            ],
+            'data' => $rows,
+        ]);
+    }
 
-                return [
-                    'user_id' => $u->id,
-                    'name' => $u->name,
-                    'role' => $u->role,
-                    'deactivated' => $u->deactivated_at !== null,
-                    'monthly_allowance_myr' => $allowance,
-                    'pending_extras_count' => $count,
-                    'pending_extras_myr' => $sum,
-                    'projected_gross_myr' => (int) ($allowance ?? 0) + $sum,
-                    'period_taken' => $period ? $taken->has($u->id) : null,
-                ];
-            })->values(),
+    /**
+     * One teammate's full payroll history + per-year aggregates — the payroll
+     * detail page (/admin/payroll/[user]). Founder-only. Newest slip first;
+     * `summary_by_year` powers the yearly-totals tiles + year selector.
+     */
+    public function userDetail(User $user): JsonResponse
+    {
+        Gate::authorize('view-all-payroll');
+
+        $entries = PayrollEntry::with(['tasks', 'creator'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('period_label')
+            ->orderByDesc('id')
+            ->get();
+
+        $byYear = $entries
+            ->groupBy(fn (PayrollEntry $e) => substr($e->period_label, 0, 4))
+            ->map(fn ($group) => [
+                'count' => $group->count(),
+                'gross_total_myr' => (int) $group->sum('gross_myr'),
+                'paid_total_myr' => (int) $group->filter(fn (PayrollEntry $e) => $e->paid_at !== null)->sum('gross_myr'),
+                'pending_total_myr' => (int) $group->filter(fn (PayrollEntry $e) => $e->paid_at === null)->sum('gross_myr'),
+                'allowance_total_myr' => (int) $group->sum('allowance_snapshot_myr'),
+                'extras_total_myr' => (int) $group->sum('task_extras_myr'),
+            ]);
+
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'role' => $user->role,
+                'deactivated' => $user->deactivated_at !== null,
+                'monthly_allowance_myr' => $user->monthly_allowance_myr,
+            ],
+            'years' => $byYear->keys()->map(fn ($y) => (int) $y)->sortDesc()->values(),
+            'summary_by_year' => $byYear,
+            'entries' => PayrollEntryResource::collection($entries)->resolve(),
         ]);
     }
 

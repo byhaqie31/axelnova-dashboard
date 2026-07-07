@@ -210,6 +210,27 @@ function fmtDate(iso: string) {
       </div>
     </div>
 
+    <!-- Onboarding nudge — complete your profile (bank/address for payroll) -->
+    <NuxtLink
+      v-if="me && me.profile_complete === false"
+      to="/team/profile"
+      class="dash-row flex items-center gap-3 rounded-2xl border p-4 mb-6"
+      :style="{ background: 'var(--color-warning-soft)', borderColor: 'var(--color-warning)' }"
+    >
+      <span class="size-9 rounded-xl inline-flex items-center justify-center shrink-0" :style="{ background: 'var(--color-bg-elevated)', color: 'var(--color-warning)' }">
+        <UIcon name="i-lucide-clipboard-list" class="size-[18px]" />
+      </span>
+      <div class="min-w-0 flex-1">
+        <p class="text-[14px] font-semibold tracking-tight" style="color: var(--color-text);">Finish setting up your profile</p>
+        <p class="text-[12px] mt-0.5 truncate" style="color: var(--color-text-secondary);">
+          {{ me.profile_missing?.length ?? 0 }} still to add — {{ (me.profile_missing ?? []).slice(0, 4).join(', ') }}<span v-if="(me.profile_missing?.length ?? 0) > 4">…</span>
+        </p>
+      </div>
+      <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold" style="color: var(--color-warning);">
+        Complete <UIcon name="i-lucide-arrow-right" class="size-3.5" />
+      </span>
+    </NuxtLink>
+
     <!-- Snapshot tiles -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
       <NuxtLink

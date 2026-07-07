@@ -156,14 +156,9 @@ function openCreate() {
 }
 
 function openEdit(user: UserRecord) {
-  editingUser.value = user
-  createdCredentials.value = null
-  form.name = user.name
-  form.email = user.email
-  form.password = ''
-  form.role = user.role === 'founder' ? 'marketer' : user.role
-  form.allowance = user.monthly_allowance_myr != null ? String(user.monthly_allowance_myr) : ''
-  slideoverOpen.value = true
+  // Editing an existing teammate now lives on the full profile page; the
+  // slideover is kept for quick-create only.
+  navigateTo(`/admin/users/${user.id}`)
 }
 
 function closeSlideover() {
