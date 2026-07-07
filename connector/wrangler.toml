@@ -1,0 +1,41 @@
+name = "axelnova-mcp-connector"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# --- Custom domain -----------------------------------------------------------
+# `wrangler deploy` provisions the DNS record + Worker route for this hostname.
+# ⚠️ PAUSE-AND-REPORT: creating mcp.axelnova.tech (DNS/route) must be confirmed
+# before deploy — see docs/global/MCP-CONNECTOR.md. Do not deploy unattended.
+[[routes]]
+pattern = "mcp.axelnova.tech"
+custom_domain = true
+
+# --- MCP server Durable Object ----------------------------------------------
+# McpAgent keeps each session's state in this Durable Object (SQLite-backed).
+[[durable_objects.bindings]]
+name = "MCP_OBJECT"
+class_name = "AxelNovaMCP"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AxelNovaMCP"]
+
+# --- OAuth grant store -------------------------------------------------------
+# workers-oauth-provider persists issued grants/clients here (binding MUST be
+# named OAUTH_KV). ⚠️ Create it first and paste the id below:
+#   npx wrangler kv namespace create OAUTH_KV
+[[kv_namespaces]]
+binding = "OAUTH_KV"
+id = "REPLACE_WITH_OAUTH_KV_NAMESPACE_ID"
+
+# --- Secrets (never committed) ----------------------------------------------
+# Set via `npx wrangler secret put <NAME>` before first deploy:
+#   API_BASE         — the Laravel API origin, e.g. https://axelnovaventures.com
+#   CONNECTOR_TOKEN  — the scoped token from `php artisan connector:token`
+#   ACCESS_USERNAME  — login for the OAuth gate (single-user)
+#   ACCESS_PASSWORD  — passphrase for the OAuth gate
+# For local `wrangler dev`, put the same keys in connector/.dev.vars (gitignored).
+
+[observability]
+enabled = true
