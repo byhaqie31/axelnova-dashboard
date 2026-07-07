@@ -63,6 +63,40 @@ class DraftQuotationRequest extends FormRequest
             'line_items.*.description' => ['nullable', 'string', 'max:1000'],
             'line_items.*.amount_myr' => ['required_with:line_items', 'numeric', 'min:0'],
 
+            // Detailed proposal — the connector's richest mode: a self-priced,
+            // multi-section proposal (scope sections + "What's included" + option
+            // cards + care plan). Priced from the section row amounts, NOT the
+            // engine; mutually exclusive with package_key/packages/line_items
+            // (enforced in after()).
+            'detailed' => ['nullable', 'array'],
+            'detailed.subtitle' => ['nullable', 'string', 'max:200'],
+            'detailed.deposit_pct' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'detailed.sections' => ['required_with:detailed', 'array', 'min:1'],
+            'detailed.sections.*.title' => ['required', 'string', 'max:200'],
+            'detailed.sections.*.rows' => ['required', 'array', 'min:1'],
+            'detailed.sections.*.rows.*.title' => ['required', 'string', 'max:200'],
+            'detailed.sections.*.rows.*.detail' => ['nullable', 'string', 'max:1000'],
+            'detailed.sections.*.rows.*.amount_myr' => ['required', 'numeric', 'min:0'],
+            'detailed.included' => ['nullable', 'array'],
+            'detailed.included.*.eyebrow' => ['nullable', 'string', 'max:120'],
+            'detailed.included.*.items' => ['required_with:detailed.included', 'array', 'min:1'],
+            'detailed.included.*.items.*' => ['string', 'max:300'],
+            'detailed.included.*.columns' => ['nullable', 'integer', 'in:1,2'],
+            'detailed.included.*.note' => ['nullable', 'string', 'max:300'],
+            'detailed.options' => ['nullable', 'array'],
+            'detailed.options.*.badge' => ['nullable', 'string', 'max:40'],
+            'detailed.options.*.title' => ['required_with:detailed.options', 'string', 'max:200'],
+            'detailed.options.*.sub' => ['nullable', 'string', 'max:200'],
+            'detailed.options.*.amount_myr' => ['required_with:detailed.options', 'numeric', 'min:0'],
+            'detailed.options.*.was_myr' => ['nullable', 'numeric', 'min:0'],
+            'detailed.options.*.price_note' => ['nullable', 'string', 'max:60'],
+            'detailed.options.*.recommended' => ['nullable', 'boolean'],
+            'detailed.care' => ['nullable', 'array'],
+            'detailed.care.*.label' => ['required_with:detailed.care', 'string', 'max:120'],
+            'detailed.care.*.detail' => ['nullable', 'string', 'max:200'],
+            'detailed.care.*.amount_myr' => ['required_with:detailed.care', 'numeric', 'min:0'],
+            'detailed.care.*.period' => ['nullable', 'string', 'in:month,year'],
+
             // AI's review aids — stored on the draft for the admin.
             'assumptions' => ['nullable', 'array'],
             'assumptions.*' => ['string', 'max:500'],
@@ -86,6 +120,19 @@ class DraftQuotationRequest extends FormRequest
             $topKey = $this->input('package_key');
             $topKey = ($topKey === '' ? null : $topKey);
             $lineItems = (array) $this->input('line_items', []);
+
+            // Detailed proposal is self-priced from its own sections — it's a mode of
+            // its own and can't be combined with any engine/bespoke pricing basis.
+            if (! empty($this->input('detailed')) && is_array($this->input('detailed'))) {
+                if ($topKey !== null || ! empty($packages) || $this->input('modifiers') || $this->input('addon_keys') || $lineItems !== []) {
+                    $validator->errors()->add(
+                        'detailed',
+                        'A detailed proposal is self-priced from its own sections — do not also send package_key / packages / modifiers / addon_keys / line_items. Use one pricing mode per draft.',
+                    );
+                }
+
+                return;
+            }
 
             // Multi-package: validate each entry; the top-level sugar is off-limits.
             if (! empty($packages) && is_array($packages)) {

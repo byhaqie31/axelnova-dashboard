@@ -7,6 +7,7 @@ use App\Http\Requests\Connector\DraftQuotationRequest;
 use App\Models\Client;
 use App\Models\Quotation;
 use App\Services\Connector\ConnectorCatalog;
+use App\Services\Quoting\DetailedDocumentBuilder;
 use App\Services\Quoting\DocumentSeeder;
 use App\Services\Quoting\PricingEngine;
 use App\Support\DocumentType;
@@ -57,54 +58,82 @@ class QuotationDraftController extends Controller
                 ],
             );
 
-            // Resolve to the canonical packages[] the whole system reads: split each
-            // package's flat `modifiers` map onto the engine's modifiers/scope_values
-            // and resolve its service_package_id.
-            $packages = array_map(function (array $rp) use ($catalog, $engine): array {
-                $key = (string) $rp['package_key'];
-                $split = $catalog->splitModifiers($key, (array) ($rp['modifiers'] ?? []));
-
-                return [
-                    'package_key' => $key,
-                    'service_package_id' => $engine->packageId($key),
-                    'scope_values' => $split['scope_values'],
-                    'modifiers' => $split['modifiers'],
-                    'addon_keys' => array_values((array) ($rp['addon_keys'] ?? [])),
-                ];
-            }, $rawPackages);
-
-            $isBespoke = $packages === [];
-            $estimate = $engine->calculateMulti($packages, $rush);
-
-            if ($isBespoke) {
-                // Bespoke: the sum of the line items IS the agreed range; ETA left as
-                // the 0/'week' "no ETA yet" sentinel (columns are NOT NULL).
-                $minMyr = $maxMyr = array_sum(array_column($lineItems, 'amount_myr'));
+            if (! empty($data['detailed']) && is_array($data['detailed'])) {
+                // Detailed proposal — self-priced from its own sections (no engine, no
+                // packages). Built into the canonical detailed document shape the admin
+                // builder + PDF already render; ETA left for the admin (0/'week' sentinel).
+                $built = (new DetailedDocumentBuilder)->build(
+                    $data['detailed'],
+                    ($data['project'] ?? null) ?: null,
+                    ($data['intro'] ?? null) ?: null,
+                );
+                $document = array_merge($built['document'], [
+                    // Mirror project/intro at the document top level too, for the
+                    // connector read-back view (the PDF reads them from payload).
+                    'project' => ($data['project'] ?? null) ?: null,
+                    'intro' => ($data['intro'] ?? null) ?: null,
+                    'created_via' => 'mcp_connector',
+                    'assumptions' => array_values($data['assumptions'] ?? []),
+                    'open_questions' => array_values($data['open_questions'] ?? []),
+                    'notes' => $data['notes'] ?? null,
+                ]);
+                $minMyr = $maxMyr = $built['total'];
                 $etaValue = 0;
                 $etaUnit = 'week';
+                $packages = [];
+                $first = null;
+                $breakdown = [];
             } else {
-                $minMyr = $estimate->minMyr;
-                $maxMyr = $estimate->maxMyr;
-                $etaValue = $estimate->etaValue;
-                $etaUnit = $estimate->etaUnit;
+                // Resolve to the canonical packages[] the whole system reads: split each
+                // package's flat `modifiers` map onto the engine's modifiers/scope_values
+                // and resolve its service_package_id.
+                $packages = array_map(function (array $rp) use ($catalog, $engine): array {
+                    $key = (string) $rp['package_key'];
+                    $split = $catalog->splitModifiers($key, (array) ($rp['modifiers'] ?? []));
+
+                    return [
+                        'package_key' => $key,
+                        'service_package_id' => $engine->packageId($key),
+                        'scope_values' => $split['scope_values'],
+                        'modifiers' => $split['modifiers'],
+                        'addon_keys' => array_values((array) ($rp['addon_keys'] ?? [])),
+                    ];
+                }, $rawPackages);
+
+                $isBespoke = $packages === [];
+                $estimate = $engine->calculateMulti($packages, $rush);
+
+                if ($isBespoke) {
+                    // Bespoke: the sum of the line items IS the agreed range; ETA left as
+                    // the 0/'week' "no ETA yet" sentinel (columns are NOT NULL).
+                    $minMyr = $maxMyr = array_sum(array_column($lineItems, 'amount_myr'));
+                    $etaValue = 0;
+                    $etaUnit = 'week';
+                } else {
+                    $minMyr = $estimate->minMyr;
+                    $maxMyr = $estimate->maxMyr;
+                    $etaValue = $estimate->etaValue;
+                    $etaUnit = $estimate->etaUnit;
+                }
+
+                // Seed the canonical document (document.items — what the PDF renders). A
+                // fresh connector row always seeds; line_items ride along as extra lines.
+                // Bespoke never applies a rush uplift (its total is the line-item sum).
+                $seeded = (new DocumentSeeder($engine))->seed($estimate, ! $isBespoke && $rush, $lineItems);
+                $document = array_merge($seeded['document'], [
+                    // Presentation fields the PDF renders (the mapper falls back to a
+                    // default project title when project is null).
+                    'project' => ($data['project'] ?? null) ?: null,
+                    'intro' => ($data['intro'] ?? null) ?: null,
+                    'created_via' => 'mcp_connector',
+                    'assumptions' => array_values(array_merge($data['assumptions'] ?? [], $seeded['assumptions'])),
+                    'open_questions' => array_values($data['open_questions'] ?? []),
+                    'notes' => $data['notes'] ?? null,
+                ]);
+
+                $first = $packages[0] ?? null;
+                $breakdown = $estimate->breakdown;
             }
-
-            // Seed the canonical document (document.items — what the PDF renders). A
-            // fresh connector row always seeds; line_items ride along as extra lines.
-            // Bespoke never applies a rush uplift (its total is the line-item sum).
-            $seeded = (new DocumentSeeder($engine))->seed($estimate, ! $isBespoke && $rush, $lineItems);
-            $document = array_merge($seeded['document'], [
-                // Presentation fields the PDF renders (the mapper falls back to a
-                // default project title when project is null).
-                'project' => ($data['project'] ?? null) ?: null,
-                'intro' => ($data['intro'] ?? null) ?: null,
-                'created_via' => 'mcp_connector',
-                'assumptions' => array_values(array_merge($data['assumptions'] ?? [], $seeded['assumptions'])),
-                'open_questions' => array_values($data['open_questions'] ?? []),
-                'notes' => $data['notes'] ?? null,
-            ]);
-
-            $first = $packages[0] ?? null;
 
             $quotation = Quotation::create([
                 'reference_code' => ReferenceCodeGenerator::generate(DocumentType::Quotation),
@@ -126,7 +155,7 @@ class QuotationDraftController extends Controller
                     'request' => $request->all(),
                     'packages' => $packages,
                     'rush' => $rush,
-                    'breakdown' => $estimate->breakdown,
+                    'breakdown' => $breakdown,
                     'source_meta' => ['created_via' => 'mcp_connector'],
                 ],
                 'document' => $document,
@@ -212,6 +241,7 @@ class QuotationDraftController extends Controller
                 'company' => $quotation->company,
             ],
             'package_key' => $quotation->package_key,
+            'layout' => $document['layout'] ?? 'standard',
             'project' => $document['project'] ?? null,
             'intro' => $document['intro'] ?? null,
             'estimate' => [

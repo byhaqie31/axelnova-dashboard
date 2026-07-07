@@ -8,6 +8,7 @@ use App\Models\ServiceCategory;
 use App\Models\ServicePackage;
 use App\Models\ServiceScopeField;
 use App\Models\User;
+use App\Services\Quoting\DocumentMapper;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -371,5 +372,63 @@ class ConnectorDraftTest extends TestCase
         ], $this->connectorHeader())
             ->assertStatus(422)
             ->assertJsonValidationErrors('packages');
+    }
+
+    public function test_detailed_proposal_draft_is_section_priced_and_renders(): void
+    {
+        $res = $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Detailed Co', 'email' => 'detailed@example.com'],
+            'project' => 'Acme website',
+            'intro' => 'A clean marketing site.',
+            'detailed' => [
+                'subtitle' => 'Website quotation',
+                'sections' => [
+                    ['title' => 'Design', 'rows' => [
+                        ['title' => 'Brand + UI', 'amount_myr' => 3000],
+                        ['title' => 'Prototype', 'amount_myr' => 1000],
+                    ]],
+                    ['title' => 'Build', 'rows' => [
+                        ['title' => 'Front-end', 'amount_myr' => 6000],
+                    ]],
+                ],
+                'included' => [['eyebrow' => 'SEO', 'items' => ['Sitemap', 'Meta tags']]],
+                'options' => [['badge' => 'OPTION A', 'title' => 'Standard', 'amount_myr' => 4000, 'recommended' => true]],
+                'care' => [['label' => 'Basic', 'detail' => 'Hosting', 'amount_myr' => 200, 'period' => 'month']],
+            ],
+        ], $this->connectorHeader())->assertCreated();
+
+        $res->assertJsonPath('data.layout', 'detailed');
+
+        $q = Quotation::where('reference_code', $res->json('data.reference_code'))->firstOrFail();
+
+        // Section-priced: min == max == Σ row amounts (3000 + 1000 + 6000).
+        $this->assertEquals(10000, $q->estimate_min_myr);
+        $this->assertEquals(10000, $q->estimate_max_myr);
+        $this->assertSame(0, $q->estimate_eta_value); // admin sets the timeline
+        $this->assertNull($q->package_key);
+        $this->assertSame([], $q->form_payload['packages']);
+
+        $doc = $q->document;
+        $this->assertSame('detailed', $doc['layout']);
+        $this->assertCount(2, $doc['payload']['sections']);
+        $this->assertSame('Acme website', $doc['payload']['project']);
+        $this->assertNotEmpty($doc['payload']['included']);
+        $this->assertNotEmpty($doc['payload']['options']['cards']);
+        $this->assertNotEmpty($doc['payload']['care']['rows']);
+
+        // The document-driven PDF mapper renders it as a detailed, sum-priced quote.
+        $this->assertSame(10000.0, Quotation::sumDetailedSections($doc));
+        $this->assertSame('detailed', DocumentMapper::toDocumentData($q->fresh())['layout']);
+    }
+
+    public function test_detailed_cannot_combine_with_a_package(): void
+    {
+        $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Conflict Co', 'email' => 'conflict@example.com'],
+            'package_key' => 'test_landing',
+            'detailed' => ['sections' => [['title' => 'x', 'rows' => [['title' => 'y', 'amount_myr' => 100]]]]],
+        ], $this->connectorHeader())
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('detailed');
     }
 }

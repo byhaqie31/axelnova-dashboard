@@ -41,6 +41,8 @@ export class AxelNovaMCP extends McpAgent<Env> {
         "Use package_key: null with line_items for bespoke projects that don't fit a catalog package.",
         "When package_key is set, modifiers/addon_keys/rush price it through the same engine as the public quote funnel; any line_items are stored as extras and NOT added to that estimate.",
         "For a quote spanning several catalog packages, pass packages[] (each entry its own package_key + modifiers + addon_keys) INSTEAD of the top-level package_key — the estimate sums the packages and the ETA is the longest. rush is still one flag for the whole quote.",
+        "For a rich, presentation-grade proposal (grouped scope sections + What's included + option cards + a care plan), pass the `detailed` object INSTEAD — it is self-priced from its section amounts and must not be combined with package_key/packages/line_items.",
+        "project and intro set the document's title + lead-in on the PDF for any mode.",
         "Put every guess in assumptions and every unknown in open_questions so the founder can verify them.",
         "Call list_catalog first to get the valid keys. On a validation error, read the returned message — it lists the valid keys — and retry.",
       ].join(" "),
@@ -111,6 +113,65 @@ export class AxelNovaMCP extends McpAgent<Env> {
           .string()
           .optional()
           .describe("A one–two sentence lead-in shown under the project title on the PDF. Optional."),
+        detailed: z
+          .object({
+            subtitle: z.string().optional().describe("Short subtitle under the title, e.g. 'Website quotation'."),
+            deposit_pct: z.number().int().min(0).max(100).optional().describe("Deposit %, default 50."),
+            sections: z
+              .array(
+                z.object({
+                  title: z.string().describe("Section heading, e.g. 'Design' or 'Build'."),
+                  rows: z.array(
+                    z.object({
+                      title: z.string(),
+                      detail: z.string().nullable().optional(),
+                      amount_myr: z.number().nonnegative(),
+                    }),
+                  ),
+                }),
+              )
+              .describe("The priced scope, grouped into sections. The quote total is the SUM of every row's amount_myr."),
+            included: z
+              .array(
+                z.object({
+                  eyebrow: z.string().optional(),
+                  items: z.array(z.string()).describe("Bullet points."),
+                  columns: z.union([z.literal(1), z.literal(2)]).optional(),
+                  note: z.string().optional(),
+                }),
+              )
+              .optional()
+              .describe("'What's included' tick-list groups."),
+            options: z
+              .array(
+                z.object({
+                  badge: z.string().optional().describe("e.g. 'OPTION A'."),
+                  title: z.string(),
+                  sub: z.string().optional(),
+                  amount_myr: z.number().nonnegative(),
+                  was_myr: z.number().nonnegative().optional().describe("Strikethrough 'was' price."),
+                  price_note: z.string().optional().describe("e.g. 'one-time'."),
+                  recommended: z.boolean().optional().describe("Highlights this card as the recommended pick."),
+                }),
+              )
+              .optional()
+              .describe("Side-by-side option cards the client chooses between."),
+            care: z
+              .array(
+                z.object({
+                  label: z.string(),
+                  detail: z.string().optional(),
+                  amount_myr: z.number().nonnegative(),
+                  period: z.enum(["month", "year"]).optional(),
+                }),
+              )
+              .optional()
+              .describe("Ongoing care / support plan rows."),
+          })
+          .optional()
+          .describe(
+            "A rich, self-priced DETAILED proposal (scope sections + What's included + option cards + care plan). Priced from the section row amounts — do NOT combine with package_key/packages/line_items.",
+          ),
         assumptions: z
           .array(z.string())
           .optional()

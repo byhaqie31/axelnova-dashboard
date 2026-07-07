@@ -140,6 +140,10 @@ Quotation drafts are created three ways — the public `/quote` funnel, the admi
 
 The connector **never overwrites an admin-edited document**: `DocumentSeeder::hasContent()` guards it, and the UI button confirms before replacing hand-edited lines.
 
+### DetailedDocumentBuilder — the connector's detailed proposals
+
+The MCP connector can also author a full **detailed** proposal (see [MCP-CONNECTOR.md](./MCP-CONNECTOR.md)). `App\Services\Quoting\DetailedDocumentBuilder` turns its structured `detailed` input (priced `sections`, "What's included" groups, option cards, a care plan) into the canonical `layout: 'detailed'` `document.payload` — the SAME shape the admin detailed builder emits, so the same `DocumentMapper` + PDF render it and the draft re-opens in the admin builder's detailed mode. Detailed quotes are priced by their own section totals (`Quotation::sumDetailedSections`), never the engine — Claude provides the prices; `estimate_min == estimate_max == Σ section amounts`.
+
 ## How to add a new offering (end-to-end)
 
 The fastest path uses the admin UI — no code or SQL.
