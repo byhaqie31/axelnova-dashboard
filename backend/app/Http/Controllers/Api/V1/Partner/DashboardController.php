@@ -81,7 +81,7 @@ class DashboardController extends Controller
                 'estimated_myr' => round($estimated, 2),
                 'referrals_count' => $referrals->count(),
             ],
-            'ref_link' => rtrim((string) config('services.frontend.url'), '/').'/?ref='.$referrer->code,
+            'ref_link' => rtrim((string) config('services.frontend.public_url'), '/').'/?ref='.$referrer->code,
             'referrals' => $rows,
         ]);
     }

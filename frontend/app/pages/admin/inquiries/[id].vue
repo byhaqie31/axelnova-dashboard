@@ -95,7 +95,7 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
     <NuxtLink
 to="/admin/inquiries" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"

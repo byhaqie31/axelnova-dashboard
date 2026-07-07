@@ -126,7 +126,8 @@ const form = reactive({
   email: '',
   password: '',
   role: 'marketer' as 'marketer' | 'engineer',
-  allowance: '',
+  // '' when blank; Vue auto-casts type="number" v-model input to number once digits are typed
+  allowance: '' as string | number,
 })
 
 // A freshly-created account's one-time credentials — shown in place of the
@@ -155,14 +156,9 @@ function openCreate() {
 }
 
 function openEdit(user: UserRecord) {
-  editingUser.value = user
-  createdCredentials.value = null
-  form.name = user.name
-  form.email = user.email
-  form.password = ''
-  form.role = user.role === 'founder' ? 'marketer' : user.role
-  form.allowance = user.monthly_allowance_myr != null ? String(user.monthly_allowance_myr) : ''
-  slideoverOpen.value = true
+  // Editing an existing teammate now lives on the full profile page; the
+  // slideover is kept for quick-create only.
+  navigateTo(`/admin/users/${user.id}`)
 }
 
 function closeSlideover() {
@@ -175,7 +171,7 @@ async function save() {
     toast.error('Name required', 'Give the teammate a name.')
     return
   }
-  const allowance = form.allowance.trim() ? Math.round(Number(form.allowance)) : null
+  const allowance = form.allowance === '' ? null : Math.round(Number(form.allowance))
 
   if (editingUser.value === null) {
     if (!form.email.trim()) {
@@ -372,18 +368,20 @@ onKeyStroke('Escape', () => {
               <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">{{ fmtDate(u.created_at) }}</td>
               <td class="px-4 py-3.5">
                 <div class="flex items-center gap-1.5">
-                  <button type="button" class="btn-pill btn-pill-ghost text-[12px]" @click.stop="openEdit(u)">Edit</button>
-                  <button
-                    v-if="u.deactivated_at" type="button" class="btn-pill btn-pill-accent text-[12px]"
-                    @click.stop="pendingAction = { user: u, kind: 'reactivate' }">
-                    Reactivate
+                  <button type="button" class="btn-table-action" @click.stop="openEdit(u)">
+                    <UIcon name="i-lucide-pencil" class="size-3.5" />Edit
                   </button>
                   <button
-                    v-else type="button" class="btn-pill btn-pill-danger text-[12px]"
-                    :disabled="!canDeactivate(u)" :class="{ 'opacity-40 cursor-not-allowed': !canDeactivate(u) }"
+                    v-if="u.deactivated_at" type="button" class="btn-table-action is-accent"
+                    @click.stop="pendingAction = { user: u, kind: 'reactivate' }">
+                    <UIcon name="i-lucide-user-check" class="size-3.5" />Reactivate
+                  </button>
+                  <button
+                    v-else type="button" class="btn-table-action is-danger"
+                    :disabled="!canDeactivate(u)"
                     :title="!canDeactivate(u) ? 'You can’t deactivate your own account' : undefined"
                     @click.stop="canDeactivate(u) && (pendingAction = { user: u, kind: 'deactivate' })">
-                    Deactivate
+                    <UIcon name="i-lucide-user-x" class="size-3.5" />Deactivate
                   </button>
                 </div>
               </td>

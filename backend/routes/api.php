@@ -133,6 +133,7 @@ Route::middleware([
 
         // Team provisioning — founder-only (Gate: manage-users, enforced in-controller).
         Route::get('/users', [UsersController::class, 'index'])->name('users.index');
+        Route::get('/users/{user}', [UsersController::class, 'show'])->name('users.show');
         Route::post('/users', [UsersController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}', [UsersController::class, 'update'])->name('users.update');
         Route::post('/users/{user}/deactivate', [UsersController::class, 'deactivate'])->name('users.deactivate');
@@ -158,6 +159,8 @@ Route::middleware([
         // stamps paid_at + flips the linked task extras to paid. `/preview` must
         // precede the {payrollEntry} bind.
         Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
+        Route::get('/payroll/roster', [PayrollController::class, 'roster'])->name('payroll.roster');
+        Route::get('/payroll/user/{user}', [PayrollController::class, 'userDetail'])->name('payroll.user');
         Route::get('/payroll/preview', [PayrollController::class, 'preview'])->name('payroll.preview');
         Route::post('/payroll', [PayrollController::class, 'store'])->name('payroll.store');
         Route::post('/payroll/{payrollEntry}/settle', [PayrollController::class, 'settle'])->name('payroll.settle');

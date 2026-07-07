@@ -19,25 +19,48 @@ const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
 
+// The teammate's own profile fields — contact / bank / address. They own these
+// (the founder only reads them on /admin/users), and filling them all flips
+// `profile_complete`, which clears the onboarding nudge on the home.
+const PROFILE_FIELDS = ['phone', 'bank_name', 'bank_account_number', 'bank_account_holder', 'address_line1', 'address_line2', 'city', 'postcode', 'state', 'country'] as const
+
 const form = reactive({
   name: '',
   availability: 'available' as 'available' | 'busy',
+  phone: '',
+  bank_name: '',
+  bank_account_number: '',
+  bank_account_holder: '',
+  address_line1: '',
+  address_line2: '',
+  city: '',
+  postcode: '',
+  state: '',
+  country: '',
 })
 
+function hydrate() {
+  const m = me.value
+  if (!m) return
+  form.name = m.name
+  form.availability = m.availability ?? 'available'
+  for (const k of PROFILE_FIELDS) form[k] = m[k] ?? ''
+}
+
 // Save is only meaningful once something actually changed.
-const dirty = computed(() =>
-  !!me.value && (form.name !== me.value.name || form.availability !== me.value.availability),
-)
+const dirty = computed(() => {
+  const m = me.value
+  if (!m) return false
+  if (form.name !== m.name || form.availability !== (m.availability ?? 'available')) return true
+  return PROFILE_FIELDS.some(k => form[k] !== (m[k] ?? ''))
+})
 
 onMounted(async () => {
   loading.value = true
   error.value = ''
   const result = await fetchMe()
   if (!result) error.value = 'Failed to load your profile. Check your session.'
-  else {
-    form.name = result.name
-    form.availability = result.availability ?? 'available'
-  }
+  else hydrate()
   loading.value = false
 })
 
@@ -45,12 +68,10 @@ async function save() {
   if (!dirty.value || saving.value) return
   saving.value = true
   try {
-    me.value = await apiFetch<NonNullable<typeof me.value>>('/api/v1/team/me', {
-      method: 'PATCH',
-      body: { name: form.name, availability: form.availability },
-    })
-    form.name = me.value.name
-    form.availability = me.value.availability ?? 'available'
+    const body: Record<string, unknown> = { name: form.name, availability: form.availability }
+    for (const k of PROFILE_FIELDS) body[k] = form[k].trim() === '' ? null : form[k].trim()
+    me.value = await apiFetch<NonNullable<typeof me.value>>('/api/v1/team/me', { method: 'PATCH', body })
+    hydrate()
     toast.success('Profile updated')
   }
   catch (e: any) {
@@ -65,10 +86,13 @@ const roleLabel = computed(() => {
   const r = me.value?.role
   return r ? r.charAt(0).toUpperCase() + r.slice(1) : '—'
 })
+
+// Matches this page's existing inputs — .contact-input carries no base colours.
+const inputStyle = { borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <h1 class="text-[24px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Profile</h1>
     <p class="text-[14px] mb-8" style="color: var(--color-text-secondary);">Your account details and availability status.</p>
 
@@ -143,6 +167,74 @@ const roleLabel = computed(() => {
           </button>
         </div>
         <p class="mt-1.5 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Shown to the team next to your name.</p>
+      </div>
+
+      <hr class="border-0 border-t" :style="{ borderColor: 'var(--color-border)' }">
+
+      <!-- Personal details (self-serve) — used for payroll/records; only you and the founder see these. -->
+      <div>
+        <div class="flex items-center justify-between gap-3 mb-1">
+          <h2 class="text-[13px] font-semibold uppercase tracking-widest" :style="{ color: 'var(--color-text-tertiary)' }">Personal details</h2>
+          <span
+            v-if="me"
+            class="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-medium"
+            :style="me.profile_complete
+              ? { color: 'var(--color-success)', background: 'var(--status-succeeded-bg)' }
+              : { color: 'var(--color-warning)', background: 'var(--status-refunded-bg)' }">
+            <span class="size-1.5 rounded-full" :style="{ background: me.profile_complete ? 'var(--color-success)' : 'var(--color-warning)' }" />
+            {{ me.profile_complete ? 'Complete' : `${me.profile_missing?.length ?? 0} to fill` }}
+          </span>
+        </div>
+        <p class="text-[12px] mb-4" :style="{ color: 'var(--color-text-tertiary)' }">Used for payroll and records. Only you and the founder can see these.</p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Phone number</label>
+            <input v-model="form.phone" type="tel" maxlength="40" placeholder="e.g. 012-345 6789" class="contact-input" :style="inputStyle">
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Bank name</label>
+              <input v-model="form.bank_name" type="text" maxlength="120" placeholder="e.g. Maybank" class="contact-input" :style="inputStyle">
+            </div>
+            <div>
+              <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Account number</label>
+              <input v-model="form.bank_account_number" type="text" inputmode="numeric" maxlength="60" placeholder="Account no." class="contact-input" :style="inputStyle">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Account holder name</label>
+              <input v-model="form.bank_account_holder" type="text" maxlength="150" placeholder="As printed on the account" class="contact-input" :style="inputStyle">
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div class="sm:col-span-2">
+              <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Address line 1</label>
+              <input v-model="form.address_line1" type="text" maxlength="200" placeholder="Street / unit" class="contact-input" :style="inputStyle">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Address line 2 <span :style="{ color: 'var(--color-text-tertiary)' }">(optional)</span></label>
+              <input v-model="form.address_line2" type="text" maxlength="200" class="contact-input" :style="inputStyle">
+            </div>
+            <div>
+              <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">City</label>
+              <input v-model="form.city" type="text" maxlength="100" class="contact-input" :style="inputStyle">
+            </div>
+            <div>
+              <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Postcode</label>
+              <input v-model="form.postcode" type="text" inputmode="numeric" maxlength="20" class="contact-input" :style="inputStyle">
+            </div>
+            <div>
+              <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">State</label>
+              <input v-model="form.state" type="text" maxlength="100" placeholder="e.g. Selangor" class="contact-input" :style="inputStyle">
+            </div>
+            <div>
+              <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Country</label>
+              <input v-model="form.country" type="text" maxlength="100" placeholder="Malaysia" class="contact-input" :style="inputStyle">
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="flex justify-end pt-1">

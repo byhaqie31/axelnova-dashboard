@@ -104,7 +104,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <NuxtLink
 to="/admin/services/addons" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
       style="color: var(--color-text-secondary);">

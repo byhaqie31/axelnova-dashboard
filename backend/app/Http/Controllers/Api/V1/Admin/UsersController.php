@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TeamWelcomeMail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 
 /**
@@ -24,6 +27,31 @@ class UsersController extends Controller
         );
     }
 
+    /**
+     * Full profile for the founder's user detail page — the lean roster fields
+     * plus the teammate's self-filled contact / bank / address (kept off the
+     * list payload; only surfaced on the single-record view) and completeness.
+     */
+    public function show(User $user): JsonResponse
+    {
+        Gate::authorize('manage-users');
+
+        return response()->json($this->present($user) + [
+            'phone' => $user->phone,
+            'bank_name' => $user->bank_name,
+            'bank_account_number' => $user->bank_account_number,
+            'bank_account_holder' => $user->bank_account_holder,
+            'address_line1' => $user->address_line1,
+            'address_line2' => $user->address_line2,
+            'city' => $user->city,
+            'postcode' => $user->postcode,
+            'state' => $user->state,
+            'country' => $user->country,
+            'profile_complete' => $user->profileComplete(),
+            'profile_missing' => $user->profileMissing(),
+        ]);
+    }
+
     /** Provision a teammate. Password is hashed by the model's `hashed` cast. */
     public function store(Request $request): JsonResponse
     {
@@ -37,7 +65,22 @@ class UsersController extends Controller
             'monthly_allowance_myr' => ['nullable', 'integer', 'min:0', 'max:1000000'],
         ]);
 
-        return response()->json($this->present(User::create($data)), 201);
+        $user = User::create($data);
+
+        // Welcome the teammate with their sign-in details ($data['password'] is
+        // still the plaintext — the model only ever stores its hash). Queued,
+        // and never allowed to fail provisioning: the founder also sees the
+        // one-time credentials on-screen as a fallback if delivery hiccups.
+        try {
+            Mail::to($user->email, $user->name)->send(new TeamWelcomeMail($user, $data['password']));
+        } catch (\Throwable $e) {
+            Log::warning('Welcome email could not be queued for new teammate.', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json($this->present($user), 201);
     }
 
     /** Rename, change role, or adjust the monthly allowance. */

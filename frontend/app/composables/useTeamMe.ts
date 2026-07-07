@@ -11,6 +11,20 @@ export interface TeamMe {
   role?: string
   tier?: string
   availability?: 'available' | 'busy'
+  // Self-filled profile (team-member module) — contact / bank / address, plus
+  // the completeness state that drives the onboarding nudge on the home.
+  phone?: string | null
+  bank_name?: string | null
+  bank_account_number?: string | null
+  bank_account_holder?: string | null
+  address_line1?: string | null
+  address_line2?: string | null
+  city?: string | null
+  postcode?: string | null
+  state?: string | null
+  country?: string | null
+  profile_complete?: boolean
+  profile_missing?: string[]
 }
 
 export function useTeamMe() {

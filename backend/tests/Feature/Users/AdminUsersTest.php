@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Users;
 
+use App\Mail\TeamWelcomeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -43,6 +45,34 @@ class AdminUsersTest extends TestCase
         $this->assertNull($aisyah['deactivated_at']);
     }
 
+    public function test_founder_can_view_a_full_user_profile_with_self_filled_fields(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->marketer()->create([
+            'monthly_allowance_myr' => 2500,
+            'phone' => '0123456789',
+            'bank_name' => 'Maybank',
+        ]);
+
+        $this->getJson("/api/v1/admin/users/{$member->id}", $this->adminHeaders($founder))
+            ->assertOk()
+            ->assertJsonPath('id', $member->id)
+            ->assertJsonPath('monthly_allowance_myr', 2500)
+            ->assertJsonPath('phone', '0123456789')
+            ->assertJsonPath('bank_name', 'Maybank')
+            ->assertJsonPath('profile_complete', false)
+            ->assertJsonPath('bank_account_number', null);
+    }
+
+    public function test_a_workspace_role_cannot_view_a_user_profile(): void
+    {
+        $member = User::factory()->marketer()->create();
+        $token = $member->createToken('team-spa', ['workspace'])->plainTextToken;
+
+        $this->getJson("/api/v1/admin/users/{$member->id}", ['Authorization' => "Bearer {$token}"])
+            ->assertForbidden();
+    }
+
     public function test_a_workspace_role_cannot_reach_the_users_endpoints(): void
     {
         $marketer = User::factory()->marketer()->create();
@@ -71,6 +101,25 @@ class AdminUsersTest extends TestCase
 
             $this->assertDatabaseHas('users', ['email' => "new-{$role}@example.com", 'role' => $role]);
         }
+    }
+
+    public function test_creating_a_teammate_queues_a_welcome_email_with_their_credentials(): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/v1/admin/users', [
+            'name' => 'New Hire',
+            'email' => 'new-hire@example.com',
+            'password' => 'a-secure-password-123',
+            'role' => 'marketer',
+            'monthly_allowance_myr' => 1800,
+        ], $this->adminHeaders())->assertCreated();
+
+        Mail::assertQueued(TeamWelcomeMail::class, function (TeamWelcomeMail $mail) {
+            return $mail->hasTo('new-hire@example.com')
+                && $mail->user->name === 'New Hire'
+                && $mail->password === 'a-secure-password-123';
+        });
     }
 
     public function test_the_backend_still_allows_a_founder_to_provision_another_founder(): void

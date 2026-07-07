@@ -108,6 +108,18 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'min:2', 'max:150'],
             'availability' => ['sometimes', Rule::in(['available', 'busy'])],
+            // Self-filled profile — teammates own their contact / bank / address.
+            // All nullable so clearing a field back to empty is allowed.
+            'phone' => ['sometimes', 'nullable', 'string', 'max:40'],
+            'bank_name' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'bank_account_number' => ['sometimes', 'nullable', 'string', 'max:60'],
+            'bank_account_holder' => ['sometimes', 'nullable', 'string', 'max:150'],
+            'address_line1' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'address_line2' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'city' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'postcode' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'state' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'country' => ['sometimes', 'nullable', 'string', 'max:100'],
         ]);
 
         $user->update($data);
@@ -124,6 +136,19 @@ class AuthController extends Controller
             'role' => $user->role,
             'tier' => $user->tier(),
             'availability' => $user->availability,
+            // Self-filled profile (owner-only view — the teammate's own record).
+            'phone' => $user->phone,
+            'bank_name' => $user->bank_name,
+            'bank_account_number' => $user->bank_account_number,
+            'bank_account_holder' => $user->bank_account_holder,
+            'address_line1' => $user->address_line1,
+            'address_line2' => $user->address_line2,
+            'city' => $user->city,
+            'postcode' => $user->postcode,
+            'state' => $user->state,
+            'country' => $user->country,
+            'profile_complete' => $user->profileComplete(),
+            'profile_missing' => $user->profileMissing(),
         ];
     }
 }

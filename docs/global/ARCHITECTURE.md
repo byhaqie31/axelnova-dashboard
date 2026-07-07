@@ -148,7 +148,14 @@ POST   /v1/admin/payroll/{id}/settle Stamp paid_at (+ method?) and flip the link
 # Team provisioning (cockpit side — Task 8; founder-only via manage-users)
 GET    /v1/admin/users               Roster, alphabetical (name, email, role, tier, availability,
                                      monthly_allowance_myr, deactivated_at, created_at)
+GET    /v1/admin/users/{user}        Full profile for the /admin/users/[id] detail page — roster fields
+                                     PLUS the teammate's self-filled phone/bank/address (off the list
+                                     payload) + `profile_complete`/`profile_missing`. Founder reads only;
+                                     bank/address are filled by the teammate on /team/profile (self-serve)
 POST   /v1/admin/users               Create {name, email, password (min 12), role, monthly_allowance_myr?}
+                                     — queues TeamWelcomeMail to the new teammate (motivational welcome +
+                                     their email/temp-password + Team Portal link); a mail failure is
+                                     logged, never fails provisioning (founder also sees creds one-time in UI)
 PATCH  /v1/admin/users/{user}        Edit {name?, role?, monthly_allowance_myr?} — a role CHANGE revokes
                                      the teammate's tokens; renaming/re-budgeting the allowance doesn't.
                                      Demoting the platform's last founder → 422
@@ -266,6 +273,8 @@ See `backend/.env.example` for the full list. Key variables:
 | Variable | Purpose |
 |----------|---------|
 | `NUXT_PUBLIC_API_BASE` | Backend base URL (set in `docker-compose.dev.yml` for dev) |
+| `FRONTEND_URL` | The app / admin-cockpit origin + the CORS anchor |
+| `PUBLIC_SITE_URL` | The PUBLIC site where clients/partners/teammates land — used for the referral link, client quote-PDF links, and partner/team login emails. Set this when admin runs on its own subdomain (`FRONTEND_URL=https://admin.example.com`, `PUBLIC_SITE_URL=https://example.com`); falls back to `FRONTEND_URL` when unset |
 | `MAIL_*` | SMTP for outbound mail (Mailtrap in dev) |
 | `ADMIN_NOTIFICATION_EMAIL` | Where new lead notifications go |
 | `ADMIN_CALENDLY_URL` | Optional CTA URL in the customer email |
