@@ -42,7 +42,7 @@ class PartnerPasscodeMail extends Mailable
                 'account' => $this->account,
                 'name' => $this->account->displayName(),
                 'passcode' => $this->passcode,
-                'loginUrl' => rtrim((string) config('services.frontend.url'), '/').'/partners/login',
+                'loginUrl' => rtrim((string) config('services.frontend.public_url'), '/').'/partners/login',
             ],
         );
     }

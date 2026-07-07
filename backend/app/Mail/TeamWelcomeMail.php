@@ -44,7 +44,7 @@ class TeamWelcomeMail extends Mailable implements ShouldQueue
             with: [
                 'user' => $this->user,
                 'password' => $this->password,
-                'loginUrl' => rtrim((string) config('services.frontend.url'), '/').'/team/login',
+                'loginUrl' => rtrim((string) config('services.frontend.public_url'), '/').'/team/login',
             ],
         );
     }

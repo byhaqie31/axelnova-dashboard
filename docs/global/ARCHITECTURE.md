@@ -273,6 +273,8 @@ See `backend/.env.example` for the full list. Key variables:
 | Variable | Purpose |
 |----------|---------|
 | `NUXT_PUBLIC_API_BASE` | Backend base URL (set in `docker-compose.dev.yml` for dev) |
+| `FRONTEND_URL` | The app / admin-cockpit origin + the CORS anchor |
+| `PUBLIC_SITE_URL` | The PUBLIC site where clients/partners/teammates land — used for the referral link, client quote-PDF links, and partner/team login emails. Set this when admin runs on its own subdomain (`FRONTEND_URL=https://admin.example.com`, `PUBLIC_SITE_URL=https://example.com`); falls back to `FRONTEND_URL` when unset |
 | `MAIL_*` | SMTP for outbound mail (Mailtrap in dev) |
 | `ADMIN_NOTIFICATION_EMAIL` | Where new lead notifications go |
 | `ADMIN_CALENDLY_URL` | Optional CTA URL in the customer email |

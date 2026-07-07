@@ -117,6 +117,23 @@ class PartnerAuthTest extends TestCase
             ->assertJsonPath('partner.code', $referrer->code);
     }
 
+    public function test_dashboard_ref_link_uses_the_public_site_url_not_the_admin_origin(): void
+    {
+        // Admin cockpit on its own subdomain; the shareable ?ref link must point
+        // at the PUBLIC site where visitors land, never the admin origin.
+        config([
+            'services.frontend.url' => 'https://admin.example.com',
+            'services.frontend.public_url' => 'https://example.com',
+        ]);
+
+        $referrer = Referrer::factory()->credentialed()->create();
+        $token = $referrer->account->createToken('partner-portal', ['partner'])->plainTextToken;
+
+        $this->getJson('/api/v1/partner/dashboard', ['Authorization' => "Bearer {$token}"])
+            ->assertOk()
+            ->assertJsonPath('ref_link', "https://example.com/?ref={$referrer->code}");
+    }
+
     public function test_investor_token_is_bounced_from_referrer_endpoints_but_reaches_me(): void
     {
         $investor = Investor::factory()->create();

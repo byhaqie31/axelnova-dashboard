@@ -34,7 +34,7 @@ class ClientQuoteMail extends Mailable
                 'whatsappUrl' => config('services.admin.whatsapp_url')
                     .'?text='.rawurlencode("Hi Qie, I'd like to chat about quote {$this->quote->reference_code}."),
                 'pdfUrl' => $this->quote->public_token
-                    ? rtrim((string) config('services.frontend.url'), '/')."/documents/{$this->quote->public_token}/pdf"
+                    ? rtrim((string) config('services.frontend.public_url'), '/')."/documents/{$this->quote->public_token}/pdf"
                     : null,
             ],
         );
