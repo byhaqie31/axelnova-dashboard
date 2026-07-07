@@ -138,7 +138,7 @@ onKeyStroke('Escape', () => {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">

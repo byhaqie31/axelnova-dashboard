@@ -177,7 +177,7 @@ watch(page, fetchActivity)
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Activity</h1>
