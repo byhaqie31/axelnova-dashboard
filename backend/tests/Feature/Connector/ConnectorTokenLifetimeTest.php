@@ -5,6 +5,7 @@ namespace Tests\Feature\Connector;
 use App\Models\PricingConfig;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 /**
@@ -127,5 +128,20 @@ class ConnectorTokenLifetimeTest extends TestCase
             $token->expires_at->timestamp,
             5,
         );
+    }
+
+    public function test_mint_command_plain_output_is_exactly_one_working_token(): void
+    {
+        // --plain exists for the rotate-token script: stdout must be the raw
+        // token and nothing else, so it can be piped into `wrangler secret put`.
+        $this->withoutMockingConsoleOutput();
+        $exit = Artisan::call('connector:token', ['--plain' => true]);
+        $output = trim(Artisan::output());
+
+        $this->assertSame(0, $exit);
+        $this->assertCount(1, explode("\n", $output), 'plain output must be a single line');
+
+        $this->getJson('/api/v1/connector/catalog', ['Authorization' => "Bearer {$output}"])
+            ->assertOk();
     }
 }

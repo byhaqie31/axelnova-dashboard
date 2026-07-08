@@ -31,7 +31,8 @@ class MintConnectorToken extends Command
 
     protected $signature = 'connector:token
         {--email= : Founder email to mint for (defaults to the sole founder account)}
-        {--days=30 : Token lifetime in days (sets its expires_at; the global Sanctum cap does not apply to this token)}';
+        {--days=30 : Token lifetime in days (sets its expires_at; the global Sanctum cap does not apply to this token)}
+        {--plain : Print only the raw token — for scripting (connector/rotate-token.sh pipes it into wrangler)}';
 
     protected $description = 'Mint the scoped MCP-connector Sanctum token (connector:read + connector:draft) for the founder';
 
@@ -54,6 +55,12 @@ class MintConnectorToken extends Command
 
         $expiresAt = now()->addDays($days);
         $token = $user->createToken(self::TOKEN_NAME, self::ABILITIES, $expiresAt)->plainTextToken;
+
+        if ($this->option('plain')) {
+            $this->line($token);
+
+            return self::SUCCESS;
+        }
 
         $this->newLine();
         $this->info("Minted '".self::TOKEN_NAME."' token for {$user->name} <{$user->email}>.");
