@@ -22,11 +22,17 @@ class MintConnectorToken extends Command
     /** Sanctum abilities the connector token is allowed to carry — and no more. */
     private const ABILITIES = ['connector:read', 'connector:draft'];
 
-    /** The token name; reused so a re-run revokes the previous one. */
-    private const TOKEN_NAME = 'mcp-connector';
+    /**
+     * The token name; reused so a re-run revokes the previous one. Also the key
+     * AppServiceProvider uses to exempt this token from the global Sanctum
+     * expiration cap (its lifetime is the expires_at stamped below instead).
+     */
+    public const TOKEN_NAME = 'mcp-connector';
 
     protected $signature = 'connector:token
-        {--email= : Founder email to mint for (defaults to the sole founder account)}';
+        {--email= : Founder email to mint for (defaults to the sole founder account)}
+        {--days=30 : Token lifetime in days (sets its expires_at; the global Sanctum cap does not apply to this token)}
+        {--plain : Print only the raw token — for scripting (connector/rotate-token.sh pipes it into wrangler)}';
 
     protected $description = 'Mint the scoped MCP-connector Sanctum token (connector:read + connector:draft) for the founder';
 
@@ -37,14 +43,29 @@ class MintConnectorToken extends Command
             return self::FAILURE;
         }
 
+        $days = (int) $this->option('days');
+        if ($days < 1) {
+            $this->error('--days must be at least 1.');
+
+            return self::FAILURE;
+        }
+
         // Rotate: drop any existing token of this name so only one is ever live.
         $revoked = $user->tokens()->where('name', self::TOKEN_NAME)->delete();
 
-        $token = $user->createToken(self::TOKEN_NAME, self::ABILITIES)->plainTextToken;
+        $expiresAt = now()->addDays($days);
+        $token = $user->createToken(self::TOKEN_NAME, self::ABILITIES, $expiresAt)->plainTextToken;
+
+        if ($this->option('plain')) {
+            $this->line($token);
+
+            return self::SUCCESS;
+        }
 
         $this->newLine();
         $this->info("Minted '".self::TOKEN_NAME."' token for {$user->name} <{$user->email}>.");
         $this->line('  Abilities : '.implode(', ', self::ABILITIES));
+        $this->line("  Expires   : {$expiresAt->toDayDateTimeString()} ({$days} days — re-run to rotate/extend)");
         if ($revoked > 0) {
             $this->line("  Rotated   : revoked {$revoked} prior '".self::TOKEN_NAME."' token(s).");
         }
@@ -56,8 +77,8 @@ class MintConnectorToken extends Command
         $this->comment('Next — store it as the Worker secret:');
         $this->line('    cd connector && npx wrangler secret put CONNECTOR_TOKEN   # paste the token above');
         $this->newLine();
-        $this->warn('Note: Sanctum honours SANCTUM_EXPIRATION_MINUTES if set — for a long-lived');
-        $this->warn('connector, leave it unset in the API env, or re-run this command to rotate.');
+        $this->warn('Note: this token is exempt from the global SANCTUM_EXPIRATION_MINUTES cap');
+        $this->warn('(AppServiceProvider) — it lives until the expiry above. Re-run to rotate early.');
 
         return self::SUCCESS;
     }

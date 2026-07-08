@@ -93,16 +93,25 @@ Backend code: `app/Http/Controllers/Api/V1/Connector/{CatalogController,Quotatio
 
 ## Minting / rotating the token
 
-The Worker authenticates to Laravel with a scoped Sanctum token. Mint it on the **API host** (prod), never in CI:
+The Worker authenticates to Laravel with a scoped Sanctum token. **Rotation is one command, run locally** (needs the `vps` SSH alias and wrangler auth):
 
 ```bash
-php artisan connector:token                 # the sole founder
+cd connector && npm run rotate-token        # 30-day token; or ./rotate-token.sh 90
+```
+
+[`rotate-token.sh`](../../connector/rotate-token.sh) mints on the VPS (`connector:token --plain` inside the prod backend container), **verifies the new token against the live catalog endpoint before touching anything**, then pipes it into `npx wrangler secret put CONNECTOR_TOKEN`. Putting a secret already restarts the Worker on a new version — the script deliberately does **not** run `wrangler deploy`, which would ship whatever code sits in your local checkout. The token never touches disk or shell history.
+
+Manual fallback — mint on the **API host** (prod), never in CI:
+
+```bash
+php artisan connector:token                 # the sole founder, 30-day lifetime
+php artisan connector:token --days=90       # longer lifetime (its expires_at)
 php artisan connector:token --email=founder@example.com   # if there are several founders
 ```
 
-It revokes any prior `mcp-connector` token (so re-running **rotates**), mints a new one with `connector:read` + `connector:draft`, and prints the plaintext **once**. Paste it into the Worker secret (below).
+It revokes any prior `mcp-connector` token (so re-running **rotates**), mints a new one with `connector:read` + `connector:draft` and an `expires_at` of `--days` (default **30**), and prints the plaintext **once**. Paste it into the Worker secret (below).
 
-> **Expiry caveat.** Sanctum enforces the global `SANCTUM_EXPIRATION_MINUTES` (if set) against every token's `created_at` — a per-token expiry can't extend past it. For a long-lived connector, leave `SANCTUM_EXPIRATION_MINUTES` **unset** in the API env, or re-run `connector:token` to rotate on your own cadence.
+> **Lifetime.** The global `SANCTUM_EXPIRATION_MINUTES` cap (default **720 min = 12 h** in `config/sanctum.php` — a Phase-0 guard so leaked admin *login* tokens die fast) would otherwise kill this token half a day after minting, regardless of its own expiry. `AppServiceProvider` therefore exempts exactly the `mcp-connector` token from the global cap: its lifetime is its **own `expires_at`**. The exemption requires an explicit future expiry — a connector token minted without one falls back under the global cap. When it expires (or to rotate early), run `npm run rotate-token` from `connector/` — or the manual steps above.
 
 ## Worker deploy (runbook)
 
@@ -143,7 +152,7 @@ Non-deploy checks that are safe to run any time: `npm run typecheck`, `npx wrang
 ## File map
 
 - Backend: `app/Http/Controllers/Api/V1/Connector/*`, `app/Http/Requests/Connector/DraftQuotationRequest.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Console/Commands/MintConnectorToken.php`, route group in [`routes/api.php`](../../backend/routes/api.php).
-- Worker: `connector/src/{index,api,auth}.ts`, `connector/wrangler.toml`, `connector/package.json`.
+- Worker: `connector/src/{index,api,auth}.ts`, `connector/wrangler.toml`, `connector/package.json`, `connector/rotate-token.sh` (one-command token rotation).
 - Tests: `backend/tests/Feature/Connector/ConnectorDraftTest.php`.
 
 ## Out of scope (v1)
