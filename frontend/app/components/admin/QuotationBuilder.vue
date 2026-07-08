@@ -240,6 +240,23 @@ function canonicalPackages() {
 }
 const hasPackages = computed(() => packages.value.some(p => p.packageKey))
 
+// ── Custom (non-catalog) quote ───────────────────────────────────────────────
+// A quote with no catalog package but real content (bespoke line items or a
+// detailed proposal) is "Custom": its scope is those line items, priced by them.
+// We show a Custom identity card in place of the empty package picker. A brand-new
+// blank quote (no package, no content) still shows the picker.
+const isCustom = computed(() => !hasPackages.value && (doc.items.length > 0 || detailed.value))
+// Escape hatch: reveal the catalog picker on a custom quote to convert it.
+const showCatalogPicker = ref(false)
+const showCustomCard = computed(() => isCustom.value && !showCatalogPicker.value)
+// Provenance of the loaded draft — drives the "via Axelnova MCP" remark.
+const createdViaConnector = computed(() => {
+  const q = props.quotation
+  const fp = (q?.form_payload ?? {}) as Record<string, any>
+  const d = (q?.document ?? {}) as Record<string, any>
+  return (fp.source_meta?.created_via ?? fp.created_via ?? d.created_via ?? null) === 'mcp_connector'
+})
+
 // JSON of doc.items right after a seed — lets us detect whether the admin has since
 // edited the lines (so we don't clobber manual edits when re-seeding).
 const seedSnapshot = ref('')
@@ -850,44 +867,84 @@ v-if="draftContext.editedViaConnector"
 
       <!-- Packages & scope — repeatable, one block per package (multi-package quote) -->
       <section id="qb-package" class="space-y-4">
+        <!-- Custom (non-catalog) quote → an identity card in place of the empty
+             picker. Its scope IS the line items below; there are no catalog
+             scope-fields/add-ons for custom work. -->
         <div
-v-for="(pkg, i) in packages" :key="i" class="rounded-2xl border p-6"
+v-if="showCustomCard" class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between mb-5">
-            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">
-              Package &amp; scope<span v-if="packages.length > 1"> · {{ i + 1 }}</span>
-            </p>
-            <button
-v-if="packages.length > 1" type="button"
-              class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary)"
-              :style="{ color: 'var(--color-danger)' }" @click="removePackage(i)">
-              <UIcon name="i-lucide-trash-2" class="size-3.5" /> Remove
-            </button>
-          </div>
-          <QuoteScopeFields
-:state="pkg" :rush="rush" :require-package="!detailed"
-            :package-error="i === 0 ? errors.package : ''" />
-        </div>
-
-        <button
-type="button"
-          class="w-full rounded-2xl border border-dashed px-4 py-3.5 text-[13px] font-medium transition-colors hover:bg-(--color-bg-secondary) flex items-center justify-center gap-2"
-          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
-          @click="addPackage">
-          <UIcon name="i-lucide-plus" class="size-4" /> Add another package
-        </button>
-
-        <!-- Rush — one quote-level flag applied to every package. -->
-        <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input v-model="rush" type="checkbox" class="sr-only" >
-            <span class="rush-track" :class="{ active: rush }" />
-            <span>
-              <span class="text-[13px] font-medium" style="color: var(--color-text);">Rush delivery</span>
-              <span class="text-[12px] ml-2" style="color: var(--color-text-tertiary);">(+20%, week/month timelines reduced ~30%)</span>
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Custom package</p>
+            <span
+              class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+              :style="createdViaConnector
+                ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+                : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">
+              <UIcon :name="createdViaConnector ? 'i-lucide-bot' : 'i-lucide-shapes'" class="size-3.5" />
+              {{ createdViaConnector ? 'Custom · via Axelnova MCP' : 'Custom' }}
             </span>
-          </label>
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Custom package name</label>
+            <input
+v-model="doc.project" type="text" placeholder="e.g. Custom e-commerce build"
+              class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
+            <p class="text-[11px]" style="color: var(--color-text-tertiary);">Outside the catalog — this names the quote (its project title); it’s priced by the line items below.</p>
+          </div>
+          <button
+type="button" class="mt-4 inline-flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-70"
+            :style="{ color: 'var(--color-accent)' }" @click="showCatalogPicker = true">
+            <UIcon name="i-lucide-package" class="size-3.5" /> Use a catalog package instead
+          </button>
         </div>
+
+        <template v-else>
+          <!-- Reveal the picker on a custom quote for conversion — offer a way back. -->
+          <button
+v-if="isCustom" type="button" class="inline-flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-70"
+            :style="{ color: 'var(--color-text-secondary)' }" @click="showCatalogPicker = false">
+            <UIcon name="i-lucide-arrow-left" class="size-3.5" /> Back to custom
+          </button>
+
+          <div
+v-for="(pkg, i) in packages" :key="i" class="rounded-2xl border p-6"
+            :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <div class="flex items-center justify-between mb-5">
+              <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">
+                Package &amp; scope<span v-if="packages.length > 1"> · {{ i + 1 }}</span>
+              </p>
+              <button
+v-if="packages.length > 1" type="button"
+                class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary)"
+                :style="{ color: 'var(--color-danger)' }" @click="removePackage(i)">
+                <UIcon name="i-lucide-trash-2" class="size-3.5" /> Remove
+              </button>
+            </div>
+            <QuoteScopeFields
+:state="pkg" :rush="rush" :require-package="!detailed"
+              :package-error="i === 0 ? errors.package : ''" />
+          </div>
+
+          <button
+type="button"
+            class="w-full rounded-2xl border border-dashed px-4 py-3.5 text-[13px] font-medium transition-colors hover:bg-(--color-bg-secondary) flex items-center justify-center gap-2"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
+            @click="addPackage">
+            <UIcon name="i-lucide-plus" class="size-4" /> Add another package
+          </button>
+
+          <!-- Rush — one quote-level flag applied to every package. -->
+          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input v-model="rush" type="checkbox" class="sr-only" >
+              <span class="rush-track" :class="{ active: rush }" />
+              <span>
+                <span class="text-[13px] font-medium" style="color: var(--color-text);">Rush delivery</span>
+                <span class="text-[12px] ml-2" style="color: var(--color-text-tertiary);">(+20%, week/month timelines reduced ~30%)</span>
+              </span>
+            </label>
+          </div>
+        </template>
       </section>
 
       <!-- Quotation document -->
@@ -900,7 +957,10 @@ type="button"
         </div>
 
         <div class="grid gap-4">
-          <div class="space-y-1.5">
+          <!-- Project title lives in the Custom package card when this is a custom
+               quote (it names the package there) — hidden here to avoid two inputs
+               for the one value. -->
+          <div v-if="!showCustomCard" class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Project title</label>
             <input v-model="doc.project" type="text" placeholder="e.g. Brand website — design & front-end build" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           </div>

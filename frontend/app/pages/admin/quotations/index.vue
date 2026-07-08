@@ -22,6 +22,8 @@ interface Quotation {
   email: string
   company: string | null
   package_key: string | null
+  // Non-catalog quotes (bespoke / detailed) carry a derived Custom descriptor.
+  custom_package: { label: string, via_connector: boolean } | null
   estimate_min_myr: string
   estimate_max_myr: string
   estimate_eta_value: number
@@ -177,7 +179,18 @@ v-for="q in quotations" :key="q.id"
               <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ q.email }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <template v-if="packageName(q.package_key)">
+              <template v-if="q.custom_package">
+                <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ q.custom_package.label }}</p>
+                <span
+                  class="inline-flex items-center gap-1 mt-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                  :style="q.custom_package.via_connector
+                    ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+                    : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">
+                  <UIcon :name="q.custom_package.via_connector ? 'i-lucide-bot' : 'i-lucide-shapes'" class="size-3" />
+                  {{ q.custom_package.via_connector ? 'Custom · Axelnova MCP' : 'Custom' }}
+                </span>
+              </template>
+              <template v-else-if="packageName(q.package_key)">
                 <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ packageName(q.package_key) }}</p>
                 <p class="text-[11px] font-mono" style="color: var(--color-text-tertiary);">{{ q.package_key }}</p>
               </template>
@@ -227,8 +240,14 @@ v-for="q in quotations" :key="q.id"
               {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
             </p>
             <p class="text-[11px] text-right" :style="{ color: 'var(--color-text-tertiary)' }">
-              <span v-if="packageName(q.package_key)" class="block font-medium" :style="{ color: 'var(--color-text-secondary)' }">{{ packageName(q.package_key) }}</span>
-              <span class="font-mono">{{ q.package_key ?? '—' }}</span>
+              <template v-if="q.custom_package">
+                <span class="block font-medium" :style="{ color: 'var(--color-text-secondary)' }">{{ q.custom_package.label }}</span>
+                <span :style="{ color: q.custom_package.via_connector ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }">{{ q.custom_package.via_connector ? 'Custom · Axelnova MCP' : 'Custom' }}</span>
+              </template>
+              <template v-else>
+                <span v-if="packageName(q.package_key)" class="block font-medium" :style="{ color: 'var(--color-text-secondary)' }">{{ packageName(q.package_key) }}</span>
+                <span class="font-mono">{{ q.package_key ?? '—' }}</span>
+              </template>
             </p>
           </div>
           <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">Submitted {{ fmtDate(q.submitted_at) }}</p>

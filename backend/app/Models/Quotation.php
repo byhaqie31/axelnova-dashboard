@@ -237,6 +237,36 @@ class Quotation extends Model
     }
 
     /**
+     * The "Custom" package descriptor for a quote that maps to NO catalog package
+     * (a bespoke line-item quote or a detailed proposal — both store a null
+     * package_key). Derived, never stored: the label reuses the quote's project
+     * title (falling back to 'Custom'), and via_connector flags a draft the MCP
+     * connector authored. Null for a catalog-package quote. Read-only view helper
+     * so the list can show "Custom · Axelnova MCP" instead of an empty package.
+     *
+     * @return array{label: string, via_connector: bool}|null
+     */
+    public function customPackage(): ?array
+    {
+        if ($this->package_key !== null) {
+            return null;
+        }
+
+        $doc = is_array($this->document) ? $this->document : [];
+        $fp = is_array($this->form_payload) ? $this->form_payload : [];
+        // The project title is mirrored at document.project for both standard and
+        // detailed layouts (detailed also keeps it in payload.project).
+        $project = $doc['project'] ?? ($doc['payload']['project'] ?? null);
+        $createdVia = $fp['source_meta']['created_via']
+            ?? ($fp['created_via'] ?? ($doc['created_via'] ?? null));
+
+        return [
+            'label' => filled($project) ? (string) $project : 'Custom',
+            'via_connector' => $createdVia === 'mcp_connector',
+        ];
+    }
+
+    /**
      * The canonical multi-package reader view of this row's form_payload,
      * regardless of which of the historical shapes it was written in (funnel,
      * legacy admin, connector, or new multi-package). Every backend render path
