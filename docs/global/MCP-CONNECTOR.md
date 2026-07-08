@@ -96,13 +96,14 @@ Backend code: `app/Http/Controllers/Api/V1/Connector/{CatalogController,Quotatio
 The Worker authenticates to Laravel with a scoped Sanctum token. Mint it on the **API host** (prod), never in CI:
 
 ```bash
-php artisan connector:token                 # the sole founder
+php artisan connector:token                 # the sole founder, 30-day lifetime
+php artisan connector:token --days=90       # longer lifetime (its expires_at)
 php artisan connector:token --email=founder@example.com   # if there are several founders
 ```
 
-It revokes any prior `mcp-connector` token (so re-running **rotates**), mints a new one with `connector:read` + `connector:draft`, and prints the plaintext **once**. Paste it into the Worker secret (below).
+It revokes any prior `mcp-connector` token (so re-running **rotates**), mints a new one with `connector:read` + `connector:draft` and an `expires_at` of `--days` (default **30**), and prints the plaintext **once**. Paste it into the Worker secret (below).
 
-> **Expiry caveat.** Sanctum enforces the global `SANCTUM_EXPIRATION_MINUTES` (if set) against every token's `created_at` — a per-token expiry can't extend past it. For a long-lived connector, leave `SANCTUM_EXPIRATION_MINUTES` **unset** in the API env, or re-run `connector:token` to rotate on your own cadence.
+> **Lifetime.** The global `SANCTUM_EXPIRATION_MINUTES` cap (default **720 min = 12 h** in `config/sanctum.php` — a Phase-0 guard so leaked admin *login* tokens die fast) would otherwise kill this token half a day after minting, regardless of its own expiry. `AppServiceProvider` therefore exempts exactly the `mcp-connector` token from the global cap: its lifetime is its **own `expires_at`**. The exemption requires an explicit future expiry — a connector token minted without one falls back under the global cap. When it expires (or to rotate early), re-run `connector:token`, update the Worker secret, and redeploy.
 
 ## Worker deploy (runbook)
 
