@@ -90,6 +90,11 @@ watch(() => quotation.value?.referral_partner_id, () => {
 
 async function acceptQuotation() {
   if (!quotation.value) return
+  if (!(await confirm({
+    title: 'Create an order from this quote?',
+    message: `This accepts ${quotation.value.reference_code} and creates a new order — you can’t undo it here.`,
+    confirmLabel: 'Proceed & create order',
+  }))) return
   acceptLoading.value = true
   try {
     const body = isReferralAttributed.value ? { commission_pct: commissionPct.value } : undefined
@@ -189,6 +194,9 @@ const {
   close: closeDelete,
   confirm: confirmDelete,
 } = useQuotationDelete(() => navigateTo('/admin/quotations'))
+
+// Confirm-before-act on Proceed & Create Order.
+const { confirmOpen, confirmConfig, confirm, resolveConfirm } = useConfirm()
 
 </script>
 
@@ -366,5 +374,8 @@ v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, ''
     <AdminQuotationDeleteDialog
       :target="deleteTarget" :blocked="deleteBlocked" :deleting="deleting"
       @cancel="closeDelete" @confirm="confirmDelete" />
+
+    <!-- Confirm gate for Proceed & Create Order. -->
+    <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
   </div>
 </template>

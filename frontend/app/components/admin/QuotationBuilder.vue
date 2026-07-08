@@ -655,11 +655,27 @@ async function save(): Promise<number | null> {
 
 const sendMenuOpen = ref(false)
 
+// Confirm-before-act on the consequential actions (send to client / create order)
+// so a stray click can't fire them.
+const { confirmOpen, confirmConfig, confirm, resolveConfirm } = useConfirm()
+
 // Deliver the quote: email it to the client, or just generate + open the PDF to
 // share manually. Both save first and mark the quote sent.
 async function deliver(channel: 'email' | 'download') {
   if (!isEdit.value) return
   sendMenuOpen.value = false
+  const ok = await confirm(channel === 'email'
+    ? {
+        title: 'Send this quotation to the client?',
+        message: `This emails ${props.quotation?.reference_code ?? 'the quote'} to ${client.email || 'the client'} and marks it sent.`,
+        confirmLabel: 'Send to client',
+      }
+    : {
+        title: 'Mark as sent and download?',
+        message: 'This marks the quote sent (no email) and opens the PDF for you to share manually.',
+        confirmLabel: 'Mark sent & download',
+      })
+  if (!ok) return
   sending.value = true
   error.value = ''
   try {
@@ -698,6 +714,11 @@ watch(() => props.quotation?.referral_partner_id, () => {
 
 async function accept() {
   if (!isEdit.value) return
+  if (!(await confirm({
+    title: 'Create an order from this quote?',
+    message: `This accepts ${props.quotation?.reference_code ?? 'the quotation'} and creates a new order — you can’t undo it here.`,
+    confirmLabel: 'Proceed & create order',
+  }))) return
   accepting.value = true
   error.value = ''
   try {
@@ -1148,6 +1169,9 @@ id="qb-commission-pct" v-model.number="commissionPct" type="number" min="5" max=
       <p v-if="error" class="text-[12px] text-center px-3" style="color: var(--color-danger);">{{ error }}</p>
       <p v-else-if="!isEdit" class="text-[11px] text-center px-3" style="color: var(--color-text-tertiary);">Save the draft to enable PDF preview and sending.</p>
     </div>
+
+    <!-- Confirm gate for send / create-order. -->
+    <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
   </div>
 </template>
 

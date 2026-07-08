@@ -490,6 +490,23 @@ h1 { letter-spacing: -0.045em; }
   transform: translateY(-1px);
 }
 
+/* Preview — a soft light-orange pill so "Preview" (a live in-app look) reads as
+   its own thing, distinct from the neutral ghost "View PDF" beside it, without
+   shouting like the filled warning CTA. Soft tint + orange label (same pattern as
+   the accent/danger soft table actions), legible in both modes. */
+.btn-pill-preview {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning-soft);
+}
+/* Hover: a slightly darker/stronger orange + the same lift as the filled CTAs
+   (accent/warning) so it animates consistently with "Proceed". */
+.btn-pill-preview:hover {
+  background: color-mix(in srgb, var(--color-warning) 28%, transparent);
+  box-shadow: 0 8px 24px var(--color-warning-soft);
+  transform: translateY(-1px);
+}
+
 /* Danger (red) — destructive actions (e.g. revert / discard changes) */
 .btn-pill-danger {
   background: var(--color-danger);
@@ -552,6 +569,40 @@ h1 { letter-spacing: -0.045em; }
 }
 .btn-pill-silver:hover {
   background: var(--color-silver-hover);
+}
+
+/* Confirm dialog (§12) — promoted to global so shared dialog components
+   (AdminConfirmDialog, AdminQuotationDeleteDialog) that Teleport to <body> get
+   styled; page-scoped copies (tasks / referrals) still work unchanged. */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+}
+.confirm-card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 20px;
+  border-width: 1px;
+  padding: 24px;
+}
+.confirm-fade-enter-active,
+.confirm-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.confirm-fade-enter-from,
+.confirm-fade-leave-to {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-fade-enter-active,
+  .confirm-fade-leave-active { transition: none; }
 }
 
 /* Floating glass nav (hero quick-links pill). Uses the scrolled nav surface
