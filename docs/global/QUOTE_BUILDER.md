@@ -144,6 +144,23 @@ The connector **never overwrites an admin-edited document**: `DocumentSeeder::ha
 
 The MCP connector can also author a full **detailed** proposal (see [MCP-CONNECTOR.md](./MCP-CONNECTOR.md)). `App\Services\Quoting\DetailedDocumentBuilder` turns its structured `detailed` input (priced `sections`, "What's included" groups, option cards, a care plan) into the canonical `layout: 'detailed'` `document.payload` — the SAME shape the admin detailed builder emits, so the same `DocumentMapper` + PDF render it and the draft re-opens in the admin builder's detailed mode. Detailed quotes are priced by their own section totals (`Quotation::sumDetailedSections`), never the engine — Claude provides the prices; `estimate_min == estimate_max == Σ section amounts`.
 
+### MCP connector tool contract (v3)
+
+The MCP connector is a fourth reader/writer of quotations (see [MCP-CONNECTOR.md](./MCP-CONNECTOR.md)). Access model: **read everything, write gated, delete portal-only.**
+
+| Tool | Scope | Gate |
+|---|---|---|
+| `list_catalog` | read — the merged catalog (valid package/modifier/add-on keys) | `connector:read` · 60/min |
+| `list_quotations` | read — slim rows of ANY non-deleted quotation (`status[]`/`q`/`from`/`to`/`page`/`per_page≤25`, newest first) | `connector:read` · 60/min |
+| `get_quotation` | read — full detail of ANY non-deleted quotation by reference code | `connector:read` · 60/min |
+| `create_draft_quotation` | write — a new DRAFT (priced / multi-package / bespoke / detailed) | `connector:draft` · 30/min |
+| `update_draft_quotation` | write — re-specify + re-price an existing quotation | `connector:draft` · 30/min · **pre-send only** |
+
+- **Update gate is lifecycle, not origin.** `update_draft_quotation` modifies ANY quotation whose status is `draft` (the only pre-send status — funnel/admin/connector drafts all qualify); it hard-refuses (422, naming the status) once `sent`/`accepted`/`rejected`/`expired`. A full re-specification, priced through the same engine as create.
+- **Document protection.** An update re-prices the estimate but re-seeds the `document` only if it's still a pristine engine-seed OR the caller passes `reseed_document: true` — an admin-edited document is never silently replaced (the shared `DocumentSeeder`'s output is compared to detect a pristine seed). Every connector update stamps `form_payload.source_meta.last_updated_via = 'mcp_connector'`.
+- **Reads exclude soft-deleted rows** (the `SoftDeletes` scope); the connector never sees a deleted quotation.
+- **Delete is portal-only** — `DELETE /v1/admin/quotations/{id}` (soft delete), refused 409 when an order is attached. Intentionally NOT a connector tool: irreversible actions stay human-only.
+
 ## How to add a new offering (end-to-end)
 
 The fastest path uses the admin UI — no code or SQL.

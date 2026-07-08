@@ -15,6 +15,7 @@ use App\Services\Quoting\DocumentMapper;
 use App\Services\Quoting\DocumentSeeder;
 use App\Services\Quoting\MultiEstimateResult;
 use App\Services\Quoting\PricingEngine;
+use App\Services\Quoting\QuotationIndexQuery;
 use App\Services\Referrals\ReferralAttributionService;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
@@ -96,40 +97,9 @@ class QuotationsController extends Controller
         // (and filterable) without a scheduler.
         Quotation::expireOverdue();
 
-        $query = Quotation::with('addons')->latest('submitted_at');
-
-        // `status` accepts one value or a comma-separated list (e.g. ?status=draft,sent)
-        // to back the multi-select filter on the listing.
-        $statuses = collect(explode(',', (string) $request->query('status', '')))
-            ->map(fn ($s) => trim($s))
-            ->filter()
-            ->values();
-
-        if ($statuses->isNotEmpty()) {
-            $query->whereIn('status', $statuses);
-        }
-        // No status filter: exclude 'accepted' by default (those produced an order and
-        // live on the Orders page). Pass ?include_accepted=1 — the "All" filter — to see them.
-        elseif (! $request->boolean('include_accepted')) {
-            $query->where('status', '!=', 'accepted');
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('reference_code', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('submitted_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('submitted_at', '<=', $request->date_to);
-        }
+        // Search + status + date-range + newest-first live in the shared query
+        // object (the connector's list endpoint uses the SAME one).
+        $query = QuotationIndexQuery::fromAdminRequest($request)->builder()->with('addons');
 
         return QuotationResource::collection($query->paginate(20));
     }
@@ -211,6 +181,57 @@ class QuotationsController extends Controller
         $quotation->logActivity('quotation.updated');
 
         return new QuotationResource($quotation->load('addons', 'order'));
+    }
+
+    /**
+     * Soft-delete a quotation (portal-only — never exposed to the MCP connector,
+     * where destructive actions stay human-only). A quotation with an order
+     * attached cannot be deleted (the order FK is restrict, and the order is the
+     * money record) — refused with a 409 naming the order so the UI can link to it.
+     * Soft delete: the row disappears from every list + read, recoverable from the DB.
+     *
+     * Because a soft delete does NOT fire the `nullOnDelete` FKs, we untangle the
+     * linked flow by hand — any inquiry or referral anchored to this quote is
+     * unlinked (the same reset the manual unlink/untie actions perform) so nothing
+     * is left pointing at a deleted row.
+     */
+    public function destroy(Quotation $quotation): JsonResponse
+    {
+        $order = $quotation->order;
+        if ($order) {
+            return response()->json([
+                'message' => "This quotation can't be deleted — it was accepted into order {$order->order_number}. Delete or unwind that order first.",
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+            ], 409);
+        }
+
+        $reference = $quotation->reference_code;
+
+        [$unlinkedInquiries, $untiedReferrals] = DB::transaction(function () use ($quotation): array {
+            // Inquiry → back to 'reviewing' (needs a fresh quote), as unlinkQuotation does.
+            $inquiries = Inquiry::where('quotation_id', $quotation->id)
+                ->update(['quotation_id' => null, 'status' => 'reviewing']);
+
+            // Referral → back to a plain 'new' claim, as untieQuotation does.
+            $referrals = Referral::where('quotation_id', $quotation->id)
+                ->update(['quotation_id' => null, 'status' => 'new']);
+
+            $quotation->logActivity('quotation.deleted', [
+                'reference_code' => $quotation->reference_code,
+                'unlinked_inquiries' => $inquiries,
+                'untied_referrals' => $referrals,
+            ]);
+            $quotation->delete();
+
+            return [$inquiries, $referrals];
+        });
+
+        return response()->json([
+            'message' => "Quotation {$reference} deleted.",
+            'unlinked_inquiries' => $unlinkedInquiries,
+            'untied_referrals' => $untiedReferrals,
+        ]);
     }
 
     public function send(Request $request, Quotation $quotation): JsonResponse

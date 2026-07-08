@@ -106,6 +106,17 @@ function fmtMyr(amount: string | number) {
   return `RM ${n.toLocaleString()}`
 }
 
+// Soft-delete flow (shared composable) — confirm dialog, 409 order-attached block,
+// linked-record cleanup. Row clicks navigate, so the trigger uses @click.stop.
+const {
+  target: deleteTarget,
+  blocked: deleteBlocked,
+  deleting,
+  open: openDelete,
+  close: closeDelete,
+  confirm: confirmDelete,
+} = useQuotationDelete(() => fetchQuotations())
+
 // New quotations always start standard; the builder upgrades to the detailed
 // proposal layout in place via its "Expand to detailed" action.
 </script>
@@ -147,7 +158,7 @@ function fmtMyr(amount: string | number) {
         <thead>
           <tr>
             <th
-v-for="h in ['Reference', 'Name', 'Package', 'Estimate', 'Status', 'Submitted']" :key="h"
+v-for="h in ['Reference', 'Name', 'Package', 'Estimate', 'Status', 'Submitted', 'Actions']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
@@ -182,6 +193,11 @@ v-for="q in quotations" :key="q.id"
             </td>
             <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">
               {{ fmtDate(q.submitted_at) }}
+            </td>
+            <td class="px-4 py-3.5" @click.stop>
+              <button type="button" class="btn-table-action is-danger" aria-label="Delete quotation" @click.stop="openDelete(q)">
+                <UIcon name="i-lucide-trash-2" class="size-3.5" />Delete
+              </button>
             </td>
           </tr>
         </tbody>
@@ -225,6 +241,11 @@ v-for="q in quotations" :key="q.id"
       <span class="text-[13px]" style="color: var(--color-text-secondary);">{{ filters.page }} / {{ meta.last_page }}</span>
       <button :disabled="filters.page >= meta.last_page" class="btn-pill btn-pill-ghost text-[12px]" @click="filters.page++">Next →</button>
     </div>
+
+    <!-- Delete confirmation — shared dialog (soft delete, or the order-attached block). -->
+    <AdminQuotationDeleteDialog
+      :target="deleteTarget" :blocked="deleteBlocked" :deleting="deleting"
+      @cancel="closeDelete" @confirm="confirmDelete" />
 
   </div>
 </template>

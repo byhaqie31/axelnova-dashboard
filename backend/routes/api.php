@@ -199,6 +199,9 @@ Route::middleware([
         Route::post('/quotations/{quotation}/expiry', [QuotationsController::class, 'setExpiry'])->name('quotations.expiry');
         Route::post('/quotations/{quotation}/send', [QuotationsController::class, 'send'])->name('quotations.send');
         Route::post('/quotations/{quotation}/accept', [QuotationsController::class, 'accept'])->name('quotations.accept');
+        // Soft-delete (portal-only, never via the connector). Blocked with a 409
+        // when an order is attached — the order is the money record.
+        Route::delete('/quotations/{quotation}', [QuotationsController::class, 'destroy'])->name('quotations.destroy');
 
         Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
         // Money roll-up for the dashboard — must precede the {order} wildcard.
@@ -346,26 +349,32 @@ Route::middleware(['auth:external', 'abilities:partner'])
     });
 
 // MCP connector — a fourth, deliberately NARROW surface for the remote MCP server
-// (mcp.axelnova.tech), which lets Claude draft quotations from a client brief.
-// Pure Sanctum bearer tokens minted with connector abilities ONLY
+// (mcp.axelnova.tech), which lets Claude drive the quotation pipeline from a client
+// brief. Pure Sanctum bearer tokens minted with connector abilities ONLY
 // (connector:read / connector:draft) — never `cockpit`, so a connector token is
 // rejected by every /v1/admin route (abilities:cockpit), and an admin cockpit
-// token is rejected here. Draft-only by design: read the catalog, create a DRAFT
-// quotation, read a connector-created draft back. It CANNOT change status, accept
-// a quote, or touch orders/clients/services/payments — and there is no delete.
-// Routes deny by default; each ability opens exactly its own endpoints.
+// token is rejected here. Access model (v3): READ everything (list + read-back any
+// non-deleted quotation), WRITE with a lifecycle gate (create a DRAFT, update any
+// PRE-SEND quotation), DESTROY never (delete is portal-only, by hand). It still
+// CANNOT change status, send/accept a quote, or touch orders/clients/payments.
+// Routes deny by default; each ability opens exactly its own endpoints, throttled
+// (authenticated, but never unbounded).
 Route::middleware('auth:sanctum')
     ->prefix('v1/connector')
     ->name('connector.')
     ->group(function () {
-        // Read surface — the catalog + read-back of connector-created drafts.
-        Route::middleware('abilities:connector:read')->group(function () {
+        // Read surface — catalog + list + read-back of ANY non-deleted quotation.
+        // 60/min: comfortably above real chat usage, a backstop against a loop.
+        Route::middleware(['abilities:connector:read', 'throttle:60,1'])->group(function () {
             Route::get('/catalog', [ConnectorCatalogController::class, 'index'])->name('catalog');
+            Route::get('/quotations', [ConnectorQuotationDraftController::class, 'index'])->name('quotations.index');
             Route::get('/quotations/{reference_code}', [ConnectorQuotationDraftController::class, 'show'])->name('quotations.show');
         });
 
-        // Write surface — create a DRAFT quotation (priced or fully bespoke).
-        Route::middleware('abilities:connector:draft')->group(function () {
+        // Write surface — create a DRAFT, or update a PRE-SEND quotation. Tighter
+        // 30/min bound (writes re-price + re-seed, so they're heavier than reads).
+        Route::middleware(['abilities:connector:draft', 'throttle:30,1'])->group(function () {
             Route::post('/quotations/draft', [ConnectorQuotationDraftController::class, 'store'])->name('quotations.draft');
+            Route::put('/quotations/{reference_code}', [ConnectorQuotationDraftController::class, 'update'])->name('quotations.update');
         });
     });

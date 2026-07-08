@@ -1,41 +1,48 @@
 # MCP Quotation Connector
 
-Lets Claude (claude.ai / Cowork) draft **quotations** in `axelnova-dashboard` straight from a client brief, without giving it a login to the cockpit. Two halves:
+Lets Claude (claude.ai / Cowork) drive the **quotation pipeline** in `axelnova-dashboard` straight from a client brief, without giving it a login to the cockpit. Two halves:
 
-1. **Laravel** — a scoped `/api/v1/connector/*` route group (read catalog, create/read **draft** quotations only), gated by Sanctum token *abilities*, not admin role.
-2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes three tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it).
+1. **Laravel** — a scoped `/api/v1/connector/*` route group, gated by Sanctum token *abilities*, not admin role.
+2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes the tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it). Its `CONNECTOR_VERSION` (advertised as the MCP server version in the initialize handshake) tags the contract — **v3** is read-open reads + a lifecycle-gated update.
 
 ```
 Claude (claude.ai)  ──OAuth──▶  mcp.axelnova.tech  ──Bearer CONNECTOR_TOKEN──▶  /api/v1/connector/*  (Laravel)
-     (MCP client)               (Worker, connector/)                            (draft-only surface)
+     (MCP client)               (Worker, connector/)                            (scoped connector surface)
 ```
 
-## Guardrails — what it can and cannot do
+## Guardrails — the access model (v3)
 
-The connector is **draft-only by construction**. Its Sanctum token carries only `connector:read` + `connector:draft` (never `cockpit`), and each route opens exactly one ability:
+**Read everything, write with a lifecycle guardrail, destroy only by hand.** The Sanctum token carries only `connector:read` + `connector:draft` (never `cockpit`), and each route opens exactly one ability:
 
-- ✅ read the catalog, create a **draft** quotation, read back a **connector-created** draft.
-- ❌ change quotation status, send/accept a quote, create orders, touch clients/services/payments, or delete anything.
+- ✅ **READ everything** — the catalog, a slim **list** of ANY non-deleted quotation, and full **read-back** of ANY non-deleted quotation (whatever created it — funnel, admin, or connector).
+- ✅ **WRITE with a gate** — create a **draft**; **update** any quotation while it is a **pre-send draft** (status `draft`). Locked once `sent` (or accepted/rejected/expired).
+- ❌ **never** — change status, send/accept a quote, create orders, touch clients/services/payments, or **delete** anything. Deletion is **portal-only, by hand** — there is no delete tool (irreversible actions stay human-only).
 
-A connector token is rejected by every `/v1/admin/*` route (they demand `abilities:cockpit`); the admin cockpit token is likewise rejected by `/v1/connector/*`. Read-back is scoped to rows the connector authored (`document.created_via = mcp_connector`) so the token can't enumerate arbitrary quotations.
+A connector token is rejected by every `/v1/admin/*` route (they demand `abilities:cockpit`); the admin cockpit token is likewise rejected by `/v1/connector/*`. **Soft-deleted quotations never surface through any connector read.** Read endpoints are throttled 60/min, writes 30/min.
 
 ## Backend endpoints
 
-| Method | Path | Ability | Purpose |
+| Method | Path | Ability | Throttle | Purpose |
+|---|---|---|---|---|
+| GET | `/v1/connector/catalog` | `connector:read` | 60/min | Merged catalog: quotable packages (key, name, tagline, price range, ETA, the modifier keys each accepts), global add-ons, rush rules, bespoke note |
+| GET | `/v1/connector/quotations` | `connector:read` | 60/min | Slim list of non-deleted quotations — `status[]`, `q`, `from`/`to`, `page`/`per_page` (default 10, capped 25), newest first |
+| GET | `/v1/connector/quotations/{reference_code}` | `connector:read` | 60/min | Read back ANY non-deleted quotation by AXNQ code |
+| POST | `/v1/connector/quotations/draft` | `connector:draft` | 30/min | Create a draft quotation (contract below) |
+| PUT | `/v1/connector/quotations/{reference_code}` | `connector:draft` | 30/min | Update a PRE-SEND draft (same body as draft + `reseed_document`) |
+
+Backend code: `app/Http/Controllers/Api/V1/Connector/{CatalogController,QuotationDraftController}.php`, `app/Http/Requests/Connector/{DraftQuotationRequest,UpdateDraftQuotationRequest,ListQuotationsRequest}.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Services/Quoting/QuotationIndexQuery.php` (the list query, shared with the admin index). Pricing is reused verbatim from [`PricingEngine`](../../backend/app/Services/Quoting/PricingEngine.php); reference codes from [`ReferenceCodeGenerator`](../../backend/app/Support/ReferenceCodeGenerator.php). See [QUOTE_BUILDER.md](./QUOTE_BUILDER.md) for the pricing model + the connector tool contract table.
+
+## The five MCP tools
+
+| Tool | Maps to | Scope / gate | Notes |
 |---|---|---|---|
-| GET | `/v1/connector/catalog` | `connector:read` | Merged catalog: quotable packages (key, name, tagline, price range, ETA, the modifier keys each accepts), global add-ons, rush rules, bespoke note |
-| POST | `/v1/connector/quotations/draft` | `connector:draft` | Create a draft quotation (contract below) |
-| GET | `/v1/connector/quotations/{reference_code}` | `connector:read` | Read back a connector-created draft by AXNQ code |
+| `list_catalog` | `GET /catalog` | read | **Call first.** Returns valid package/modifier/add-on keys. |
+| `list_quotations` | `GET /quotations` | read (any) | Browse/filter slim rows to find a quotation without its code. No `form_payload`/`document`. |
+| `get_quotation` | `GET /quotations/{ref}` | read (any) | Full read-back of ANY quotation by reference code. |
+| `create_draft_quotation` | `POST /quotations/draft` | write | Creates a DRAFT only. Single-package (`package_key`), multi-package (`packages[]`), bespoke (`line_items`), or `detailed`. |
+| `update_draft_quotation` | `PUT /quotations/{ref}` | write · **gate: pre-send draft** | Re-specifies + re-prices a pre-send draft. Refused 422 once sent. `reseed_document` controls document regeneration. |
 
-Backend code: `app/Http/Controllers/Api/V1/Connector/{CatalogController,QuotationDraftController}.php`, `app/Http/Requests/Connector/DraftQuotationRequest.php`, `app/Services/Connector/ConnectorCatalog.php`. Pricing is reused verbatim from [`PricingEngine`](../../backend/app/Services/Quoting/PricingEngine.php); reference codes from [`ReferenceCodeGenerator`](../../backend/app/Support/ReferenceCodeGenerator.php). See [QUOTE_BUILDER.md](./QUOTE_BUILDER.md) for the pricing model.
-
-## The three MCP tools
-
-| Tool | Maps to | Notes |
-|---|---|---|
-| `list_catalog` | `GET /catalog` | **Call first.** Returns valid package/modifier/add-on keys. |
-| `create_draft_quotation` | `POST /quotations/draft` | Creates a DRAFT only — never sends to the client. Single-package (`package_key`), multi-package (`packages[]`), or bespoke (`line_items`, no package). |
-| `get_quotation` | `GET /quotations/{ref}` | Read-back by reference code. |
+There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v1/admin/quotations/{id}`, soft delete, blocked 409 when an order is attached).
 
 ### Draft request contract
 
@@ -147,7 +154,7 @@ Non-deploy checks that are safe to run any time: `npm run typecheck`, `npx wrang
 1. **Settings → Connectors → Add custom connector** (Customize → Connectors).
 2. **URL:** `https://mcp.axelnova.tech/mcp`
 3. Connect → you'll be redirected to the connector login → enter `ACCESS_USERNAME` / `ACCESS_PASSWORD` → authorize.
-4. The three tools (`list_catalog`, `create_draft_quotation`, `get_quotation`) appear. Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Review the draft in `/admin/quotations`.
+4. The five tools (`list_catalog`, `list_quotations`, `get_quotation`, `create_draft_quotation`, `update_draft_quotation`) appear. Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Ask it to "show pending quotes from this month" and it uses `list_quotations`; ask it to tweak a draft and it uses `update_draft_quotation`. Review everything in `/admin/quotations`.
 
 ## File map
 
@@ -155,6 +162,12 @@ Non-deploy checks that are safe to run any time: `npm run typecheck`, `npx wrang
 - Worker: `connector/src/{index,api,auth}.ts`, `connector/wrangler.toml`, `connector/package.json`, `connector/rotate-token.sh` (one-command token rotation).
 - Tests: `backend/tests/Feature/Connector/ConnectorDraftTest.php`.
 
-## Out of scope (v1)
+## Out of scope
 
-No status/accept/order tools, no delete, no client management, no multi-user OAuth. In-dashboard AI UI is a separate, API-billed phase.
+Still no status/accept/order tools, no delete tool (portal-only), no client-management surface, no multi-user OAuth, and no post-send "revision" concept (a sent quote is locked to the connector). In-dashboard AI UI is a separate, API-billed phase.
+
+## Version history
+
+- **v3** — `list_quotations` (browse/filter), read-open `get_quotation` (any quotation, not just connector-created), `update_draft_quotation` (lifecycle-gated: pre-send drafts only, re-prices + guards the document via `reseed_document`, stamps `last_updated_via`), portal-only soft delete, read/write throttles, `CONNECTOR_VERSION` tag.
+- **v2** — canonical multi-package `form_payload`, `DocumentSeeder`, detailed proposals, project/intro.
+- **v1** — draft-only: `list_catalog`, `create_draft_quotation`, connector-scoped `get_quotation`.

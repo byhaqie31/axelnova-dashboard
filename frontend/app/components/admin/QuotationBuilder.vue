@@ -36,6 +36,7 @@ const emit = defineEmits<{
   saved: [id: number]
   sent: [quotation: Record<string, any>]
   accepted: [orderId: number]
+  delete: []
 }>()
 
 const { apiFetch } = useAdminAuth()
@@ -361,13 +362,18 @@ const draftContext = computed(() => {
   const d = q.document ?? {}
   const fp = q.form_payload ?? {}
   const createdVia: string | null = fp.source_meta?.created_via ?? fp.created_via ?? d.created_via ?? null
+  // Stamped by the MCP connector's update tool (v3) — shows "last edited via connector"
+  // alongside the created-via badge, even on a funnel/admin-created draft.
+  const lastUpdatedVia: string | null = fp.source_meta?.last_updated_via ?? null
+  const lastUpdatedAt: string | null = fp.source_meta?.last_updated_at ?? null
   const assumptions: string[] = Array.isArray(d.assumptions) ? d.assumptions : []
   const openQuestions: string[] = Array.isArray(d.open_questions) ? d.open_questions : []
   const notes: string | null = d.notes ?? null
   const isConnector = createdVia === 'mcp_connector'
-  // Render only when there's context worth showing (or it's a connector draft).
-  if (!isConnector && !assumptions.length && !openQuestions.length && !notes) return null
-  return { createdVia, isConnector, assumptions, openQuestions, notes }
+  const editedViaConnector = lastUpdatedVia === 'mcp_connector'
+  // Render only when there's context worth showing (connector-touched, or notes/assumptions/questions).
+  if (!isConnector && !editedViaConnector && !assumptions.length && !openQuestions.length && !notes) return null
+  return { createdVia, isConnector, editedViaConnector, lastUpdatedAt, assumptions, openQuestions, notes }
 })
 
 function createdViaLabel(v: string | null): string {
@@ -787,17 +793,27 @@ v-if="clientResults.length" class="absolute z-20 left-0 right-0 mt-1.5 rounded-x
 
       <!-- Draft context (connector provenance / assumptions / open questions) -->
       <section v-if="draftContext" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
           <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Draft context</p>
-          <span
+          <div class="flex items-center gap-2 flex-wrap justify-end">
+            <span
 v-if="draftContext.createdVia"
-            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
-            :style="draftContext.isConnector
-              ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-              : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">
-            <UIcon :name="draftContext.isConnector ? 'i-lucide-bot' : 'i-lucide-pen-line'" class="size-3.5" />
-            {{ createdViaLabel(draftContext.createdVia) }}
-          </span>
+              class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+              :style="draftContext.isConnector
+                ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+                : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">
+              <UIcon :name="draftContext.isConnector ? 'i-lucide-bot' : 'i-lucide-pen-line'" class="size-3.5" />
+              {{ createdViaLabel(draftContext.createdVia) }}
+            </span>
+            <span
+v-if="draftContext.editedViaConnector"
+              class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+              :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }"
+              :title="draftContext.lastUpdatedAt ? `Last edited via connector on ${new Date(draftContext.lastUpdatedAt).toLocaleString('en-MY')}` : undefined">
+              <UIcon name="i-lucide-history" class="size-3.5" />
+              Last edited via connector
+            </span>
+          </div>
         </div>
 
         <div class="space-y-5">
@@ -1058,6 +1074,14 @@ id="qb-commission-pct" v-model.number="commissionPct" type="number" min="5" max=
               {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
             </button>
           </template>
+
+          <!-- Delete — same spot + treatment as a sent quote's Actions panel, so the
+               placement is identical across statuses. Separated, danger-text only. -->
+          <div class="pt-3 mt-1 border-t" :style="{ borderColor: 'var(--color-border)' }">
+            <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :style="{ color: 'var(--color-danger)' }" @click="emit('delete')">
+              <UIcon name="i-lucide-trash-2" class="size-3.5" /> Delete quotation
+            </button>
+          </div>
         </template>
       </div>
 

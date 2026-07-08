@@ -16,6 +16,26 @@ class Quotation extends Model
 {
     use HasFactory, RecordsActivity, SoftDeletes;
 
+    /**
+     * Pre-send lifecycle statuses — a quotation the client has NOT yet seen. The
+     * MCP connector's update tool may modify these; everything from 'sent' on is
+     * locked (post-send changes are a manual admin revision, out of scope here).
+     *
+     * The simplified lifecycle is draft → sent → accepted/rejected/expired (the
+     * legacy lead statuses new/viewed/contacted collapsed onto 'draft' — lead
+     * tracking lives on inquiries now, see the 2026_06_24 normalise migration), so
+     * the only pre-send status is 'draft'. Funnel-, admin-, and connector-created
+     * quotations all land as 'draft', so all three are updatable from the connector.
+     */
+    public const PRE_SEND_STATUSES = ['draft'];
+
+    /**
+     * Every lifecycle status the DB enum allows — the app-level source of truth
+     * for status filtering + validation. Pre-send ones are updatable from the
+     * connector; the rest are post-send / terminal.
+     */
+    public const STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'expired'];
+
     protected $fillable = [
         'reference_code',
         'source',
@@ -71,6 +91,16 @@ class Quotation extends Model
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', now())
             ->update(['status' => 'expired']);
+    }
+
+    /**
+     * True while the quote is still pre-send (draft/new/viewed/contacted) — the
+     * window in which the connector's update tool may modify it. A whitelist, so
+     * any unknown/future status defaults to "locked".
+     */
+    public function isPreSend(): bool
+    {
+        return in_array($this->status, self::PRE_SEND_STATUSES, true);
     }
 
     /** True when this is a sent quote already past its expiry date. */
