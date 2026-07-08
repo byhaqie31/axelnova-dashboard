@@ -152,6 +152,11 @@ useHead({ title: 'Admin Portal' })
                stays intact); Partners is a different account type, so that jump
                still lands on its login. -->
           <nav class="hidden md:flex items-center gap-1.5" aria-label="Other portals">
+            <NuxtLink to="/" target="_blank" rel="noopener" class="portal-jump">
+              <UIcon name="i-lucide-globe" class="size-3.5 shrink-0" />
+              <span>Website</span>
+              <UIcon name="i-lucide-arrow-up-right" class="size-3 shrink-0 opacity-60" />
+            </NuxtLink>
             <button type="button" class="portal-jump" @click="jumpToTeam">
               <UIcon name="i-lucide-users-round" class="size-3.5 shrink-0" />
               <span>Team</span>
@@ -456,6 +461,11 @@ useHead({ title: 'Admin Portal' })
               </div>
             </div>
             <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" >
+            <NuxtLink to="/" target="_blank" rel="noopener" class="admin-nav-item">
+              <UIcon name="i-lucide-globe" class="size-4.5 shrink-0" />
+              <span>Website</span>
+              <UIcon name="i-lucide-arrow-up-right" class="size-3.5 shrink-0 ml-auto opacity-60" />
+            </NuxtLink>
             <button type="button" class="admin-nav-item w-full" @click="jumpToTeam">
               <UIcon name="i-lucide-users-round" class="size-4.5 shrink-0" />
               <span>Team Workspace</span>
