@@ -173,7 +173,7 @@ onUnmounted(() => {
         <h1
           ref="heroHeadline"
           class="epoch-headline font-display mt-7 text-[34px] sm:text-[42px] md:text-[56px]"
-          style="color: var(--color-text);"
+          style="color: var(--hero-fg);"
         >
           Crafted by design.<br>Built to last.
         </h1>
@@ -181,7 +181,7 @@ onUnmounted(() => {
         <p
           ref="heroSub"
           class="mt-5 max-w-[52ch] text-[14px] md:text-[15px] leading-relaxed"
-          style="color: var(--color-text-secondary);"
+          style="color: var(--hero-fg-muted);"
         >
           Axel Nova Ventures is a design-led software studio building fintech, SaaS, and bespoke
           web products — engineered end to end with Vue, Nuxt, Laravel, and Docker.

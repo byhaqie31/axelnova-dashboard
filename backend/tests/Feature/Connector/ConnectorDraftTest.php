@@ -13,13 +13,15 @@ use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuoteRequestInput;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * The scoped MCP-connector surface: read the catalog, create DRAFT quotations
- * (priced or bespoke), read them back — and nothing else. Priced drafts must be
- * priced by the SAME PricingEngine as the public funnel; the write ability must
- * not leak into the admin surface, and read-only tokens must not draft.
+ * The scoped MCP-connector surface (v3): read the catalog, LIST + read back ANY
+ * non-deleted quotation, create DRAFT quotations, and UPDATE any pre-send one.
+ * Priced drafts must be priced by the SAME PricingEngine as the public funnel;
+ * the write ability must not leak into the admin surface, read-only tokens must
+ * not draft, and soft-deleted rows must never surface through any read.
  */
 class ConnectorDraftTest extends TestCase
 {
@@ -243,13 +245,29 @@ class ConnectorDraftTest extends TestCase
             ->assertJsonPath('data.assumptions.0', 'a');
     }
 
-    public function test_get_404s_for_a_quotation_not_created_by_the_connector(): void
+    public function test_get_reads_back_any_non_connector_quotation(): void
     {
+        // v3: reads are open — a funnel/admin-created row reads back too, not only
+        // connector-created ones (the old `document.created_via` scoping is gone).
         $quotation = Quotation::factory()->create([
             'reference_code' => 'AXNQ-2099-0002',
             'pricing_config_id' => PricingConfig::getActive()->id,
-            'document' => null,
+            'document' => ['layout' => 'standard', 'items' => []],
         ]);
+
+        $this->getJson('/api/v1/connector/quotations/'.$quotation->reference_code, $this->tokenHeader(['connector:read']))
+            ->assertOk()
+            ->assertJsonPath('data.reference_code', 'AXNQ-2099-0002');
+    }
+
+    public function test_get_404s_for_a_soft_deleted_quotation(): void
+    {
+        // Soft-deleted rows must never surface through any connector read.
+        $quotation = Quotation::factory()->create([
+            'reference_code' => 'AXNQ-2099-0003',
+            'pricing_config_id' => PricingConfig::getActive()->id,
+        ]);
+        $quotation->delete();
 
         $this->getJson('/api/v1/connector/quotations/'.$quotation->reference_code, $this->tokenHeader(['connector:read']))
             ->assertNotFound();
@@ -430,5 +448,253 @@ class ConnectorDraftTest extends TestCase
         ], $this->connectorHeader())
             ->assertStatus(422)
             ->assertJsonValidationErrors('detailed');
+    }
+
+    // ── list_quotations ──────────────────────────────────────────────────────
+
+    /** Create a priced draft via the connector; return its reference code. */
+    private function createPricedDraft(string $email, array $modifiers = []): string
+    {
+        return $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Acme', 'email' => $email],
+            'package_key' => 'test_landing',
+            'modifiers' => $modifiers,
+        ], $this->connectorHeader())->assertCreated()->json('data.reference_code');
+    }
+
+    public function test_list_returns_slim_rows_newest_first(): void
+    {
+        $first = $this->createPricedDraft('one@example.com');
+        $second = $this->createPricedDraft('two@example.com');
+
+        $body = $this->getJson('/api/v1/connector/quotations', $this->tokenHeader(['connector:read']))
+            ->assertOk()
+            ->json();
+
+        // Newest first (second draft leads).
+        $this->assertSame($second, $body['data'][0]['reference_code']);
+        $this->assertSame($first, $body['data'][1]['reference_code']);
+
+        // Slim rows — identity + estimate + admin URL, never the heavy payloads.
+        $row = $body['data'][0];
+        $this->assertSame('two@example.com', $row['client']['email']);
+        $this->assertArrayHasKey('estimate', $row);
+        $this->assertArrayHasKey('admin_url', $row);
+        $this->assertArrayNotHasKey('form_payload', $row);
+        $this->assertArrayNotHasKey('document', $row);
+        $this->assertArrayNotHasKey('line_items', $row);
+    }
+
+    public function test_list_filters_by_status_and_excludes_soft_deleted(): void
+    {
+        $draftRef = $this->createPricedDraft('draft@example.com'); // status=draft
+        $sent = Quotation::factory()->create([
+            'reference_code' => 'AXNQ-2097-0001',
+            'pricing_config_id' => PricingConfig::getActive()->id,
+            'status' => 'sent',
+        ]);
+        $deleted = Quotation::factory()->create([
+            'reference_code' => 'AXNQ-2097-0002',
+            'pricing_config_id' => PricingConfig::getActive()->id,
+            'status' => 'draft',
+        ]);
+        $deleted->delete();
+
+        // status[]=sent returns only the sent row.
+        $sentOnly = $this->getJson('/api/v1/connector/quotations?status[]=sent', $this->tokenHeader(['connector:read']))
+            ->assertOk()->json('data');
+        $this->assertSame(['AXNQ-2097-0001'], array_column($sentOnly, 'reference_code'));
+
+        // No filter → every non-deleted row, but never the soft-deleted one.
+        $all = $this->getJson('/api/v1/connector/quotations', $this->tokenHeader(['connector:read']))
+            ->assertOk()->json('data');
+        $refs = array_column($all, 'reference_code');
+        $this->assertContains($draftRef, $refs);
+        $this->assertContains('AXNQ-2097-0001', $refs);
+        $this->assertNotContains('AXNQ-2097-0002', $refs);
+    }
+
+    public function test_list_search_matches_name_email_and_reference(): void
+    {
+        Quotation::factory()->create(['reference_code' => 'AXNQ-2095-0001', 'name' => 'Zed Widgets', 'email' => 'zed@example.com', 'pricing_config_id' => PricingConfig::getActive()->id]);
+        Quotation::factory()->create(['reference_code' => 'AXNQ-2095-0002', 'name' => 'Other Co', 'email' => 'other@example.com', 'pricing_config_id' => PricingConfig::getActive()->id]);
+
+        // Name match.
+        $byName = $this->getJson('/api/v1/connector/quotations?q=Zed', $this->tokenHeader(['connector:read']))->assertOk()->json('data');
+        $this->assertSame(['AXNQ-2095-0001'], array_column($byName, 'reference_code'));
+
+        // Reference-code match.
+        $byRef = $this->getJson('/api/v1/connector/quotations?q=2095-0002', $this->tokenHeader(['connector:read']))->assertOk()->json('data');
+        $this->assertSame(['AXNQ-2095-0002'], array_column($byRef, 'reference_code'));
+    }
+
+    public function test_list_filters_by_created_date_range(): void
+    {
+        Quotation::factory()->create(['reference_code' => 'AXNQ-2094-0001', 'submitted_at' => '2026-01-10 09:00:00', 'pricing_config_id' => PricingConfig::getActive()->id]);
+        Quotation::factory()->create(['reference_code' => 'AXNQ-2094-0002', 'submitted_at' => '2026-03-20 09:00:00', 'pricing_config_id' => PricingConfig::getActive()->id]);
+
+        $jan = $this->getJson('/api/v1/connector/quotations?from=2026-01-01&to=2026-02-01', $this->tokenHeader(['connector:read']))
+            ->assertOk()->json('data');
+
+        $this->assertSame(['AXNQ-2094-0001'], array_column($jan, 'reference_code'));
+    }
+
+    public function test_list_paginates_and_caps_per_page_at_25(): void
+    {
+        for ($i = 0; $i < 3; $i++) {
+            Quotation::factory()->create(['pricing_config_id' => PricingConfig::getActive()->id]);
+        }
+
+        $page1 = $this->getJson('/api/v1/connector/quotations?per_page=2&page=1', $this->tokenHeader(['connector:read']))->assertOk()->json();
+        $this->assertCount(2, $page1['data']);
+        $this->assertSame(2, $page1['meta']['per_page']);
+        $this->assertSame(3, $page1['meta']['total']);
+        $this->assertSame(2, $page1['meta']['last_page']);
+
+        // Over-cap per_page is silently clamped to 25 (never a 422).
+        $capped = $this->getJson('/api/v1/connector/quotations?per_page=100', $this->tokenHeader(['connector:read']))->assertOk()->json();
+        $this->assertSame(25, $capped['meta']['per_page']);
+    }
+
+    public function test_read_endpoints_are_throttled(): void
+    {
+        // The 60/min throttle is applied to the read group (header proves it's on the route).
+        $this->getJson('/api/v1/connector/catalog', $this->tokenHeader(['connector:read']))
+            ->assertOk()
+            ->assertHeader('X-RateLimit-Limit', '60');
+    }
+
+    // ── update_draft_quotation ───────────────────────────────────────────────
+
+    public function test_update_reprices_a_pre_send_draft_and_stamps_last_updated_via(): void
+    {
+        $ref = $this->createPricedDraft('grow@example.com', ['test_pages' => 6]); // +1 page over free 5
+        $before = Quotation::where('reference_code', $ref)->firstOrFail()->estimate_max_myr;
+
+        $res = $this->putJson("/api/v1/connector/quotations/{$ref}", [
+            'client' => ['name' => 'Acme', 'email' => 'grow@example.com'],
+            'package_key' => 'test_landing',
+            'modifiers' => ['test_pages' => 10], // +5 pages → pricier
+        ], $this->connectorHeader())->assertOk();
+
+        $res->assertJsonPath('data.last_updated_via', 'mcp_connector');
+        $res->assertJsonPath('document_reseeded', true);
+
+        $q = Quotation::where('reference_code', $ref)->firstOrFail();
+        $this->assertGreaterThan((float) $before, (float) $q->estimate_max_myr);
+        $this->assertSame('mcp_connector', $q->form_payload['source_meta']['last_updated_via']);
+        // created_via stays sticky (still connector-created).
+        $this->assertSame('mcp_connector', $q->form_payload['source_meta']['created_via']);
+    }
+
+    /** @return array<string, list<string>> */
+    public static function postSendStatuses(): array
+    {
+        return [
+            'sent' => ['sent'],
+            'accepted' => ['accepted'],
+            'rejected' => ['rejected'],
+            'expired' => ['expired'],
+        ];
+    }
+
+    #[DataProvider('postSendStatuses')]
+    public function test_update_is_refused_after_send(string $status): void
+    {
+        $quotation = Quotation::factory()->create([
+            'pricing_config_id' => PricingConfig::getActive()->id,
+            'status' => $status,
+        ]);
+
+        $res = $this->putJson("/api/v1/connector/quotations/{$quotation->reference_code}", [
+            'client' => ['name' => 'Acme', 'email' => 'locked@example.com'],
+            'package_key' => 'test_landing',
+        ], $this->connectorHeader())->assertStatus(422);
+
+        // The refusal names the status + that only a draft is updatable.
+        $message = $res->json('message');
+        $this->assertStringContainsString("'{$status}'", $message);
+        $this->assertStringContainsString('draft', $message);
+    }
+
+    public function test_update_is_allowed_on_a_draft_regardless_of_creator(): void
+    {
+        // A funnel/admin-created draft (source=admin, no connector provenance) is
+        // updatable — the gate is lifecycle (draft), not origin.
+        $quotation = Quotation::factory()->create([
+            'pricing_config_id' => PricingConfig::getActive()->id,
+            'status' => 'draft',
+            'document' => ['layout' => 'standard', 'items' => []],
+        ]);
+
+        $this->putJson("/api/v1/connector/quotations/{$quotation->reference_code}", [
+            'client' => ['name' => 'Acme', 'email' => 'presend@example.com'],
+            'package_key' => 'test_landing',
+        ], $this->connectorHeader())->assertOk();
+
+        $quotation->refresh();
+        $this->assertSame('draft', $quotation->status); // update doesn't change status
+        $this->assertSame('mcp_connector', $quotation->form_payload['source_meta']['last_updated_via']);
+    }
+
+    public function test_update_404s_for_an_unknown_reference_code(): void
+    {
+        $this->putJson('/api/v1/connector/quotations/AXNQ-1999-9999', [
+            'client' => ['name' => 'Acme', 'email' => 'nope@example.com'],
+            'package_key' => 'test_landing',
+        ], $this->connectorHeader())->assertNotFound();
+    }
+
+    public function test_update_reseeds_a_pristine_connector_document(): void
+    {
+        $ref = $this->createPricedDraft('pristine@example.com', ['test_pages' => 6]);
+        $q = Quotation::where('reference_code', $ref)->firstOrFail();
+        // Base line seeded at midpoint(1500,2500) = 2000, plus a "+1 page" scope line.
+        $this->assertContains(2000, array_map('intval', array_column($q->document['items'], 'rate')));
+
+        // Update to 12 pages, no reseed flag — the untouched connector doc reseeds.
+        $this->putJson("/api/v1/connector/quotations/{$ref}", [
+            'client' => ['name' => 'Acme', 'email' => 'pristine@example.com'],
+            'package_key' => 'test_landing',
+            'modifiers' => ['test_pages' => 12], // +7 pages × 100 = +700 scope line
+        ], $this->connectorHeader())->assertOk()->assertJsonPath('document_reseeded', true);
+
+        $q->refresh();
+        $this->assertContains(700, array_map('intval', array_column($q->document['items'], 'rate')));
+    }
+
+    public function test_update_preserves_an_admin_edited_document_then_reseeds_on_flag(): void
+    {
+        $ref = $this->createPricedDraft('edited@example.com', ['test_pages' => 6]);
+        $q = Quotation::where('reference_code', $ref)->firstOrFail();
+
+        // Simulate an admin hand-editing the document line items.
+        $edited = $q->document;
+        $edited['items'][0]['title'] = 'Bespoke landing (hand-tuned)';
+        $edited['items'][0]['rate'] = 9999;
+        $q->update(['document' => $edited]);
+
+        // Update without reseed_document → the edited document is preserved, only re-priced.
+        $res = $this->putJson("/api/v1/connector/quotations/{$ref}", [
+            'client' => ['name' => 'Acme', 'email' => 'edited@example.com'],
+            'package_key' => 'test_landing',
+            'modifiers' => ['test_pages' => 20],
+        ], $this->connectorHeader())->assertOk();
+        $res->assertJsonPath('document_reseeded', false);
+
+        $q->refresh();
+        $this->assertSame('Bespoke landing (hand-tuned)', $q->document['items'][0]['title']);
+        $this->assertSame(9999, (int) $q->document['items'][0]['rate']);
+
+        // Now with reseed_document: true → the document is regenerated from scope.
+        $this->putJson("/api/v1/connector/quotations/{$ref}", [
+            'client' => ['name' => 'Acme', 'email' => 'edited@example.com'],
+            'package_key' => 'test_landing',
+            'modifiers' => ['test_pages' => 20],
+            'reseed_document' => true,
+        ], $this->connectorHeader())->assertOk()->assertJsonPath('document_reseeded', true);
+
+        $q->refresh();
+        $this->assertSame('Landing', $q->document['items'][0]['title']);
     }
 }

@@ -18,6 +18,10 @@
   /* Text */
   --color-text: #1D1D1F;
   --color-text-secondary: #6E6E73;
+  /* Hero text sits on the light video card in BOTH modes, so it stays dark — NOT
+     overridden in .dark, so it never flips to white and vanish on the card. */
+  --hero-fg: #1D1D1F;
+  --hero-fg-muted: #6E6E73;
   --color-text-tertiary: #86868B;
 
   /* Borders */
@@ -28,6 +32,17 @@
   --color-accent: #0071E3;
   --color-accent-hover: #0077ED;
   --color-accent-soft: rgba(0, 113, 227, 0.10);
+  /* Vivid "hero blue" band — a rich royal-blue block echoing the hero's 3D object,
+     used full-width by the homepage stats + CTA. Same colour in both modes; the
+     text/dividers flip (white in light, near-black in dark — see .dark). */
+  --stat-band-bg: linear-gradient(140deg, #3B82F6 0%, #2563EB 55%, #1D4ED8 100%);
+  --stat-band-fg: #ffffff;
+  --stat-band-fg-muted: rgba(255, 255, 255, 0.74);
+  --stat-band-divider: rgba(255, 255, 255, 0.18);
+  /* CTA button sitting ON a blue band — a white pill with deep-blue text, so it
+     pops off the band in both modes. */
+  --band-cta-bg: #ffffff;
+  --band-cta-fg: #1D4ED8;
   --color-success-soft: rgba(48, 209, 88, 0.12);
   --color-warning-soft: rgba(255, 159, 10, 0.16);
   --color-danger-soft: rgba(255, 59, 48, 0.14);
@@ -161,6 +176,11 @@
   --color-accent: #2997FF;
   --color-accent-hover: #47A6FF;
   --color-accent-soft: rgba(41, 151, 255, 0.14);
+  /* Dark mode: the blue band keeps its colour but the font goes near-black — the
+     dark-mode background colour — so the numerals read dark, not glaring white. */
+  --stat-band-fg: #0A0F1F;
+  --stat-band-fg-muted: rgba(10, 15, 31, 0.78);
+  --stat-band-divider: rgba(10, 15, 31, 0.20);
   --color-success-soft: rgba(48, 209, 88, 0.18);
   --color-warning: #FFB340;
   --color-warning-soft: rgba(255, 179, 64, 0.22);
@@ -466,6 +486,11 @@ h1 { letter-spacing: -0.045em; }
 .dark .btn-pill-accent:hover {
   box-shadow: 0 12px 32px rgba(41, 151, 255, 0.42);
 }
+/* Header "Let's talk" CTA — in dark mode the accent gradient is a brighter blue,
+   so white text reads thin; use near-black (the dark bg) instead, keep the blue. */
+.dark .nav-cta-accent {
+  color: #0A0F1F;
+}
 
 /* Success (green) — WhatsApp / positive actions */
 .btn-pill-success {
@@ -486,6 +511,23 @@ h1 { letter-spacing: -0.045em; }
 }
 .btn-pill-warning:hover {
   filter: brightness(1.03);
+  box-shadow: 0 8px 24px var(--color-warning-soft);
+  transform: translateY(-1px);
+}
+
+/* Preview — a soft light-orange pill so "Preview" (a live in-app look) reads as
+   its own thing, distinct from the neutral ghost "View PDF" beside it, without
+   shouting like the filled warning CTA. Soft tint + orange label (same pattern as
+   the accent/danger soft table actions), legible in both modes. */
+.btn-pill-preview {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning-soft);
+}
+/* Hover: a slightly darker/stronger orange + the same lift as the filled CTAs
+   (accent/warning) so it animates consistently with "Proceed". */
+.btn-pill-preview:hover {
+  background: color-mix(in srgb, var(--color-warning) 28%, transparent);
   box-shadow: 0 8px 24px var(--color-warning-soft);
   transform: translateY(-1px);
 }
@@ -552,6 +594,40 @@ h1 { letter-spacing: -0.045em; }
 }
 .btn-pill-silver:hover {
   background: var(--color-silver-hover);
+}
+
+/* Confirm dialog (§12) — promoted to global so shared dialog components
+   (AdminConfirmDialog, AdminQuotationDeleteDialog) that Teleport to <body> get
+   styled; page-scoped copies (tasks / referrals) still work unchanged. */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+}
+.confirm-card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 20px;
+  border-width: 1px;
+  padding: 24px;
+}
+.confirm-fade-enter-active,
+.confirm-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.confirm-fade-enter-from,
+.confirm-fade-leave-to {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-fade-enter-active,
+  .confirm-fade-leave-active { transition: none; }
 }
 
 /* Floating glass nav (hero quick-links pill). Uses the scrolled nav surface

@@ -1,6 +1,6 @@
 {
   "name": "axelnova-mcp-connector",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "description": "Cloudflare Worker MCP server that lets Claude draft quotations in axelnova-dashboard via the scoped /v1/connector API.",

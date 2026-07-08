@@ -6,15 +6,23 @@ withDefaults(defineProps<{
   data: Record<string, any> | null
   label?: string
   disabled?: boolean
-  variant?: 'ghost' | 'primary'
+  variant?: 'ghost' | 'primary' | 'preview'
   /** Full-width button (for stacked sidebars). */
   block?: boolean
 }>(), {
   label: 'Preview',
   disabled: false,
-  variant: 'ghost',
+  // Soft light-orange by default so Preview reads distinct from the neutral
+  // "View PDF" beside it. Callers can still pass 'ghost'/'primary'.
+  variant: 'preview',
   block: false,
 })
+
+const variantClass = {
+  primary: 'btn-pill-primary',
+  ghost: 'btn-pill-ghost',
+  preview: 'btn-pill-preview',
+}
 
 const open = ref(false)
 
@@ -25,7 +33,7 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
   <button
     type="button"
     class="btn-pill"
-    :class="[variant === 'primary' ? 'btn-pill-primary' : 'btn-pill-ghost', block ? 'w-full justify-center text-[13px]' : 'text-[12px]']"
+    :class="[variantClass[variant], block ? 'w-full justify-center text-[13px]' : 'text-[12px]']"
     :style="block ? undefined : { height: '34px', padding: '0 16px' }"
     :disabled="disabled"
     @click="open = true"

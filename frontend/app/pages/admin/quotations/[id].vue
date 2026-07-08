@@ -90,6 +90,11 @@ watch(() => quotation.value?.referral_partner_id, () => {
 
 async function acceptQuotation() {
   if (!quotation.value) return
+  if (!(await confirm({
+    title: 'Create an order from this quote?',
+    message: `This accepts ${quotation.value.reference_code} and creates a new order — you can’t undo it here.`,
+    confirmLabel: 'Proceed & create order',
+  }))) return
   acceptLoading.value = true
   try {
     const body = isReferralAttributed.value ? { commission_pct: commissionPct.value } : undefined
@@ -179,6 +184,20 @@ async function saveExpiry() {
   finally { expiryLoading.value = false }
 }
 
+// Soft-delete flow (shared composable) — same confirm dialog, 409 order-attached
+// block, and linked-record cleanup as the list. On success we leave the detail page.
+const {
+  target: deleteTarget,
+  blocked: deleteBlocked,
+  deleting,
+  open: openDelete,
+  close: closeDelete,
+  confirm: confirmDelete,
+} = useQuotationDelete(() => navigateTo('/admin/quotations'))
+
+// Confirm-before-act on Proceed & Create Order.
+const { confirmOpen, confirmConfig, confirm, resolveConfirm } = useConfirm()
+
 </script>
 
 <template>
@@ -208,6 +227,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
           @saved="() => fetchQuotation(true)"
           @sent="applyQuotation"
           @accepted="(orderId) => navigateTo(`/admin/orders/${orderId}`)"
+          @delete="openDelete(quotation)"
         />
       </template>
 
@@ -338,9 +358,24 @@ id="commission-pct" v-model.number="commissionPct" type="number" min="5" max="15
             <a
 v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
               target="_blank" rel="noopener" class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
+
+            <!-- Delete — subdued danger, separated so it never competes with the primary CTA. -->
+            <div class="pt-3 mt-1 border-t" :style="{ borderColor: 'var(--color-border)' }">
+              <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :style="{ color: 'var(--color-danger)' }" @click="openDelete(quotation)">
+                <UIcon name="i-lucide-trash-2" class="size-3.5" /> Delete quotation
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </template>
+
+    <!-- Delete confirmation — shared dialog (soft delete, or the order-attached block). -->
+    <AdminQuotationDeleteDialog
+      :target="deleteTarget" :blocked="deleteBlocked" :deleting="deleting"
+      @cancel="closeDelete" @confirm="confirmDelete" />
+
+    <!-- Confirm gate for Proceed & Create Order. -->
+    <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
   </div>
 </template>

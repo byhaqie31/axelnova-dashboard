@@ -136,7 +136,7 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
             <NuxtLink
               ref="navCta"
               to="/services"
-              class="hidden md:inline-flex btn-pill btn-pill-accent"
+              class="nav-cta-accent hidden md:inline-flex btn-pill btn-pill-accent"
               style="height: 32px; font-size: 12px; padding: 0 16px;"
             >
               <span class="magnetic-label">Let's talk</span>
@@ -250,7 +250,9 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
       <slot />
     </main>
 
-    <footer class="mt-32 relative">
+    <!-- The home page ends in a full-bleed colour band that should meet the footer;
+         every other page keeps the breathing room above it. -->
+    <footer class="relative" :class="{ 'mt-32': route.path !== '/' }">
       <div class="aurora-line opacity-60" />
       <div class="border-t" :style="{ borderColor: 'var(--color-border)' }">
         <div class="max-w-7xl mx-auto px-6 pt-12 pb-8">

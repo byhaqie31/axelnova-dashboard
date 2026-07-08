@@ -161,6 +161,7 @@ All buttons are 44pt tall (Apple HIG touch target), pill-shaped (`border-radius:
 | `.btn-pill-accent` | `--grad-cta` gradient + brand-tinted shadow + hover lift |
 | `.btn-pill-success` | Solid `--color-success` (green) + white text — WhatsApp / positive actions |
 | `.btn-pill-warning` | Solid `--color-warning` (orange) + dark label — convert / upgrade actions (e.g. "Expand to detailed") |
+| `.btn-pill-preview` | Soft `--color-warning-soft` fill + orange label — the live in-app "Preview" action (`AdminDocumentPreviewModal`), so it reads distinct from the neutral ghost "View PDF" beside it |
 | `.btn-pill-danger` | Solid `--color-danger` (red) + white label — destructive actions (e.g. "Revert changes") |
 | `.btn-pill-silver` | `--color-silver` metallic fill — neutral secondary actions (e.g. "Move back to draft") |
 

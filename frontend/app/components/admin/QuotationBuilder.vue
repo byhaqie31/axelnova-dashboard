@@ -36,6 +36,7 @@ const emit = defineEmits<{
   saved: [id: number]
   sent: [quotation: Record<string, any>]
   accepted: [orderId: number]
+  delete: []
 }>()
 
 const { apiFetch } = useAdminAuth()
@@ -239,6 +240,23 @@ function canonicalPackages() {
 }
 const hasPackages = computed(() => packages.value.some(p => p.packageKey))
 
+// ── Custom (non-catalog) quote ───────────────────────────────────────────────
+// A quote with no catalog package but real content (bespoke line items or a
+// detailed proposal) is "Custom": its scope is those line items, priced by them.
+// We show a Custom identity card in place of the empty package picker. A brand-new
+// blank quote (no package, no content) still shows the picker.
+const isCustom = computed(() => !hasPackages.value && (doc.items.length > 0 || detailed.value))
+// Escape hatch: reveal the catalog picker on a custom quote to convert it.
+const showCatalogPicker = ref(false)
+const showCustomCard = computed(() => isCustom.value && !showCatalogPicker.value)
+// Provenance of the loaded draft — drives the "via Axelnova MCP" remark.
+const createdViaConnector = computed(() => {
+  const q = props.quotation
+  const fp = (q?.form_payload ?? {}) as Record<string, any>
+  const d = (q?.document ?? {}) as Record<string, any>
+  return (fp.source_meta?.created_via ?? fp.created_via ?? d.created_via ?? null) === 'mcp_connector'
+})
+
 // JSON of doc.items right after a seed — lets us detect whether the admin has since
 // edited the lines (so we don't clobber manual edits when re-seeding).
 const seedSnapshot = ref('')
@@ -361,13 +379,18 @@ const draftContext = computed(() => {
   const d = q.document ?? {}
   const fp = q.form_payload ?? {}
   const createdVia: string | null = fp.source_meta?.created_via ?? fp.created_via ?? d.created_via ?? null
+  // Stamped by the MCP connector's update tool (v3) — shows "last edited via connector"
+  // alongside the created-via badge, even on a funnel/admin-created draft.
+  const lastUpdatedVia: string | null = fp.source_meta?.last_updated_via ?? null
+  const lastUpdatedAt: string | null = fp.source_meta?.last_updated_at ?? null
   const assumptions: string[] = Array.isArray(d.assumptions) ? d.assumptions : []
   const openQuestions: string[] = Array.isArray(d.open_questions) ? d.open_questions : []
   const notes: string | null = d.notes ?? null
   const isConnector = createdVia === 'mcp_connector'
-  // Render only when there's context worth showing (or it's a connector draft).
-  if (!isConnector && !assumptions.length && !openQuestions.length && !notes) return null
-  return { createdVia, isConnector, assumptions, openQuestions, notes }
+  const editedViaConnector = lastUpdatedVia === 'mcp_connector'
+  // Render only when there's context worth showing (connector-touched, or notes/assumptions/questions).
+  if (!isConnector && !editedViaConnector && !assumptions.length && !openQuestions.length && !notes) return null
+  return { createdVia, isConnector, editedViaConnector, lastUpdatedAt, assumptions, openQuestions, notes }
 })
 
 function createdViaLabel(v: string | null): string {
@@ -632,11 +655,27 @@ async function save(): Promise<number | null> {
 
 const sendMenuOpen = ref(false)
 
+// Confirm-before-act on the consequential actions (send to client / create order)
+// so a stray click can't fire them.
+const { confirmOpen, confirmConfig, confirm, resolveConfirm } = useConfirm()
+
 // Deliver the quote: email it to the client, or just generate + open the PDF to
 // share manually. Both save first and mark the quote sent.
 async function deliver(channel: 'email' | 'download') {
   if (!isEdit.value) return
   sendMenuOpen.value = false
+  const ok = await confirm(channel === 'email'
+    ? {
+        title: 'Send this quotation to the client?',
+        message: `This emails ${props.quotation?.reference_code ?? 'the quote'} to ${client.email || 'the client'} and marks it sent.`,
+        confirmLabel: 'Send to client',
+      }
+    : {
+        title: 'Mark as sent and download?',
+        message: 'This marks the quote sent (no email) and opens the PDF for you to share manually.',
+        confirmLabel: 'Mark sent & download',
+      })
+  if (!ok) return
   sending.value = true
   error.value = ''
   try {
@@ -675,6 +714,11 @@ watch(() => props.quotation?.referral_partner_id, () => {
 
 async function accept() {
   if (!isEdit.value) return
+  if (!(await confirm({
+    title: 'Create an order from this quote?',
+    message: `This accepts ${props.quotation?.reference_code ?? 'the quotation'} and creates a new order — you can’t undo it here.`,
+    confirmLabel: 'Proceed & create order',
+  }))) return
   accepting.value = true
   error.value = ''
   try {
@@ -787,17 +831,27 @@ v-if="clientResults.length" class="absolute z-20 left-0 right-0 mt-1.5 rounded-x
 
       <!-- Draft context (connector provenance / assumptions / open questions) -->
       <section v-if="draftContext" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
           <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Draft context</p>
-          <span
+          <div class="flex items-center gap-2 flex-wrap justify-end">
+            <span
 v-if="draftContext.createdVia"
-            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
-            :style="draftContext.isConnector
-              ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-              : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">
-            <UIcon :name="draftContext.isConnector ? 'i-lucide-bot' : 'i-lucide-pen-line'" class="size-3.5" />
-            {{ createdViaLabel(draftContext.createdVia) }}
-          </span>
+              class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+              :style="draftContext.isConnector
+                ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+                : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">
+              <UIcon :name="draftContext.isConnector ? 'i-lucide-bot' : 'i-lucide-pen-line'" class="size-3.5" />
+              {{ createdViaLabel(draftContext.createdVia) }}
+            </span>
+            <span
+v-if="draftContext.editedViaConnector"
+              class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+              :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }"
+              :title="draftContext.lastUpdatedAt ? `Last edited via connector on ${new Date(draftContext.lastUpdatedAt).toLocaleString('en-MY')}` : undefined">
+              <UIcon name="i-lucide-history" class="size-3.5" />
+              Last edited via connector
+            </span>
+          </div>
         </div>
 
         <div class="space-y-5">
@@ -834,44 +888,84 @@ v-if="draftContext.createdVia"
 
       <!-- Packages & scope — repeatable, one block per package (multi-package quote) -->
       <section id="qb-package" class="space-y-4">
+        <!-- Custom (non-catalog) quote → an identity card in place of the empty
+             picker. Its scope IS the line items below; there are no catalog
+             scope-fields/add-ons for custom work. -->
         <div
-v-for="(pkg, i) in packages" :key="i" class="rounded-2xl border p-6"
+v-if="showCustomCard" class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between mb-5">
-            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">
-              Package &amp; scope<span v-if="packages.length > 1"> · {{ i + 1 }}</span>
-            </p>
-            <button
-v-if="packages.length > 1" type="button"
-              class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary)"
-              :style="{ color: 'var(--color-danger)' }" @click="removePackage(i)">
-              <UIcon name="i-lucide-trash-2" class="size-3.5" /> Remove
-            </button>
-          </div>
-          <QuoteScopeFields
-:state="pkg" :rush="rush" :require-package="!detailed"
-            :package-error="i === 0 ? errors.package : ''" />
-        </div>
-
-        <button
-type="button"
-          class="w-full rounded-2xl border border-dashed px-4 py-3.5 text-[13px] font-medium transition-colors hover:bg-(--color-bg-secondary) flex items-center justify-center gap-2"
-          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
-          @click="addPackage">
-          <UIcon name="i-lucide-plus" class="size-4" /> Add another package
-        </button>
-
-        <!-- Rush — one quote-level flag applied to every package. -->
-        <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input v-model="rush" type="checkbox" class="sr-only" >
-            <span class="rush-track" :class="{ active: rush }" />
-            <span>
-              <span class="text-[13px] font-medium" style="color: var(--color-text);">Rush delivery</span>
-              <span class="text-[12px] ml-2" style="color: var(--color-text-tertiary);">(+20%, week/month timelines reduced ~30%)</span>
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Custom package</p>
+            <span
+              class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+              :style="createdViaConnector
+                ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+                : { background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">
+              <UIcon :name="createdViaConnector ? 'i-lucide-bot' : 'i-lucide-shapes'" class="size-3.5" />
+              {{ createdViaConnector ? 'Custom · via Axelnova MCP' : 'Custom' }}
             </span>
-          </label>
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Custom package name</label>
+            <input
+v-model="doc.project" type="text" placeholder="e.g. Custom e-commerce build"
+              class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
+            <p class="text-[11px]" style="color: var(--color-text-tertiary);">Outside the catalog — this names the quote (its project title); it’s priced by the line items below.</p>
+          </div>
+          <button
+type="button" class="mt-4 inline-flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-70"
+            :style="{ color: 'var(--color-accent)' }" @click="showCatalogPicker = true">
+            <UIcon name="i-lucide-package" class="size-3.5" /> Use a catalog package instead
+          </button>
         </div>
+
+        <template v-else>
+          <!-- Reveal the picker on a custom quote for conversion — offer a way back. -->
+          <button
+v-if="isCustom" type="button" class="inline-flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-70"
+            :style="{ color: 'var(--color-text-secondary)' }" @click="showCatalogPicker = false">
+            <UIcon name="i-lucide-arrow-left" class="size-3.5" /> Back to custom
+          </button>
+
+          <div
+v-for="(pkg, i) in packages" :key="i" class="rounded-2xl border p-6"
+            :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <div class="flex items-center justify-between mb-5">
+              <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">
+                Package &amp; scope<span v-if="packages.length > 1"> · {{ i + 1 }}</span>
+              </p>
+              <button
+v-if="packages.length > 1" type="button"
+                class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary)"
+                :style="{ color: 'var(--color-danger)' }" @click="removePackage(i)">
+                <UIcon name="i-lucide-trash-2" class="size-3.5" /> Remove
+              </button>
+            </div>
+            <QuoteScopeFields
+:state="pkg" :rush="rush" :require-package="!detailed"
+              :package-error="i === 0 ? errors.package : ''" />
+          </div>
+
+          <button
+type="button"
+            class="w-full rounded-2xl border border-dashed px-4 py-3.5 text-[13px] font-medium transition-colors hover:bg-(--color-bg-secondary) flex items-center justify-center gap-2"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
+            @click="addPackage">
+            <UIcon name="i-lucide-plus" class="size-4" /> Add another package
+          </button>
+
+          <!-- Rush — one quote-level flag applied to every package. -->
+          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input v-model="rush" type="checkbox" class="sr-only" >
+              <span class="rush-track" :class="{ active: rush }" />
+              <span>
+                <span class="text-[13px] font-medium" style="color: var(--color-text);">Rush delivery</span>
+                <span class="text-[12px] ml-2" style="color: var(--color-text-tertiary);">(+20%, week/month timelines reduced ~30%)</span>
+              </span>
+            </label>
+          </div>
+        </template>
       </section>
 
       <!-- Quotation document -->
@@ -884,7 +978,10 @@ type="button"
         </div>
 
         <div class="grid gap-4">
-          <div class="space-y-1.5">
+          <!-- Project title lives in the Custom package card when this is a custom
+               quote (it names the package there) — hidden here to avoid two inputs
+               for the one value. -->
+          <div v-if="!showCustomCard" class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Project title</label>
             <input v-model="doc.project" type="text" placeholder="e.g. Brand website — design & front-end build" class="contact-input w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           </div>
@@ -1058,12 +1155,23 @@ id="qb-commission-pct" v-model.number="commissionPct" type="number" min="5" max=
               {{ accepting ? 'Creating order…' : 'Proceed & Create Order' }}
             </button>
           </template>
+
+          <!-- Delete — same spot + treatment as a sent quote's Actions panel, so the
+               placement is identical across statuses. Separated, danger-text only. -->
+          <div class="pt-3 mt-1 border-t" :style="{ borderColor: 'var(--color-border)' }">
+            <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" :style="{ color: 'var(--color-danger)' }" @click="emit('delete')">
+              <UIcon name="i-lucide-trash-2" class="size-3.5" /> Delete quotation
+            </button>
+          </div>
         </template>
       </div>
 
       <p v-if="error" class="text-[12px] text-center px-3" style="color: var(--color-danger);">{{ error }}</p>
       <p v-else-if="!isEdit" class="text-[11px] text-center px-3" style="color: var(--color-text-tertiary);">Save the draft to enable PDF preview and sending.</p>
     </div>
+
+    <!-- Confirm gate for send / create-order. -->
+    <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
   </div>
 </template>
 

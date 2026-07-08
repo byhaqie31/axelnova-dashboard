@@ -4,38 +4,78 @@ namespace App\Http\Controllers\Api\V1\Connector;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Connector\DraftQuotationRequest;
+use App\Http\Requests\Connector\ListQuotationsRequest;
+use App\Http\Requests\Connector\UpdateDraftQuotationRequest;
 use App\Models\Client;
 use App\Models\Quotation;
 use App\Services\Connector\ConnectorCatalog;
 use App\Services\Quoting\DetailedDocumentBuilder;
 use App\Services\Quoting\DocumentSeeder;
 use App\Services\Quoting\PricingEngine;
+use App\Services\Quoting\QuotationIndexQuery;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * The MCP connector's draft-quotation surface. Reads back (connector:read) and
- * creates (connector:draft) DRAFT quotations only — it can never change status,
- * accept a quote, or touch orders/clients/payments. Draft creation logic lives
- * in store(); the read-back is scoped to connector-created rows so the token
- * can't enumerate arbitrary quotations.
+ * The MCP connector's quotation surface. Access model (v3):
+ *   • READ everything  — list (index) and read-back (show) ANY non-deleted
+ *     quotation, whatever created it. Soft-deleted rows are never exposed.
+ *   • WRITE with a gate — create (store) a DRAFT, and update (update) ANY
+ *     quotation while it is pre-send (draft/new/viewed/contacted); locked once sent.
+ *   • DESTROY never     — there is no delete here; that is portal-only, by hand.
+ *
+ * All the shared pricing/document logic lives in buildDraft(); store() creates a
+ * new row from it, update() re-prices an existing one (with a document-reseed
+ * guard so an admin-edited document is never silently replaced).
  */
 class QuotationDraftController extends Controller
 {
     /**
-     * Create a DRAFT quotation from a client brief. Two paths share this method:
-     *
-     *   • Priced   — package_key set: re-priced through the SAME PricingEngine as
-     *     the public funnel (modifiers/scope fields/add-ons/rush). Any line_items
-     *     ride along as extras in the document, never added to the engine price.
-     *   • Bespoke  — package_key null: estimate_min == estimate_max == Σ line_items;
-     *     ETA left for the admin (stored as the 0/'week' "no ETA" sentinel).
-     *
-     * Always lands as status=draft, source=admin, with an AXNQ reference code. It
-     * NEVER sends anything to the client — the admin reviews and delivers.
+     * List quotations (slim rows) — the connector's browse surface. Filters:
+     * status[] (any lifecycle value, default all non-deleted), q (name/email/ref
+     * search), from/to (created date range), page/per_page (default 10, max 25).
+     * Newest first. Full detail comes from show(); this never returns form_payload
+     * or the document.
+     */
+    public function index(ListQuotationsRequest $request): JsonResponse
+    {
+        // Self-heal overdue sent quotes so 'expired' is accurate + filterable.
+        Quotation::expireOverdue();
+
+        $data = $request->validated();
+        // Default 10, hard-capped at 25 (silently — a forgiving ceiling, not a 422).
+        $perPage = min(25, max(1, (int) ($data['per_page'] ?? 10)));
+
+        // Search + status + date-range + newest-first — the SAME shared query the
+        // admin index uses (soft-deleted rows excluded by the model scope).
+        $paginator = QuotationIndexQuery::fromConnectorFilters($data)
+            ->builder()
+            ->paginate($perPage);
+
+        // Resolve the engine once (package-label lookup), not once per row.
+        $engine = PricingEngine::active();
+
+        return response()->json([
+            'data' => collect($paginator->items())
+                ->map(fn (Quotation $q): array => self::listRow($q, $engine))
+                ->all(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Create a DRAFT quotation from a client brief. Priced (package_key/packages),
+     * bespoke (line_items only), or detailed (self-priced sections). Always lands
+     * status=draft, source=admin, AXNQ code; it NEVER sends to the client.
      */
     public function store(DraftQuotationRequest $request): JsonResponse
     {
@@ -43,144 +83,22 @@ class QuotationDraftController extends Controller
         $catalog = new ConnectorCatalog;
         $engine = PricingEngine::active();
 
-        $rawPackages = $this->rawPackages($data);
-        $rush = (bool) ($data['rush'] ?? false);
-        $lineItems = $this->normaliseLineItems($data['line_items'] ?? []);
+        $quotation = DB::transaction(function () use ($request, $data, $catalog, $engine) {
+            $client = $this->upsertClient($data['client']);
 
-        $quotation = DB::transaction(function () use ($request, $data, $catalog, $engine, $rawPackages, $rush, $lineItems) {
-            // Upsert the client by email — same dedup pattern as the public funnel.
-            $client = Client::firstOrCreate(
-                ['email' => $data['client']['email']],
-                [
-                    'name' => $data['client']['name'],
-                    'phone' => $data['client']['phone'] ?? null,
-                    'company' => $data['client']['company'] ?? null,
-                ],
-            );
+            $built = $this->buildDraft($request, $data, $client, $catalog, $engine, 'mcp_connector', [
+                'created_via' => 'mcp_connector',
+            ]);
 
-            if (! empty($data['detailed']) && is_array($data['detailed'])) {
-                // Detailed proposal — self-priced from its own sections (no engine, no
-                // packages). Built into the canonical detailed document shape the admin
-                // builder + PDF already render; ETA left for the admin (0/'week' sentinel).
-                $built = (new DetailedDocumentBuilder)->build(
-                    $data['detailed'],
-                    ($data['project'] ?? null) ?: null,
-                    ($data['intro'] ?? null) ?: null,
-                );
-                $document = array_merge($built['document'], [
-                    // Mirror project/intro at the document top level too, for the
-                    // connector read-back view (the PDF reads them from payload).
-                    'project' => ($data['project'] ?? null) ?: null,
-                    'intro' => ($data['intro'] ?? null) ?: null,
-                    'created_via' => 'mcp_connector',
-                    'assumptions' => array_values($data['assumptions'] ?? []),
-                    'open_questions' => array_values($data['open_questions'] ?? []),
-                    'notes' => $data['notes'] ?? null,
-                ]);
-                $minMyr = $maxMyr = $built['total'];
-                $etaValue = 0;
-                $etaUnit = 'week';
-                $packages = [];
-                $first = null;
-                $breakdown = [];
-            } else {
-                // Resolve to the canonical packages[] the whole system reads: split each
-                // package's flat `modifiers` map onto the engine's modifiers/scope_values
-                // and resolve its service_package_id.
-                $packages = array_map(function (array $rp) use ($catalog, $engine): array {
-                    $key = (string) $rp['package_key'];
-                    $split = $catalog->splitModifiers($key, (array) ($rp['modifiers'] ?? []));
-
-                    return [
-                        'package_key' => $key,
-                        'service_package_id' => $engine->packageId($key),
-                        'scope_values' => $split['scope_values'],
-                        'modifiers' => $split['modifiers'],
-                        'addon_keys' => array_values((array) ($rp['addon_keys'] ?? [])),
-                    ];
-                }, $rawPackages);
-
-                $isBespoke = $packages === [];
-                $estimate = $engine->calculateMulti($packages, $rush);
-
-                if ($isBespoke) {
-                    // Bespoke: the sum of the line items IS the agreed range; ETA left as
-                    // the 0/'week' "no ETA yet" sentinel (columns are NOT NULL).
-                    $minMyr = $maxMyr = array_sum(array_column($lineItems, 'amount_myr'));
-                    $etaValue = 0;
-                    $etaUnit = 'week';
-                } else {
-                    $minMyr = $estimate->minMyr;
-                    $maxMyr = $estimate->maxMyr;
-                    $etaValue = $estimate->etaValue;
-                    $etaUnit = $estimate->etaUnit;
-                }
-
-                // Seed the canonical document (document.items — what the PDF renders). A
-                // fresh connector row always seeds; line_items ride along as extra lines.
-                // Bespoke never applies a rush uplift (its total is the line-item sum).
-                $seeded = (new DocumentSeeder($engine))->seed($estimate, ! $isBespoke && $rush, $lineItems);
-                $document = array_merge($seeded['document'], [
-                    // Presentation fields the PDF renders (the mapper falls back to a
-                    // default project title when project is null).
-                    'project' => ($data['project'] ?? null) ?: null,
-                    'intro' => ($data['intro'] ?? null) ?: null,
-                    'created_via' => 'mcp_connector',
-                    'assumptions' => array_values(array_merge($data['assumptions'] ?? [], $seeded['assumptions'])),
-                    'open_questions' => array_values($data['open_questions'] ?? []),
-                    'notes' => $data['notes'] ?? null,
-                ]);
-
-                $first = $packages[0] ?? null;
-                $breakdown = $estimate->breakdown;
-            }
-
-            $quotation = Quotation::create([
+            $quotation = Quotation::create(array_merge($built['attributes'], [
                 'reference_code' => ReferenceCodeGenerator::generate(DocumentType::Quotation),
                 'source' => 'admin',
                 'status' => 'draft',
                 'public_token' => Str::random(48),
-                'client_id' => $client->id,
-                'name' => $client->name,
-                'email' => $client->email,
-                'phone' => $client->phone,
-                'company' => $client->company,
-                'package_key' => $first['package_key'] ?? null,
-                'service_package_id' => $first['service_package_id'] ?? null,
-                'pricing_config_id' => $engine->getConfig()->id,
-                // Canonical multi-package form_payload (see FormPayloadNormalizer) +
-                // the full request body as an audit trail, so the admin can reopen
-                // and re-price the draft in the quote builder.
-                'form_payload' => [
-                    'request' => $request->all(),
-                    'packages' => $packages,
-                    'rush' => $rush,
-                    'breakdown' => $breakdown,
-                    'source_meta' => ['created_via' => 'mcp_connector'],
-                ],
-                'document' => $document,
-                'estimate_min_myr' => $minMyr,
-                'estimate_max_myr' => $maxMyr,
-                'estimate_eta_value' => $etaValue,
-                'estimate_eta_unit' => $etaUnit,
                 'submitted_at' => now(),
-            ]);
+            ]));
 
-            // Persist add-on rows (union across packages) so the admin detail + PDF
-            // show them.
-            $addonKeys = collect($packages)->flatMap(fn (array $p): array => $p['addon_keys'])->unique()->values()->all();
-            if ($addonKeys !== []) {
-                $addonDefs = $engine->addons();
-                foreach ($addonKeys as $key) {
-                    if (isset($addonDefs[$key])) {
-                        $quotation->addons()->create([
-                            'addon_key' => $key,
-                            'addon_label' => $addonDefs[$key]['label'],
-                            'amount_myr' => $addonDefs[$key]['amount'],
-                        ]);
-                    }
-                }
-            }
+            $this->syncAddons($quotation, $built['addonKeys'], $engine);
 
             return $quotation;
         });
@@ -197,22 +115,113 @@ class QuotationDraftController extends Controller
     }
 
     /**
-     * Read back a connector-created draft by its AXNQ reference code. Scoped to
-     * rows this connector authored (document.created_via = mcp_connector) so the
-     * read ability can't fan out across every quotation in the system.
+     * Update ANY quotation while it is pre-send (draft/new/viewed/contacted). Once
+     * sent (or accepted/declined/rejected/expired/spam) it is locked — refused with
+     * a message naming the status. Re-prices the estimate; the document is only
+     * re-seeded when it is still a pristine engine-seed (or the caller passes
+     * reseed_document: true) so an admin-edited document is never silently replaced.
+     */
+    public function update(UpdateDraftQuotationRequest $request, string $reference_code): JsonResponse
+    {
+        $quotation = Quotation::where('reference_code', $reference_code)->first();
+
+        if (! $quotation) {
+            return response()->json([
+                'message' => "No quotation found with reference_code '{$reference_code}'. Use list_quotations to find it, or the exact AXNQ code.",
+            ], 404);
+        }
+
+        // Lifecycle gate — pre-send only. A whitelist, so any unknown/future status
+        // is treated as locked. The only pre-send status is 'draft' (see
+        // Quotation::PRE_SEND_STATUSES).
+        if (! $quotation->isPreSend()) {
+            return response()->json([
+                'message' => "Quotation {$quotation->reference_code} is '{$quotation->status}' and can no longer be updated from the connector — "
+                    .'only a pre-send draft (status: '.implode(', ', Quotation::PRE_SEND_STATUSES).') is updatable. '
+                    .'Once a quote is sent to the client, a change is a manual admin revision — out of scope here.',
+            ], 422);
+        }
+
+        $data = $request->validated();
+        $catalog = new ConnectorCatalog;
+        $engine = PricingEngine::active();
+        $reseedFlag = (bool) ($data['reseed_document'] ?? false);
+
+        $existingDoc = is_array($quotation->document) ? $quotation->document : [];
+        $existingLayout = $existingDoc['layout'] ?? 'standard';
+        $mode = $this->draftMode($data);
+
+        // Reseed decision (locked decision #3): regenerate the document only when
+        // it is safe to — an explicit flag, an empty document, or a still-pristine
+        // engine seed. Otherwise the admin-edited document is preserved.
+        $regenerate = $reseedFlag
+            || ! DocumentSeeder::hasContent($existingDoc)
+            || $this->isPristineStandardSeed($quotation, $engine);
+
+        // Not regenerating, decided BEFORE any write: we can only safely preserve a
+        // standard document while re-pricing the engine estimate. A detailed/bespoke
+        // document IS its own price (re-pricing it means replacing it), and a format
+        // switch would strand the old document — both need an explicit reseed_document.
+        $preserveDocument = ! $regenerate && $mode === 'priced' && $existingLayout === 'standard';
+
+        if (! $regenerate && ! $preserveDocument) {
+            return response()->json([
+                'message' => "Quotation {$quotation->reference_code} has an edited or detailed document that this update would replace. "
+                    .'Re-send with reseed_document: true to regenerate the document from the new scope, '
+                    .'or edit it by hand in the admin builder.',
+            ], 422);
+        }
+
+        // created_via is sticky — updating a funnel/admin draft keeps its origin
+        // provenance; we stamp last_updated_via separately.
+        $createdVia = $quotation->normalizedForm()['source_meta']['created_via'] ?? null;
+        $sourceMeta = [
+            'created_via' => $createdVia,
+            'last_updated_via' => 'mcp_connector',
+            'last_updated_at' => now()->toISOString(),
+        ];
+        $documentReseeded = $regenerate;
+
+        DB::transaction(function () use ($request, $data, $catalog, $engine, $createdVia, $sourceMeta, $quotation, $existingDoc, $preserveDocument): void {
+            $built = $this->buildDraft($request, $data, $this->upsertClient($data['client']), $catalog, $engine, $createdVia, $sourceMeta);
+            if ($preserveDocument) {
+                $built['attributes']['document'] = $existingDoc;
+            }
+            $quotation->update($built['attributes']);
+            $this->syncAddons($quotation, $built['addonKeys'], $engine);
+        });
+
+        $quotation->logActivity('quotation.updated', [
+            'via' => 'mcp_connector',
+            'document_reseeded' => $documentReseeded,
+        ]);
+
+        $note = $documentReseeded
+            ? 'The document was re-seeded from the new scope.'
+            : 'The existing (edited) document was preserved; the estimate was re-priced. Pass reseed_document: true to regenerate it.';
+
+        return response()->json([
+            'message' => "Quotation {$quotation->reference_code} updated. {$note} It remains a DRAFT for admin review.",
+            'document_reseeded' => $documentReseeded,
+            'data' => self::connectorView($quotation->fresh()->load('addons')),
+        ]);
+    }
+
+    /**
+     * Read back ANY non-deleted quotation by its reference code (v3: reads are
+     * open — whatever created the row). Soft-deleted rows return 404 (the model's
+     * SoftDeletes scope excludes them).
      */
     public function show(string $reference_code): JsonResponse
     {
         $quotation = Quotation::query()
             ->where('reference_code', $reference_code)
-            ->where('document->created_via', 'mcp_connector')
             ->with('addons')
             ->first();
 
         if (! $quotation) {
             return response()->json([
-                'message' => "No connector-created quotation found with reference_code '{$reference_code}'. "
-                    .'Only quotations created via this connector are readable here; use the exact AXNQ code returned by create_draft_quotation.',
+                'message' => "No quotation found with reference_code '{$reference_code}'. Use list_quotations to browse, or pass the exact AXNQ code.",
             ], 404);
         }
 
@@ -220,50 +229,209 @@ class QuotationDraftController extends Controller
     }
 
     /**
-     * The connector-facing projection of a quotation — the draft as the AI (and
-     * the admin reviewing it) needs to see it. Kept deliberately narrow: no
-     * public_token, no internal audit fields.
+     * Price the validated draft data and build the full set of Quotation attributes
+     * (document already merged with presentation fields + source_meta). Shared by
+     * store() (fresh row) and update() (re-price). Detailed / priced / bespoke are
+     * the three modes, mirroring the create contract.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $sourceMeta  form_payload.source_meta to stamp.
+     * @return array{attributes: array<string, mixed>, addonKeys: list<string>, mode: string}
      */
-    protected static function connectorView(Quotation $quotation): array
+    private function buildDraft(FormRequest $request, array $data, Client $client, ConnectorCatalog $catalog, PricingEngine $engine, ?string $createdVia, array $sourceMeta): array
     {
-        $document = is_array($quotation->document) ? $quotation->document : [];
-        $hasEta = (int) $quotation->estimate_eta_value > 0;
+        $rush = (bool) ($data['rush'] ?? false);
+        $lineItems = $this->normaliseLineItems($data['line_items'] ?? []);
 
-        return [
-            'reference_code' => $quotation->reference_code,
-            'status' => $quotation->status,
-            'source' => $quotation->source,
-            'created_via' => $document['created_via'] ?? null,
-            'client' => [
-                'name' => $quotation->name,
-                'email' => $quotation->email,
-                'phone' => $quotation->phone,
-                'company' => $quotation->company,
-            ],
-            'package_key' => $quotation->package_key,
-            'layout' => $document['layout'] ?? 'standard',
-            'project' => $document['project'] ?? null,
-            'intro' => $document['intro'] ?? null,
-            'estimate' => [
-                'min_myr' => (float) $quotation->estimate_min_myr,
-                'max_myr' => (float) $quotation->estimate_max_myr,
-                'eta_value' => $hasEta ? (int) $quotation->estimate_eta_value : null,
-                'eta_unit' => $hasEta ? $quotation->estimate_eta_unit : null,
-            ],
-            'line_items' => self::lineItemsView($document),
-            'assumptions' => $document['assumptions'] ?? [],
-            'open_questions' => $document['open_questions'] ?? [],
-            'notes' => $document['notes'] ?? null,
-            'addons' => $quotation->relationLoaded('addons')
-                ? $quotation->addons->map(fn ($a): array => [
-                    'key' => $a->addon_key,
-                    'label' => $a->addon_label,
-                    'amount_myr' => (float) $a->amount_myr,
-                ])->values()->all()
-                : [],
-            'admin_url' => rtrim((string) config('services.frontend.url'), '/')."/admin/quotations/{$quotation->id}",
-            'created_at' => $quotation->created_at?->toISOString(),
+        $presentation = [
+            'project' => ($data['project'] ?? null) ?: null,
+            'intro' => ($data['intro'] ?? null) ?: null,
+            'created_via' => $createdVia,
+            'open_questions' => array_values($data['open_questions'] ?? []),
+            'notes' => $data['notes'] ?? null,
         ];
+
+        if (! empty($data['detailed']) && is_array($data['detailed'])) {
+            // Detailed proposal — self-priced from its own sections (no engine).
+            $result = (new DetailedDocumentBuilder)->build(
+                $data['detailed'],
+                $presentation['project'],
+                $presentation['intro'],
+            );
+            $document = array_merge($result['document'], $presentation, [
+                'assumptions' => array_values($data['assumptions'] ?? []),
+            ]);
+            $minMyr = $maxMyr = $result['total'];
+            $etaValue = 0;
+            $etaUnit = 'week';
+            $packages = [];
+            $first = null;
+            $breakdown = [];
+            $mode = 'detailed';
+        } else {
+            $packages = $this->resolveConnectorPackages($this->rawPackages($data), $catalog, $engine);
+            $isBespoke = $packages === [];
+            $estimate = $engine->calculateMulti($packages, $rush);
+
+            if ($isBespoke) {
+                $minMyr = $maxMyr = array_sum(array_column($lineItems, 'amount_myr'));
+                $etaValue = 0;
+                $etaUnit = 'week';
+                $mode = 'bespoke';
+            } else {
+                $minMyr = $estimate->minMyr;
+                $maxMyr = $estimate->maxMyr;
+                $etaValue = $estimate->etaValue;
+                $etaUnit = $estimate->etaUnit;
+                $mode = 'priced';
+            }
+
+            // Bespoke never applies a rush uplift (its total is the line-item sum).
+            $seeded = (new DocumentSeeder($engine))->seed($estimate, ! $isBespoke && $rush, $lineItems);
+            $document = array_merge($seeded['document'], $presentation, [
+                'assumptions' => array_values(array_merge($data['assumptions'] ?? [], $seeded['assumptions'])),
+            ]);
+            $first = $packages[0] ?? null;
+            $breakdown = $estimate->breakdown;
+        }
+
+        $attributes = [
+            'client_id' => $client->id,
+            'name' => $client->name,
+            'email' => $client->email,
+            'phone' => $client->phone,
+            'company' => $client->company,
+            'package_key' => $first['package_key'] ?? null,
+            'service_package_id' => $first['service_package_id'] ?? null,
+            'pricing_config_id' => $engine->getConfig()->id,
+            'form_payload' => [
+                // Full request body as an audit trail (also the source of the
+                // line_items the pristine-seed check re-derives from).
+                'request' => $request->all(),
+                'packages' => $packages,
+                'rush' => $rush,
+                'breakdown' => $breakdown,
+                'source_meta' => $sourceMeta,
+            ],
+            'document' => $document,
+            'estimate_min_myr' => $minMyr,
+            'estimate_max_myr' => $maxMyr,
+            'estimate_eta_value' => $etaValue,
+            'estimate_eta_unit' => $etaUnit,
+        ];
+
+        $addonKeys = collect($packages)
+            ->flatMap(fn (array $p): array => $p['addon_keys'])
+            ->unique()
+            ->values()
+            ->all();
+
+        return ['attributes' => $attributes, 'addonKeys' => $addonKeys, 'mode' => $mode];
+    }
+
+    /**
+     * Whether the stored document is still exactly what the seeder would produce
+     * from the row's CURRENT form_payload — i.e. a connector-seeded standard
+     * document that no admin has hand-edited. Recompute-and-compare, so it needs no
+     * stored marker and stays false for detailed/bespoke/edited documents (which
+     * are then preserved). If the active pricing config changed since seeding, the
+     * recompute won't match and we conservatively treat it as edited.
+     */
+    private function isPristineStandardSeed(Quotation $quotation, PricingEngine $engine): bool
+    {
+        $doc = is_array($quotation->document) ? $quotation->document : [];
+        if (($doc['layout'] ?? 'standard') !== 'standard') {
+            return false;
+        }
+        if (empty($doc['items']) || ! is_array($doc['items'])) {
+            return false;
+        }
+
+        $form = $quotation->normalizedForm();
+        $packages = $form['packages'];
+        if ($packages === []) {
+            return false; // bespoke-shaped — no standard seed to compare against.
+        }
+
+        $rush = (bool) $form['rush'];
+        $lineItems = $this->normaliseLineItems($quotation->form_payload['request']['line_items'] ?? []);
+
+        $expected = (new DocumentSeeder($engine))
+            ->seed($engine->calculateMulti($packages, $rush), $rush, $lineItems)['document'];
+
+        return self::itemsSignature($expected['items'] ?? []) === self::itemsSignature($doc['items'] ?? []);
+    }
+
+    /** A stable hash of a document's line items, tolerant of key order. */
+    private static function itemsSignature(array $items): string
+    {
+        $normalised = array_map(fn (array $it): array => [
+            'title' => (string) ($it['title'] ?? ''),
+            'desc' => (string) ($it['desc'] ?? ''),
+            'qty' => (float) ($it['qty'] ?? 0),
+            'unit' => (string) ($it['unit'] ?? ''),
+            'rate' => (float) ($it['rate'] ?? 0),
+        ], $items);
+
+        return md5((string) json_encode($normalised));
+    }
+
+    /** Upsert the client by email — the same dedup pattern as the public funnel. */
+    private function upsertClient(array $client): Client
+    {
+        return Client::firstOrCreate(
+            ['email' => $client['email']],
+            [
+                'name' => $client['name'],
+                'phone' => $client['phone'] ?? null,
+                'company' => $client['company'] ?? null,
+            ],
+        );
+    }
+
+    /** Persist the add-on rows (union across packages) for the quotation. */
+    private function syncAddons(Quotation $quotation, array $addonKeys, PricingEngine $engine): void
+    {
+        $quotation->addons()->delete();
+
+        if ($addonKeys === []) {
+            return;
+        }
+
+        $addonDefs = $engine->addons();
+        foreach ($addonKeys as $key) {
+            if (isset($addonDefs[$key])) {
+                $quotation->addons()->create([
+                    'addon_key' => $key,
+                    'addon_label' => $addonDefs[$key]['label'],
+                    'amount_myr' => $addonDefs[$key]['amount'],
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Resolve the raw package entries into the canonical packages[] shape the whole
+     * system reads: split each flat `modifiers` map onto the engine's
+     * modifiers/scope_values and resolve its service_package_id.
+     *
+     * @param  list<array{package_key: string, modifiers: array, addon_keys: list<string>}>  $rawPackages
+     * @return list<array{package_key: string, service_package_id: ?int, scope_values: array, modifiers: array, addon_keys: list<string>}>
+     */
+    private function resolveConnectorPackages(array $rawPackages, ConnectorCatalog $catalog, PricingEngine $engine): array
+    {
+        return array_map(function (array $rp) use ($catalog, $engine): array {
+            $key = (string) $rp['package_key'];
+            $split = $catalog->splitModifiers($key, (array) ($rp['modifiers'] ?? []));
+
+            return [
+                'package_key' => $key,
+                'service_package_id' => $engine->packageId($key),
+                'scope_values' => $split['scope_values'],
+                'modifiers' => $split['modifiers'],
+                'addon_keys' => array_values((array) ($rp['addon_keys'] ?? [])),
+            ];
+        }, $rawPackages);
     }
 
     /**
@@ -275,10 +443,25 @@ class QuotationDraftController extends Controller
     private function normaliseLineItems(array $items): array
     {
         return array_values(array_map(fn (array $item): array => [
-            'label' => (string) $item['label'],
+            'label' => (string) ($item['label'] ?? 'Item'),
             'description' => $item['description'] ?? null,
-            'amount_myr' => (float) $item['amount_myr'],
-        ], $items));
+            'amount_myr' => (float) ($item['amount_myr'] ?? 0),
+        ], array_filter($items, 'is_array')));
+    }
+
+    /**
+     * Which of the three pricing modes the validated data describes — used to pick
+     * the update's document-reseed policy before any write (buildDraft branches the
+     * same way). detailed → self-priced sections; priced → one+ catalog packages;
+     * bespoke → line items only.
+     */
+    private function draftMode(array $data): string
+    {
+        if (! empty($data['detailed']) && is_array($data['detailed'])) {
+            return 'detailed';
+        }
+
+        return $this->rawPackages($data) === [] ? 'bespoke' : 'priced';
     }
 
     /**
@@ -308,6 +491,95 @@ class QuotationDraftController extends Controller
             'modifiers' => (array) ($data['modifiers'] ?? []),
             'addon_keys' => array_values((array) ($data['addon_keys'] ?? [])),
         ]];
+    }
+
+    /**
+     * A slim list row (locked decision #5) — enough to identify and triage a
+     * quotation from chat, no form_payload / document. Full detail is show().
+     */
+    protected static function listRow(Quotation $quotation, PricingEngine $engine): array
+    {
+        $document = is_array($quotation->document) ? $quotation->document : [];
+        $hasEta = (int) $quotation->estimate_eta_value > 0;
+
+        return [
+            'reference_code' => $quotation->reference_code,
+            'status' => $quotation->status,
+            'created_via' => $document['created_via'] ?? ($quotation->normalizedForm()['source_meta']['created_via'] ?? null),
+            'client' => [
+                'name' => $quotation->name,
+                'email' => $quotation->email,
+                'company' => $quotation->company,
+            ],
+            'layout' => $document['layout'] ?? 'standard',
+            'package_key' => $quotation->package_key,
+            'package_label' => $quotation->package_key
+                ? $engine->packageName($quotation->package_key)
+                : ($document['project'] ?? null),
+            'estimate' => [
+                'min_myr' => (float) $quotation->estimate_min_myr,
+                'max_myr' => (float) $quotation->estimate_max_myr,
+                'eta_value' => $hasEta ? (int) $quotation->estimate_eta_value : null,
+                'eta_unit' => $hasEta ? $quotation->estimate_eta_unit : null,
+            ],
+            'submitted_at' => $quotation->submitted_at?->toISOString(),
+            'created_at' => $quotation->created_at?->toISOString(),
+            'admin_url' => rtrim((string) config('services.frontend.url'), '/')."/admin/quotations/{$quotation->id}",
+        ];
+    }
+
+    /**
+     * The connector-facing projection of a full quotation — the draft as the AI
+     * (and the admin reviewing it) needs to see it. Kept deliberately narrow: no
+     * public_token, no internal audit fields.
+     */
+    protected static function connectorView(Quotation $quotation): array
+    {
+        $document = is_array($quotation->document) ? $quotation->document : [];
+        $hasEta = (int) $quotation->estimate_eta_value > 0;
+        // created_via via the normalizer (handles every legacy shape); last_updated_via
+        // is a v3-only field the connector writes, read straight from the raw payload.
+        $createdVia = $quotation->normalizedForm()['source_meta']['created_via'] ?? null;
+        $rawMeta = is_array($quotation->form_payload['source_meta'] ?? null) ? $quotation->form_payload['source_meta'] : [];
+
+        return [
+            'reference_code' => $quotation->reference_code,
+            'status' => $quotation->status,
+            'source' => $quotation->source,
+            'created_via' => $document['created_via'] ?? $createdVia,
+            'last_updated_via' => $rawMeta['last_updated_via'] ?? null,
+            'last_updated_at' => $rawMeta['last_updated_at'] ?? null,
+            'client' => [
+                'name' => $quotation->name,
+                'email' => $quotation->email,
+                'phone' => $quotation->phone,
+                'company' => $quotation->company,
+            ],
+            'package_key' => $quotation->package_key,
+            'layout' => $document['layout'] ?? 'standard',
+            'project' => $document['project'] ?? null,
+            'intro' => $document['intro'] ?? null,
+            'estimate' => [
+                'min_myr' => (float) $quotation->estimate_min_myr,
+                'max_myr' => (float) $quotation->estimate_max_myr,
+                'eta_value' => $hasEta ? (int) $quotation->estimate_eta_value : null,
+                'eta_unit' => $hasEta ? $quotation->estimate_eta_unit : null,
+            ],
+            'line_items' => self::lineItemsView($document),
+            'assumptions' => $document['assumptions'] ?? [],
+            'open_questions' => $document['open_questions'] ?? [],
+            'notes' => $document['notes'] ?? null,
+            'addons' => $quotation->relationLoaded('addons')
+                ? $quotation->addons->map(fn ($a): array => [
+                    'key' => $a->addon_key,
+                    'label' => $a->addon_label,
+                    'amount_myr' => (float) $a->amount_myr,
+                ])->values()->all()
+                : [],
+            'admin_url' => rtrim((string) config('services.frontend.url'), '/')."/admin/quotations/{$quotation->id}",
+            'created_at' => $quotation->created_at?->toISOString(),
+            'updated_at' => $quotation->updated_at?->toISOString(),
+        ];
     }
 
     /**
