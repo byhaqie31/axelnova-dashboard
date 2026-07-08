@@ -121,23 +121,23 @@ useScrollReveal('.reveal')
     <!-- HERO -->
     <HeroEpoch />
 
-    <!-- STATS -->
-    <section class="border-y" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+    <!-- STATS — vivid "hero blue" band; white numerals + light dividers. -->
+    <section :style="{ background: 'var(--stat-band-bg)' }">
       <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4">
         <div
           v-for="(s, i) in stats"
           :key="s.label"
           class="stat-cell px-6 py-14 text-center"
           :style="{
-            borderRight: i < stats.length - 1 ? '1px solid var(--color-border)' : 'none',
-            borderBottom: i < 2 ? '1px solid var(--color-border)' : 'none'
+            borderRight: i < stats.length - 1 ? '1px solid var(--stat-band-divider)' : 'none',
+            borderBottom: i < 2 ? '1px solid var(--stat-band-divider)' : 'none'
           }"
           :class="{ 'md:border-b-0!': true }"
         >
-          <div class="text-4xl md:text-5xl font-semibold tracking-tight tabular-nums">
+          <div class="text-4xl md:text-5xl font-semibold tracking-tight tabular-nums" :style="{ color: 'var(--stat-band-fg)' }">
             <span :ref="el => { statEls[i] = el as HTMLElement | null }">{{ s.value }}</span>{{ s.suffix }}
           </div>
-          <div class="text-[13px] mt-2" style="color: var(--color-text-secondary);">
+          <div class="text-[13px] mt-2" :style="{ color: 'var(--stat-band-fg-muted)' }">
             {{ s.label }}
           </div>
         </div>
@@ -179,33 +179,22 @@ useScrollReveal('.reveal')
       <FeaturedMockups class="reveal" />
     </section>
 
-    <!-- CTA BANNER -->
-    <section class="relative overflow-hidden reveal" :style="{ borderColor: 'var(--color-border)' }">
-      <!-- gradient backdrop -->
-      <div
-        aria-hidden
-        class="absolute inset-0 -z-10"
-        style="
-          background:
-            radial-gradient(60% 80% at 15% 50%, rgba(168,85,247,0.16) 0%, transparent 60%),
-            radial-gradient(50% 80% at 85% 50%, rgba(0,113,227,0.18) 0%, transparent 60%),
-            var(--color-bg-secondary);
-        "
-      />
-      <div class="max-w-7xl mx-auto px-6 py-20 flex flex-col items-center gap-7 text-center">
+    <!-- CTA — full-width vivid blue band, matching the stats band. -->
+    <section class="reveal" :style="{ background: 'var(--stat-band-bg)' }">
+      <div class="max-w-7xl mx-auto px-6 py-24 flex flex-col items-center gap-7 text-center">
         <div>
-          <p class="text-3xl md:text-5xl font-semibold tracking-tight">
+          <p class="text-3xl md:text-5xl font-semibold tracking-tight" :style="{ color: 'var(--stat-band-fg)' }">
             Have a project in mind?
           </p>
-          <p class="mt-3 text-[17px] max-w-lg mx-auto" style="color: var(--color-text-secondary);">
+          <p class="mt-3 text-[17px] max-w-lg mx-auto" :style="{ color: 'var(--stat-band-fg-muted)' }">
             Let's design something premium together. Fintech, SaaS, or a product that needs senior craft.
           </p>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-3">
-          <NuxtLink ref="bandCta" to="/quote" class="btn-pill btn-pill-accent">
+          <NuxtLink ref="bandCta" to="/quote" class="btn-pill" :style="{ background: 'var(--band-cta-bg)', color: 'var(--band-cta-fg)', boxShadow: 'var(--shadow-sm)' }">
             <span class="magnetic-label">Get Inquiry</span>
           </NuxtLink>
-          <NuxtLink to="/contact" class="btn-pill btn-pill-ghost">
+          <NuxtLink to="/contact" class="btn-pill" :style="{ background: 'transparent', border: '1px solid var(--stat-band-fg)', color: 'var(--stat-band-fg)' }">
             Let's talk
           </NuxtLink>
         </div>

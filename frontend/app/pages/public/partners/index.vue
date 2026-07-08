@@ -158,11 +158,12 @@ const heroLine1 = ref<HTMLElement | null>(null)
 const heroLine2 = ref<HTMLElement | null>(null)
 const heroSub = ref<HTMLElement | null>(null)
 const heroCtas = ref<HTMLElement | null>(null)
+const heroLogin = ref<HTMLElement | null>(null)
 
 onMounted(async () => {
   if (import.meta.server) return
 
-  const targets = [heroBadge.value, heroLine1.value, heroLine2.value, heroSub.value, heroCtas.value]
+  const targets = [heroBadge.value, heroLine1.value, heroLine2.value, heroSub.value, heroCtas.value, heroLogin.value]
     .filter(Boolean) as HTMLElement[]
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -227,6 +228,15 @@ useScrollReveal('.reveal')
           How it works
         </a>
       </div>
+
+      <!-- Returning partners: a quiet secondary entry to the portal, so it never
+           competes with the primary "Refer a business" CTA. -->
+      <p ref="heroLogin" class="mt-5 text-[13px]" style="color: var(--color-text-tertiary);">
+        Already a partner?
+        <NuxtLink to="/partners/login" class="font-medium link-underline" :style="{ color: 'var(--color-accent)' }">
+          Log in
+        </NuxtLink>
+      </p>
     </section>
 
     <!-- WHO THIS IS FOR -->
