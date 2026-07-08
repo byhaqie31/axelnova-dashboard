@@ -30,6 +30,11 @@ migrateGroupLabel(navGroupsOpen)
 const route = useRoute()
 const { logout, apiFetch, jumpToTeam } = useAdminAuth()
 
+// Light / dark toggle — flips the persisted colour-mode preference (same engine
+// as the public site). @nuxt/ui swaps the `.dark` class before paint.
+const colorMode = useColorMode()
+const toggleDark = () => { colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark' }
+
 interface Me { id: number, name: string, email: string, role?: Role }
 const me = ref<Me | null>(null)
 
@@ -159,6 +164,22 @@ useHead({ title: 'Admin Portal' })
             </NuxtLink>
           </nav>
 
+          <!-- Light / dark toggle -->
+          <button
+            type="button"
+            class="size-9 rounded-full inline-flex items-center justify-center border transition-colors hover:bg-(--color-bg-secondary)"
+            :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }"
+            aria-label="Toggle dark mode"
+            @click="toggleDark"
+          >
+            <ClientOnly>
+              <UIcon :name="colorMode.value === 'dark' ? 'i-fluent-weather-sunny-24-regular' : 'i-fluent-weather-moon-24-regular'" class="size-4" />
+              <template #fallback>
+                <span class="size-4 inline-block" />
+              </template>
+            </ClientOnly>
+          </button>
+
           <div ref="profileWrap" class="relative">
           <button
             type="button"
@@ -239,6 +260,7 @@ useHead({ title: 'Admin Portal' })
              overflow-y engages (flexbox default min-height:auto cuts menus off). -->
         <nav
           v-if="!appsOpen"
+          data-lenis-prevent
           class="side-nav-scroll flex-1 min-h-0 p-3 flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden shrink-0"
           :style="{ width: `${railWidth}px` }"
         >
@@ -304,6 +326,7 @@ useHead({ title: 'Admin Portal' })
              (rail + overflow) as a tile grid on one wide surface. -->
         <div
           v-else
+          data-lenis-prevent
           class="side-nav-scroll flex-1 min-h-0 overflow-y-auto p-4 shrink-0"
           :style="{ width: `${LAUNCHER_W}px` }"
           aria-label="All apps"
@@ -404,7 +427,7 @@ useHead({ title: 'Admin Portal' })
             borderColor: 'var(--color-border)',
           }"
         >
-          <nav class="p-3 flex flex-col gap-1.5 h-full overflow-y-auto">
+          <nav data-lenis-prevent class="p-3 flex flex-col gap-1.5 h-full overflow-y-auto">
             <div v-for="group in navGroups" :key="group.label" class="flex flex-col gap-1">
               <button
                 type="button"
