@@ -183,6 +183,10 @@ GET  /v1/connector/quotations/{ref}       connector:read  — read back a connec
 
 # Document generation (see DOCUMENT-GENERATION.md)
 POST /v1/admin/orders/{order}/documents   Sanctum — issue an invoice/receipt
+PUT  /v1/admin/invoices/{invoice}         Sanctum — re-edit an issued invoice in place (re-freezes the
+                                          payload from stored inputs, same AXNI number; amounts lock
+                                          once payments exist — see PAYMENTS-LEDGER.md Phase 4)
+POST /v1/admin/invoices/{invoice}/send    Sanctum — queue the client invoice email (PDF link + attachment)
 GET  /v1/documents/{token}                Public  — token-gated document data (JSON)
 # Frontend Nitro: GET /api/documents/{token}/pdf — renders & streams the PDF
 

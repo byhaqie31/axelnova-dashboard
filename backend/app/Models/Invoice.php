@@ -25,6 +25,7 @@ class Invoice extends Model
         'public_token',
         'type',
         'payload',
+        'inputs',
         'amount_total',
         'amount_paid',
         'payment_ref',
@@ -33,17 +34,21 @@ class Invoice extends Model
         'issued_at',
         'due_at',
         'paid_at',
+        'emailed_at',
+        'emailed_to',
     ];
 
     protected function casts(): array
     {
         return [
             'payload' => 'array',
+            'inputs' => 'array',
             'amount_total' => 'decimal:2',
             'amount_paid' => 'decimal:2',
             'issued_at' => 'datetime',
             'due_at' => 'date',
             'paid_at' => 'datetime',
+            'emailed_at' => 'datetime',
         ];
     }
 
@@ -69,6 +74,16 @@ class Invoice extends Model
     public function getPdfPathAttribute(): string
     {
         return "/documents/{$this->public_token}/pdf";
+    }
+
+    /**
+     * Amount-bearing fields lock once money is recorded against this invoice —
+     * a paid status or any succeeded ledger row. Rewriting totals after that
+     * would contradict the recorded payments and their receipts.
+     */
+    public function amountsLocked(): bool
+    {
+        return $this->status === 'paid' || $this->payments()->succeeded()->exists();
     }
 
     /**

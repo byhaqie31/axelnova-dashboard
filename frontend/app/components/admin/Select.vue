@@ -5,7 +5,12 @@
  * reads consistently with the Status filter. Same popover pattern: button trigger +
  * floating listbox, closes on outside click. v-model holds the chosen value.
  */
-interface SelectItem { label: string; value: string | number }
+interface SelectItem {
+  label: string
+  value: string | number
+  /** Greyed out and unpickable — for options that don't fit the current state. */
+  disabled?: boolean
+}
 
 const props = withDefaults(defineProps<{
   modelValue: string | number
@@ -67,13 +72,15 @@ function pick(value: string | number) {
             type="button"
             role="option"
             :aria-selected="modelValue === o.value"
-            class="w-full flex items-center justify-between gap-3 text-[13px] px-2.5 py-2 rounded-md transition-colors"
+            :disabled="o.disabled"
+            class="w-full flex items-center justify-between gap-3 text-[13px] px-2.5 py-2 rounded-md transition-colors disabled:cursor-not-allowed"
             :style="{
               background: modelValue === o.value ? 'var(--color-accent-soft)' : 'transparent',
-              color: modelValue === o.value ? 'var(--color-accent)' : 'var(--color-text)',
+              color: o.disabled ? 'var(--color-text-tertiary)' : modelValue === o.value ? 'var(--color-accent)' : 'var(--color-text)',
               fontWeight: modelValue === o.value ? '500' : '400',
+              opacity: o.disabled ? 0.55 : 1,
             }"
-            @click="pick(o.value)"
+            @click="!o.disabled && pick(o.value)"
           >
             <span class="truncate">{{ o.label }}</span>
             <UIcon v-if="modelValue === o.value" name="i-fluent-checkmark-24-regular" class="size-3.5 shrink-0" />

@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Receipt;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -19,6 +20,17 @@ use Illuminate\Support\Str;
  */
 class DocumentIssuer
 {
+    /**
+     * Issue-form fields kept on the invoice for re-editing. Editing merges new
+     * values over these and re-runs DocumentMapper — the payload is always a
+     * pure function of (order, inputs, number, issued).
+     */
+    private const INPUT_KEYS = [
+        'invoiceType', 'amount', 'amountPaid', 'paymentRef', 'paymentMethod',
+        'discountType', 'discountValue', 'discountLabel',
+        'promoCode', 'promoType', 'promoValue', 'notes', 'dueAt',
+    ];
+
     /**
      * Issue an invoice (deposit / partial / final). A recorded payment accrues
      * onto the order's running paid total and stamps `paid_at` when fully paid.
@@ -44,6 +56,7 @@ class DocumentIssuer
                 'public_token' => Str::random(48),
                 'type' => $input['invoiceType'] ?? 'deposit',
                 'payload' => $payload,
+                'inputs' => self::cleanInputs($input),
                 'amount_total' => self::payloadTotal($payload),
                 'amount_paid' => null,
                 'payment_ref' => $input['paymentRef'] ?? null,
@@ -56,6 +69,84 @@ class DocumentIssuer
 
             return $invoice;
         });
+    }
+
+    /**
+     * Re-edit an issued invoice in place: merge the new form fields over the
+     * stored issue inputs, re-run DocumentMapper, and re-freeze the payload —
+     * same AXNI number, same public token, same issued date. The caller is
+     * responsible for the amounts-locked / void guards.
+     *
+     * Keys PRESENT in $input override the stored value (a present null clears
+     * it, e.g. removing a discount); absent keys keep the stored value.
+     */
+    public static function updateInvoice(Invoice $invoice, array $input): Invoice
+    {
+        return DB::transaction(function () use ($invoice, $input) {
+            $invoice->loadMissing('order.quotation');
+
+            $inputs = array_replace(
+                self::effectiveInputs($invoice),
+                Arr::only($input, self::INPUT_KEYS),
+            );
+
+            $payload = DocumentMapper::forOrder($invoice->order, 'invoice', array_merge($inputs, [
+                'number' => $invoice->invoice_number,
+                // Keep the frozen issue date — editing is a correction, not a re-issue.
+                'issued' => $invoice->payload['issued'] ?? $invoice->issued_at?->format('d F Y'),
+            ]));
+
+            $invoice->update([
+                'payload' => $payload,
+                'inputs' => self::cleanInputs($inputs),
+                'amount_total' => self::payloadTotal($payload),
+                'type' => $inputs['invoiceType'] ?? $invoice->type,
+                'due_at' => $inputs['dueAt'] ?? $invoice->due_at,
+            ]);
+
+            return $invoice->refresh();
+        });
+    }
+
+    /**
+     * The issue-form fields to pre-fill the edit form with — stored inputs, or
+     * the legacy fallback for invoices issued before `inputs` existed.
+     */
+    public static function effectiveInputs(Invoice $invoice): array
+    {
+        return $invoice->inputs ?? self::legacyInputs($invoice);
+    }
+
+    /**
+     * Best-effort inputs for invoices issued before `inputs` existed: the net
+     * total as the billed amount (discounts were already applied into it) and
+     * the payload notes flattened back to text. Good enough to re-edit — the
+     * live preview shows the regenerated document before anything is saved.
+     */
+    private static function legacyInputs(Invoice $invoice): array
+    {
+        $notes = $invoice->payload['notes'] ?? null;
+        if (is_array($notes)) {
+            $notes = implode("\n", array_map(
+                fn ($n) => trim(($n['label'] ?? '').' '.($n['text'] ?? '')),
+                $notes,
+            ));
+        }
+
+        return array_filter([
+            'invoiceType' => $invoice->type,
+            'amount' => (float) $invoice->amount_total,
+            'notes' => is_string($notes) && trim($notes) !== '' ? $notes : null,
+        ], fn ($v) => $v !== null);
+    }
+
+    /** Whitelist + drop empties — what gets persisted to `invoices.inputs`. */
+    private static function cleanInputs(array $input): array
+    {
+        return array_filter(
+            Arr::only($input, self::INPUT_KEYS),
+            fn ($v) => $v !== null && $v !== '',
+        );
     }
 
     /**

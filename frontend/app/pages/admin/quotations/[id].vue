@@ -35,6 +35,17 @@ interface Quotation {
   addons: { key: string; label: string; amount_myr: string }[]
   referral_partner_id: number | null
   referrer: { name: string; relationship_tier: string; commission_pct: number } | null
+  order_id: number | null
+  order_number: string | null
+}
+
+interface QuotationInvoice {
+  id: number
+  invoice_number: string
+  type: string
+  status: string
+  amount_total: string
+  issued_at: string | null
 }
 
 const quotation = ref<Quotation | null>(null)
@@ -126,6 +137,19 @@ function viewPdf() {
   if (!quotation.value?.public_token) return
   window.open(`${window.location.origin}/documents/${quotation.value.public_token}/pdf`, '_blank', 'noopener')
 }
+
+// Invoices issued on this quotation's order — the quote → invoice cross-nav.
+const invoices = ref<QuotationInvoice[]>([])
+watch(() => quotation.value?.order_id, async (orderId) => {
+  if (!orderId) { invoices.value = []; return }
+  try {
+    const res = await apiFetch<{ data: QuotationInvoice[] }>(`/api/v1/admin/invoices?order_id=${orderId}`)
+    invoices.value = res.data
+  }
+  catch {
+    invoices.value = []
+  }
+})
 
 onMounted(fetchQuotation)
 
@@ -326,6 +350,32 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
           <div v-if="quotation.public_token" class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Document</p>
             <button type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]" @click="viewPdf">View PDF</button>
+          </div>
+
+          <!-- Invoices issued on this quotation's order — cross-navigation. -->
+          <div v-if="quotation.order_id" class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Invoices</p>
+            <div v-if="invoices.length" class="space-y-1.5">
+              <NuxtLink
+                v-for="inv in invoices" :key="inv.id" :to="`/admin/invoices/${inv.id}`"
+                class="flex items-center justify-between gap-2 rounded-xl border px-3 py-2 transition-opacity hover:opacity-75"
+                :style="{ borderColor: 'var(--color-border)' }">
+                <div class="min-w-0">
+                  <span class="font-mono text-[12px] font-semibold block" style="color: var(--color-accent);">{{ inv.invoice_number }}</span>
+                  <span class="text-[11px] capitalize" style="color: var(--color-text-tertiary);">{{ inv.type }}</span>
+                </div>
+                <div class="text-right shrink-0">
+                  <span class="text-[12px] font-semibold tabular-nums block" style="color: var(--color-text);">{{ fmtMyrExact(inv.amount_total) }}</span>
+                  <AdminStatusPill :status="inv.status" />
+                </div>
+              </NuxtLink>
+            </div>
+            <p v-else class="text-[12px]" style="color: var(--color-text-tertiary);">None issued yet.</p>
+            <NuxtLink
+              v-if="quotation.order_number" :to="`/admin/orders/${quotation.order_id}`"
+              class="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">
+              Order {{ quotation.order_number }} <UIcon name="i-lucide-arrow-right" class="size-3.5" />
+            </NuxtLink>
           </div>
 
           <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">

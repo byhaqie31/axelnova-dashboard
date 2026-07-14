@@ -3,6 +3,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
+const toast = useAdminToast()
 
 interface InvoicePayment {
   id: number
@@ -20,6 +21,7 @@ interface Invoice {
   invoice_number: string
   order_id: number
   order_number: string | null
+  quotation_id: number | null
   reference_code: string | null
   client_id: number | null
   name: string | null
@@ -33,6 +35,10 @@ interface Invoice {
   paid_at: string | null
   is_overdue: boolean
   pdf_path: string
+  emailed_at: string | null
+  emailed_to: string | null
+  inputs: Record<string, unknown> | null
+  amounts_locked: boolean
   payments?: InvoicePayment[]
 }
 
@@ -74,6 +80,28 @@ function fmtDate(iso?: string | null) {
 function fmtMyr(amount: string | number) {
   return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
+
+// ── Email invoice ──────────────────────────────────────────────────────────
+const emailOpen = ref(false)
+const emailSending = ref(false)
+
+async function sendInvoice(email: string) {
+  if (!invoice.value) return
+  emailSending.value = true
+  try {
+    await apiFetch(`/api/v1/admin/invoices/${invoice.value.id}/send`, { method: 'POST', body: { email } })
+    emailOpen.value = false
+    toast.success('Invoice email queued', `Sending to ${email} with the PDF attached.`)
+    // Refresh shortly so the "last sent" stamp appears once the queue runs.
+    setTimeout(fetchInvoice, 4000)
+  }
+  catch {
+    toast.error('Couldn’t queue the email', 'Please try again.')
+  }
+  finally {
+    emailSending.value = false
+  }
+}
 </script>
 
 <template>
@@ -105,11 +133,32 @@ v-if="invoice.is_overdue" class="text-[11px] font-semibold px-2 py-0.5 rounded-f
             </template>
           </p>
         </div>
-        <a
-:href="invoice.pdf_path" target="_blank" rel="noopener"
-          class="btn-pill btn-pill-primary text-[12px] shrink-0" style="height: 36px; padding: 0 18px;">
-          <UIcon name="i-lucide-file-text" class="size-4" /> View PDF
-        </a>
+        <div class="flex items-center gap-2 shrink-0 flex-wrap">
+          <!-- Only unpaid issued invoices are editable — paid/void are frozen records. -->
+          <NuxtLink
+            v-if="invoice.status === 'issued'" :to="`/admin/invoices/edit?id=${invoice.id}`"
+            class="btn-pill btn-pill-ghost text-[12px]" style="height: 36px; padding: 0 18px;">
+            <UIcon name="i-lucide-pencil" class="size-4" /> Edit
+          </NuxtLink>
+          <button
+            v-if="invoice.status !== 'void'" type="button"
+            class="btn-pill btn-pill-ghost text-[12px]" style="height: 36px; padding: 0 18px;"
+            @click="emailOpen = true">
+            <UIcon name="i-lucide-mail" class="size-4" /> Email invoice
+          </button>
+          <a
+            :href="invoice.pdf_path" target="_blank" rel="noopener"
+            class="btn-pill btn-pill-primary text-[12px]" style="height: 36px; padding: 0 18px;">
+            <UIcon name="i-lucide-file-text" class="size-4" /> View PDF
+          </a>
+          <!-- Shortcut into the ledger, pre-allocated to this invoice. -->
+          <NuxtLink
+            v-if="invoice.status === 'issued'"
+            :to="`/admin/payments/new?order_id=${invoice.order_id}&invoice_id=${invoice.id}`"
+            class="btn-pill btn-pill-success text-[12px]" style="height: 36px; padding: 0 18px;">
+            <UIcon name="i-lucide-wallet" class="size-4" /> Record payment
+          </NuxtLink>
+        </div>
       </div>
 
       <div class="grid lg:grid-cols-3 gap-5">
@@ -170,9 +219,19 @@ v-if="invoice.order_number" :to="`/admin/orders/${invoice.order_id}`"
               <span style="color: var(--color-text-secondary);">Order</span>
               <span class="font-mono">{{ invoice.order_number }}</span>
             </NuxtLink>
-            <div v-if="invoice.reference_code" class="flex items-center justify-between gap-2 text-[13px]">
+            <NuxtLink
+              v-if="invoice.reference_code && invoice.quotation_id" :to="`/admin/quotations/${invoice.quotation_id}`"
+              class="flex items-center justify-between gap-2 text-[13px]" :style="{ color: 'var(--color-accent)' }">
+              <span style="color: var(--color-text-secondary);">Quotation</span>
+              <span class="font-mono">{{ invoice.reference_code }}</span>
+            </NuxtLink>
+            <div v-else-if="invoice.reference_code" class="flex items-center justify-between gap-2 text-[13px]">
               <span style="color: var(--color-text-secondary);">Quotation</span>
               <span class="font-mono" style="color: var(--color-text);">{{ invoice.reference_code }}</span>
+            </div>
+            <div v-if="invoice.emailed_at" class="flex items-center justify-between gap-2 text-[13px]">
+              <span style="color: var(--color-text-secondary);">Emailed</span>
+              <span style="color: var(--color-text);" :title="invoice.emailed_to ?? ''">{{ fmtDate(invoice.emailed_at) }}</span>
             </div>
           </div>
         </div>
@@ -203,6 +262,16 @@ class="text-[13px] font-semibold shrink-0"
         </div>
         <p v-else class="text-[13px]" style="color: var(--color-text-tertiary);">No payments recorded against this invoice yet.</p>
       </div>
+
+      <AdminInvoiceEmailModal
+        :open="emailOpen"
+        :invoice-number="invoice.invoice_number"
+        :default-email="invoice.emailed_to ?? invoice.email"
+        :emailed-at="invoice.emailed_at"
+        :emailed-to="invoice.emailed_to"
+        :sending="emailSending"
+        @close="emailOpen = false"
+        @send="sendInvoice" />
     </template>
   </div>
 </template>

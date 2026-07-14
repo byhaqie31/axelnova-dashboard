@@ -75,7 +75,8 @@ class PaymentsController extends Controller
             'invoice_id' => ['nullable', 'integer', Rule::exists('invoices', 'id')->where('order_id', $order->id)],
             'amount_myr' => ['required', 'numeric', 'gt:0'],
             'method' => ['required', Rule::enum(PaymentMethod::class)],
-            'reference' => ['nullable', 'string', 'max:191'],
+            // Required — every ledger row needs a traceable payment reference.
+            'reference' => ['required', 'string', 'max:191'],
             'paid_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
