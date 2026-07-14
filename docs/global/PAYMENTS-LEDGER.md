@@ -101,6 +101,15 @@ The money ledger as a first-class admin module, plus the order page reduced to a
 - **Order detail is now read-only + shortcuts** (`orders/[id].vue`): a derived payment summary, read-only invoice + payment mini-lists (rows link to their detail), and "Issue invoice" / "Record payment" / "View all" buttons into the modules. No inline create forms.
 - **Direct paid-amount writes removed:** `OrdersController::updatePayment` (route + method) deleted; `DocumentIssuer::issueInvoice` no longer accrues a payment (the old `accruePayment` is gone) — invoices issue **unpaid**, and payment is recorded separately through the ledger. The observer remains the sole writer of the paid caches.
 
+## Phase 4 — invoice editing + client email (shipped)
+
+Invoices are editable **in place** and can be emailed to the client. The frozen-snapshot rule survives via re-freezing, not mutation:
+
+- **`invoices.inputs`** (JSON) — the validated issue-form fields (`invoiceType`, `amount`, discounts, promo, `notes`, `dueAt`), stored at issue time. Editing merges new fields over these and re-runs `DocumentMapper::forOrder` — the payload is always a pure function of (order, inputs, number, issued). Same AXNI number, same public token, same issued date. Legacy invoices (no `inputs`) fall back to `DocumentIssuer::effectiveInputs()` — amount from `amount_total`, notes flattened from the payload.
+- **`PUT /v1/admin/invoices/{invoice}`** (`InvoicesController@update` → `DocumentIssuer::updateInvoice`). Guards: `paid` and `void` → 409 fully read-only (frozen records); a **partially-paid issued invoice locks its amount-bearing fields** (`Invoice::amountsLocked()`) — those 422, only `notes`/`dueAt` may change. Editing totals with money recorded would contradict the payments and their receipts.
+- **`POST /v1/admin/invoices/{invoice}/send`** — queues `SendInvoiceEmail` (`InvoiceMail`, markdown `mail.client-invoice`): summary + "View invoice" button to the public PDF link, with the PDF fetched from the frontend Nitro renderer (`services.frontend.url`, 30s timeout) and attached. **Render failure degrades to link-only** — never blocks the send. The typed recipient is used for that send only (never written back to the client); `emailed_at`/`emailed_to` stamp the last send.
+- **Pages:** `invoices/edit.vue?id=` (same `AdminInvoiceForm` as issuing, pre-filled from `inputs`, locked fields disabled), Edit/Email buttons + quotation link on `invoices/[id].vue`, and an Invoices card on the quotation detail sidebar. The invoices list shows just the invoice number — order/quotation context lives on the detail page.
+
 ## Out of scope (by design)
 
 MyInvois / LHDN e-invoicing (invoice-side, separate), multi-currency (MYR only), installment scheduling, dunning/reminders.

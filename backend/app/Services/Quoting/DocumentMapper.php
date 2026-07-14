@@ -232,7 +232,7 @@ class DocumentMapper
                 ?? ($quotation?->reference_code ? "Ref {$quotation->reference_code}" : null),
             'summary' => ['rows' => $rows],
             'panels' => $panels,
-            'notes' => $input['notes'] ?? null,
+            'notes' => self::noteLines($input['notes'] ?? null),
         ], fn ($v) => $v !== null && $v !== []);
     }
 
@@ -247,11 +247,11 @@ class DocumentMapper
         $agreed = round((float) $order->final_amount_myr, 2);
 
         $rows = [];
-        if ($agreed > 0 && abs($agreed - $amount) > 0.009) {
-            $rows[] = ['label' => 'Agreed project total', 'price' => $agreed];
-        }
 
         if ($type === 'receipt') {
+            if ($agreed > 0 && abs($agreed - $amount) > 0.009) {
+                $rows[] = ['label' => 'Agreed project total', 'price' => $agreed];
+            }
             $rows[] = ['label' => 'Total paid', 'price' => $amount, 'total' => true, 'red' => true];
             $panels = [array_filter([
                 'label' => 'Paid',
@@ -262,6 +262,18 @@ class DocumentMapper
         } else {
             $labels = ['deposit' => 'Deposit', 'partial' => 'Partial payment', 'final' => 'Final balance'];
             $billLabel = $labels[$input['invoiceType'] ?? ''] ?? 'Amount';
+
+            // Payment context from the order: the agreed total and the ledger-paid
+            // cache frame this bill — deposit/partial show what remains after it,
+            // final shows what's been paid and that this settles the balance.
+            $paid = round((float) $order->amount_paid_myr, 2);
+
+            if ($agreed > 0) {
+                $rows[] = ['label' => 'Agreed project total', 'price' => $agreed];
+            }
+            if ($paid > 0) {
+                $rows[] = ['label' => 'Paid to date', 'price' => $paid, 'negative' => true, 'green' => true];
+            }
 
             // Discount + promo apply to the billed amount; each can be a fixed sum
             // or a percentage, and both reduce the total due.
@@ -286,6 +298,12 @@ class DocumentMapper
                 $rows[] = ['label' => "{$billLabel} due", 'price' => $net, 'total' => true, 'red' => true];
             }
 
+            // What's still owed on the agreed total once this bill is settled.
+            $remaining = $agreed > 0 ? round(max($agreed - $paid - $net, 0), 2) : 0.0;
+            if ($remaining > 0.009) {
+                $rows[] = ['label' => 'Remaining after this payment', 'price' => $remaining, 'priceMuted' => true];
+            }
+
             $panels = [array_filter([
                 'label' => 'Amount due',
                 'value' => $net,
@@ -293,6 +311,13 @@ class DocumentMapper
                 'note' => 'Payable to '.self::BANK['name'].' '.self::BANK['acct']
                     .' ('.self::BANK['holder'].'), or by card / FPX online banking.',
             ])];
+            if ($remaining > 0.009) {
+                $panels[] = [
+                    'label' => 'Balance after this payment',
+                    'value' => $remaining,
+                    'note' => 'Remaining on the agreed project total.',
+                ];
+            }
             $status = $input['statusLabel'] ?? "{$billLabel} invoice";
         }
 
@@ -314,8 +339,24 @@ class DocumentMapper
             'subtitle' => $doc['subtitle'] ?? ($quotation?->reference_code ? "Ref {$quotation->reference_code}" : null),
             'summary' => ['rows' => $rows],
             'panels' => $panels,
-            'notes' => $input['notes'] ?? null,
+            'notes' => self::noteLines($input['notes'] ?? null),
         ], fn ($v) => $v !== null && $v !== []);
+    }
+
+    /**
+     * Notes arrive from the issue form as free text, but the PDF contract
+     * (types.ts `NoteLine[]`) wants {label, text} rows — wrap the string.
+     * Already-shaped arrays (builder payloads) pass through untouched.
+     */
+    private static function noteLines(mixed $notes): ?array
+    {
+        if (is_array($notes)) {
+            return $notes ?: null;
+        }
+
+        $text = trim((string) $notes);
+
+        return $text === '' ? null : [['label' => '', 'text' => $text]];
     }
 
     private static function paymentNote(array $input): ?string

@@ -9,6 +9,7 @@ interface Invoice {
   invoice_number: string
   order_id: number
   order_number: string | null
+  quotation_id: number | null
   reference_code: string | null
   name: string | null
   email: string | null
@@ -173,7 +174,6 @@ v-for="i in invoices" :key="i.id"
             @click="navigateTo(`/admin/invoices/${i.id}`)">
             <td class="px-4 py-3.5">
               <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ i.invoice_number }}</p>
-              <p v-if="i.order_number" class="font-mono text-[10px]" :style="{ color: 'var(--color-text-tertiary)' }">on {{ i.order_number }}</p>
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">{{ i.name ?? '—' }}</p>
@@ -221,7 +221,6 @@ class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
         <div class="flex items-start justify-between gap-3 mb-2">
           <div class="min-w-0">
             <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ i.invoice_number }}</p>
-            <p v-if="i.order_number" class="font-mono text-[10px]" :style="{ color: 'var(--color-text-tertiary)' }">on {{ i.order_number }}</p>
           </div>
           <AdminStatusPill :status="i.status" />
         </div>

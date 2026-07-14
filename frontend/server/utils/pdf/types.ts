@@ -126,6 +126,8 @@ export interface SummaryRow {
   total?: boolean;
   /** emphasize value in red */
   red?: boolean;
+  /** emphasize value in green — money already received ("Paid to date") */
+  green?: boolean;
 }
 
 export interface Panel {
@@ -199,8 +201,10 @@ export interface DocumentData {
   paymentTerms?: { title?: string; items: string[] };
   summary?: { title?: string; rows: SummaryRow[] };
   panels?: Panel[];
-  /** bottom prose, e.g. "Estimated completion: …" */
-  notes?: NoteLine[];
+  /** bottom prose, e.g. "Estimated completion: …". Frozen invoice/receipt
+   *  payloads may store the admin's free-text notes as a plain string —
+   *  the template normalizes it to a single unlabelled line. */
+  notes?: NoteLine[] | string;
 
   pay?: PaymentInfo;
 }

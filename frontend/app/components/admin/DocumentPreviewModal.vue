@@ -30,11 +30,13 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
 </script>
 
 <template>
+  <!-- Inline (non-block) height: min 34px but stretches to match siblings in a
+       flex row — controls sharing a line must share a height. -->
   <button
     type="button"
     class="btn-pill"
-    :class="[variantClass[variant], block ? 'w-full justify-center text-[13px]' : 'text-[12px]']"
-    :style="block ? undefined : { height: '34px', padding: '0 16px' }"
+    :class="[variantClass[variant], block ? 'w-full justify-center text-[13px]' : 'self-stretch min-h-[34px] text-[12px]']"
+    :style="block ? undefined : { padding: '0 16px' }"
     :disabled="disabled"
     @click="open = true"
   >

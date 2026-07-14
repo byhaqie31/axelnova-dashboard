@@ -111,6 +111,7 @@ class OrdersController extends Controller
             'promoCode' => ['nullable', 'string', 'max:40'],
             'promoType' => ['nullable', 'in:amount,percent'],
             'promoValue' => ['nullable', 'numeric', 'min:0'],
+            'dueAt' => ['nullable', 'date'],
             // Optional full DocumentData override from a customized builder.
             'payload' => ['nullable', 'array'],
         ]);

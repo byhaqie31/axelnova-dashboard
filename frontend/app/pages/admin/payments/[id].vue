@@ -263,14 +263,15 @@ v-if="canAct" class="rounded-2xl border p-6 mt-5"
             <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">{{ payment.receipt ? 'Issued — proof this payment landed.' : 'Preview the receipt, then issue it.' }}</p>
           </div>
           <div class="flex items-center gap-2 shrink-0">
+            <!-- No fixed heights — all three share the .btn-pill 44px standard. -->
             <AdminDocumentPreviewModal :data="receiptPreviewData" label="Preview" :disabled="!receiptPreviewData" />
             <a
 v-if="payment.receipt" :href="payment.receipt.pdf_path" target="_blank" rel="noopener"
-              class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;">
+              class="btn-pill btn-pill-ghost text-[12px]" style="padding: 0 16px;">
               <UIcon name="i-lucide-file-text" class="size-4" /> View PDF
             </a>
             <button
-v-else type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;"
+v-else type="button" class="btn-pill btn-pill-primary text-[12px]" style="padding: 0 16px;"
               :class="{ 'opacity-50': issuingReceipt }" :disabled="issuingReceipt" @click="issueReceipt">
               {{ issuingReceipt ? 'Issuing…' : 'Issue receipt' }}
             </button>

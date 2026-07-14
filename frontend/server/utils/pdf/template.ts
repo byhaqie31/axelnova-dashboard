@@ -9,6 +9,7 @@ import type {
   OptionCard,
   SummaryRow,
   Panel,
+  NoteLine,
 } from "./types";
 
 /* ----------------------------------------------------------------- helpers */
@@ -60,6 +61,7 @@ const CSS = `
   --paper:#FFFFFF; --ink:#1C1C1E; --body:#39393C; --muted:#6B6B70; --faint:#9A9AA0;
   --line:#ECEAE7; --line2:#F0EEEB; --strong:#1C1C1E;
   --red:#EE1C25; --red-deep:#C8141C;
+  --green:#0E8A3E;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 @page{
@@ -197,6 +199,7 @@ tbody tr:last-child td{border-bottom:0;}
 .sum-row .v{font-family:'Geist Mono',monospace;color:var(--ink);}
 .sum-row.muted .l,.sum-row.muted .v{color:var(--muted);}
 .sum-row.redv .v{color:var(--red);}
+.sum-row.greenv .v{color:var(--green);}
 .sum-row.total{border-top:1.4px solid var(--strong);border-bottom:0;margin-top:1px;
   padding-top:13px;}
 .sum-row.total .l{font-weight:600;font-size:13px;}
@@ -596,6 +599,7 @@ function renderDetailed(data: DocumentData): string {
           r.total ? "total" : "",
           r.priceMuted ? "muted" : "",
           r.red ? "redv" : "",
+          r.green ? "greenv" : "",
         ]
           .filter(Boolean)
           .join(" ");
@@ -609,9 +613,16 @@ function renderDetailed(data: DocumentData): string {
   if (data.panels?.length)
     parts.push(`<div class="panels">${data.panels.map((p) => panelHTML(p, cur)).join("")}</div>`);
 
-  // Bottom notes
-  if (data.notes?.length)
-    parts.push(`<div class="notes">${data.notes.map((n) => `<div class="n"><b>${esc(n.label)}</b> ${esc(n.text)}</div>`).join("")}</div>`);
+  // Bottom notes. Frozen invoice/receipt payloads may carry the admin's
+  // free-text notes as a plain string — normalize to NoteLine[] before mapping.
+  const notes: NoteLine[] =
+    typeof data.notes === "string"
+      ? data.notes.trim()
+        ? [{ label: "", text: data.notes }]
+        : []
+      : (data.notes ?? []);
+  if (notes.length)
+    parts.push(`<div class="notes">${notes.map((n) => `<div class="n">${n.label ? `<b>${esc(n.label)}</b> ` : ""}${esc(n.text)}</div>`).join("")}</div>`);
 
   parts.push(creditHTML(data));
   return parts.join("\n");

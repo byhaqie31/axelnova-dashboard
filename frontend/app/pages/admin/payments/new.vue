@@ -5,7 +5,7 @@ const route = useRoute()
 const { apiFetch } = useAdminAuth()
 const toast = useAdminToast()
 
-interface OrderInvoice { id: number, number: string, status: string, amount_total: string }
+interface OrderInvoice { id: number, number: string, status: string, amount_total: string, amount_paid: string | null }
 interface Order {
   id: number
   order_number: string
@@ -23,7 +23,9 @@ const saving = ref(false)
 const form = reactive({
   amount: '',
   method: 'fpx',
-  invoice_id: '',
+  // ?invoice_id pre-allocates (the "Record payment" shortcut on an invoice);
+  // validated against the order's invoices once the order loads.
+  invoice_id: route.query.invoice_id ? String(route.query.invoice_id) : '',
   reference: '',
   paid_at: '',
   notes: '',
@@ -51,6 +53,11 @@ async function fetchOrder() {
   try {
     const res = await apiFetch<{ data: Order }>(`/api/v1/admin/orders/${orderId.value}`)
     order.value = res.data
+    // Drop a pre-allocated ?invoice_id that doesn't belong to this order.
+    if (form.invoice_id && !res.data.invoices?.some(d => String(d.id) === form.invoice_id)) {
+      form.invoice_id = ''
+    }
+    prefillAmount()
   }
   catch {
     error.value = 'Failed to load the order.'
@@ -60,17 +67,38 @@ async function fetchOrder() {
   }
 }
 
+// Default the amount to what's actually owed: the allocated invoice's
+// outstanding balance, or the order's remaining total when unallocated.
+function prefillAmount() {
+  if (form.invoice_id) {
+    const inv = order.value?.invoices?.find(d => String(d.id) === form.invoice_id)
+    if (inv) {
+      const outstanding = Math.max(Number(inv.amount_total) - Number(inv.amount_paid ?? 0), 0)
+      form.amount = outstanding > 0 ? String(Number(outstanding.toFixed(2))) : ''
+      return
+    }
+  }
+  const remaining = Number(order.value?.remaining_myr) || 0
+  form.amount = remaining > 0 ? String(Number(remaining.toFixed(2))) : ''
+}
+
+// Re-sync when the allocation changes (picking an invoice, or clearing it).
+watch(() => form.invoice_id, () => { if (order.value) prefillAmount() })
+
 async function record() {
   if (!order.value) return
   if (!(Number(form.amount) > 0)) {
     toast.error('Enter an amount', 'The payment amount must be greater than zero.')
     return
   }
+  if (!form.reference.trim()) {
+    toast.error('Enter a reference', 'Every payment needs a traceable reference (transaction ID, transfer ref…).')
+    return
+  }
   saving.value = true
   try {
-    const body: Record<string, unknown> = { amount_myr: Number(form.amount), method: form.method }
+    const body: Record<string, unknown> = { amount_myr: Number(form.amount), method: form.method, reference: form.reference.trim() }
     if (form.invoice_id) body.invoice_id = Number(form.invoice_id)
-    if (form.reference) body.reference = form.reference
     if (form.paid_at) body.paid_at = form.paid_at
     if (form.notes) body.notes = form.notes
     const res = await apiFetch<{ payment: { data: { id: number } } | { id: number } }>(
@@ -143,8 +171,8 @@ v-for="m in methodOptions" :key="m.value" type="button" class="standard-pill"
             <AdminSelect v-model="form.invoice_id" class="mt-1" :items="invoiceItems" />
           </label>
           <label class="block">
-            <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Reference</span>
-            <input v-model="form.reference" type="text" placeholder="e.g. DuitNow ref" class="contact-input mt-1 w-full">
+            <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Reference <span :style="{ color: 'var(--color-danger)' }">*</span></span>
+            <input v-model="form.reference" type="text" required placeholder="e.g. DuitNow ref" class="contact-input mt-1 w-full">
           </label>
         </div>
 

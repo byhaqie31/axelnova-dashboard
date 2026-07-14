@@ -217,6 +217,10 @@ Route::middleware([
         // Invoices — cross-order list + detail (the standalone Invoices module).
         Route::get('/invoices', [InvoicesController::class, 'index'])->name('invoices.index');
         Route::get('/invoices/{invoice}', [InvoicesController::class, 'show'])->name('invoices.show');
+        // In-place re-edit (re-freezes the payload, same AXNI number; amounts
+        // lock once payments exist) and the client email send (queued).
+        Route::put('/invoices/{invoice}', [InvoicesController::class, 'update'])->name('invoices.update');
+        Route::post('/invoices/{invoice}/send', [InvoicesController::class, 'send'])->name('invoices.send');
 
         // Payments — the money ledger. Record/refund/issue-receipt flow through here.
         Route::get('/payments', [PaymentsController::class, 'index'])->name('payments.index');
