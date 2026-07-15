@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\Client;
 use App\Models\Inquiry;
-use App\Models\Quotation;
 use App\Models\Order;
+use App\Models\Quotation;
 use App\Services\Payments\PaymentService;
 use App\Services\Quoting\DocumentIssuer;
 use App\Services\Quoting\PricingEngine;
