@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -67,8 +68,12 @@ class PayrollController extends Controller
         $tasks = $this->pendingExtras($user->id)->get();
         $extras = (int) $tasks->sum('pay_amount_myr');
 
+        // Only a MONTHLY slip claims a period — one-offs share the month freely.
         $periodTaken = isset($data['period_label']) && $data['period_label'] !== ''
-            ? PayrollEntry::where('user_id', $user->id)->where('period_label', $data['period_label'])->exists()
+            ? PayrollEntry::where('user_id', $user->id)
+                ->where('kind', PayrollEntry::KIND_MONTHLY)
+                ->where('period_label', $data['period_label'])
+                ->exists()
             : null;
 
         return response()->json([
@@ -112,9 +117,12 @@ class PayrollController extends Controller
             ->get()
             ->keyBy('assignee_id');
 
-        // Teammates who already have a slip for this period — one query.
+        // Teammates who already have a MONTHLY slip for this period — one query.
+        // One-offs never count as "generated" for the monthly run.
         $taken = $period
-            ? PayrollEntry::where('period_label', $period)->pluck('user_id')->flip()
+            ? PayrollEntry::where('kind', PayrollEntry::KIND_MONTHLY)
+                ->where('period_label', $period)
+                ->pluck('user_id')->flip()
             : collect();
 
         $rows = $users->map(function (User $u) use ($extras, $taken, $period) {
@@ -181,6 +189,7 @@ class PayrollController extends Controller
                 'pending_total_myr' => (int) $group->filter(fn (PayrollEntry $e) => $e->paid_at === null)->sum('gross_myr'),
                 'allowance_total_myr' => (int) $group->sum('allowance_snapshot_myr'),
                 'extras_total_myr' => (int) $group->sum('task_extras_myr'),
+                'discretionary_total_myr' => (int) $group->sum('discretionary_myr'),
             ]);
 
         return response()->json([
@@ -221,8 +230,10 @@ class PayrollController extends Controller
         $user = User::findOrFail($data['user_id']);
 
         $result = DB::transaction(function () use ($data, $user, $request) {
-            // One payslip per member per period (backed by the unique index).
+            // One MONTHLY payslip per member per period (backed by the generated
+            // monthly_period unique index). One-offs are exempt.
             $exists = PayrollEntry::where('user_id', $user->id)
+                ->where('kind', PayrollEntry::KIND_MONTHLY)
                 ->where('period_label', $data['period_label'])
                 ->lockForUpdate()
                 ->exists();
@@ -245,6 +256,7 @@ class PayrollController extends Controller
 
             $entry = PayrollEntry::create([
                 'user_id' => $user->id,
+                'kind' => PayrollEntry::KIND_MONTHLY,
                 'period_label' => $data['period_label'],
                 'allowance_snapshot_myr' => $allowance,
                 'task_extras_myr' => $extras,
@@ -257,6 +269,92 @@ class PayrollController extends Controller
             // Link the extras to this slip — they're settled when it settles.
             if ($tasks->isNotEmpty()) {
                 Task::whereIn('id', $tasks->pluck('id'))->update(['payroll_entry_id' => $entry->id]);
+            }
+
+            return ['entry' => $entry];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        return new PayrollEntryResource($result['entry']->load(['user', 'creator', 'tasks']));
+    }
+
+    /**
+     * Record a ONE-TIME payment — a signing/festive/spot bonus (a discretionary
+     * amount) and/or the member's pending task extras paid immediately, outside
+     * the monthly cycle. Not period-guarded, so several can sit in one month.
+     *
+     * `mark_paid` (default true) records it already settled with an editable
+     * `paid_at`; if included task extras ride along they're flipped to paid then.
+     * Leave it off to draft a pending one-off that the normal Settle action closes
+     * later (task extras stay payment_pending until then). Allowed for deactivated
+     * teammates — final/severance payouts are exactly this. Refuses an empty
+     * record (no amount and no extras) with a 422.
+     */
+    public function storeOneTime(Request $request): PayrollEntryResource|JsonResponse
+    {
+        Gate::authorize('view-all-payroll');
+
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', Rule::exists('users', 'id')],
+            'one_time_type' => ['required', 'string', Rule::in(PayrollEntry::ONE_TIME_TYPES)],
+            'discretionary_myr' => ['nullable', 'integer', 'min:0', 'max:100000000'],
+            'include_pending_tasks' => ['sometimes', 'boolean'],
+            'mark_paid' => ['sometimes', 'boolean'],
+            'paid_at' => ['nullable', 'date'],
+            'method' => ['nullable', 'string', 'max:40'],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $user = User::findOrFail($data['user_id']);
+        $discretionary = (int) ($data['discretionary_myr'] ?? 0);
+        $includeTasks = (bool) ($data['include_pending_tasks'] ?? false);
+        $markPaid = (bool) ($data['mark_paid'] ?? true);
+        $paidAt = $markPaid
+            ? (isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : now())
+            : null;
+
+        $result = DB::transaction(function () use ($user, $data, $discretionary, $includeTasks, $markPaid, $paidAt, $request) {
+            // Optionally sweep the member's unlinked pending task extras — same
+            // locked pool the monthly run uses, so a task can't be double-paid.
+            $tasks = $includeTasks
+                ? $this->pendingExtras($user->id)->lockForUpdate()->get()
+                : collect();
+            $extras = (int) $tasks->sum('pay_amount_myr');
+
+            $gross = $discretionary + $extras;
+            if ($gross < 1) {
+                return ['error' => "Nothing to record for {$user->name}: enter a bonus amount or include pending task extras."];
+            }
+
+            // period_label = the payment's month, so year-to-date rollups bucket
+            // the one-off correctly; the UI labels it by one_time_type, not this.
+            $entry = PayrollEntry::create([
+                'user_id' => $user->id,
+                'kind' => PayrollEntry::KIND_ONE_TIME,
+                'period_label' => ($paidAt ?? now())->format('Y-m'),
+                'one_time_type' => $data['one_time_type'],
+                'allowance_snapshot_myr' => null,
+                'task_extras_myr' => $extras,
+                'discretionary_myr' => $discretionary,
+                'gross_myr' => $gross,
+                'paid_at' => $paidAt,
+                'method' => $data['method'] ?? null,
+                'note' => $data['note'] ?? null,
+                'created_by' => $request->user()->id,
+            ]);
+
+            if ($tasks->isNotEmpty()) {
+                // Link the extras; settle them now only if this one-off is paid.
+                // Otherwise they ride the entry to the Settle action, like monthly.
+                $update = ['payroll_entry_id' => $entry->id];
+                if ($markPaid) {
+                    $update['status'] = 'paid';
+                    $update['paid_at'] = $paidAt;
+                }
+                Task::whereIn('id', $tasks->pluck('id'))->update($update);
             }
 
             return ['entry' => $entry];

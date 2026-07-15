@@ -89,40 +89,7 @@ const tiles = computed(() => {
   ]
 })
 
-// ── Inline allowance edit (PATCH /admin/users) ─────────────────────────────
-const editingAllowance = ref<number | null>(null)
-const allowanceDraft = ref('')
-const savingAllowance = ref(false)
-
-function startEditAllowance(row: RosterRow) {
-  editingAllowance.value = row.user_id
-  allowanceDraft.value = row.monthly_allowance_myr == null ? '' : String(row.monthly_allowance_myr)
-}
-function cancelEditAllowance() {
-  editingAllowance.value = null
-}
-async function saveAllowance(row: RosterRow) {
-  if (savingAllowance.value) return
-  const next = allowanceDraft.value.trim() === '' ? null : Math.round(Number(allowanceDraft.value))
-  if (next != null && (!Number.isFinite(next) || next < 0)) {
-    toast.error('Invalid allowance', 'Enter a whole ringgit amount, or leave blank for none.')
-    return
-  }
-  savingAllowance.value = true
-  try {
-    await apiFetch(`/api/v1/admin/users/${row.user_id}`, { method: 'PATCH', body: { monthly_allowance_myr: next } })
-    row.monthly_allowance_myr = next
-    row.projected_gross_myr = (next ?? 0) + row.pending_extras_myr
-    editingAllowance.value = null
-    toast.success('Allowance updated', `${row.name}'s monthly allowance saved.`)
-  }
-  catch (e) {
-    toast.error('Couldn’t update allowance', errMessage(e) ?? 'Please try again.')
-  }
-  finally {
-    savingAllowance.value = false
-  }
-}
+// Allowance is read-only here — it's set on the Users page (/admin/users).
 
 // ── Generate a payslip for one person ──────────────────────────────────────
 const pendingGenerate = ref<RosterRow | null>(null)
@@ -163,7 +130,91 @@ async function confirmGenerate() {
 }
 onKeyStroke('Escape', () => {
   if (pendingGenerate.value) pendingGenerate.value = null
+  else if (oneTimeOpen.value) oneTimeOpen.value = false
 })
+
+// ── Record a one-time payment (bonus / ad-hoc payout, outside the monthly run) ─
+const oneTimeTypes = [
+  { value: 'signing', label: 'Signing' },
+  { value: 'festive', label: 'Festive' },
+  { value: 'performance', label: 'Performance' },
+  { value: 'spot', label: 'Spot' },
+  { value: 'other', label: 'Other' },
+]
+const oneTimeOpen = ref(false)
+const otUserId = ref(0)
+const otType = ref('signing')
+const otAmount = ref('')
+const otIncludeTasks = ref(false)
+const otNote = ref('')
+const otMarkPaid = ref(true)
+const otPaidAt = ref('')
+const otMethod = ref('bank_transfer')
+const savingOneTime = ref(false)
+
+const otUserItems = computed(() => roster.value.map(r => ({
+  label: r.deactivated ? `${r.name} (deactivated)` : r.name,
+  value: r.user_id,
+})))
+const otSelectedRow = computed(() => roster.value.find(r => r.user_id === otUserId.value) ?? null)
+const otAmountNum = computed(() => {
+  const n = Math.round(Number(otAmount.value))
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
+const otPendingMyr = computed(() => otSelectedRow.value?.pending_extras_myr ?? 0)
+const otPendingCount = computed(() => otSelectedRow.value?.pending_extras_count ?? 0)
+const otCanSubmit = computed(() =>
+  otUserId.value > 0 && (otAmountNum.value > 0 || (otIncludeTasks.value && otPendingMyr.value > 0)))
+const otProjected = computed(() => otAmountNum.value + (otIncludeTasks.value ? otPendingMyr.value : 0))
+
+function todayIso() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function openOneTime() {
+  otUserId.value = roster.value.find(r => !r.deactivated)?.user_id ?? roster.value[0]?.user_id ?? 0
+  otType.value = 'signing'
+  otAmount.value = ''
+  otIncludeTasks.value = false
+  otNote.value = ''
+  otMarkPaid.value = true
+  otPaidAt.value = todayIso()
+  otMethod.value = 'bank_transfer'
+  oneTimeOpen.value = true
+}
+// Reset the task-include toggle when switching to someone with no pending extras.
+watch(otUserId, () => {
+  if (otPendingCount.value === 0) otIncludeTasks.value = false
+})
+async function confirmOneTime() {
+  if (!otCanSubmit.value || savingOneTime.value) return
+  const row = otSelectedRow.value
+  savingOneTime.value = true
+  try {
+    const body: Record<string, unknown> = {
+      user_id: otUserId.value,
+      one_time_type: otType.value,
+      discretionary_myr: otAmountNum.value,
+      include_pending_tasks: otIncludeTasks.value,
+      mark_paid: otMarkPaid.value,
+    }
+    if (otMarkPaid.value) {
+      body.paid_at = otPaidAt.value
+      body.method = otMethod.value
+    }
+    if (otNote.value.trim()) body.note = otNote.value.trim()
+    await apiFetch('/api/v1/admin/payroll/one-time', { method: 'POST', body })
+    toast.success('One-time payment recorded', `${fmtMyr(otProjected.value)} for ${row?.name ?? 'teammate'}.`)
+    oneTimeOpen.value = false
+    await fetchRoster()
+  }
+  catch (e) {
+    toast.error('Couldn’t record the payment', errMessage(e) ?? 'Please try again.')
+  }
+  finally {
+    savingOneTime.value = false
+  }
+}
 
 function fmtMyr(amount: number | null) {
   if (amount == null) return '—'
@@ -230,7 +281,14 @@ function roleLabel(role: string) {
       </div>
 
       <!-- Roster -->
-      <div v-else class="space-y-2.5">
+      <div v-else>
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="text-[13px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Team</h2>
+          <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="openOneTime">
+            <UIcon name="i-lucide-gift" class="size-4" /> Record one-time payment
+          </button>
+        </div>
+        <div class="space-y-2.5">
         <div
           v-for="row in roster" :key="row.user_id"
           class="flex items-center gap-4 flex-wrap p-4 rounded-2xl border"
@@ -244,18 +302,12 @@ function roleLabel(role: string) {
             <p class="text-[12px]" style="color: var(--color-text-tertiary);">{{ roleLabel(row.role) }}</p>
           </div>
 
-          <!-- Allowance (inline editable) -->
+          <!-- Allowance (read-only — set on the Users page) -->
           <div class="w-32">
             <p class="text-[10px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Allowance</p>
-            <div v-if="editingAllowance === row.user_id" class="flex items-center gap-1">
-              <input v-model="allowanceDraft" type="number" min="0" step="1" placeholder="None" class="contact-input !py-1 !px-2 text-[13px] w-24" @keyup.enter="saveAllowance(row)" @keyup.esc="cancelEditAllowance">
-              <button type="button" class="cal-mini-nav" :disabled="savingAllowance" aria-label="Save" @click="saveAllowance(row)"><UIcon name="i-lucide-check" class="size-3.5" :style="{ color: 'var(--color-success)' }" /></button>
-              <button type="button" class="cal-mini-nav" aria-label="Cancel" @click="cancelEditAllowance"><UIcon name="i-lucide-x" class="size-3.5" /></button>
-            </div>
-            <button v-else type="button" class="inline-flex items-center gap-1.5 text-[13px] font-semibold tabular-nums group" style="color: var(--color-text);" @click="startEditAllowance(row)">
+            <p class="text-[13px] font-semibold tabular-nums" style="color: var(--color-text);">
               {{ row.monthly_allowance_myr == null ? 'None' : fmtMyr(row.monthly_allowance_myr) }}
-              <UIcon name="i-lucide-pencil" class="size-3 opacity-40 group-hover:opacity-100 transition-opacity" :style="{ color: 'var(--color-text-tertiary)' }" />
-            </button>
+            </p>
           </div>
 
           <!-- Extras -->
@@ -281,6 +333,7 @@ function roleLabel(role: string) {
               <UIcon name="i-lucide-chevron-right" class="size-4" />
             </NuxtLink>
           </div>
+        </div>
         </div>
       </div>
     </template>
@@ -324,6 +377,83 @@ function roleLabel(role: string) {
               <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="generating" @click="pendingGenerate = null">Cancel</button>
               <button type="button" class="btn-pill btn-pill-accent text-[13px]" :disabled="generating" @click="confirmGenerate">
                 {{ generating ? 'Generating…' : 'Generate payslip' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Record one-time payment -->
+    <Teleport to="body">
+      <Transition name="confirm-fade">
+        <div v-if="oneTimeOpen" class="confirm-overlay" @click.self="oneTimeOpen = false">
+          <div class="confirm-card" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
+            <h2 class="text-[17px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Record one-time payment</h2>
+            <p class="text-[13px] mb-4" style="color: var(--color-text-secondary);">A bonus or ad-hoc payout — not monthly salary. Recorded on its own, outside the monthly run.</p>
+
+            <!-- Person -->
+            <label class="block mb-4">
+              <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Teammate</span>
+              <AdminSelect v-model="otUserId" :items="otUserItems" class="mt-1 w-full" />
+            </label>
+
+            <!-- Type -->
+            <div class="mb-4">
+              <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Type</span>
+              <div class="flex flex-wrap gap-1.5 mt-1.5">
+                <button v-for="t in oneTimeTypes" :key="t.value" type="button" class="standard-pill" :style="otType === t.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}" @click="otType = t.value">{{ t.label }}</button>
+              </div>
+            </div>
+
+            <!-- Amount -->
+            <label class="block mb-4">
+              <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount (RM)</span>
+              <input v-model="otAmount" type="number" min="0" step="1" placeholder="0" class="contact-input mt-1 w-full">
+            </label>
+
+            <!-- Optionally sweep pending task extras -->
+            <label v-if="otPendingCount > 0" class="flex items-start gap-2.5 mb-4 cursor-pointer select-none">
+              <input v-model="otIncludeTasks" type="checkbox" class="mt-0.5 size-4 shrink-0" style="accent-color: var(--color-accent);">
+              <span class="text-[13px]" style="color: var(--color-text);">
+                Also settle their {{ otPendingCount }} pending task {{ otPendingCount === 1 ? 'extra' : 'extras' }}
+                <span class="font-semibold tabular-nums">({{ fmtMyr(otPendingMyr) }})</span> now
+              </span>
+            </label>
+
+            <!-- Note -->
+            <label class="block mb-4">
+              <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Note (optional)</span>
+              <input v-model="otNote" type="text" placeholder="e.g. Hari Raya 2026" class="contact-input mt-1 w-full">
+            </label>
+
+            <!-- Mark as paid -->
+            <label class="flex items-center gap-2.5 mb-4 cursor-pointer select-none">
+              <input v-model="otMarkPaid" type="checkbox" class="size-4 shrink-0" style="accent-color: var(--color-accent);">
+              <span class="text-[13px]" style="color: var(--color-text);">Mark as paid now</span>
+            </label>
+
+            <div v-if="otMarkPaid" class="grid grid-cols-2 gap-3 mb-4">
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Paid date</span>
+                <input v-model="otPaidAt" type="date" class="contact-input mt-1 w-full">
+              </label>
+              <label class="block">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Method</span>
+                <AdminSelect v-model="otMethod" :items="methodOptions" class="mt-1 w-full" />
+              </label>
+            </div>
+
+            <!-- Total preview -->
+            <div class="rounded-xl border px-4 py-3 mb-5 flex items-center justify-between" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+              <span class="text-[12px]" style="color: var(--color-text-secondary);">Total to record</span>
+              <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-accent);">{{ fmtMyr(otProjected) }}</span>
+            </div>
+
+            <div class="flex items-center justify-end gap-2">
+              <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="savingOneTime" @click="oneTimeOpen = false">Cancel</button>
+              <button type="button" class="btn-pill btn-pill-accent text-[13px]" :disabled="savingOneTime || !otCanSubmit" @click="confirmOneTime">
+                {{ savingOneTime ? 'Recording…' : otMarkPaid ? 'Record payment' : 'Save as pending' }}
               </button>
             </div>
           </div>

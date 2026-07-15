@@ -20,12 +20,16 @@ interface YearSummary {
   pending_total_myr: number
   allowance_total_myr: number
   extras_total_myr: number
+  discretionary_total_myr: number
 }
 interface PayrollEntry {
   id: number
+  kind: 'monthly' | 'one_time'
+  one_time_type: string | null
   period_label: string
   allowance_snapshot_myr: number | null
   task_extras_myr: number
+  discretionary_myr: number
   gross_myr: number
   legacy: boolean
   settled: boolean
@@ -33,6 +37,18 @@ interface PayrollEntry {
   method: string | null
   note: string | null
   tasks: { id: number, title: string, pay_amount_myr: number | null }[]
+}
+
+const oneTimeTypeLabels: Record<string, string> = {
+  signing: 'Signing bonus',
+  festive: 'Festive bonus',
+  performance: 'Performance bonus',
+  spot: 'Spot bonus',
+  other: 'One-time payment',
+}
+function entryLabel(e: PayrollEntry) {
+  if (e.kind === 'one_time') return oneTimeTypeLabels[e.one_time_type ?? 'other'] ?? 'One-time payment'
+  return fmtMonth(e.period_label)
 }
 interface Detail {
   user: UserInfo
@@ -77,12 +93,17 @@ const entriesForYear = computed(() =>
 
 const tiles = computed(() => {
   const s = yearSummary.value
-  return [
+  const base = [
     { key: 'paid', label: 'Paid', value: fmtMyr(s?.paid_total_myr ?? 0), fg: 'var(--color-success)', bg: 'var(--status-succeeded-bg)' },
     { key: 'pending', label: 'Pending', value: fmtMyr(s?.pending_total_myr ?? 0), fg: 'var(--color-warning)', bg: 'var(--status-refunded-bg)' },
     { key: 'allowance', label: 'Allowance', value: fmtMyr(s?.allowance_total_myr ?? 0), fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)' },
     { key: 'extras', label: 'Task extras', value: fmtMyr(s?.extras_total_myr ?? 0), fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)' },
   ]
+  // Only surface the one-time tile in years that actually have one-off pay.
+  if ((s?.discretionary_total_myr ?? 0) > 0) {
+    base.push({ key: 'onetime', label: 'One-time', value: fmtMyr(s?.discretionary_total_myr ?? 0), fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)' })
+  }
+  return base
 })
 
 // ── Settle ─────────────────────────────────────────────────────────────────
@@ -106,7 +127,7 @@ async function confirmSettle() {
   settling.value = true
   try {
     await apiFetch(`/api/v1/admin/payroll/${entry.id}/settle`, { method: 'POST', body: { method: settleMethod.value } })
-    toast.success('Payslip settled', `${entry.period_label} marked paid.`)
+    toast.success('Payslip settled', `${entryLabel(entry)} marked paid.`)
     pendingSettle.value = null
     await fetchDetail()
   }
@@ -204,8 +225,15 @@ function roleLabel(role: string) {
         <div v-else class="rounded-2xl border divide-y" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
           <div v-for="e in entriesForYear" :key="e.id" class="flex items-center justify-between gap-3 px-4 py-3.5">
             <div class="min-w-0">
-              <p class="text-[13px] font-semibold" style="color: var(--color-text);">{{ fmtMonth(e.period_label) }}</p>
-              <p v-if="!e.legacy" class="text-[11px] tabular-nums" style="color: var(--color-text-tertiary);">
+              <p class="text-[13px] font-semibold flex items-center gap-1.5" style="color: var(--color-text);">
+                {{ entryLabel(e) }}
+                <span v-if="e.kind === 'one_time'" class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded" :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">One-time</span>
+              </p>
+              <!-- One-time: bonus + optional swept extras. Monthly: allowance + extras. Legacy: none. -->
+              <p v-if="e.kind === 'one_time'" class="text-[11px] tabular-nums" style="color: var(--color-text-tertiary);">
+                Bonus {{ fmtMyr(e.discretionary_myr) }}<span v-if="e.task_extras_myr"> · Extras {{ fmtMyr(e.task_extras_myr) }} ({{ e.tasks.length }})</span> · {{ fmtMonth(e.period_label) }}
+              </p>
+              <p v-else-if="!e.legacy" class="text-[11px] tabular-nums" style="color: var(--color-text-tertiary);">
                 Allowance {{ fmtMyr(e.allowance_snapshot_myr) }} · Extras {{ fmtMyr(e.task_extras_myr) }}<span v-if="e.tasks.length"> ({{ e.tasks.length }})</span>
               </p>
               <p v-if="e.note" class="text-[11px] truncate max-w-80" style="color: var(--color-text-tertiary);">{{ e.note }}</p>
@@ -234,7 +262,7 @@ function roleLabel(role: string) {
       <Transition name="confirm-fade">
         <div v-if="pendingSettle" class="confirm-overlay" @click.self="pendingSettle = null">
           <div class="confirm-card" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
-            <h2 class="text-[17px] font-bold tracking-tight mb-2" style="color: var(--color-text);">Settle {{ fmtMonth(pendingSettle.period_label) }}?</h2>
+            <h2 class="text-[17px] font-bold tracking-tight mb-2" style="color: var(--color-text);">Settle {{ entryLabel(pendingSettle) }}?</h2>
             <p class="text-[13px] leading-relaxed mb-4" style="color: var(--color-text-secondary);">
               Records {{ fmtMyr(pendingSettle.gross_myr) }} paid to {{ detail?.user.name ?? 'this teammate' }}
               <template v-if="pendingSettle.tasks.length"> and marks {{ pendingSettle.tasks.length }} linked task {{ pendingSettle.tasks.length === 1 ? 'extra' : 'extras' }} paid</template>.

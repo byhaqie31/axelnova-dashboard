@@ -17,15 +17,31 @@ class PayrollEntryFactory extends Factory
 
         return [
             'user_id' => User::factory()->engineer(),
+            'kind' => PayrollEntry::KIND_MONTHLY,
             'period_label' => fake()->unique()->numerify('2026-##'),
+            'one_time_type' => null,
             'allowance_snapshot_myr' => $allowance,
             'task_extras_myr' => 0,
+            'discretionary_myr' => 0,
             'gross_myr' => $allowance,
             'paid_at' => null,
             'method' => null,
             'note' => null,
             'created_by' => User::factory()->founder(),
         ];
+    }
+
+    /** A one-off record — a discretionary bonus, no allowance snapshot. */
+    public function oneTime(int $amount = 1000, string $type = 'signing'): static
+    {
+        return $this->state([
+            'kind' => PayrollEntry::KIND_ONE_TIME,
+            'one_time_type' => $type,
+            'allowance_snapshot_myr' => null,
+            'task_extras_myr' => 0,
+            'discretionary_myr' => $amount,
+            'gross_myr' => $amount,
+        ]);
     }
 
     /** A pre-Task-7 row: hand-entered gross, no snapshot, no extras. */
