@@ -186,7 +186,7 @@ function fmtDate(iso: string | null) {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
     <NuxtLink to="/admin/tasks" class="inline-flex items-center gap-1.5 text-[13px] mb-6 transition-colors hover:opacity-80" style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All tasks
     </NuxtLink>
@@ -213,7 +213,7 @@ function fmtDate(iso: string | null) {
         </div>
       </div>
 
-      <!-- Lock banner -->
+      <!-- Lock banner (full width) -->
       <div
         v-if="locked" class="rounded-xl border px-4 py-3 mb-6 flex items-start gap-2.5"
         :style="{ borderColor: 'var(--color-warning)', background: 'var(--color-warning-soft)' }">
@@ -223,66 +223,70 @@ function fmtDate(iso: string | null) {
         </p>
       </div>
 
-      <!-- Fields (read-only when locked) -->
-      <AdminTaskFormFields v-model="form" :assignee-items="assigneeItems" :disabled="locked" />
-
-      <div v-if="!locked" class="flex items-center gap-2 mt-8">
-        <button type="button" class="btn-pill btn-pill-primary text-[13px]" :disabled="saving" @click="save">
-          {{ saving ? 'Saving…' : 'Save changes' }}
-        </button>
-      </div>
-
-      <!-- Payment & lifecycle -->
-      <div class="mt-10 pt-6 border-t" :style="{ borderColor: 'var(--color-border)' }">
-        <h2 class="text-[13px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Payment & lifecycle</h2>
-
-        <div class="flex items-center justify-between gap-3 mb-4">
-          <div class="flex items-center gap-2">
-            <TaskPayBadge v-if="task.payment_state !== 'none'" :state="task.payment_state" :amount="task.pay_amount_myr" />
-            <span v-else class="text-[13px]" style="color: var(--color-text-tertiary);">No extra pay</span>
+      <!-- Two-column: the editable shape on the left, payment/lifecycle + actions in a side rail. -->
+      <div class="grid lg:grid-cols-[1fr_320px] gap-8 items-start">
+        <!-- Main: fields (read-only when locked) -->
+        <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <AdminTaskFormFields v-model="form" :assignee-items="assigneeItems" :disabled="locked" />
+          <div v-if="!locked" class="mt-6">
+            <button type="button" class="btn-pill btn-pill-primary text-[13px]" :disabled="saving" @click="save">
+              {{ saving ? 'Saving…' : 'Save changes' }}
+            </button>
           </div>
-          <button
-            v-if="canMarkPaid(task)" type="button" class="btn-pill btn-pill-accent text-[13px]"
-            @click="pendingAction = 'mark-paid'">
-            <UIcon name="i-lucide-banknote" class="size-4" /> Mark paid
-          </button>
-          <span
-            v-else-if="onPayslip(task)" class="inline-flex items-center gap-1 text-[12px] whitespace-nowrap"
-            :style="{ color: 'var(--color-text-tertiary)' }">
-            <UIcon name="i-lucide-receipt" class="size-3.5" aria-hidden="true" />
-            on payslip{{ task.payroll_period_label ? ` ${task.payroll_period_label}` : '' }}
-          </span>
         </div>
 
-        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
-          <div>
-            <dt class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Assignee</dt>
-            <dd style="color: var(--color-text);">{{ task.assignee_name ?? 'Pool (unassigned)' }}</dd>
+        <!-- Side rail (sticky) -->
+        <div class="lg:sticky lg:top-20 space-y-4">
+          <!-- Payment -->
+          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Payment</h2>
+            <div class="flex items-center gap-2 mb-3">
+              <TaskPayBadge v-if="task.payment_state !== 'none'" :state="task.payment_state" :amount="task.pay_amount_myr" />
+              <span v-else class="text-[13px]" style="color: var(--color-text-tertiary);">No extra pay</span>
+            </div>
+            <button
+              v-if="canMarkPaid(task)" type="button" class="btn-pill btn-pill-accent text-[13px] w-full justify-center"
+              @click="pendingAction = 'mark-paid'">
+              <UIcon name="i-lucide-banknote" class="size-4" /> Mark paid
+            </button>
+            <span
+              v-else-if="onPayslip(task)" class="inline-flex items-center gap-1 text-[12px]"
+              :style="{ color: 'var(--color-text-tertiary)' }">
+              <UIcon name="i-lucide-receipt" class="size-3.5" aria-hidden="true" />
+              on payslip{{ task.payroll_period_label ? ` ${task.payroll_period_label}` : '' }}
+            </span>
           </div>
-          <div>
-            <dt class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Created by</dt>
-            <dd style="color: var(--color-text);">{{ task.created_by_name ?? '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Created</dt>
-            <dd style="color: var(--color-text);">{{ fmtDate(task.created_at) }}</dd>
-          </div>
-          <div v-if="task.completed_at">
-            <dt class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Completed</dt>
-            <dd style="color: var(--color-text);">{{ fmtDate(task.completed_at) }}</dd>
-          </div>
-          <div v-if="task.paid_at">
-            <dt class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Paid</dt>
-            <dd style="color: var(--color-text);">{{ fmtDate(task.paid_at) }}</dd>
-          </div>
-        </dl>
-      </div>
 
-      <!-- Danger -->
-      <div class="mt-10 pt-6 border-t" :style="{ borderColor: 'var(--color-border)' }">
-        <button type="button" class="btn-pill btn-pill-danger text-[13px]" @click="pendingAction = 'delete'">
-          <UIcon name="i-lucide-trash-2" class="size-4" /> Delete task
-        </button>
+          <!-- Details -->
+          <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Details</h2>
+            <div>
+              <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Assignee</p>
+              <p class="text-[13px]" style="color: var(--color-text);">{{ task.assignee_name ?? 'Pool (unassigned)' }}</p>
+            </div>
+            <div>
+              <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Created by</p>
+              <p class="text-[13px]" style="color: var(--color-text);">{{ task.created_by_name ?? '—' }}</p>
+            </div>
+            <div>
+              <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Created</p>
+              <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(task.created_at) }}</p>
+            </div>
+            <div v-if="task.completed_at">
+              <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Completed</p>
+              <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(task.completed_at) }}</p>
+            </div>
+            <div v-if="task.paid_at">
+              <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Paid</p>
+              <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(task.paid_at) }}</p>
+            </div>
+          </div>
+
+          <!-- Delete -->
+          <button type="button" class="btn-pill btn-pill-danger text-[13px] w-full justify-center" @click="pendingAction = 'delete'">
+            <UIcon name="i-lucide-trash-2" class="size-4" /> Delete task
+          </button>
+        </div>
       </div>
     </template>
 
