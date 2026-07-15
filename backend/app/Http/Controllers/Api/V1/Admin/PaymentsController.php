@@ -7,6 +7,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\PaymentType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PaymentResource;
+use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Payments\PaymentService;
@@ -114,6 +115,41 @@ class PaymentsController extends Controller
             'message' => 'Refund recorded.',
             'payment' => new PaymentResource($refund),
         ], 201);
+    }
+
+    /**
+     * Move a payment's invoice allocation — link, re-link, or unlink (null).
+     * Fixes the stranded-invoice case: a payment recorded without an invoice
+     * leaves that invoice `issued` forever, since the observer only recomputes
+     * the invoice a payment points at.
+     */
+    public function allocate(Request $request, Payment $payment): JsonResponse
+    {
+        abort_unless($payment->type === PaymentType::Payment, 422, 'Refunds follow their parent payment allocation.');
+        abort_unless($payment->status === PaymentStatus::Succeeded, 422, 'Only a succeeded payment can be allocated.');
+
+        $data = $request->validate([
+            'invoice_id' => [
+                'present', 'nullable', 'integer',
+                Rule::exists('invoices', 'id')
+                    ->where('order_id', $payment->order_id)
+                    ->whereNull('deleted_at'),
+            ],
+        ]);
+
+        $invoice = isset($data['invoice_id']) ? Invoice::find($data['invoice_id']) : null;
+        abort_if($invoice && $invoice->status === 'void', 422, 'A void invoice cannot receive allocations.');
+
+        if ($payment->invoice_id !== $invoice?->id) {
+            PaymentService::allocate($payment, $invoice);
+        }
+
+        $payment->load(['order', 'client', 'invoice', 'refunds', 'receipt']);
+
+        return response()->json([
+            'message' => 'Allocation updated.',
+            'payment' => new PaymentResource($payment),
+        ]);
     }
 
     /** Preview the would-be (or issued) receipt for a payment — powers the live preview. */

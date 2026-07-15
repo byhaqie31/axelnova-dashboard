@@ -10,10 +10,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `user`/`creator` loaded) and everyone's own-rows view (/v1/team/payslips,
  * where those relations stay unloaded and the names simply drop out).
  *
- * Exposes the itemised breakdown (allowance snapshot + task extras = gross) plus
- * a `legacy` flag: pre-Task-7 rows carry a hand-entered gross with no breakdown,
- * so the UI renders them gross-only. `settled` mirrors `paid_at`. Linked task
- * extras are included whenever the `tasks` relation is eager-loaded.
+ * Exposes the itemised breakdown (allowance snapshot + task extras +
+ * discretionary = gross) plus a `kind` (`monthly`/`one_time`), `one_time_type`
+ * label, and a `legacy` flag: pre-Task-7 rows carry a hand-entered gross with no
+ * breakdown, so the UI renders them gross-only. `settled` mirrors `paid_at`.
+ * Linked task extras are included whenever the `tasks` relation is eager-loaded.
  */
 class PayrollEntryResource extends JsonResource
 {
@@ -23,9 +24,12 @@ class PayrollEntryResource extends JsonResource
             'id' => $this->id,
             'user_id' => $this->user_id,
             'user_name' => $this->whenLoaded('user', fn () => $this->user?->name),
+            'kind' => $this->kind,
+            'one_time_type' => $this->one_time_type,
             'period_label' => $this->period_label,
             'allowance_snapshot_myr' => $this->allowance_snapshot_myr,
             'task_extras_myr' => (int) $this->task_extras_myr,
+            'discretionary_myr' => (int) $this->discretionary_myr,
             'gross_myr' => (int) $this->gross_myr,
             'legacy' => $this->isLegacy(),
             'settled' => $this->isSettled(),

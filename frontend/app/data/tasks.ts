@@ -36,6 +36,21 @@ export interface TeamTasksFeed {
   mine: TaskRecord[]
 }
 
+/**
+ * The admin create/edit form shape — string-typed for the inputs (assignee_id,
+ * pay are strings in the form, coerced on submit). Shared by /admin/tasks/new,
+ * /admin/tasks/[id] and the AdminTaskFormFields component.
+ */
+export interface TaskFormShape {
+  title: string
+  description: string
+  assignee_id: string
+  pay: string
+  duration_estimate: string
+  deadline: string
+  priority: TaskRecord['priority']
+}
+
 export interface TaskPriorityOption {
   value: TaskRecord['priority']
   label: string

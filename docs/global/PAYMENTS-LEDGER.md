@@ -110,6 +110,22 @@ Invoices are editable **in place** and can be emailed to the client. The frozen-
 - **`POST /v1/admin/invoices/{invoice}/send`** — queues `SendInvoiceEmail` (`InvoiceMail`, markdown `mail.client-invoice`): summary + "View invoice" button to the public PDF link, with the PDF fetched from the frontend Nitro renderer (`services.frontend.url`, 30s timeout) and attached. **Render failure degrades to link-only** — never blocks the send. The typed recipient is used for that send only (never written back to the client); `emailed_at`/`emailed_to` stamp the last send.
 - **Pages:** `invoices/edit.vue?id=` (same `AdminInvoiceForm` as issuing, pre-filled from `inputs`, locked fields disabled), Edit/Email buttons + quotation link on `invoices/[id].vue`, and an Invoices card on the quotation detail sidebar. The invoices list shows just the invoice number — order/quotation context lives on the detail page.
 
+## Reallocation — moving a payment between invoices
+
+`PATCH /v1/admin/payments/{payment}/allocation` (`{ invoice_id: number | null }`) moves a
+payment's invoice link after the fact — link an unallocated payment, re-link a
+wrongly-tagged one, or unlink. `PaymentService::allocate()` cascades the move to the
+payment's refund children and its receipt's display link, then recomputes **both** the new
+invoice (via the observer, on save) and the old one (via the extracted
+`PaymentObserver::recomputeInvoice()` — the observer only sees the payment's new invoice).
+Guards: original `payment` rows only (refunds follow their parent), `succeeded` only,
+same-order invoices only, `void` invoices never. Over-allocation is allowed — the admin UI
+warns in its confirm step but the ledger row is truth.
+
+UI: "Allocate to invoice" / "Change invoice allocation" on the payment detail page
+(`AdminPaymentAllocateModal`, outcome-stating confirm popup). The record-payment form also
+preselects the order's only `issued` invoice when exactly one exists.
+
 ## Out of scope (by design)
 
 MyInvois / LHDN e-invoicing (invoice-side, separate), multi-currency (MYR only), installment scheduling, dunning/reminders.

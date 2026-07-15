@@ -65,7 +65,7 @@ docker compose -f docker-compose.dev.yml exec backend  php artisan queue:work   
 docker compose -f docker-compose.dev.yml exec frontend npm install <pkg>
 
 # Stop
-docker compose -f docker-compose.dev.yml down            # or `down -v` to wipe volumes
+docker compose -f docker-compose.dev.yml down            # NEVER `down -v` — see the database-protection rule below
 ```
 
 Endpoints: backend `http://127.0.0.1:8003`, frontend `http://127.0.0.1:3003`.
@@ -75,6 +75,8 @@ Production deploys via GitHub Actions on merge to `main` — see [docs/global/DE
 ## Non-obvious rules
 
 These are easy to get wrong; they exist for reasons:
+
+**DATABASE PROTECTION — ABSOLUTE RULE.** Claude (and every subagent it dispatches) must NEVER run destructive database commands against the dev or prod database: `migrate:fresh`, `migrate:refresh`, `migrate:reset`, `migrate:rollback`, `db:wipe`, `docker compose down -v`/`--volumes`, `docker volume rm/prune`, `DROP DATABASE/SCHEMA`, `TRUNCATE TABLE`. On 2026-07-15 a subagent ran `migrate:fresh --seed` on the dev DB while debugging and destroyed all local data. If a schema reset ever seems necessary, STOP and tell the owner — they run it themselves. PHPUnit is safe as-is: `phpunit.xml` forces `axelnova_dashboard_test` (`force="true"`), so `php artisan test` never touches the dev DB — run tests, never "fix" a migration problem by resetting a database. Additive `php artisan migrate` is allowed. Enforced by deny rules + a PreToolUse hook in [.claude/settings.json](settings.json) — do not weaken or remove them. When dispatching subagents that touch the backend, repeat this prohibition in their instructions.
 
 **FOUC rule (frontend).** Never bind layout backgrounds to `colorMode.value` in templates — `colorMode` resolves to a default during SSR and flips after hydration, causing a gray flash on refresh. Use CSS variables (`--nav-bg-top`, `--nav-bg-scrolled`, etc.) and let `:root` / `.dark` rules handle the swap. `@nuxt/ui` injects the `.dark` class before paint.
 

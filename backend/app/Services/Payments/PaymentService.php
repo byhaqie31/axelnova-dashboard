@@ -3,8 +3,10 @@
 namespace App\Services\Payments;
 
 use App\Enums\PaymentStatus;
+use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Observers\PaymentObserver;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
 use Illuminate\Support\Facades\DB;
@@ -61,6 +63,44 @@ class PaymentService
             'notes' => $notes,
             'paid_at' => now(),
         ]));
+    }
+
+    /**
+     * Move a payment's invoice allocation — link, re-link, or unlink (null).
+     * Refund children follow their parent, the receipt's display link follows,
+     * and BOTH invoices' caches end up recomputed: the observer handles the
+     * new one when the payment saves; the old one is refreshed explicitly
+     * because the observer can no longer see it.
+     */
+    public static function allocate(Payment $payment, ?Invoice $invoice): Payment
+    {
+        return DB::transaction(function () use ($payment, $invoice) {
+            $previousInvoiceId = $payment->invoice_id;
+
+            // Children first, quietly — so the observer recompute fired by the
+            // parent's save already counts the refund rows on the new invoice.
+            $payment->refunds()->withTrashed()->update(['invoice_id' => $invoice?->id]);
+
+            $payment->invoice_id = $invoice?->id;
+            $payment->save();
+
+            // Receipts display their allocation; the PDF anchors the payment.
+            $payment->receipt()->update(['invoice_id' => $invoice?->id]);
+
+            if ($previousInvoiceId && $previousInvoiceId !== $invoice?->id) {
+                $previous = Invoice::find($previousInvoiceId);
+                if ($previous) {
+                    PaymentObserver::recomputeInvoice($previous);
+                }
+            }
+
+            $payment->logActivity($invoice ? 'payment.allocated' : 'payment.unallocated', [
+                'invoice_id' => $invoice?->id,
+                'previous_invoice_id' => $previousInvoiceId,
+            ]);
+
+            return $payment;
+        });
     }
 
     /**

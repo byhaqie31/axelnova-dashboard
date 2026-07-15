@@ -156,15 +156,17 @@ Route::middleware([
 
         // Payroll ledger (Task 7) — founder-only via the view-all-payroll gate
         // in-controller; everyone else reads their own payslips at
-        // /v1/team/payslips. `store` GENERATES a payslip (allowance snapshot + Σ
-        // pending task extras); `preview` is the generation dry-run; `settle`
-        // stamps paid_at + flips the linked task extras to paid. `/preview` must
-        // precede the {payrollEntry} bind.
+        // /v1/team/payslips. `store` GENERATES a monthly payslip (allowance
+        // snapshot + Σ pending task extras); `one-time` records an ad-hoc bonus /
+        // payout outside the monthly cycle; `preview` is the generation dry-run;
+        // `settle` stamps paid_at + flips the linked task extras to paid.
+        // `/preview` and `/one-time` must precede the {payrollEntry} bind.
         Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
         Route::get('/payroll/roster', [PayrollController::class, 'roster'])->name('payroll.roster');
         Route::get('/payroll/user/{user}', [PayrollController::class, 'userDetail'])->name('payroll.user');
         Route::get('/payroll/preview', [PayrollController::class, 'preview'])->name('payroll.preview');
         Route::post('/payroll', [PayrollController::class, 'store'])->name('payroll.store');
+        Route::post('/payroll/one-time', [PayrollController::class, 'storeOneTime'])->name('payroll.one-time');
         Route::post('/payroll/{payrollEntry}/settle', [PayrollController::class, 'settle'])->name('payroll.settle');
 
         // Marketing-spend ledger (Phase 5, record-only) — the founder enters
@@ -229,6 +231,7 @@ Route::middleware([
         Route::post('/payments/{payment}/refund', [PaymentsController::class, 'refund'])->name('payments.refund');
         Route::get('/payments/{payment}/receipt/preview', [PaymentsController::class, 'receiptPreview'])->name('payments.receipt.preview');
         Route::post('/payments/{payment}/receipt', [PaymentsController::class, 'issueReceipt'])->name('payments.receipt');
+        Route::patch('/payments/{payment}/allocation', [PaymentsController::class, 'allocate'])->name('payments.allocation');
 
         // Partner referrals
         Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');

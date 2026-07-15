@@ -65,7 +65,7 @@ axelnova-dashboard/
 | Table | Purpose |
 |-------|---------|
 | `tasks` | The tasks engine — delegated work with an optional extra-pay bonus. `assignee_id` null = the pick-up pool; status spine `open → in_progress → completed \| payment_pending → paid` (completing with `pay_amount_myr` set forks to `payment_pending` automatically; admin mark-paid OR payslip settlement writes `paid`). `payroll_entry_id` (nullable FK, nullOnDelete) stamps which payslip settles the extra — the per-task double-count guard: generation only picks up `payment_pending` + unlinked tasks, and ad-hoc mark-paid rejects a linked task (422). `notes` is the append-only timestamped team log. Soft-deletes. The team Calendar is a view over this table (deadline + completed_at) — no table of its own |
-| `payroll_entries` | The payslip ledger (Task 7). One row per member per period (**UNIQUE (user_id, period_label)** — the per-period double-count guard). Itemised as `allowance_snapshot_myr` (the member's `users.monthly_allowance_myr` FROZEN at generation; null = none on file, distinct from 0) + `task_extras_myr` (Σ of the linked pending task bonuses), with `gross_myr` kept as the TOTAL so legacy consumers stay valid. `paid_at` is the sole settlement marker (no status column); settling flips the linked task extras to `paid`. Pre-Task-7 rows carry a hand-entered gross with null snapshot / 0 extras — the UI reads them as `legacy` and renders gross-only. **The settled payslip IS the team-comp expense record** — there is no general finance/expenses/P&L module in this repo (only `marketing_expenses` + this table; `payments` is client revenue), so nothing double-counts; P&L aggregation is future work. Statutory maths (EPF/SOCSO/EIS/PCB) stays out of scope |
+| `payroll_entries` | The payslip ledger (Task 7). Two `kind`s share the table: `monthly` (the recurring run) and `one_time` (an ad-hoc bonus / payout). Itemised as `allowance_snapshot_myr` (the member's `users.monthly_allowance_myr` FROZEN at generation; null = none on file, distinct from 0; monthly only) + `task_extras_myr` (Σ of the linked pending task bonuses) + `discretionary_myr` (the manual one-off amount; one_time only), with `gross_myr` kept as the TOTAL so legacy consumers stay valid. **The per-period double-count guard is monthly-scoped** — `UNIQUE (user_id, monthly_period)` where `monthly_period` is a generated column = `period_label` for monthly rows, NULL for one-offs (so several one-offs can share a month; monthly stays one-per-period). One-offs still carry a YYYY-MM `period_label` (the payment's month) so year-to-date rollups bucket them; the UI labels them by `one_time_type` (signing/festive/performance/spot/other). `paid_at` is the sole settlement marker (no status column); settling flips the linked task extras to `paid`. Pre-Task-7 rows carry a hand-entered gross with null snapshot / 0 extras — the UI reads them as `legacy` (gated on `monthly` so a discretionary one-off is never misflagged) and renders gross-only. **The settled payslip IS the team-comp expense record** — there is no general finance/expenses/P&L module in this repo (only `marketing_expenses` + this table; `payments` is client revenue), so nothing double-counts; P&L aggregation is future work. Statutory maths (EPF/SOCSO/EIS/PCB) stays out of scope |
 | `announcements` | Company notices authored from the cockpit (Task 6). `audience` scopes visibility once published: `team` (workspace only), `partners` (**forward hook** — the partner portal doesn't read this table yet), or `all` (both). `published_at` null = draft; publishing sets it once (re-publishing an already-published row keeps the original timestamp; toggling off reverts to draft). No soft-deletes, no delete endpoint — "unpublish" is the only retraction verb |
 
 ### Partner portal (portal restructure, Task 9 — type-aware referrer + investor)
@@ -126,7 +126,9 @@ GET    /v1/admin/tasks               Filters: status, priority, assignee_id ('un
 POST   /v1/admin/tasks               Create (assign now or leave in the pool; status always 'open')
 GET    /v1/admin/tasks/{id}          Detail
 PATCH  /v1/admin/tasks/{id}          Edit shape (title/desc/assignee/pay/duration/deadline/priority) —
-                                     never status; assignment keeps status (the assignee starts it)
+                                     never status; assignment keeps status (the assignee starts it).
+                                     LOCKED once status != 'open' (in_progress/completed/…/paid → 422) so
+                                     the shape can't change under the person working it; Delete recalls it
 POST   /v1/admin/tasks/{id}/mark-paid  payment_pending (or completed-with-pay) → paid + paid_at (ad-hoc,
                                      no payslip); a task marked paid this way is never swept into a payslip,
                                      and a payslip-LINKED task is rejected here (422 — settle the slip
@@ -138,10 +140,17 @@ GET    /v1/admin/payroll             Full ledger (paginate; ?user_id filter), ea
 GET    /v1/admin/payroll/preview     Dry-run for a member (?user_id, &period_label?): allowance on file +
                                      count/sum of unlinked payment_pending extras + projected gross;
                                      `period_taken` flags an existing (user, period) slip (null if no period)
-POST   /v1/admin/payroll             GENERATE a payslip {user_id, period_label, method?, note?} —
+POST   /v1/admin/payroll             GENERATE a MONTHLY payslip {user_id, period_label, method?, note?} —
                                      snapshots allowance, sweeps + links the member's unlinked
                                      payment_pending task extras, gross = allowance(0-if-null) + extras.
                                      Duplicate period → 422; empty slip (no allowance, no extras) → 422
+POST   /v1/admin/payroll/one-time    RECORD a ONE-TIME entry {user_id, one_time_type, discretionary_myr?,
+                                     include_pending_tasks?, mark_paid?(default true), paid_at?, method?, note?}
+                                     — a signing/festive/spot bonus and/or the member's pending task extras
+                                     paid immediately, outside the monthly cycle. gross = discretionary +
+                                     (swept extras). Not period-guarded; allowed for deactivated teammates;
+                                     empty (no amount, no extras) → 422. mark_paid=false drafts a pending
+                                     one-off the normal settle action closes later
 POST   /v1/admin/payroll/{id}/settle Stamp paid_at (+ method?) and flip the linked task extras to paid.
                                      Already-settled → 422 (idempotent guard)
 
@@ -213,10 +222,15 @@ GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?rang
 /admin/users          Team provisioning — create (marketer|engineer only; founder not creatable from
                       the UI, though the backend whitelist still allows it), edit (name/role/allowance;
                       founder rows keep a locked role), deactivate/reactivate (confirm dialog)
-/admin/tasks          Tasks engine — create/assign/edit (slideover), mark bonus paid, delete
+/admin/tasks          Tasks engine — scannable one-line listing (title/assignee/priority/deadline/status);
+                      row → detail page. /admin/tasks/new + /admin/tasks/[id] are full pages (no slideover);
+                      detail carries pay/duration/payment status + Mark paid/Delete, and is read-only once
+                      the task is in progress or beyond
 /admin/announcements  Announcements — post/edit (slideover), publish toggle (§12.2). No delete
-/admin/payroll        Payroll — generate a payslip (member + period, with live preview), itemised
-                      ledger (allowance/extras/gross), Settle (confirm). Legacy rows render gross-only
+/admin/payroll        Payroll — generate a monthly payslip (member + period, with live preview) or
+                      Record one-time payment (bonus / ad-hoc payout, optional pending-tasks sweep,
+                      mark-paid-now toggle), itemised ledger (allowance/extras/discretionary/gross),
+                      Settle (confirm). Legacy rows render gross-only
 
 # Team workspace (/team/*) — Task 4 reframed this to five personal
 # destinations; inquiries/referrals/marketing pages were removed (admin-owned).
@@ -225,7 +239,7 @@ GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?rang
 /team                 Home — company announcements feed (published + audience team|all, newest first)
 /team/tasks           Tasks kanban — Available → In progress → Complete (payment is a card badge, not a column)
 /team/calendar        Calendar — month view over task deadlines + completed-date log (no table of its own)
-/team/payslips        Own payslips (allowance/extras/gross breakdown) + a "Pending extras" block on top
+/team/payslips        Own payslips (monthly allowance/extras + one-time bonus entries, tagged by type) + a "Pending extras" block on top
 /team/profile         Self-service profile — display name + availability (Available|Busy)
 
 # /partners is the PUBLIC marketing landing (pages/public/partners/index.vue,

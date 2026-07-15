@@ -11,9 +11,12 @@ const { apiFetch } = useTeamAuth()
 
 interface PayrollEntry {
   id: number
+  kind: 'monthly' | 'one_time'
+  one_time_type: string | null
   period_label: string
   allowance_snapshot_myr: number | null
   task_extras_myr: number
+  discretionary_myr: number
   gross_myr: number
   legacy: boolean
   settled: boolean
@@ -21,6 +24,18 @@ interface PayrollEntry {
   method: string | null
   note: string | null
   created_at: string
+}
+
+const oneTimeTypeLabels: Record<string, string> = {
+  signing: 'Signing bonus',
+  festive: 'Festive bonus',
+  performance: 'Performance bonus',
+  spot: 'Spot bonus',
+  other: 'One-time payment',
+}
+function entryLabel(e: PayrollEntry) {
+  if (e.kind === 'one_time') return oneTimeTypeLabels[e.one_time_type ?? 'other'] ?? 'One-time payment'
+  return e.period_label
 }
 interface PendingTask { id: number, title: string, pay_amount_myr: number | null, completed_at: string | null }
 
@@ -129,9 +144,15 @@ v-else class="rounded-2xl border divide-y"
 v-for="e in entries" :key="e.id" class="flex items-center justify-between gap-4 px-5 py-4"
           :style="{ borderColor: 'var(--color-border)' }">
           <div class="min-w-0">
-            <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ e.period_label }}</p>
-            <!-- Breakdown line for Task-7 rows; legacy rows drop it. -->
-            <p v-if="!e.legacy" class="text-[11px] tabular-nums" :style="{ color: 'var(--color-text-secondary)' }">
+            <p class="text-[13px] font-semibold flex items-center gap-1.5" :style="{ color: 'var(--color-text)' }">
+              {{ entryLabel(e) }}
+              <span v-if="e.kind === 'one_time'" class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded" :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">One-time</span>
+            </p>
+            <!-- One-time: bonus + optional extras. Monthly (Task-7): allowance + extras. Legacy: none. -->
+            <p v-if="e.kind === 'one_time'" class="text-[11px] tabular-nums" :style="{ color: 'var(--color-text-secondary)' }">
+              Bonus {{ fmtMyr(e.discretionary_myr) }}<span v-if="e.task_extras_myr"> · Extras {{ fmtMyr(e.task_extras_myr) }}</span>
+            </p>
+            <p v-else-if="!e.legacy" class="text-[11px] tabular-nums" :style="{ color: 'var(--color-text-secondary)' }">
               Allowance {{ fmtMyr(e.allowance_snapshot_myr) }} · Extras {{ fmtMyr(e.task_extras_myr) }}
             </p>
             <p class="text-[11px] truncate" :style="{ color: 'var(--color-text-tertiary)' }">

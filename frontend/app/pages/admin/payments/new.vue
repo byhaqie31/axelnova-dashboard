@@ -20,6 +20,14 @@ const loading = ref(true)
 const error = ref('')
 const saving = ref(false)
 
+// Local YYYY-MM-DDTHH:mm for the datetime-local input — backend runs in the
+// same timezone (Asia/Kuala_Lumpur), so the raw value parses as intended.
+function nowLocal() {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
+}
+
 const form = reactive({
   amount: '',
   method: 'fpx',
@@ -27,7 +35,7 @@ const form = reactive({
   // validated against the order's invoices once the order loads.
   invoice_id: route.query.invoice_id ? String(route.query.invoice_id) : '',
   reference: '',
-  paid_at: '',
+  paid_at: nowLocal(),
   notes: '',
 })
 
@@ -56,6 +64,12 @@ async function fetchOrder() {
     // Drop a pre-allocated ?invoice_id that doesn't belong to this order.
     if (form.invoice_id && !res.data.invoices?.some(d => String(d.id) === form.invoice_id)) {
       form.invoice_id = ''
+    }
+    // No explicit allocation requested: preselect the order's only open
+    // invoice so a plain "record payment" can't silently strand it unpaid.
+    if (!form.invoice_id) {
+      const openInvoices = (res.data.invoices ?? []).filter(d => d.status === 'issued')
+      if (openInvoices.length === 1 && openInvoices[0]) form.invoice_id = String(openInvoices[0].id)
     }
     prefillAmount()
   }
@@ -151,7 +165,7 @@ class="rounded-2xl border p-6 space-y-5"
           </label>
           <label class="block">
             <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Paid at</span>
-            <input v-model="form.paid_at" type="date" class="contact-input mt-1 w-full">
+            <input v-model="form.paid_at" type="datetime-local" class="contact-input mt-1 w-full">
           </label>
         </div>
 
