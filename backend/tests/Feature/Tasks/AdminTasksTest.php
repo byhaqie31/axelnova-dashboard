@@ -126,38 +126,42 @@ class AdminTasksTest extends TestCase
             ->assertJsonPath('data.priority', 'high');
     }
 
-    public function test_unassigning_an_in_progress_task_resets_it_to_open(): void
+    public function test_editing_an_in_progress_task_is_locked(): void
     {
-        // Mirrors the team's own "release" edge — clearing the assignee mid-flight
-        // must send the task back to the pool, not just orphan it in place.
+        // Once a teammate has STARTED the task, its shape is frozen — the admin
+        // can't retitle, re-pay, or unassign it out from under them (422). The
+        // recall path is Delete, not an edit.
         $founder = User::factory()->founder()->create();
         $engineer = User::factory()->engineer()->create();
-        $task = Task::factory()->assignedTo($engineer)->inProgress()->create(['created_by' => $founder->id]);
+        $task = Task::factory()->assignedTo($engineer)->inProgress()->create(['created_by' => $founder->id, 'title' => 'Original']);
 
         $this->patchJson("/api/v1/admin/tasks/{$task->id}", [
-            'assignee_id' => null,
-        ], $this->adminHeaders($founder))
-            ->assertOk()
-            ->assertJsonPath('data.assignee_id', null)
-            ->assertJsonPath('data.status', 'open');
-
-        $this->assertNull($task->fresh()->assignee_id);
-        $this->assertSame('open', $task->fresh()->status);
-    }
-
-    public function test_unassigning_a_completed_task_is_rejected(): void
-    {
-        // Completed/payment_pending/paid tasks are historical records — who did
-        // the work stays on the row, so unassigning is a 422, not a silent drop.
-        $founder = User::factory()->founder()->create();
-        $engineer = User::factory()->engineer()->create();
-        $task = Task::factory()->assignedTo($engineer)->completed()->create(['created_by' => $founder->id]);
-
-        $this->patchJson("/api/v1/admin/tasks/{$task->id}", [
+            'title' => 'Retitled',
             'assignee_id' => null,
         ], $this->adminHeaders($founder))
             ->assertUnprocessable();
 
+        // Nothing moved — title, assignee and status are all untouched.
+        $this->assertSame('Original', $task->fresh()->title);
+        $this->assertSame($engineer->id, $task->fresh()->assignee_id);
+        $this->assertSame('in_progress', $task->fresh()->status);
+    }
+
+    public function test_editing_a_completed_or_paid_task_is_locked(): void
+    {
+        // Completed/payment_pending/paid tasks are historical records — their
+        // shape (incl. assignee) stays frozen; editing is a 422.
+        $founder = User::factory()->founder()->create();
+        $engineer = User::factory()->engineer()->create();
+        $task = Task::factory()->assignedTo($engineer)->completed()->create(['created_by' => $founder->id, 'title' => 'Done work']);
+
+        $this->patchJson("/api/v1/admin/tasks/{$task->id}", [
+            'title' => 'Tampered',
+            'assignee_id' => null,
+        ], $this->adminHeaders($founder))
+            ->assertUnprocessable();
+
+        $this->assertSame('Done work', $task->fresh()->title);
         $this->assertSame($engineer->id, $task->fresh()->assignee_id);
         $this->assertSame('completed', $task->fresh()->status);
     }

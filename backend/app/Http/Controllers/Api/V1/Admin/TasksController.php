@@ -82,28 +82,22 @@ class TasksController extends Controller
      * team member starts it), and the lifecycle only advances through the team
      * transitions + mark-paid.
      *
-     * The one exception is unassigning: clearing `assignee_id` on an in_progress
-     * task mirrors the team's own "release" edge (Team\TasksController::updateStatus)
-     * — it isn't just orphaning the task in place, it sends it back to the pool
-     * (status → open) so it's claimable again. A task past that point (completed,
-     * payment_pending, paid) is a historical record of who did the work, so
-     * unassigning it is rejected outright rather than silently dropping the trail.
+     * Editable only while the task is still `open` (pooled, or assigned but not
+     * yet started). The moment a teammate STARTS it — `in_progress`, and every
+     * state after (completed, payment_pending, paid) — the shape is frozen (422)
+     * so the admin can't change scope/pay/assignment out from under the person
+     * doing (or who already did) the work. The recall path for an in-progress
+     * task is Delete, not an edit.
      */
     public function update(Request $request, Task $task): JsonResponse|TaskResource
     {
-        $data = $this->validatePayload($request, creating: false);
-
-        if (array_key_exists('assignee_id', $data) && $data['assignee_id'] === null) {
-            if (in_array($task->status, ['completed', 'payment_pending', 'paid'], true)) {
-                return response()->json([
-                    'message' => 'This task is already past assignment — completed/paid work stays linked to who did it.',
-                ], 422);
-            }
-
-            if ($task->status === 'in_progress') {
-                $data['status'] = 'open';
-            }
+        if ($task->status !== 'open') {
+            return response()->json([
+                'message' => 'This task is in progress (or beyond) — its details are locked. Delete it to pull it back.',
+            ], 422);
         }
+
+        $data = $this->validatePayload($request, creating: false);
 
         $task->update($data);
 

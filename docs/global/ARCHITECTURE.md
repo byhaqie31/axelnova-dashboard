@@ -126,7 +126,9 @@ GET    /v1/admin/tasks               Filters: status, priority, assignee_id ('un
 POST   /v1/admin/tasks               Create (assign now or leave in the pool; status always 'open')
 GET    /v1/admin/tasks/{id}          Detail
 PATCH  /v1/admin/tasks/{id}          Edit shape (title/desc/assignee/pay/duration/deadline/priority) —
-                                     never status; assignment keeps status (the assignee starts it)
+                                     never status; assignment keeps status (the assignee starts it).
+                                     LOCKED once status != 'open' (in_progress/completed/…/paid → 422) so
+                                     the shape can't change under the person working it; Delete recalls it
 POST   /v1/admin/tasks/{id}/mark-paid  payment_pending (or completed-with-pay) → paid + paid_at (ad-hoc,
                                      no payslip); a task marked paid this way is never swept into a payslip,
                                      and a payslip-LINKED task is rejected here (422 — settle the slip
@@ -220,7 +222,10 @@ GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?rang
 /admin/users          Team provisioning — create (marketer|engineer only; founder not creatable from
                       the UI, though the backend whitelist still allows it), edit (name/role/allowance;
                       founder rows keep a locked role), deactivate/reactivate (confirm dialog)
-/admin/tasks          Tasks engine — create/assign/edit (slideover), mark bonus paid, delete
+/admin/tasks          Tasks engine — scannable one-line listing (title/assignee/priority/deadline/status);
+                      row → detail page. /admin/tasks/new + /admin/tasks/[id] are full pages (no slideover);
+                      detail carries pay/duration/payment status + Mark paid/Delete, and is read-only once
+                      the task is in progress or beyond
 /admin/announcements  Announcements — post/edit (slideover), publish toggle (§12.2). No delete
 /admin/payroll        Payroll — generate a monthly payslip (member + period, with live preview) or
                       Record one-time payment (bonus / ad-hoc payout, optional pending-tasks sweep,
