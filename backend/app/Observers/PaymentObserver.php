@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Referral;
 
@@ -56,17 +57,32 @@ class PaymentObserver
         }
 
         $invoice = $payment->invoice()->first();
-        // `void` is a manual terminal state — never auto-flip it back.
-        if ($invoice && $invoice->status !== 'void') {
-            $paid = (float) $invoice->payments()->succeeded()->sum('amount_myr');
-            $total = (float) $invoice->amount_total;
-            $fullyPaid = $total > 0 && $paid >= $total;
-
-            $invoice->forceFill([
-                'amount_paid' => max(0, $paid),
-                'status' => $fullyPaid ? 'paid' : 'issued',
-                'paid_at' => $fullyPaid ? ($invoice->paid_at ?? now()) : null,
-            ])->saveQuietly();
+        if ($invoice) {
+            self::recomputeInvoice($invoice);
         }
+    }
+
+    /**
+     * Recompute one invoice's paid cache straight from the ledger. Public so
+     * PaymentService::allocate() can refresh the invoice a payment was moved
+     * OFF of — the observer only sees the payment's new invoice. This class
+     * remains the only writer of the paid caches.
+     */
+    public static function recomputeInvoice(Invoice $invoice): void
+    {
+        // `void` is a manual terminal state — never auto-flip it back.
+        if ($invoice->status === 'void') {
+            return;
+        }
+
+        $paid = (float) $invoice->payments()->succeeded()->sum('amount_myr');
+        $total = (float) $invoice->amount_total;
+        $fullyPaid = $total > 0 && $paid >= $total;
+
+        $invoice->forceFill([
+            'amount_paid' => max(0, $paid),
+            'status' => $fullyPaid ? 'paid' : 'issued',
+            'paid_at' => $fullyPaid ? ($invoice->paid_at ?? now()) : null,
+        ])->saveQuietly();
     }
 }

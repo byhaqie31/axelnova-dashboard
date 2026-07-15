@@ -116,9 +116,9 @@ async function issueReceipt() {
 
 onMounted(fetchPayment)
 
-function fmtDate(iso?: string | null) {
+function fmtDateTime(iso?: string | null) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 function fmtMyr(amount: string | number) {
   return `RM ${Math.abs(Number(amount)).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -207,7 +207,7 @@ class="lg:col-span-2 rounded-2xl border p-6"
             </div>
             <div>
               <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Date</p>
-              <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(payment.paid_at) }}</p>
+              <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDateTime(payment.paid_at) }}</p>
             </div>
             <div>
               <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Reference</p>
@@ -249,6 +249,15 @@ v-if="payment.invoice_id" :to="`/admin/invoices/${payment.invoice_id}`"
               <span style="color: var(--color-text-secondary);">Receipt</span>
               <a :href="payment.receipt.pdf_path" target="_blank" rel="noopener" class="font-mono" :style="{ color: 'var(--color-accent)' }">{{ payment.receipt.number }}</a>
             </div>
+            <AdminPaymentAllocateModal
+              v-if="canAct"
+              :payment-id="payment.id"
+              :order-id="payment.order_id"
+              :current-invoice-id="payment.invoice_id"
+              :current-invoice-number="payment.invoice_number"
+              :net-amount="Number(payment.refundable_myr ?? payment.amount_myr)"
+              @allocated="fetchPayment"
+            />
           </div>
         </div>
       </div>

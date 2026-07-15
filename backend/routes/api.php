@@ -229,6 +229,7 @@ Route::middleware([
         Route::post('/payments/{payment}/refund', [PaymentsController::class, 'refund'])->name('payments.refund');
         Route::get('/payments/{payment}/receipt/preview', [PaymentsController::class, 'receiptPreview'])->name('payments.receipt.preview');
         Route::post('/payments/{payment}/receipt', [PaymentsController::class, 'issueReceipt'])->name('payments.receipt');
+        Route::patch('/payments/{payment}/allocation', [PaymentsController::class, 'allocate'])->name('payments.allocation');
 
         // Partner referrals
         Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');
