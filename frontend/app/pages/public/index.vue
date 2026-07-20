@@ -5,6 +5,7 @@ import type { ComponentPublicInstance } from 'vue'
 import type { Project } from '~/data/projects'
 import HeroEpoch from '~/components/public/HeroEpoch.vue'
 import FeaturedMockups from '~/components/public/FeaturedMockups.vue'
+import TestimonialWall from '~/components/public/TestimonialWall.vue'
 import FeaturedProjectsCarousel from '~/components/shared/FeaturedProjectsCarousel.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import { MOTION } from '~/utils/motion'
@@ -178,6 +179,9 @@ useScrollReveal('.reveal')
 
       <FeaturedMockups class="reveal" />
     </section>
+
+    <!-- CLIENT TESTIMONIALS — renders nothing until reviews are published. -->
+    <TestimonialWall />
 
     <!-- CTA — full-width vivid blue band, matching the stats band. -->
     <section class="reveal" :style="{ background: 'var(--stat-band-bg)' }">
