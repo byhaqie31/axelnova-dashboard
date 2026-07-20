@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import BrandMark from '~/components/shared/BrandMark.vue'
+import FeedbackScale from '~/components/shared/FeedbackScale.vue'
+
 // Token-gated client feedback form — /feedback/{token}. Fully standalone
 // (no login, no site chrome), noindex, one submission per token.
 definePageMeta({ layout: false })
