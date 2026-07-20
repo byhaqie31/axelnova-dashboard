@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminQuotationRequest;
+use App\Http\Requests\Admin\ClientLinkRequest;
 use App\Http\Resources\QuotationResource;
 use App\Jobs\SendClientQuoteEmail;
 use App\Models\Client;
@@ -303,6 +304,27 @@ class QuotationsController extends Controller
         return response()->json([
             'message' => 'Expiry updated.',
             'data' => new QuotationResource($quotation->load('addons', 'order')),
+        ]);
+    }
+
+    /**
+     * Correct a mis-matched quotation's client. A quotation serves its OWN contact
+     * snapshot (QuotationResource), so re-linking must both re-point client_id AND
+     * refresh the snapshot from the new client (relinkToClient does both). Available
+     * regardless of lifecycle status — the records needing correction may be sent or
+     * accepted, and this touches only the client link, not pricing or the document.
+     */
+    public function updateClient(ClientLinkRequest $request, Quotation $quotation): JsonResponse
+    {
+        [$client, $linkedExisting] = Client::resolveForRelink($request->validated());
+
+        $quotation->relinkToClient($client);
+        $quotation->logActivity('quotation.client', ['client_id' => $client->id]);
+
+        return response()->json([
+            'message' => $linkedExisting ? 'Linked to the existing client.' : 'Client updated.',
+            'linked_existing' => $linkedExisting,
+            'data' => new QuotationResource($quotation->load('addons', 'order', 'referrer', 'updatedBy')),
         ]);
     }
 

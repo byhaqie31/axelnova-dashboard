@@ -218,6 +218,9 @@ Route::middleware([
         Route::post('/quotations/{quotation}/expiry', [QuotationsController::class, 'setExpiry'])->name('quotations.expiry');
         Route::post('/quotations/{quotation}/send', [QuotationsController::class, 'send'])->name('quotations.send');
         Route::post('/quotations/{quotation}/accept', [QuotationsController::class, 'accept'])->name('quotations.accept');
+        // Correct a mis-matched client — re-point (+ refresh snapshot). Not gated by
+        // status: bad records may already be sent/accepted.
+        Route::post('/quotations/{quotation}/client', [QuotationsController::class, 'updateClient'])->name('quotations.client');
         // Soft-delete (portal-only, never via the connector). Blocked with a 409
         // when an order is attached — the order is the money record.
         Route::delete('/quotations/{quotation}', [QuotationsController::class, 'destroy'])->name('quotations.destroy');
@@ -228,6 +231,9 @@ Route::middleware([
         Route::get('/orders/{order}', [OrdersController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/status', [OrdersController::class, 'updateStatus'])->name('orders.status');
         Route::post('/orders/{order}/schedule', [OrdersController::class, 'updateSchedule'])->name('orders.schedule');
+        // Correct a mis-matched client — re-point order.client_id (cascades to the
+        // source quotation); frozen invoices/receipts stay untouched.
+        Route::post('/orders/{order}/client', [OrdersController::class, 'updateClient'])->name('orders.client');
         // Issue an invoice/receipt for the order (freezes a document snapshot).
         Route::post('/orders/{order}/documents', [OrdersController::class, 'issueDocument'])->name('orders.documents.issue');
         // Live preview of the would-be invoice document (no persist).

@@ -100,6 +100,13 @@ function applyOrderUpdate(updated: Order) {
   order.value = order.value ? { ...order.value, ...updated } : updated
 }
 
+// Manage-client modal (correct a mis-matched client — edit details or re-link).
+// The modal hands back only the contact patch; merge it onto the order.
+const manageClientOpen = ref(false)
+function onClientSaved(patch: Partial<Order>) {
+  applyOrderUpdate(patch as Order)
+}
+
 async function fetchOrder() {
   loading.value = true
   error.value = ''
@@ -266,7 +273,14 @@ class="rounded-2xl border p-6"
               <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ order.name ?? '—' }}</p>
               <p v-if="order.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ order.company }}</p>
             </div>
-            <AdminStatusPill :status="order.status" size="md" />
+            <div class="flex flex-col items-end gap-2">
+              <AdminStatusPill :status="order.status" size="md" />
+              <button
+                type="button" class="text-[12px] font-medium inline-flex items-center gap-1.5 transition-opacity hover:opacity-70"
+                :style="{ color: 'var(--color-accent)' }" @click="manageClientOpen = true">
+                <UIcon name="i-lucide-pencil" class="size-3" /> Manage client
+              </button>
+            </div>
           </div>
           <div class="grid sm:grid-cols-3 gap-4 pt-4 border-t" style="border-color: var(--color-border);">
             <div>
@@ -571,6 +585,15 @@ v-if="order.phone" :href="`https://wa.me/${order.phone.replace(/\\D/g, '')}?text
         </div>
       </div>
     </div>
+
+    <AdminManageClientModal
+      v-if="order"
+      :open="manageClientOpen"
+      context="order"
+      :record-id="order.id"
+      :client="order.client_id ? { id: order.client_id, name: order.name, email: order.email, phone: order.phone, company: order.company } : null"
+      @close="manageClientOpen = false"
+      @saved="onClientSaved" />
   </div>
 </template>
 

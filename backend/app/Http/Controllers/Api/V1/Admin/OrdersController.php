@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ClientLinkRequest;
 use App\Http\Resources\OrderResource;
+use App\Models\Client;
 use App\Models\Order;
 use App\Models\Referral;
 use App\Services\Quoting\DocumentIssuer;
@@ -11,6 +13,7 @@ use App\Services\Quoting\DocumentMapper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 class OrdersController extends Controller
 {
@@ -80,6 +83,34 @@ class OrdersController extends Controller
 
         return response()->json([
             'message' => 'Expected completion updated.',
+            'order' => new OrderResource($order),
+        ]);
+    }
+
+    /**
+     * Correct a mis-matched order's client. Orders carry no contact columns — the
+     * card reads them through the linked Client — so both "edit" and "re-link"
+     * resolve to pointing client_id at the right client (existing, or upserted from
+     * the create-new body). The source quotation is a companion record for the same
+     * deal, so it follows onto the same client (and its snapshot is refreshed).
+     * Already-issued invoices/receipts are frozen snapshots and stay untouched.
+     */
+    public function updateClient(ClientLinkRequest $request, Order $order): JsonResponse
+    {
+        [$client, $linkedExisting] = Client::resolveForRelink($request->validated());
+
+        DB::transaction(function () use ($order, $client) {
+            $order->update(['client_id' => $client->id]);
+            $order->loadMissing('quotation');
+            $order->quotation?->relinkToClient($client);
+        });
+
+        $order->logActivity('order.client', ['client_id' => $client->id]);
+        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments', 'updatedBy']);
+
+        return response()->json([
+            'message' => $linkedExisting ? 'Linked to the existing client.' : 'Client updated.',
+            'linked_existing' => $linkedExisting,
             'order' => new OrderResource($order),
         ]);
     }

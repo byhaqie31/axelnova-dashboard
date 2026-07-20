@@ -116,6 +116,23 @@ class Quotation extends Model
         return $this->belongsTo(Client::class);
     }
 
+    /**
+     * Re-point this quotation at $client and refresh its denormalised contact
+     * snapshot to match. Used to correct a mis-matched record (direct re-link, or
+     * the cascade when its order is re-linked) — the snapshot must move with the
+     * link since QuotationResource serves these columns, not the live relation.
+     */
+    public function relinkToClient(Client $client): void
+    {
+        $this->update([
+            'client_id' => $client->id,
+            'name' => $client->name,
+            'email' => $client->email,
+            'phone' => $client->phone,
+            'company' => $client->company,
+        ]);
+    }
+
     public function pricingConfig(): BelongsTo
     {
         return $this->belongsTo(PricingConfig::class);
