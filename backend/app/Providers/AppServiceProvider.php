@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Console\Commands\MintConnectorToken;
+use App\Models\Feedback;
 use App\Models\Payment;
 use App\Models\User;
+use App\Observers\FeedbackObserver;
 use App\Observers\PaymentObserver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -24,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
 
         // The ledger's only writer of derived paid caches.
         Payment::observe(PaymentObserver::class);
+
+        // Testimonial-wall cache invalidation (public_testimonials_v1).
+        Feedback::observe(FeedbackObserver::class);
 
         // The global Sanctum cap (SANCTUM_EXPIRATION_MINUTES, 12h default) exists
         // so a leaked admin *login* token can't live forever — but it would also

@@ -23,13 +23,16 @@ use App\Http\Controllers\Api\V1\Admin\TasksController;
 use App\Http\Controllers\Api\V1\Admin\UsersController;
 use App\Http\Controllers\Api\V1\Connector\CatalogController as ConnectorCatalogController;
 use App\Http\Controllers\Api\V1\Connector\QuotationDraftController as ConnectorQuotationDraftController;
+use App\Http\Controllers\Api\V1\Admin\FeedbackController as AdminFeedbackController;
 use App\Http\Controllers\Api\V1\DocumentController;
+use App\Http\Controllers\Api\V1\FeedbackController;
 use App\Http\Controllers\Api\V1\InquiryController;
 use App\Http\Controllers\Api\V1\LikesController;
 use App\Http\Controllers\Api\V1\Partner\AuthController as PartnerAuthController;
 use App\Http\Controllers\Api\V1\Partner\DashboardController as PartnerDashboardController;
 use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
+use App\Http\Controllers\Api\V1\PublicTestimonialsController;
 use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
 use App\Http\Controllers\Api\V1\QuoteRequestController;
 use App\Http\Controllers\Api\V1\ReferralController;
@@ -53,6 +56,20 @@ Route::get('/v1/projects/{slug}', [PublicProjectsController::class, 'show'])->na
 
 // Public — token-gated quotation document data for the PDF renderer (unguessable token).
 Route::get('/v1/documents/{token}', [DocumentController::class, 'show'])->name('documents.show');
+
+// Public — token-gated feedback page shell (unguessable token, read-only).
+Route::get('/v1/feedback/{token}', [FeedbackController::class, 'showByToken'])->name('feedback.show');
+
+// Public — the testimonial wall feed (published + consented only, cached 1h).
+Route::get('/v1/testimonials', [PublicTestimonialsController::class, 'index'])->name('testimonials.index');
+
+// Public — feedback submit: one write per token, tighter than the quote funnel
+// (a feedback link reaches exactly one person). Production: 5/hour per IP.
+$feedbackThrottle = app()->environment('production') ? 'throttle:5,60' : 'throttle:1000,1';
+Route::middleware($feedbackThrottle)->group(function () {
+    Route::post('/v1/feedback/{token}', [FeedbackController::class, 'submit'])
+        ->name('feedback.submit');
+});
 
 // Public — submit quote / referral.
 // Production: 8/hour per IP (spam protection). Non-prod: very high so dev/staging can test freely.
@@ -249,6 +266,15 @@ Route::middleware([
         Route::get('/referral-partners/{referralPartner}', [ReferralPartnersController::class, 'show'])->name('referral-partners.show');
         Route::post('/referral-partners/{referralPartner}/approve', [ReferralPartnersController::class, 'approve'])->name('referral-partners.approve');
         Route::post('/referral-partners/{referralPartner}/reset-passcode', [ReferralPartnersController::class, 'resetPasscode'])->name('referral-partners.reset-passcode');
+
+        // Feedback & reviews — request-from-client / log-offline create modes,
+        // moderation, and the publish gate (consent required, nothing auto-publishes).
+        Route::get('/feedback', [AdminFeedbackController::class, 'index'])->name('feedback.index');
+        Route::post('/feedback', [AdminFeedbackController::class, 'store'])->name('feedback.store');
+        Route::get('/feedback/{feedback}', [AdminFeedbackController::class, 'show'])->name('feedback.show');
+        Route::put('/feedback/{feedback}', [AdminFeedbackController::class, 'update'])->name('feedback.update');
+        Route::post('/feedback/{feedback}/status', [AdminFeedbackController::class, 'updateStatus'])->name('feedback.status');
+        Route::delete('/feedback/{feedback}', [AdminFeedbackController::class, 'destroy'])->name('feedback.destroy');
 
         // Project inquiries
         Route::get('/inquiries', [InquiriesController::class, 'index'])->name('inquiries.index');
