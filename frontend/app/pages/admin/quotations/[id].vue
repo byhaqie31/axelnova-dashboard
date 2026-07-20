@@ -87,6 +87,14 @@ function applyQuotation(data: Record<string, any>) {
   loading.value = false
 }
 
+// Manage-client modal (correct a mis-matched client — edit details or re-link).
+// The modal hands back only the contact patch; merge it onto the quotation.
+const manageClientOpen = ref(false)
+function onClientSaved(patch: Record<string, any>) {
+  if (!quotation.value) return
+  quotation.value = { ...quotation.value, ...patch } as Quotation
+}
+
 const isDraft = computed(() => quotation.value?.status === 'draft')
 const isDetailed = computed(() => quotation.value?.document?.layout === 'detailed')
 
@@ -265,7 +273,14 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
                 <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ quotation.name }}</p>
                 <p v-if="quotation.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ quotation.company }}</p>
               </div>
-              <AdminStatusPill :status="quotation.status" size="md" />
+              <div class="flex flex-col items-end gap-2">
+                <AdminStatusPill :status="quotation.status" size="md" />
+                <button
+                  type="button" class="text-[12px] font-medium inline-flex items-center gap-1.5 transition-opacity hover:opacity-70"
+                  :style="{ color: 'var(--color-accent)' }" @click="manageClientOpen = true">
+                  <UIcon name="i-lucide-pencil" class="size-3" /> Manage client
+                </button>
+              </div>
             </div>
             <div class="grid sm:grid-cols-3 gap-4 pt-4 border-t" style="border-color: var(--color-border);">
               <div>
@@ -427,5 +442,14 @@ v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, ''
 
     <!-- Confirm gate for Proceed & Create Order. -->
     <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
+
+    <AdminManageClientModal
+      v-if="quotation"
+      :open="manageClientOpen"
+      context="quotation"
+      :record-id="quotation.id"
+      :client="quotation.client_id ? { id: quotation.client_id, name: quotation.name, email: quotation.email, phone: quotation.phone, company: quotation.company } : null"
+      @close="manageClientOpen = false"
+      @saved="onClientSaved" />
   </div>
 </template>
