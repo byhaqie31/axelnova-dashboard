@@ -24,6 +24,8 @@ export interface TaskRecord {
   priority: 'low' | 'medium' | 'high'
   status: 'open' | 'in_progress' | 'completed' | 'payment_pending' | 'paid'
   notes: string | null
+  /** Task 5 — the pick-up moment (claim / start). Null until first started; reset on release. */
+  started_at: string | null
   completed_at: string | null
   paid_at: string | null
   created_at: string

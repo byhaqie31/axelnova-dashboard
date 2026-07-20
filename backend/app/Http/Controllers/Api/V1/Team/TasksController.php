@@ -68,6 +68,7 @@ class TasksController extends Controller
             $fresh->update([
                 'assignee_id' => $request->user()->id,
                 'status' => 'in_progress',
+                'started_at' => now(),
             ]);
 
             return true;
@@ -114,15 +115,20 @@ class TasksController extends Controller
         $update = [];
 
         if ($data['status'] === 'open') {
-            // Release: back to the pool, unassigned.
+            // Release: back to the pool, unassigned. Reset the pickup clock so a
+            // re-claim reads fresh (the timeline shows the LATEST pickup, not the
+            // abandoned one).
             $update['status'] = 'open';
             $update['assignee_id'] = null;
+            $update['started_at'] = null;
         } elseif ($data['status'] === 'completed') {
             // Completing a task WITH a bonus forks to payment_pending automatically.
             $update['status'] = $task->pay_amount_myr !== null ? 'payment_pending' : 'completed';
             $update['completed_at'] = now();
         } else {
+            // Starting an admin-assigned task — stamp the pickup moment.
             $update['status'] = 'in_progress';
+            $update['started_at'] = now();
         }
 
         if (! empty($data['note'])) {

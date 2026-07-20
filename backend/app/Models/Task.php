@@ -31,6 +31,7 @@ class Task extends Model
         'status',
         'payroll_entry_id',
         'notes',
+        'started_at',
         'completed_at',
         'paid_at',
     ];
@@ -39,6 +40,7 @@ class Task extends Model
         'pay_amount_myr' => 'integer',
         'payroll_entry_id' => 'integer',
         'deadline' => 'datetime',
+        'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'paid_at' => 'datetime',
     ];

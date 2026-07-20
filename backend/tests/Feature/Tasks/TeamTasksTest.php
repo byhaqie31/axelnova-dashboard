@@ -66,6 +66,9 @@ class TeamTasksTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.assignee_id', $me->id)
             ->assertJsonPath('data.status', 'in_progress');
+
+        // The pick-up moment is stamped so the task timeline can show "Picked up".
+        $this->assertNotNull($task->fresh()->started_at);
     }
 
     public function test_claiming_an_already_claimed_task_conflicts(): void
@@ -102,6 +105,9 @@ class TeamTasksTest extends TestCase
         ], $this->teamHeaders($me))
             ->assertOk()
             ->assertJsonPath('data.status', 'in_progress');
+
+        // Starting an admin-assigned task stamps the pickup moment too.
+        $this->assertNotNull($task->fresh()->started_at);
     }
 
     public function test_completing_without_pay_lands_on_completed(): void
@@ -154,7 +160,7 @@ class TeamTasksTest extends TestCase
     public function test_releasing_an_in_progress_task_returns_it_to_the_pool(): void
     {
         $me = User::factory()->engineer()->create();
-        $task = Task::factory()->assignedTo($me)->inProgress()->create();
+        $task = Task::factory()->assignedTo($me)->inProgress()->create(['started_at' => now()]);
 
         $this->patchJson("/api/v1/team/tasks/{$task->id}/status", [
             'status' => 'open',
@@ -162,6 +168,9 @@ class TeamTasksTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'open')
             ->assertJsonPath('data.assignee_id', null);
+
+        // Releasing resets the pickup clock — a re-claim reads fresh.
+        $this->assertNull($task->fresh()->started_at);
     }
 
     public function test_the_forward_chain_cannot_be_skipped(): void

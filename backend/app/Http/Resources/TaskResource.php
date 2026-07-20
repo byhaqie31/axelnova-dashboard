@@ -36,6 +36,7 @@ class TaskResource extends JsonResource
             'priority' => $this->priority,
             'status' => $this->status,
             'notes' => $this->notes,
+            'started_at' => $this->started_at?->toISOString(),
             'completed_at' => $this->completed_at?->toISOString(),
             'paid_at' => $this->paid_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
