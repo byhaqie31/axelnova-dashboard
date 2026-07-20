@@ -60,6 +60,12 @@ axelnova-dashboard/
 | `gateway_events` | Raw inbound webhook log + idempotency gate for the Billplz/Stripe phases (empty until then) |
 | `receipts.payment_id` | Receipts now anchor to the payment that produced them (1 payment : 1 receipt) |
 
+### Feedback & Reviews (see [FEEDBACK-MODULE.md](./FEEDBACK-MODULE.md))
+
+| Table | Purpose |
+|-------|---------|
+| `feedback` | One review per order — `ORDERS \|\|--o\| FEEDBACK : "reviewed by"` (`order_id` unique + nullable so admin can log standalone feedback; `client_id` denormalised). Token-gated client submission (`public_token`), `AXNF-` reference codes, overall + four dimension scores + NPS, publish lifecycle `pending → approved → published` gated on `publish_consent`. Soft-deletes |
+
 ### Team workspace (portal restructure, Task 5/6/7)
 
 | Table | Purpose |
