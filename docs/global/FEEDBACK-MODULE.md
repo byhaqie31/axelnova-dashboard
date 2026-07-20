@@ -41,9 +41,14 @@ pending ──→ approved ──→ published
 
 ## Token flow
 
-1. Admin creates a feedback row (`mode=request`) → `public_token` + `AXNF`
-   code minted, `RequestFeedbackJob` queued (**database queue — the worker
-   must be running**, same as quote emails).
+1. Admin creates a feedback row (`mode=request`, anchored to an order with the
+   client's name/email snapshotted — or `mode=general`, order-less feedback
+   about the company for any client/prospect/partner, recipient fields fully
+   optional) → `public_token` + `AXNF` code minted. With `send_email` on
+   (default) **and an email on the row**, `RequestFeedbackJob` is queued
+   (**database queue — the worker must be running**, same as quote emails);
+   otherwise nothing is sent — the admin copies the `public_url` from the
+   detail page's review-link card and shares it by hand.
 2. `FeedbackRequestMail` (markdown `mail.feedback-request`) sends the client a
    CTA to `{PUBLIC_SITE_URL}/feedback/{token}`. Subject: *"How did we do? —
    quick feedback on your Axel Nova project"*. No attachments. Silently
@@ -61,7 +66,7 @@ pending ──→ approved ──→ published
 | Endpoint | Purpose |
 |---|---|
 | `GET /v1/admin/feedback` | List — search (ref/name/email), status filter, paginated, plus a `stats` block (total / pending / published / avg overall) for the index tiles |
-| `POST /v1/admin/feedback` | Create — `mode=request` (needs `order_id`, emails the link) or `mode=log` (offline feedback, scores entered directly, born submitted) |
+| `POST /v1/admin/feedback` | Create — `mode=request` (order-anchored, client snapshotted), `mode=general` (order-less link for anyone, email optional) or `mode=log` (offline feedback, scores entered directly, born submitted). `send_email` default true; emails go out only when the row has an address |
 | `GET /v1/admin/feedback/{id}` | Detail; stamps `reviewed_at` on first open of a pending row |
 | `PUT /v1/admin/feedback/{id}` | Edit/moderate (attribution, label, featured, consent, sort order; status passes the same publish guard) |
 | `POST /v1/admin/feedback/{id}/status` | Transition (consent-gated publish) |

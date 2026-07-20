@@ -51,15 +51,32 @@ const errors = ref<Record<string, string[]>>({})
 const message = ref('')
 
 // ── Create form (/new) ─────────────────────────────────────────────────
-const mode = ref<'request' | 'log'>('request')
+const mode = ref<'request' | 'general' | 'log'>('request')
 const modeOptions = [
   { value: 'request', label: 'Request from client' },
+  { value: 'general', label: 'General feedback' },
   { value: 'log', label: 'Log received feedback' },
 ] as const
 
-// Request mode: on = email the link now; off = just mint it, copy the URL
-// from the detail page and share it yourself.
+const modeHints: Record<typeof mode.value, string> = {
+  request: 'Emails the client a private review link tied to their order.',
+  general: 'A link for anyone — a general client, prospect or partner. No order; email optional.',
+  log: 'Record feedback you already received (call, WhatsApp, email).',
+}
+
+// request/general: on = email the link now (when an address exists); off =
+// just mint it, copy the URL from the detail page and share it yourself.
 const sendEmail = ref(true)
+
+// General feedback is order-less by definition — drop any picked order.
+watch(mode, (m) => {
+  if (m === 'general') form.order_id = null
+})
+
+// Whether creating will actually send an email right now (general mode only
+// sends when an address was typed; request mode snapshots the order client's).
+const willEmail = computed(() =>
+  sendEmail.value && (mode.value === 'request' || !!form.email.trim()))
 
 const form = reactive({
   order_id: null as number | null,
@@ -176,12 +193,14 @@ async function create() {
   try {
     const base = {
       mode: mode.value,
-      order_id: form.order_id,
+      order_id: mode.value === 'general' ? null : form.order_id,
       project_label: form.project_label || null,
     }
     const payload = mode.value === 'request'
       ? { ...base, send_email: sendEmail.value }
-      : {
+      : mode.value === 'general'
+        ? { ...base, send_email: sendEmail.value, name: form.name || null, email: form.email || null }
+        : {
           ...base,
           name: form.name || null,
           email: form.email || null,
@@ -202,10 +221,10 @@ async function create() {
 
     const res = await apiFetch<{ data: FeedbackDetail }>('/api/v1/admin/feedback', { method: 'POST', body: payload })
     toast.success(
-      mode.value === 'request' ? 'Feedback requested' : 'Feedback logged',
-      mode.value === 'request'
-        ? (sendEmail.value ? 'The client will receive the review link by email.' : 'Link minted — copy it from the review-link card.')
-        : `${res.data.reference_code} recorded.`,
+      mode.value === 'request' ? 'Feedback requested' : mode.value === 'general' ? 'Feedback created' : 'Feedback logged',
+      mode.value === 'log'
+        ? `${res.data.reference_code} recorded.`
+        : (willEmail.value ? 'The review link is on its way by email.' : 'Link minted — copy it from the review-link card.'),
     )
     await navigateTo(`/admin/feedback/${res.data.id}`)
   }
@@ -365,14 +384,12 @@ onMounted(() => {
           </button>
         </div>
         <p class="mt-1.5 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">
-          {{ mode === 'request'
-            ? 'Emails the client a private review link tied to their order.'
-            : 'Record feedback you already received (call, WhatsApp, email).' }}
+          {{ modeHints[mode] }}
         </p>
       </div>
 
-      <!-- Order — §12.7 popover dropdown -->
-      <div>
+      <!-- Order — §12.7 popover dropdown (general mode is order-less) -->
+      <div v-if="mode !== 'general'">
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">
           Order {{ mode === 'request' ? '*' : '(optional)' }}
         </label>
@@ -384,8 +401,10 @@ onMounted(() => {
             @click="orderOpen = !orderOpen"
           >
             <UIcon name="i-lucide-package-check" class="size-4 shrink-0" :style="{ color: 'var(--color-accent)' }" />
-            <span class="flex-1 truncate" :style="{ color: selectedOrder ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">
-              {{ selectedOrder ? `${selectedOrder.order_number} — ${selectedOrder.name ?? 'Unnamed client'}` : '— pick an order —' }}
+            <span class="flex-1 truncate" :style="{ color: selectedOrder || mode === 'log' ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">
+              {{ selectedOrder
+                ? `${selectedOrder.order_number} — ${selectedOrder.name ?? 'Unnamed client'}`
+                : mode === 'log' ? 'No order — standalone feedback' : '— pick an order —' }}
             </span>
             <UIcon
               name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform"
@@ -426,6 +445,28 @@ onMounted(() => {
         </p>
       </div>
 
+      <!-- General feedback: who is it for? Both fields optional. -->
+      <div v-if="mode === 'general'" class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Recipient name (optional)</label>
+          <input
+            v-model="form.name" type="text" placeholder="e.g. Sarah Lim" class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }"
+          >
+        </div>
+        <div>
+          <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Recipient email (optional)</label>
+          <input
+            v-model="form.email" type="email" placeholder="who@company.com" class="contact-input w-full"
+            :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }"
+          >
+          <p v-if="errors.email?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.email[0] }}</p>
+          <p v-else class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">
+            {{ sendEmail ? 'Add an email to send the link — or leave blank and copy the URL yourself.' : 'Not needed — you’ll copy the link and share it yourself.' }}
+          </p>
+        </div>
+      </div>
+
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Project label</label>
         <input
@@ -435,8 +476,8 @@ onMounted(() => {
         <p class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Shown to the client on the form and on the public wall.</p>
       </div>
 
-      <!-- Request mode: email now, or mint the link and copy it yourself -->
-      <div v-if="mode === 'request'" class="space-y-2 pt-1">
+      <!-- request/general: email now, or mint the link and copy it yourself -->
+      <div v-if="mode === 'request' || mode === 'general'" class="space-y-2 pt-1">
         <button
           type="button" class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
           :style="sendEmail
@@ -572,7 +613,10 @@ onMounted(() => {
 
       <div class="flex items-center gap-3 pt-2">
         <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
-          {{ saving ? 'Saving…' : mode === 'request' ? (sendEmail ? 'Create + send request' : 'Create feedback') : 'Log feedback' }}
+          {{ saving ? 'Saving…'
+            : mode === 'log' ? 'Log feedback'
+              : willEmail ? (mode === 'request' ? 'Create + send request' : 'Create + send link')
+                : 'Create feedback' }}
         </button>
         <NuxtLink to="/admin/feedback" class="btn-pill btn-pill-ghost text-[13px]">Cancel</NuxtLink>
       </div>

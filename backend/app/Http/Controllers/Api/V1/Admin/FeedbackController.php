@@ -49,20 +49,27 @@ class FeedbackController extends Controller
     }
 
     /**
-     * Two create modes:
+     * Three create modes:
      * - `request` — anchor to an order, mint token + AXNF code, email the
-     *   client their /feedback/{token} link (queued). Scores arrive later.
+     *   client their /feedback/{token} link (queued — or copy-link only).
+     *   Name/email are snapshotted from the order's client.
+     * - `general` — order-less link for anyone (client, prospect, partner).
+     *   Email optional: present = the link is emailed, absent = copy-link only.
      * - `log`     — feedback already received offline; admin enters the
      *   scores directly and the row is born submitted.
      */
     public function store(AdminFeedbackStoreRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $isRequestMode = $data['mode'] === 'request';
+        // request + general both wait for the recipient to fill the form.
+        $awaitsClient = in_array($data['mode'], ['request', 'general'], true);
 
-        $order = isset($data['order_id']) ? Order::with('client')->find($data['order_id']) : null;
+        // General feedback is order-less by definition — ignore any stray id.
+        $order = $data['mode'] !== 'general' && isset($data['order_id'])
+            ? Order::with('client')->find($data['order_id'])
+            : null;
 
-        $feedback = DB::transaction(function () use ($data, $order, $isRequestMode) {
+        $feedback = DB::transaction(function () use ($data, $order, $awaitsClient) {
             $placed = SortOrder::placeNew(Feedback::class, [], (int) ($data['sort_order'] ?? 0));
 
             return Feedback::create([
@@ -89,12 +96,13 @@ class FeedbackController extends Controller
                 'source' => 'admin',
                 'featured' => (bool) ($data['featured'] ?? false),
                 'sort_order' => $placed,
-                'submitted_at' => $isRequestMode ? null : now(),
+                'submitted_at' => $awaitsClient ? null : now(),
             ]);
         });
 
-        // Emailing is optional — off means "create + copy the link yourself".
-        if ($isRequestMode && $request->boolean('send_email', true)) {
+        // Emailing is optional — off (or no address on file) means
+        // "create + copy the link yourself".
+        if ($awaitsClient && $request->boolean('send_email', true) && $feedback->email) {
             RequestFeedbackJob::dispatch($feedback->id);
         }
 

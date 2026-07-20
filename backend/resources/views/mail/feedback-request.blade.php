@@ -3,8 +3,10 @@
 
 @if($feedback->project_label)
 Your project — **{{ $feedback->project_label }}** — has wrapped, and I'd love to hear how the experience was for you.
-@else
+@elseif($feedback->order_id)
 Your project with Axel Nova Ventures has wrapped, and I'd love to hear how the experience was for you.
+@else
+I'd love to hear your honest take on Axel Nova Ventures — how we come across, and how the experience of dealing with us has been.
 @endif
 
 It's a short form — a couple of quick ratings and two open questions. Two minutes, tops.

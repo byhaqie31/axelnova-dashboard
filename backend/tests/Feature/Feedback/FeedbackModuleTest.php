@@ -212,14 +212,11 @@ class FeedbackModuleTest extends TestCase
         $this->assertNull($feedback->submitted_at);              // waits for the client
         Queue::assertPushed(RequestFeedbackJob::class);
 
-        // One feedback per order.
+        // One feedback per order. (An order-LESS request is fine — that's
+        // general feedback, covered by the general-request tests below.)
         $this->postJson('/api/v1/admin/feedback', [
             'mode' => 'request', 'order_id' => $order->id,
         ], $headers)->assertUnprocessable()->assertJsonValidationErrors('order_id');
-
-        // Request mode requires an order to anchor to.
-        $this->postJson('/api/v1/admin/feedback', ['mode' => 'request'], $headers)
-            ->assertUnprocessable()->assertJsonValidationErrors('order_id');
     }
 
     public function test_request_mode_with_send_email_off_mints_the_link_without_emailing(): void
@@ -235,6 +232,53 @@ class FeedbackModuleTest extends TestCase
         ], $headers)->assertCreated();
 
         // The link exists for copy-and-share, but no email job was queued.
+        $this->assertStringContainsString('/feedback/', $res->json('data.public_url'));
+        Queue::assertNotPushed(RequestFeedbackJob::class);
+    }
+
+    public function test_general_mode_is_order_less_and_emails_only_when_an_address_exists(): void
+    {
+        Queue::fake();
+        $headers = $this->adminHeaders();
+
+        // No email: created fine (link to copy), nothing queued.
+        $res = $this->postJson('/api/v1/admin/feedback', [
+            'mode' => 'general',
+        ], $headers)->assertCreated();
+
+        $feedback = Feedback::findOrFail($res->json('data.id'));
+        $this->assertNull($feedback->order_id);
+        $this->assertNull($feedback->email);
+        $this->assertNull($feedback->submitted_at);              // waits for the recipient
+        $this->assertStringContainsString('/feedback/', $res->json('data.public_url'));
+        Queue::assertNotPushed(RequestFeedbackJob::class);
+
+        // With an address the link goes out.
+        $res2 = $this->postJson('/api/v1/admin/feedback', [
+            'mode' => 'general',
+            'name' => 'Sarah Lim',
+            'email' => 'sarah@example.com',
+        ], $headers)->assertCreated();
+
+        $this->assertSame('sarah@example.com', Feedback::findOrFail($res2->json('data.id'))->email);
+        Queue::assertPushed(RequestFeedbackJob::class);
+
+        // Request mode still demands an order to anchor to — general is its own mode.
+        $this->postJson('/api/v1/admin/feedback', ['mode' => 'request'], $headers)
+            ->assertUnprocessable()->assertJsonValidationErrors('order_id');
+    }
+
+    public function test_general_mode_send_email_off_keeps_the_link_private(): void
+    {
+        Queue::fake();
+        $headers = $this->adminHeaders();
+
+        $res = $this->postJson('/api/v1/admin/feedback', [
+            'mode' => 'general',
+            'email' => 'sarah@example.com',
+            'send_email' => false,
+        ], $headers)->assertCreated();
+
         $this->assertStringContainsString('/feedback/', $res->json('data.public_url'));
         Queue::assertNotPushed(RequestFeedbackJob::class);
     }
