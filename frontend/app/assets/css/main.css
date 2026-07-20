@@ -47,6 +47,13 @@
   --color-warning-soft: rgba(255, 159, 10, 0.16);
   --color-danger-soft: rgba(255, 59, 48, 0.14);
 
+  /* Foregrounds on filled accent/success surfaces (UI-STANDARDS §12.2) */
+  --color-on-accent: #FFFFFF;
+  --color-on-success: #FFFFFF;
+
+  /* Off-state track of the §12.2 toggle row-card switch */
+  --color-switch-off-track: #d1d5db;
+
   /* Status */
   --color-success: #30D158;
   --color-warning: #FF9F0A;
@@ -185,6 +192,9 @@
   --color-warning: #FFB340;
   --color-warning-soft: rgba(255, 179, 64, 0.22);
   --color-danger-soft: rgba(255, 69, 58, 0.24);
+
+  /* Off-state switch track must still read as a control on dark surfaces */
+  --color-switch-off-track: rgba(255, 255, 255, 0.18);
 
   --color-silver: #3A3A3C;
   --color-silver-hover: #48484A;

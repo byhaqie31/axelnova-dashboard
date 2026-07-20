@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type EntityType = 'lead' | 'quotation' | 'project' | 'invoice' | 'milestone' | 'referral' | 'referral_partner' | 'task' | 'user'
+type EntityType = 'lead' | 'quotation' | 'project' | 'invoice' | 'milestone' | 'referral' | 'referral_partner' | 'task' | 'user' | 'feedback'
 type Tone = 'neutral' | 'info' | 'warn' | 'success' | 'danger'
 
 const props = defineProps<{
@@ -76,6 +76,14 @@ const map: Record<EntityType, Record<string, Tone>> = {
   user: {
     active: 'success',
     deactivated: 'danger',
+  },
+  // Feedback review lifecycle (feedback table). Publishing is consent-gated
+  // server-side; archived reads muted, not destructive.
+  feedback: {
+    pending: 'warn',
+    approved: 'info',
+    published: 'success',
+    archived: 'neutral',
   },
 }
 

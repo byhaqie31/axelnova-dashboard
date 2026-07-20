@@ -180,6 +180,10 @@ class OrdersController extends Controller
         }
         if ($next === 'completed' && ! $order->completed_at) {
             $updates['completed_at'] = now();
+            // TODO(feedback): optionally auto-create a feedback request here
+            // (Feedback + RequestFeedbackJob) when an order completes. For now
+            // the ask stays admin-initiated from /admin/feedback — see
+            // docs/global/FEEDBACK-MODULE.md.
         }
 
         $from = $order->status;

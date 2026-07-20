@@ -16,6 +16,7 @@ enum DocumentType: string
     case Invoice = 'I';
     case Receipt = 'R';
     case Payment = 'P';
+    case Feedback = 'F';
 
     /** The table whose column carries this type's codes. */
     public function table(): string
@@ -26,6 +27,7 @@ enum DocumentType: string
             self::Invoice => 'invoices',
             self::Receipt => 'receipts',
             self::Payment => 'payments',
+            self::Feedback => 'feedback',
         };
     }
 
@@ -38,6 +40,7 @@ enum DocumentType: string
             self::Invoice => 'invoice_number',
             self::Receipt => 'receipt_number',
             self::Payment => 'payment_number',
+            self::Feedback => 'reference_code',
         };
     }
 }
