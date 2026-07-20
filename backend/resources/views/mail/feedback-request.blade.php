@@ -1,10 +1,12 @@
 @component('mail::message')
 # How did we do{{ $feedback->name ? ', '.$feedback->name : '' }}?
 
+@if($feedback->order_id)
 @if($feedback->project_label)
 Your project — **{{ $feedback->project_label }}** — has wrapped, and I'd love to hear how the experience was for you.
-@elseif($feedback->order_id)
+@else
 Your project with Axel Nova Ventures has wrapped, and I'd love to hear how the experience was for you.
+@endif
 @else
 I'd love to hear your honest take on Axel Nova Ventures — how we come across, and how the experience of dealing with us has been.
 @endif

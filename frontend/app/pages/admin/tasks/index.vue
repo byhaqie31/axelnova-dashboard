@@ -187,9 +187,13 @@ function fmtDeadline(iso: string | null) {
           <thead>
             <tr>
               <th
-                v-for="h in ['Task', 'Assignee', 'Priority', 'Deadline', 'Status', '']" :key="h"
+                v-for="h in ['Task', 'Assignee', 'Priority', 'Deadline', 'Status']" :key="h"
                 class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
                 {{ h }}
+              </th>
+              <!-- Actions — pinned to content width so it doesn't soak up the row's slack. -->
+              <th class="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap w-px" style="color: var(--color-text-tertiary);">
+                Actions
               </th>
             </tr>
           </thead>
@@ -212,8 +216,8 @@ function fmtDeadline(iso: string | null) {
               <td class="px-4 py-3.5">
                 <StatusPill :status="t.status" type="task" />
               </td>
-              <td class="px-4 py-3.5">
-                <div class="flex items-center justify-end gap-1.5">
+              <td class="px-4 py-3.5 w-px whitespace-nowrap">
+                <div class="flex items-center justify-end gap-2">
                   <button
                     type="button" class="btn-table-action is-danger" aria-label="Delete task"
                     @click.stop="pendingDelete = t">

@@ -6,6 +6,8 @@
 import StatusPill from '~/components/shared/primitives/StatusPill.vue'
 import TaskPayBadge from '~/components/shared/primitives/TaskPayBadge.vue'
 import AdminTaskFormFields from '~/components/admin/TaskFormFields.vue'
+import AdminTaskTimeline from '~/components/admin/TaskTimeline.vue'
+import AdminTaskNotes from '~/components/admin/TaskNotes.vue'
 import { taskPriorityMeta, type TaskFormShape, type TaskRecord } from '~/data/tasks'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
@@ -29,6 +31,30 @@ useHead(() => ({ title: task.value ? `${task.value.title} — Tasks` : 'Task' })
 
 // Locked the moment work has started — only a still-open task is editable.
 const locked = computed(() => !!task.value && task.value.status !== 'open')
+
+// The status pill reads WORK progress only. A bonus task jumps status straight
+// to payment_pending/paid on completion, which are MONEY states — surface both
+// as 'completed' so the pill says the work is done. Payment stays on the
+// TaskPayBadge, keeping task-status and paid-status two distinct signals.
+const workStatus = computed<TaskRecord['status']>(() => {
+  const s = task.value?.status
+  return s === 'payment_pending' || s === 'paid' ? 'completed' : (s ?? 'open')
+})
+
+// The lock banner reflects the ACTUAL state — a completed or already-paid task
+// is locked too, and blanket "in progress" wording was the same conflation.
+const lockBanner = computed(() => {
+  switch (task.value?.status) {
+    case 'payment_pending':
+      return { state: 'completed', note: 'the work is done and its bonus is awaiting payment, so its details are locked. Delete it to pull it back to the pool.' }
+    case 'paid':
+      return { state: 'completed & paid', note: 'the work is done and its bonus has been paid, so its details are locked.' }
+    case 'completed':
+      return { state: 'completed', note: 'the work is done, so its details are locked. Delete it to pull it back to the pool.' }
+    default: // in_progress
+      return { state: 'in progress', note: "its details are locked so they can't change under the person working it. Delete it to pull it back to the pool." }
+  }
+})
 
 const form = ref<TaskFormShape>({
   title: '', description: '', assignee_id: '', pay: '', duration_estimate: '', deadline: '', priority: 'medium',
@@ -178,11 +204,6 @@ async function confirmAction() {
 onKeyStroke('Escape', () => {
   if (pendingAction.value) pendingAction.value = null
 })
-
-function fmtDate(iso: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
-}
 </script>
 
 <template>
@@ -204,7 +225,7 @@ function fmtDate(iso: string | null) {
         <div class="min-w-0">
           <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">{{ task.title }}</h1>
           <div class="flex items-center gap-1.5 flex-wrap mt-2">
-            <StatusPill :status="task.status" type="task" />
+            <StatusPill :status="workStatus" type="task" />
             <span
               class="inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-medium capitalize"
               :style="{ color: taskPriorityMeta(task.priority)?.color, background: taskPriorityMeta(task.priority)?.bg }">{{ task.priority }}</span>
@@ -219,7 +240,7 @@ function fmtDate(iso: string | null) {
         :style="{ borderColor: 'var(--color-warning)', background: 'var(--color-warning-soft)' }">
         <UIcon name="i-lucide-lock" class="size-4 mt-0.5 shrink-0" :style="{ color: 'var(--color-warning)' }" />
         <p class="text-[12px] leading-relaxed" style="color: var(--color-text);">
-          This task is <span class="font-semibold">in progress</span> — its details are locked so they can't change under the person working it. Delete it to pull it back to the pool.
+          This task is <span class="font-semibold">{{ lockBanner.state }}</span> — {{ lockBanner.note }}
         </p>
       </div>
 
@@ -257,29 +278,25 @@ function fmtDate(iso: string | null) {
             </span>
           </div>
 
+          <!-- Activity — the lifecycle log (opened → picked up → completed → paid) -->
+          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Activity</h2>
+            <AdminTaskTimeline :task="task" />
+          </div>
+
           <!-- Details -->
-          <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-            <h2 class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Details</h2>
+          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Details</h2>
             <div>
               <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Assignee</p>
               <p class="text-[13px]" style="color: var(--color-text);">{{ task.assignee_name ?? 'Pool (unassigned)' }}</p>
             </div>
-            <div>
-              <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Created by</p>
-              <p class="text-[13px]" style="color: var(--color-text);">{{ task.created_by_name ?? '—' }}</p>
-            </div>
-            <div>
-              <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Created</p>
-              <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(task.created_at) }}</p>
-            </div>
-            <div v-if="task.completed_at">
-              <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Completed</p>
-              <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(task.completed_at) }}</p>
-            </div>
-            <div v-if="task.paid_at">
-              <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Paid</p>
-              <p class="text-[13px]" style="color: var(--color-text);">{{ fmtDate(task.paid_at) }}</p>
-            </div>
+          </div>
+
+          <!-- Comments — the team's completion note + any status-change updates -->
+          <div v-if="task.notes" class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Comments</h2>
+            <AdminTaskNotes :notes="task.notes" />
           </div>
 
           <!-- Delete -->
