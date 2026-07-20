@@ -93,7 +93,8 @@ class FeedbackController extends Controller
             ]);
         });
 
-        if ($isRequestMode) {
+        // Emailing is optional — off means "create + copy the link yourself".
+        if ($isRequestMode && $request->boolean('send_email', true)) {
             RequestFeedbackJob::dispatch($feedback->id);
         }
 

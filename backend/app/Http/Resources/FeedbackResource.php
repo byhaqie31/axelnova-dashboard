@@ -31,6 +31,9 @@ class FeedbackResource extends JsonResource
             'publish_consent' => $this->publish_consent,
             'attribution_name' => $this->attribution_name,
             'attribution_role' => $this->attribution_role,
+            // The client-facing review link (admin-only surface) — same URL the
+            // request email carries, exposed so the portal can offer copy-link.
+            'public_url' => rtrim((string) config('services.frontend.public_url'), '/')."/feedback/{$this->public_token}",
             'status' => $this->status,
             'source' => $this->source,
             'featured' => $this->featured,

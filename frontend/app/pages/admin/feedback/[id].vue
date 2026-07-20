@@ -34,6 +34,7 @@ interface FeedbackDetail {
   publish_consent: boolean
   attribution_name: string | null
   attribution_role: string | null
+  public_url: string
   status: 'pending' | 'approved' | 'published' | 'archived'
   source: 'self_serve' | 'admin'
   featured: boolean
@@ -55,6 +56,10 @@ const modeOptions = [
   { value: 'request', label: 'Request from client' },
   { value: 'log', label: 'Log received feedback' },
 ] as const
+
+// Request mode: on = email the link now; off = just mint it, copy the URL
+// from the detail page and share it yourself.
+const sendEmail = ref(true)
 
 const form = reactive({
   order_id: null as number | null,
@@ -175,7 +180,7 @@ async function create() {
       project_label: form.project_label || null,
     }
     const payload = mode.value === 'request'
-      ? base
+      ? { ...base, send_email: sendEmail.value }
       : {
           ...base,
           name: form.name || null,
@@ -198,7 +203,9 @@ async function create() {
     const res = await apiFetch<{ data: FeedbackDetail }>('/api/v1/admin/feedback', { method: 'POST', body: payload })
     toast.success(
       mode.value === 'request' ? 'Feedback requested' : 'Feedback logged',
-      mode.value === 'request' ? 'The client will receive the review link by email.' : `${res.data.reference_code} recorded.`,
+      mode.value === 'request'
+        ? (sendEmail.value ? 'The client will receive the review link by email.' : 'Link minted — copy it from the review-link card.')
+        : `${res.data.reference_code} recorded.`,
     )
     await navigateTo(`/admin/feedback/${res.data.id}`)
   }
@@ -310,7 +317,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
 
     <NuxtLink
       to="/admin/feedback" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
@@ -327,18 +334,9 @@ onMounted(() => {
         </h1>
         <div v-if="record" class="flex items-center gap-2.5 mt-2">
           <ReferenceCode :code="record.reference_code" />
-          <StatusPill :status="record.status" type="feedback" />
           <span v-if="record.featured" class="text-[11px] font-semibold" :style="{ color: 'var(--color-warning)' }">★ Featured</span>
         </div>
       </div>
-      <button
-        v-if="record"
-        type="button"
-        class="btn-table-action is-danger"
-        @click="destroy"
-      >
-        <UIcon name="i-lucide-trash-2" class="size-3.5" /> Delete
-      </button>
     </div>
 
     <p v-if="message" class="mb-4 text-[13px]" :style="{ color: 'var(--color-danger)' }">{{ message }}</p>
@@ -435,6 +433,36 @@ onMounted(() => {
           :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }"
         >
         <p class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Shown to the client on the form and on the public wall.</p>
+      </div>
+
+      <!-- Request mode: email now, or mint the link and copy it yourself -->
+      <div v-if="mode === 'request'" class="space-y-2 pt-1">
+        <button
+          type="button" class="w-full flex items-center gap-3 rounded-lg border px-4 py-3 transition-all text-left"
+          :style="sendEmail
+            ? { borderColor: 'var(--color-accent)', background: 'var(--color-bg-elevated)' }
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+          @click="sendEmail = !sendEmail"
+        >
+          <span
+            class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+            :style="sendEmail
+              ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+              : { background: 'var(--color-bg-elevated)', color: 'var(--color-text-tertiary)' }"
+          >
+            <UIcon name="i-lucide-mail" class="size-4" />
+          </span>
+          <span class="flex-1 min-w-0">
+            <span class="block text-[13px] font-medium" :style="{ color: sendEmail ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">Email the review link now</span>
+            <span class="block text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Off = only create the feedback — copy the link from its page and share it yourself (WhatsApp, etc.)</span>
+          </span>
+          <span
+            class="relative inline-block rounded-full transition-colors shrink-0"
+            :style="{ background: sendEmail ? 'var(--color-accent)' : 'var(--color-switch-off-track)', height: '1.25rem', width: '2.25rem' }"
+          >
+            <span class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all" :style="{ left: sendEmail ? '1.125rem' : '0.125rem' }" />
+          </span>
+        </button>
       </div>
 
       <!-- Log-mode fields -->
@@ -544,7 +572,7 @@ onMounted(() => {
 
       <div class="flex items-center gap-3 pt-2">
         <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
-          {{ saving ? 'Saving…' : mode === 'request' ? 'Send request' : 'Log feedback' }}
+          {{ saving ? 'Saving…' : mode === 'request' ? (sendEmail ? 'Create + send request' : 'Create feedback') : 'Log feedback' }}
         </button>
         <NuxtLink to="/admin/feedback" class="btn-pill btn-pill-ghost text-[13px]">Cancel</NuxtLink>
       </div>
@@ -552,30 +580,8 @@ onMounted(() => {
 
     <!-- ════════ DETAIL ════════ -->
     <template v-else-if="record">
-      <!-- Review actions — §12.6 pill group -->
-      <div class="mb-6">
-        <div class="flex flex-wrap items-center gap-1.5">
-          <button
-            v-for="a in actions" :key="a.status" type="button"
-            class="standard-pill"
-            :disabled="a.disabled || transitioning"
-            :style="record.status === a.status
-              ? { borderColor: statusMeta?.color, background: statusMeta?.bg, color: statusMeta?.color }
-              : a.disabled
-                ? { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-tertiary)', opacity: 0.55, cursor: 'not-allowed' }
-                : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
-            :title="a.hint"
-            @click="transition(a.status)"
-          >
-            {{ a.label }}<span v-if="a.hint" class="ml-1 text-[10px]">({{ a.hint }})</span>
-          </button>
-        </div>
-        <p class="mt-1.5 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">
-          Nothing auto-publishes — publishing needs the client's consent toggle below.
-        </p>
-      </div>
-
-      <div class="space-y-6">
+      <div class="grid lg:grid-cols-[1fr_300px] gap-8 items-start">
+      <div class="space-y-6 min-w-0">
         <!-- The review (read-only — scores are the client's record) -->
         <section
           class="rounded-2xl border p-6"
@@ -629,12 +635,6 @@ onMounted(() => {
             </div>
           </template>
 
-          <div class="flex flex-wrap gap-x-6 gap-y-1 mt-6 pt-4 border-t" :style="{ borderColor: 'var(--color-border)' }">
-            <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Submitted: {{ fmtDate(record.submitted_at) }}</p>
-            <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Reviewed: {{ fmtDate(record.reviewed_at) }}</p>
-            <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Published: {{ fmtDate(record.published_at) }}</p>
-            <p class="text-[11px] capitalize" :style="{ color: 'var(--color-text-tertiary)' }">Source: {{ record.source.replace('_', ' ') }}</p>
-          </div>
         </section>
 
         <!-- Moderation form -->
@@ -781,6 +781,89 @@ onMounted(() => {
             </button>
           </div>
         </form>
+      </div>
+
+      <!-- Sidebar — status, share link, record (stacks below content < lg) -->
+      <aside class="space-y-4">
+        <section
+          class="rounded-2xl border p-5"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
+        >
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <p class="text-[11px] font-semibold uppercase tracking-wider" :style="{ color: 'var(--color-text-tertiary)' }">Status</p>
+            <StatusPill :status="record.status" type="feedback" />
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="a in actions" :key="a.status" type="button"
+              class="standard-pill"
+              :disabled="a.disabled || transitioning"
+              :style="record.status === a.status
+                ? { borderColor: statusMeta?.color, background: statusMeta?.bg, color: statusMeta?.color }
+                : a.disabled
+                  ? { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-tertiary)', opacity: 0.55, cursor: 'not-allowed' }
+                  : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
+              :title="a.hint"
+              @click="transition(a.status)"
+            >
+              {{ a.label }}<span v-if="a.hint" class="ml-1 text-[10px]">({{ a.hint }})</span>
+            </button>
+          </div>
+          <p class="mt-2.5 text-[11px] leading-snug" :style="{ color: 'var(--color-text-tertiary)' }">
+            Nothing auto-publishes — publishing needs the client's consent toggle.
+          </p>
+        </section>
+
+        <section
+          class="rounded-2xl border p-5"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
+        >
+          <p class="text-[11px] font-semibold uppercase tracking-wider mb-3" :style="{ color: 'var(--color-text-tertiary)' }">Review link</p>
+          <div
+            class="flex items-center gap-2 rounded-lg border px-3 py-2"
+            :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+          >
+            <p class="font-mono text-[11px] truncate flex-1" :style="{ color: 'var(--color-text-secondary)' }">{{ record.public_url }}</p>
+            <AdminCopyButton :value="record.public_url" label="Copy review link" size="md" />
+          </div>
+          <p class="mt-2 text-[11px] leading-snug" :style="{ color: 'var(--color-text-tertiary)' }">
+            The client's private form — same link the request email carries. Share it anywhere.
+          </p>
+        </section>
+
+        <section
+          class="rounded-2xl border p-5"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
+        >
+          <p class="text-[11px] font-semibold uppercase tracking-wider mb-3" :style="{ color: 'var(--color-text-tertiary)' }">Record</p>
+          <dl class="space-y-2">
+            <div class="flex items-center justify-between gap-3">
+              <dt class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">Submitted</dt>
+              <dd class="text-[12px]" :style="{ color: 'var(--color-text)' }">{{ fmtDate(record.submitted_at) }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <dt class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">Reviewed</dt>
+              <dd class="text-[12px]" :style="{ color: 'var(--color-text)' }">{{ fmtDate(record.reviewed_at) }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <dt class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">Published</dt>
+              <dd class="text-[12px]" :style="{ color: 'var(--color-text)' }">{{ fmtDate(record.published_at) }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <dt class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">Source</dt>
+              <dd class="text-[12px] capitalize" :style="{ color: 'var(--color-text)' }">{{ record.source.replace('_', ' ') }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <button
+          type="button"
+          class="btn-table-action is-danger"
+          @click="destroy"
+        >
+          <UIcon name="i-lucide-trash-2" class="size-3.5" /> Delete feedback
+        </button>
+      </aside>
       </div>
     </template>
 

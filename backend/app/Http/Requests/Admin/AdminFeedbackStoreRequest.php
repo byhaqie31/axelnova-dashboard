@@ -23,6 +23,9 @@ class AdminFeedbackStoreRequest extends FormRequest
 
         return [
             'mode' => ['required', 'in:request,log'],
+            // Request mode only: false = mint the link without emailing it, so
+            // the admin can copy the URL and share it however they like.
+            'send_email' => ['boolean'],
             'order_id' => [
                 Rule::requiredIf(fn () => $this->input('mode') === 'request'),
                 'nullable', 'integer', 'exists:orders,id',

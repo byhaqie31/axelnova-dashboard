@@ -204,6 +204,7 @@ class FeedbackModuleTest extends TestCase
         $feedback = Feedback::findOrFail($res->json('data.id'));
         $this->assertMatchesRegularExpression('/^AXNF-\d{4}-\d{4}$/', $feedback->reference_code);
         $this->assertSame(48, strlen($feedback->public_token));
+        $this->assertStringEndsWith("/feedback/{$feedback->public_token}", $res->json('data.public_url'));
         $this->assertSame($order->client_id, $feedback->client_id);
         $this->assertSame($order->client->email, $feedback->email);
         $this->assertSame('admin', $feedback->source);
@@ -219,6 +220,23 @@ class FeedbackModuleTest extends TestCase
         // Request mode requires an order to anchor to.
         $this->postJson('/api/v1/admin/feedback', ['mode' => 'request'], $headers)
             ->assertUnprocessable()->assertJsonValidationErrors('order_id');
+    }
+
+    public function test_request_mode_with_send_email_off_mints_the_link_without_emailing(): void
+    {
+        Queue::fake();
+        $headers = $this->adminHeaders();
+        $order = Order::factory()->create();
+
+        $res = $this->postJson('/api/v1/admin/feedback', [
+            'mode' => 'request',
+            'order_id' => $order->id,
+            'send_email' => false,
+        ], $headers)->assertCreated();
+
+        // The link exists for copy-and-share, but no email job was queued.
+        $this->assertStringContainsString('/feedback/', $res->json('data.public_url'));
+        Queue::assertNotPushed(RequestFeedbackJob::class);
     }
 
     public function test_log_mode_records_offline_feedback_as_submitted(): void
