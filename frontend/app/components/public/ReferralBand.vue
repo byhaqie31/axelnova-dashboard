@@ -26,28 +26,28 @@ const steps = [
 </script>
 
 <template>
+  <!-- Light Axel Nova blue wash — a full accent-soft tint over the page bg,
+       with a stronger glow top-right. Painted on the section itself (not an
+       absolute -z-10 child: negative z drops behind the page bg once the
+       reveal tween's stacking context is cleared). Still quieter than the
+       solid blue CTA band below, so the testimonials get visual air. -->
   <section
-    class="border-y reveal relative overflow-hidden"
-    :style="{ borderColor: 'var(--color-border)' }"
+    class="border-y reveal"
+    style="
+      border-color: var(--color-border);
+      background:
+        radial-gradient(55% 90% at 85% 20%, var(--color-accent-soft) 0%, transparent 65%),
+        linear-gradient(var(--color-accent-soft), var(--color-accent-soft)),
+        var(--color-bg);
+    "
   >
-    <!-- Quiet accent wash — kept far softer than the blue CTA band below,
-         so the testimonials between them still get visual air. -->
-    <div
-      aria-hidden
-      class="absolute inset-0 -z-10"
-      style="
-        background:
-          radial-gradient(55% 90% at 85% 20%, var(--color-accent-soft) 0%, transparent 65%),
-          var(--color-bg-elevated);
-      "
-    />
 
     <div class="max-w-7xl mx-auto px-6 py-24 grid gap-14 lg:grid-cols-[1.1fr_1fr] lg:items-center">
       <!-- Pitch -->
       <div>
         <div
           class="inline-flex items-center gap-2 px-3 py-1 rounded-full border"
-          :style="{ borderColor: 'var(--color-border-strong)', background: 'var(--color-accent-soft)' }"
+          :style="{ borderColor: 'var(--color-border-strong)', background: 'var(--color-bg)' }"
         >
           <span class="size-1.5 rounded-full" style="background: var(--color-accent);" />
           <span class="text-[12px] font-medium" style="color: var(--color-text);">
