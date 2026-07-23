@@ -26,7 +26,7 @@ const testimonials = computed(() =>
 </script>
 
 <template>
-  <section v-if="testimonials.length" class="max-w-7xl mx-auto px-6 pb-32 reveal">
+  <section v-if="testimonials.length" class="max-w-7xl mx-auto px-6 py-32 reveal">
     <SectionHeader
       eyebrow="Client feedback"
       title="What clients say."

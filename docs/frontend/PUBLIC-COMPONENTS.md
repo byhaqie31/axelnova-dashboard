@@ -17,6 +17,16 @@ The landing hero (`pages/public/index.vue`). A `rounded-[48px]` video card (`bg-
 - Forces `video.muted = true` in `onMounted` (Vue can drop the prop, breaking autoplay).
 - **Pre-ship:** self-host the placeholder CloudFront video to R2 and the svgl.app logos to `/public/logos/`, then swap the URLs.
 
+### `ReferralBand`
+Partner-program shortcut band on the landing page (`pages/public/index.vue`), placed
+right above `TestimonialWall`. Full-bleed `border-y` section with a soft
+`--color-accent-soft` radial wash — deliberately quieter than the blue closing band,
+whose "Have a project in mind?" pitch it inverts ("No project of your own? Refer one
+instead."). Left column: badge, headline, CTAs → `/partners/refer` (accent) and
+`/partners` (ghost), plus a one-line commission teaser (5% → 15%, RM150 flat for
+Starter). Right column: the program's three steps as a connected vertical stepper.
+Static content — commission copy must stay in sync with `pages/public/partners/index.vue`.
+
 ### `FeaturedMockups` / `FeaturedMockupCard` / `MockupPreviewModal`
 The "Featured mockups" section on the landing page (`pages/public/index.vue`) —
 live client prototypes from the registry at `https://axelnova.my/projects/registry.json`

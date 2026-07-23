@@ -5,6 +5,7 @@ import type { ComponentPublicInstance } from 'vue'
 import type { Project } from '~/data/projects'
 import HeroEpoch from '~/components/public/HeroEpoch.vue'
 import FeaturedMockups from '~/components/public/FeaturedMockups.vue'
+import ReferralBand from '~/components/public/ReferralBand.vue'
 import TestimonialWall from '~/components/public/TestimonialWall.vue'
 import FeaturedProjectsCarousel from '~/components/shared/FeaturedProjectsCarousel.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
@@ -179,6 +180,9 @@ useScrollReveal('.reveal')
 
       <FeaturedMockups class="reveal" />
     </section>
+
+    <!-- PARTNER REFERRAL SHORTCUT — the inverse pitch of the closing band. -->
+    <ReferralBand />
 
     <!-- CLIENT TESTIMONIALS — renders nothing until reviews are published. -->
     <TestimonialWall />
