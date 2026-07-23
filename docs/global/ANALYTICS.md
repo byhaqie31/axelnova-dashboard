@@ -55,6 +55,14 @@ topLikedProjects:[{id, name, likes}]                # all-time (slice 2)
 Top referrers. The dashboard "Page views (7d)" tile reads `views.total`
 best-effort (a failure leaves the tile as `—`, never breaks the dashboard).
 
+**Marketer mirror.** `GET /api/v1/team/analytics/overview` (same controller,
+`role:founder,marketer` — engineers 403) feeds
+[`/team/analytics`](../../frontend/app/pages/team/analytics/index.vue), the
+workspace's read-only copy of the overview for the marketer role. The sibling
+[`/team/marketing`](../../frontend/app/pages/team/marketing/index.vue) page is
+a coming-soon placeholder for Threads analytics (the Threads API env keys are
+staged in `backend/.env.example`; no integration code yet).
+
 ---
 
 ## Slice 2 — Likes ✅

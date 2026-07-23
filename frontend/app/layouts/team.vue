@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
 import { availabilityMeta as findAvailabilityMeta } from '~/data/availabilityStatuses'
-import { visibleTeamNav, isAdminNavActive, type NavGroup } from '~/data/teamNav'
+import { visibleTeamNav, isAdminNavActive, type NavGroup, type Role } from '~/data/teamNav'
 
 useSeoMeta({ robots: 'noindex, nofollow' })
 
@@ -24,9 +24,9 @@ const { logout } = useTeamAuth()
 // /team/profile updates this header instantly, no reload needed.
 const { me, refresh: fetchMe } = useTeamMe()
 
-// Nav no longer role-gates (Task 4) — every internal role sees the same five
-// destinations.
-const navGroups = computed<NavGroup[]>(() => visibleTeamNav())
+// Role-scoped nav: the base Workspace group shows to everyone; the Marketing
+// group (marketing + analytics) is marketer/founder-only.
+const navGroups = computed<NavGroup[]>(() => visibleTeamNav(me.value?.role as Role | undefined))
 
 const roleLabel = computed(() => {
   const r = me.value?.role

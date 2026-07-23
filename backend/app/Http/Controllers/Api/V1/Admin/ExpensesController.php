@@ -3,23 +3,22 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\MarketingExpenseResource;
-use App\Models\MarketingExpense;
+use App\Http\Resources\CompanyExpenseResource;
+use App\Models\CompanyExpense;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
- * Marketing-spend ledger, cockpit view (Phase 5, record-only): the founder
- * sees every row and may enter their own. The team's own enter/see-own surface
- * (Team\ExpensesController) was removed in Task 4 of the portal restructure —
- * the workspace no longer touches operational/financial data, so this is now
- * the only entry point for the ledger.
+ * Company-spending ledger, cockpit view (record-only): the founder sees every
+ * row and may enter their own. Renamed from the "marketing expenses" ledger —
+ * the tracker was always general company spend. This is the only entry point
+ * for the ledger; the workspace does not touch financial data.
  */
 class ExpensesController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = MarketingExpense::with('enteredBy')->latest('spent_at')->latest('id');
+        $query = CompanyExpense::with('enteredBy')->latest('spent_at')->latest('id');
 
         if ($request->filled('category')) {
             $query->where('category', 'like', "%{$request->category}%");
@@ -28,13 +27,13 @@ class ExpensesController extends Controller
         // Roll-up over the current filter, not just the visible page.
         $total = (int) (clone $query)->sum('amount_myr');
 
-        return MarketingExpenseResource::collection($query->paginate(20))
+        return CompanyExpenseResource::collection($query->paginate(20))
             ->additional(['totals' => ['amount_myr' => $total]]);
     }
 
-    public function store(Request $request): MarketingExpenseResource
+    public function store(Request $request): CompanyExpenseResource
     {
-        $expense = MarketingExpense::create([
+        $expense = CompanyExpense::create([
             ...$request->validate([
                 'category' => ['required', 'string', 'max:60'],
                 'amount_myr' => ['required', 'integer', 'min:1'],
@@ -44,6 +43,6 @@ class ExpensesController extends Controller
             'entered_by' => $request->user()->id,
         ]);
 
-        return new MarketingExpenseResource($expense->load('enteredBy'));
+        return new CompanyExpenseResource($expense->load('enteredBy'));
     }
 }

@@ -40,7 +40,7 @@ async function fetchExpenses() {
     if (filters.category) params.set('category', filters.category)
     params.set('page', String(filters.page))
 
-    const res = await apiFetch<{ data: Expense[], meta: any, totals?: { amount_myr: number } }>(`/api/v1/admin/marketing-expenses?${params}`)
+    const res = await apiFetch<{ data: Expense[], meta: any, totals?: { amount_myr: number } }>(`/api/v1/admin/expenses?${params}`)
     expenses.value = res.data
     meta.value = res.meta
     totalMyr.value = res.totals?.amount_myr ?? null
@@ -64,7 +64,7 @@ watch(() => filters.page, () => fetchExpenses())
 
 async function record() {
   if (!form.category.trim()) {
-    toast.error('Enter a category', 'e.g. Meta ads, content, tools.')
+    toast.error('Enter a category', 'e.g. Ads, tools, hosting, travel.')
     return
   }
   if (!(Number(form.amount) > 0)) {
@@ -79,7 +79,7 @@ async function record() {
       spent_at: form.spent_at,
     }
     if (form.note) body.note = form.note
-    await apiFetch('/api/v1/admin/marketing-expenses', { method: 'POST', body })
+    await apiFetch('/api/v1/admin/expenses', { method: 'POST', body })
     toast.success('Spend recorded', 'The roll-up is updated.')
     form.category = ''
     form.amount = ''
@@ -111,8 +111,8 @@ function fmtMyr(amount: number) {
 
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Marketing</h1>
-        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">The spend ledger — every marketing expense across the team, record-only.</p>
+        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Company Spending</h1>
+        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">The spend ledger — every company expense in one place, record-only.</p>
       </div>
       <button type="button" class="btn-pill btn-pill-primary text-[13px]" @click="showForm = !showForm">
         <UIcon :name="showForm ? 'i-lucide-x' : 'i-lucide-plus'" class="size-4" />
@@ -169,7 +169,7 @@ type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]
     <div
 v-else-if="!expenses.length" class="rounded-2xl border p-12 text-center"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-      <UIcon name="i-lucide-megaphone" class="size-8 mb-3 mx-auto" :style="{ color: 'var(--color-text-tertiary)' }" />
+      <UIcon name="i-lucide-receipt" class="size-8 mb-3 mx-auto" :style="{ color: 'var(--color-text-tertiary)' }" />
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">No spend recorded yet</p>
       <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">Record the first expense with the button above.</p>
     </div>

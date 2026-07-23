@@ -6,11 +6,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * A marketing-spend row for the cockpit's full roll-up (Admin\ExpensesController,
- * with `enteredBy` loaded). The team's own-rows view was removed in Task 4 of
- * the portal restructure — this is now the only surface that renders it.
+ * A company-spending row for the cockpit's full roll-up (Admin\ExpensesController,
+ * with `enteredBy` loaded). Renamed from MarketingExpenseResource alongside the
+ * marketing_expenses → company_expenses table rename.
  */
-class MarketingExpenseResource extends JsonResource
+class CompanyExpenseResource extends JsonResource
 {
     public function toArray(Request $request): array
     {

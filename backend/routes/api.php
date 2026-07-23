@@ -186,10 +186,10 @@ Route::middleware([
         Route::post('/payroll/one-time', [PayrollController::class, 'storeOneTime'])->name('payroll.one-time');
         Route::post('/payroll/{payrollEntry}/settle', [PayrollController::class, 'settle'])->name('payroll.settle');
 
-        // Marketing-spend ledger (Phase 5, record-only) — the founder enters
-        // their own and sees every row (the full roll-up).
-        Route::get('/marketing-expenses', [ExpensesController::class, 'index'])->name('marketing-expenses.index');
-        Route::post('/marketing-expenses', [ExpensesController::class, 'store'])->name('marketing-expenses.store');
+        // Company-spending ledger (record-only) — general company spend, not
+        // just marketing (renamed from /marketing-expenses). Founder-only.
+        Route::get('/expenses', [ExpensesController::class, 'index'])->name('expenses.index');
+        Route::post('/expenses', [ExpensesController::class, 'store'])->name('expenses.store');
 
         // Tasks (Task 5) — author, assign or leave in the pool, track the
         // lifecycle, mark the extra-pay bonus paid. The team works its tasks
@@ -359,6 +359,12 @@ Route::middleware([
         // ('team', 'all'). 'partners' rows are for a later phase (the partner
         // portal) and are deliberately excluded here.
         Route::get('/announcements', [TeamAnnouncementsController::class, 'index'])->name('announcements.index');
+
+        // Marketer surface — read-only mirror of the cockpit traffic overview
+        // (same controller, no duplicated logic). Founder passes too (previews
+        // the workspace via the admin→team session exchange); engineers 403.
+        Route::get('/analytics/overview', [AnalyticsController::class, 'overview'])
+            ->middleware('role:founder,marketer')->name('analytics.overview');
     });
 
 // Partner portal — the third, isolated surface, shared by BOTH partner kinds
