@@ -4,8 +4,8 @@
  * review pages (shared per the §7 rule of three). Rendered as a joined
  * segmented bar (Delighted/Typeform-style): one continuous control whose
  * cells share dividers, so widths stay uniform at any container size.
- * Selected value fills `--color-accent`; the run-up before it fills
- * `--color-accent-soft`. Optional scores clear when the selected cell is
+ * The selected value and its run-up fill success green above the midpoint
+ * and danger red at/below it. Optional scores clear when the selected cell is
  * clicked again. Every run — including 0–10 NPS — is a single bar on all
  * viewports; cells just get denser on narrow screens. No native inputs.
  */
@@ -33,6 +33,18 @@ const values = computed(() => {
   return list
 })
 
+// The fill tone follows the score: above the midpoint reads success green,
+// halfway or below reads danger red (e.g. 1–3 red / 4–5 green; NPS 0–5 red /
+// 6–10 green). Exposed as CSS vars so the scoped styles stay declarative.
+const toneVars = computed(() => {
+  if (props.modelValue === null) return {}
+  const good = props.modelValue > (props.min + props.max) / 2
+  return {
+    '--scale-tone': good ? 'var(--color-success)' : 'var(--color-danger)',
+    '--scale-tone-soft': good ? 'var(--color-success-soft)' : 'var(--color-danger-soft)',
+  }
+})
+
 function pick(v: number) {
   if (props.readonly) return
   emit('update:modelValue', v === props.modelValue ? null : v)
@@ -43,7 +55,7 @@ function pick(v: number) {
   <div class="w-full">
     <div
       class="flex rounded-lg border overflow-hidden"
-      :style="{ borderColor: 'var(--color-border)' }"
+      :style="[{ borderColor: 'var(--color-border)' }, toneVars]"
       role="radiogroup"
     >
       <button
@@ -82,12 +94,12 @@ function pick(v: number) {
   border-left: 1px solid var(--color-border);
 }
 .scale-cell.is-fill {
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
+  background: var(--scale-tone-soft, var(--color-accent-soft));
+  color: var(--scale-tone, var(--color-accent));
 }
 .scale-cell.is-active {
-  background: var(--color-accent);
-  color: var(--color-on-accent, #fff);
+  background: var(--scale-tone, var(--color-accent));
+  color: #fff;
 }
 .scale-cell:not(:disabled):not(.is-active):not(.is-fill):hover {
   background: var(--color-bg-elevated);
