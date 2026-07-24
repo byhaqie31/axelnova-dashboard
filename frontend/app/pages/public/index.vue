@@ -190,22 +190,23 @@ useScrollReveal('.reveal')
     <!-- CLIENT TESTIMONIALS — renders nothing until reviews are published. -->
     <TestimonialWall />
 
-    <!-- CTA — full-width vivid blue band, matching the stats band. -->
-    <section class="reveal" :style="{ background: 'var(--stat-band-bg)' }">
+    <!-- CTA — closing band on the page background; the vivid blue is reserved
+         for the stats band so it stays a single accent moment per page. -->
+    <section class="reveal">
       <div class="max-w-7xl mx-auto px-6 py-24 flex flex-col items-center gap-7 text-center">
         <div>
-          <p class="text-3xl md:text-5xl font-semibold tracking-tight" :style="{ color: 'var(--stat-band-fg)' }">
+          <p class="text-3xl md:text-5xl font-semibold tracking-tight" :style="{ color: 'var(--color-text)' }">
             Have a project in mind?
           </p>
-          <p class="mt-3 text-[17px] max-w-lg mx-auto" :style="{ color: 'var(--stat-band-fg-muted)' }">
+          <p class="mt-3 text-[17px] max-w-lg mx-auto" :style="{ color: 'var(--color-text-secondary)' }">
             Let's design something premium together. Fintech, SaaS, or a product that needs senior craft.
           </p>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-3">
-          <NuxtLink ref="bandCta" to="/quote" class="btn-pill" :style="{ background: 'var(--band-cta-bg)', color: 'var(--band-cta-fg)', boxShadow: 'var(--shadow-sm)' }">
+          <NuxtLink ref="bandCta" to="/quote" class="btn-pill btn-pill-primary">
             <span class="magnetic-label">Get Inquiry</span>
           </NuxtLink>
-          <NuxtLink to="/contact" class="btn-pill" :style="{ background: 'transparent', border: '1px solid var(--stat-band-fg)', color: 'var(--stat-band-fg)' }">
+          <NuxtLink to="/contact" class="btn-pill btn-pill-ghost">
             Let's talk
           </NuxtLink>
         </div>

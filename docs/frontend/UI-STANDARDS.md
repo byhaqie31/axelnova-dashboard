@@ -27,6 +27,7 @@ All colors are semantic CSS variables defined in `:root` (light) and `.dark` (da
 | `--color-bg-elevated` | `#FBFBFD` | `#161617` | Cards, raised panels |
 | `--color-bg-secondary` | `#F5F5F7` | `#1D1D1F` | Section/banner background |
 | `--color-bg-sunken` | `#EEEEF2` | `#0A0A0B` | Recessed inputs / wells |
+| `--footer-bg` | `#F2F2F7` | `#0A0E1D` | Site footer — a soft grounding tone just under the page surface |
 
 ### Text
 
