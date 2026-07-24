@@ -172,8 +172,8 @@ useScrollReveal('.reveal')
       </div>
     </section>
 
-    <!-- FEATURED MOCKUPS -->
-    <section class="max-w-7xl mx-auto px-6 pb-32 reveal">
+    <!-- FEATURED MOCKUPS — #mockups is the hero nav's in-page jump target. -->
+    <section id="mockups" class="max-w-7xl mx-auto px-6 pb-32 scroll-mt-24 reveal">
       <SectionHeader
         eyebrow="Client previews"
         title="Featured mockups."

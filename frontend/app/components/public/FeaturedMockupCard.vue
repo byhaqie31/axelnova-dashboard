@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { mockupUrl, mockupAccent, type RegistryMockup } from '~/composables/useMockupRegistry'
 
-const props = defineProps<{ mockup: RegistryMockup }>()
+const props = defineProps<{ mockup: RegistryMockup, compact?: boolean }>()
 const emit = defineEmits<{ preview: [] }>()
 
 const url = computed(() => mockupUrl(props.mockup))
@@ -81,16 +81,18 @@ const statusMeta = computed(() => {
     <div class="relative">
       <!-- chrome -->
       <div
-        class="flex items-center gap-2 px-4 h-9 border-b"
+        class="flex items-center border-b"
+        :class="compact ? 'gap-1.5 px-3 h-7' : 'gap-2 px-4 h-9'"
         style="border-color: var(--color-border); background: var(--color-bg-secondary);"
       >
-        <span class="flex gap-1.5 shrink-0">
-          <span class="size-2.5 rounded-full" style="background:#ff5f57" />
-          <span class="size-2.5 rounded-full" style="background:#febc2e" />
-          <span class="size-2.5 rounded-full" style="background:#28c840" />
+        <span class="flex shrink-0" :class="compact ? 'gap-1' : 'gap-1.5'">
+          <span class="rounded-full" :class="compact ? 'size-2' : 'size-2.5'" style="background:#ff5f57" />
+          <span class="rounded-full" :class="compact ? 'size-2' : 'size-2.5'" style="background:#febc2e" />
+          <span class="rounded-full" :class="compact ? 'size-2' : 'size-2.5'" style="background:#28c840" />
         </span>
         <span
-          class="ml-2 flex-1 truncate text-center text-[11px] px-3 py-0.5 rounded-md border"
+          class="ml-2 flex-1 truncate text-center rounded-md border"
+          :class="compact ? 'text-[10px] px-2' : 'text-[11px] px-3 py-0.5'"
           style="color: var(--color-text-secondary); background: var(--color-bg-elevated); border-color: var(--color-border);"
         >
           {{ host }}
@@ -130,7 +132,8 @@ const statusMeta = computed(() => {
           target="_blank"
           rel="noopener"
           :aria-label="`Open ${mockup.name} in a new tab`"
-          class="mopen absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"
+          class="mopen absolute z-20 inline-flex items-center gap-1.5 font-medium rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"
+          :class="compact ? 'bottom-2 right-2 text-[11px] px-2.5 py-1' : 'bottom-3 right-3 text-[12px] px-3 py-1.5'"
           style="background: var(--color-accent); color:#fff; box-shadow: 0 6px 16px rgba(0,113,227,0.32);"
           @click.stop
         >
@@ -139,8 +142,18 @@ const statusMeta = computed(() => {
       </div>
     </div>
 
+    <!-- META (compact: name + type only) -->
+    <div v-if="compact" class="relative p-3.5">
+      <h3 class="text-[14px] font-semibold tracking-tight line-clamp-1" style="color: var(--color-text);">
+        {{ mockup.name }}
+      </h3>
+      <p class="mt-0.5 text-[12px] line-clamp-1" style="color: var(--color-text-tertiary);">
+        {{ mockup.type }}
+      </p>
+    </div>
+
     <!-- META -->
-    <div class="relative flex flex-col flex-1 p-6">
+    <div v-else class="relative flex flex-col flex-1 p-6">
       <div class="flex items-start justify-between gap-3 mb-1">
         <h3 class="text-[19px] font-semibold tracking-tight line-clamp-1" style="color: var(--color-text);">
           {{ mockup.name }}
