@@ -60,7 +60,7 @@ export const adminNav: NavGroup[] = [
     items: [
       { to: '/admin/analytics', label: 'Analytics', icon: 'i-lucide-chart-line', matchPrefix: '/admin/analytics' },
       // Marketing-spend ledger (Phase 5, record-only) — founder sees all.
-      { to: '/admin/marketing', label: 'Marketing', icon: 'i-lucide-megaphone', matchPrefix: '/admin/marketing' },
+      { to: '/admin/spending', label: 'Spending', icon: 'i-lucide-receipt', matchPrefix: '/admin/spending' },
       // Feedback & reviews — request/log client feedback, moderate the wall.
       { to: '/admin/feedback', label: 'Feedback', icon: 'i-lucide-message-circle-heart', matchPrefix: '/admin/feedback' },
     ],

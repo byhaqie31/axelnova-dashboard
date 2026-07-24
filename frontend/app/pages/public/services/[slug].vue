@@ -227,7 +227,7 @@ const route = useRoute()
 const slug = computed(() => String(route.params.slug))
 
 const siteUrl = 'https://axelnovaventures.com'
-const ogImage = `${siteUrl}/og-image.png`
+const ogImage = `${siteUrl}/og-image.jpg`
 
 const { data: apiResponse } = await useFetch<{ data: ApiCategory[] }>(
   `${useApiBase()}/api/v1/services`,
@@ -259,6 +259,9 @@ useSeoMeta({
   ogTitle: seoTitle,
   ogDescription: seoDescription,
   ogImage,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: 'Axel Nova Ventures — Crafted by design. Built to last.',
   ogUrl: pageUrl,
   twitterTitle: seoTitle,
   twitterDescription: seoDescription,

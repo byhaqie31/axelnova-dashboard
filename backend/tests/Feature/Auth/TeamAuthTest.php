@@ -163,17 +163,19 @@ class TeamAuthTest extends TestCase
         $token = $user->createToken('team-spa', ['workspace'])->plainTextToken;
         $headers = ['Authorization' => "Bearer {$token}"];
 
-        // Task 4 dropped inquiry triage, the referral programme, and marketing
-        // spend entry from the /team surface — the team no longer touches
+        // Task 4 dropped inquiry triage, the referral programme, and spend
+        // entry from the /team surface — the team no longer touches
         // admin-owned operational data. Routes are gone outright (404), not
-        // merely forbidden.
+        // merely forbidden. (The spending ledger has since been renamed
+        // company expenses — neither name exists on /team.)
         $this->getJson('/api/v1/team/inquiries', $headers)->assertNotFound();
         $this->getJson('/api/v1/team/referrals', $headers)->assertNotFound();
         $this->getJson('/api/v1/team/marketing-expenses', $headers)->assertNotFound();
+        $this->getJson('/api/v1/team/expenses', $headers)->assertNotFound();
 
         $this->assertFalse(Route::has('team.inquiries.index'));
         $this->assertFalse(Route::has('team.referrals.index'));
-        $this->assertFalse(Route::has('team.marketing-expenses.index'));
+        $this->assertFalse(Route::has('team.expenses.index'));
     }
 
     public function test_forgot_password_notifies_the_admin_for_a_known_account(): void

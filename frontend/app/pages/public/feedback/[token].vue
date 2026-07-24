@@ -101,7 +101,7 @@ async function submit() {
     <div class="aurora-line shrink-0" aria-hidden="true" />
 
     <header class="border-b" :style="{ borderColor: 'var(--color-border)' }">
-      <div class="max-w-xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
+      <div class="max-w-xl sm:max-w-3xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
         <BrandMark variant="compact" />
         <span
           class="font-mono text-[11px] font-medium px-2.5 py-1 rounded-full border"
@@ -110,7 +110,7 @@ async function submit() {
       </div>
     </header>
 
-    <main class="flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+    <main class="flex-1 w-full max-w-xl sm:max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
       <!-- Unknown / expired token -->
       <div v-if="notFound" class="text-center py-20">
         <p class="text-4xl font-semibold tracking-tight mb-4">Link not found.</p>
@@ -183,7 +183,7 @@ async function submit() {
             <div v-for="d in dimensions" :key="d.key">
               <label class="text-[13px] font-medium block">{{ d.label }}</label>
               <p class="text-[11px] mb-2" :style="{ color: 'var(--color-text-tertiary)' }">{{ d.hint }}</p>
-              <FeedbackScale v-model="form[d.key]" :max="5" />
+              <FeedbackScale v-model="form[d.key]" :max="5" :labels="['Rough', 'Excellent']" />
             </div>
           </div>
 

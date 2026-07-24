@@ -24,12 +24,26 @@ export const teamNav: NavGroup[] = [
       { to: '/team/profile', label: 'Profile', icon: 'i-lucide-user', matchPrefix: '/team/profile' },
     ],
   },
+  {
+    // Marketer surface — Threads analytics (coming soon) + the read-only site
+    // traffic mirror. Founder passes too (previews via the admin→team jump);
+    // engineers never see the group (and the backend 403s them anyway).
+    label: 'Marketing',
+    items: [
+      { to: '/team/marketing', label: 'Marketing', icon: 'i-lucide-megaphone', matchPrefix: '/team/marketing', roles: ['founder', 'marketer'] },
+      { to: '/team/analytics', label: 'Analytics', icon: 'i-lucide-chart-line', matchPrefix: '/team/analytics', roles: ['founder', 'marketer'] },
+    ],
+    roles: ['founder', 'marketer'],
+  },
 ]
 
-// No role gating left in the workspace nav — every internal role sees the
-// same five destinations. Kept as a named export (rather than inlining
-// `teamNav` at call sites) so a future role-scoped item can reintroduce
-// filtering here without touching team.vue.
-export function visibleTeamNav(_role?: Role): NavGroup[] {
+// Role-scoped filtering, same semantics as visibleAdminNav: items/groups
+// without `roles` show to everyone; before `me` resolves (role undefined)
+// everything renders so the sidebar doesn't pop in late.
+export function visibleTeamNav(role?: Role): NavGroup[] {
+  const allows = (roles?: Role[]) => !roles || role == null || roles.includes(role)
   return teamNav
+    .filter(group => allows(group.roles))
+    .map(group => ({ ...group, items: group.items.filter(item => allows(item.roles)) }))
+    .filter(group => group.items.length > 0)
 }

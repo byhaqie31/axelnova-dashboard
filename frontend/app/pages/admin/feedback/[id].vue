@@ -537,7 +537,7 @@ onMounted(() => {
         <div class="grid sm:grid-cols-2 gap-x-6 gap-y-5">
           <div v-for="d in dimensions" :key="d.key">
             <label class="text-[13px] font-medium block mb-2" :style="{ color: 'var(--color-text)' }">{{ d.label }}</label>
-            <FeedbackScale v-model="form[d.key]" :max="5" />
+            <FeedbackScale v-model="form[d.key]" :max="5" :labels="['Rough', 'Excellent']" />
           </div>
         </div>
 

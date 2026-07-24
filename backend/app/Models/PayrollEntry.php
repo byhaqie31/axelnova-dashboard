@@ -26,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *                 year-to-date rollups bucket it correctly.
  *
  * The settled payslip IS the team-comp expense record — there is no separate
- * finance/expenses/P&L module in this repo (only `marketing_expenses` and the
+ * finance/expenses/P&L module in this repo (only `company_expenses` and the
  * client-revenue `payments` ledger), so nothing double-counts. Statutory maths
  * (EPF/SOCSO/EIS/PCB) stays out of scope — amounts are recorded as agreed.
  */

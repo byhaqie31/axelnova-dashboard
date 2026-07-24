@@ -252,8 +252,7 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
 
     <!-- The home page ends in a full-bleed colour band that should meet the footer;
          every other page keeps the breathing room above it. -->
-    <footer class="relative" :class="{ 'mt-32': route.path !== '/' }">
-      <div class="aurora-line opacity-60" />
+    <footer class="relative" :class="{ 'mt-32': route.path !== '/' }" :style="{ background: 'var(--footer-bg)' }">
       <div class="border-t" :style="{ borderColor: 'var(--color-border)' }">
         <div class="max-w-7xl mx-auto px-6 pt-12 pb-8">
 

@@ -198,13 +198,16 @@ onUnmounted(() => {
            inner element's transform without losing the -translate-x). On mobile
            the bar spans the card width and spreads its items; from sm it
            collapses back to the compact centered pill. -->
-      <div class="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-30 w-4/5 sm:w-auto">
+      <div class="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-30 w-[92%] sm:w-auto">
         <nav
           ref="heroNav"
           aria-label="Hero quick links"
           class="glass-nav flex sm:inline-flex w-full sm:w-auto items-center justify-between sm:justify-center gap-1 p-1.5 pl-3"
         >
           <NuxtLink to="/projects" class="epoch-nav-link">Projects</NuxtLink>
+          <!-- Same-page jump to the mockups marquee; the GSAP plugin routes
+               a[href^="#"] clicks through lenis.scrollTo so Lenis stays in sync. -->
+          <a href="#mockups" class="epoch-nav-link">Mockups</a>
           <NuxtLink to="/services" class="epoch-nav-link">Services</NuxtLink>
           <NuxtLink
             to="/contact"
@@ -274,6 +277,12 @@ onUnmounted(() => {
 }
 .epoch-nav-link:hover {
   color: var(--color-text);
+}
+/* Three links plus the CTA chip overflow the mobile pill at stock padding. */
+@media (max-width: 400px) {
+  .epoch-nav-link {
+    padding: 0 0.375rem;
+  }
 }
 
 /* Seamless marquee — pure CSS, pauses on hover, fades at both edges. */

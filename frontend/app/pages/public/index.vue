@@ -5,13 +5,14 @@ import type { ComponentPublicInstance } from 'vue'
 import type { Project } from '~/data/projects'
 import HeroEpoch from '~/components/public/HeroEpoch.vue'
 import FeaturedMockups from '~/components/public/FeaturedMockups.vue'
+import ReferralBand from '~/components/public/ReferralBand.vue'
 import TestimonialWall from '~/components/public/TestimonialWall.vue'
 import FeaturedProjectsCarousel from '~/components/shared/FeaturedProjectsCarousel.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import { MOTION } from '~/utils/motion'
 
 const siteUrl = 'https://axelnovaventures.com'
-const ogImage = `${siteUrl}/og-image.png`
+const ogImage = `${siteUrl}/og-image.jpg`
 const seoTitle = 'Axel Nova Ventures — Design & Engineering Studio'
 const seoDescription = 'Design-led software studio building fintech, SaaS, and bespoke web products. Vue · Nuxt · Laravel · Docker · AWS.'
 
@@ -21,6 +22,9 @@ useSeoMeta({
   ogTitle: seoTitle,
   ogDescription: seoDescription,
   ogImage,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: 'Axel Nova Ventures — Crafted by design. Built to last.',
   ogUrl: siteUrl,
   twitterTitle: seoTitle,
   twitterDescription: seoDescription,
@@ -168,8 +172,8 @@ useScrollReveal('.reveal')
       </div>
     </section>
 
-    <!-- FEATURED MOCKUPS -->
-    <section class="max-w-7xl mx-auto px-6 pb-32 reveal">
+    <!-- FEATURED MOCKUPS — #mockups is the hero nav's in-page jump target. -->
+    <section id="mockups" class="max-w-7xl mx-auto px-6 pb-32 scroll-mt-24 reveal">
       <SectionHeader
         eyebrow="Client previews"
         title="Featured mockups."
@@ -180,25 +184,29 @@ useScrollReveal('.reveal')
       <FeaturedMockups class="reveal" />
     </section>
 
+    <!-- PARTNER REFERRAL SHORTCUT — the inverse pitch of the closing band. -->
+    <ReferralBand />
+
     <!-- CLIENT TESTIMONIALS — renders nothing until reviews are published. -->
     <TestimonialWall />
 
-    <!-- CTA — full-width vivid blue band, matching the stats band. -->
-    <section class="reveal" :style="{ background: 'var(--stat-band-bg)' }">
+    <!-- CTA — closing band on the page background; the vivid blue is reserved
+         for the stats band so it stays a single accent moment per page. -->
+    <section class="reveal">
       <div class="max-w-7xl mx-auto px-6 py-24 flex flex-col items-center gap-7 text-center">
         <div>
-          <p class="text-3xl md:text-5xl font-semibold tracking-tight" :style="{ color: 'var(--stat-band-fg)' }">
+          <p class="text-3xl md:text-5xl font-semibold tracking-tight" :style="{ color: 'var(--color-text)' }">
             Have a project in mind?
           </p>
-          <p class="mt-3 text-[17px] max-w-lg mx-auto" :style="{ color: 'var(--stat-band-fg-muted)' }">
+          <p class="mt-3 text-[17px] max-w-lg mx-auto" :style="{ color: 'var(--color-text-secondary)' }">
             Let's design something premium together. Fintech, SaaS, or a product that needs senior craft.
           </p>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-3">
-          <NuxtLink ref="bandCta" to="/quote" class="btn-pill" :style="{ background: 'var(--band-cta-bg)', color: 'var(--band-cta-fg)', boxShadow: 'var(--shadow-sm)' }">
+          <NuxtLink ref="bandCta" to="/quote" class="btn-pill btn-pill-primary">
             <span class="magnetic-label">Get Inquiry</span>
           </NuxtLink>
-          <NuxtLink to="/contact" class="btn-pill" :style="{ background: 'transparent', border: '1px solid var(--stat-band-fg)', color: 'var(--stat-band-fg)' }">
+          <NuxtLink to="/contact" class="btn-pill btn-pill-ghost">
             Let's talk
           </NuxtLink>
         </div>

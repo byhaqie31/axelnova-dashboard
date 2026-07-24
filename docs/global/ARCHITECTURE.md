@@ -71,7 +71,7 @@ axelnova-dashboard/
 | Table | Purpose |
 |-------|---------|
 | `tasks` | The tasks engine — delegated work with an optional extra-pay bonus. `assignee_id` null = the pick-up pool; status spine `open → in_progress → completed \| payment_pending → paid` (completing with `pay_amount_myr` set forks to `payment_pending` automatically; admin mark-paid OR payslip settlement writes `paid`). `payroll_entry_id` (nullable FK, nullOnDelete) stamps which payslip settles the extra — the per-task double-count guard: generation only picks up `payment_pending` + unlinked tasks, and ad-hoc mark-paid rejects a linked task (422). `notes` is the append-only timestamped team log. Soft-deletes. The team Calendar is a view over this table (deadline + completed_at) — no table of its own |
-| `payroll_entries` | The payslip ledger (Task 7). Two `kind`s share the table: `monthly` (the recurring run) and `one_time` (an ad-hoc bonus / payout). Itemised as `allowance_snapshot_myr` (the member's `users.monthly_allowance_myr` FROZEN at generation; null = none on file, distinct from 0; monthly only) + `task_extras_myr` (Σ of the linked pending task bonuses) + `discretionary_myr` (the manual one-off amount; one_time only), with `gross_myr` kept as the TOTAL so legacy consumers stay valid. **The per-period double-count guard is monthly-scoped** — `UNIQUE (user_id, monthly_period)` where `monthly_period` is a generated column = `period_label` for monthly rows, NULL for one-offs (so several one-offs can share a month; monthly stays one-per-period). One-offs still carry a YYYY-MM `period_label` (the payment's month) so year-to-date rollups bucket them; the UI labels them by `one_time_type` (signing/festive/performance/spot/other). `paid_at` is the sole settlement marker (no status column); settling flips the linked task extras to `paid`. Pre-Task-7 rows carry a hand-entered gross with null snapshot / 0 extras — the UI reads them as `legacy` (gated on `monthly` so a discretionary one-off is never misflagged) and renders gross-only. **The settled payslip IS the team-comp expense record** — there is no general finance/expenses/P&L module in this repo (only `marketing_expenses` + this table; `payments` is client revenue), so nothing double-counts; P&L aggregation is future work. Statutory maths (EPF/SOCSO/EIS/PCB) stays out of scope |
+| `payroll_entries` | The payslip ledger (Task 7). Two `kind`s share the table: `monthly` (the recurring run) and `one_time` (an ad-hoc bonus / payout). Itemised as `allowance_snapshot_myr` (the member's `users.monthly_allowance_myr` FROZEN at generation; null = none on file, distinct from 0; monthly only) + `task_extras_myr` (Σ of the linked pending task bonuses) + `discretionary_myr` (the manual one-off amount; one_time only), with `gross_myr` kept as the TOTAL so legacy consumers stay valid. **The per-period double-count guard is monthly-scoped** — `UNIQUE (user_id, monthly_period)` where `monthly_period` is a generated column = `period_label` for monthly rows, NULL for one-offs (so several one-offs can share a month; monthly stays one-per-period). One-offs still carry a YYYY-MM `period_label` (the payment's month) so year-to-date rollups bucket them; the UI labels them by `one_time_type` (signing/festive/performance/spot/other). `paid_at` is the sole settlement marker (no status column); settling flips the linked task extras to `paid`. Pre-Task-7 rows carry a hand-entered gross with null snapshot / 0 extras — the UI reads them as `legacy` (gated on `monthly` so a discretionary one-off is never misflagged) and renders gross-only. **The settled payslip IS the team-comp expense record** — there is no general finance/expenses/P&L module in this repo (only `company_expenses` — renamed from `marketing_expenses`, it was always general company spend — + this table; `payments` is client revenue), so nothing double-counts; P&L aggregation is future work. Statutory maths (EPF/SOCSO/EIS/PCB) stays out of scope |
 | `announcements` | Company notices authored from the cockpit (Task 6). `audience` scopes visibility once published: `team` (workspace only), `partners` (**forward hook** — the partner portal doesn't read this table yet), or `all` (both). `published_at` null = draft; publishing sets it once (re-publishing an already-published row keeps the original timestamp; toggling off reverts to draft). No soft-deletes, no delete endpoint — "unpublish" is the only retraction verb |
 
 ### Partner portal (portal restructure, Task 9 — type-aware referrer + investor)
@@ -126,6 +126,8 @@ PATCH /v1/team/tasks/{id}/status     Own tasks only — {status: in_progress|com
                                      back to the pool; notes append as "[Y-m-d H:i] Name: note"
 GET   /v1/team/announcements         Read-only feed — published + audience in (team, all), newest-
                                      published first. Drafts and 'partners'-only rows never appear
+GET   /v1/team/analytics/overview    Marketer surface (role:founder,marketer — engineers 403) —
+                                     read-only mirror of the cockpit traffic overview
 
 # Tasks engine (cockpit side — Task 5)
 GET    /v1/admin/tasks               Filters: status, priority, assignee_id ('unassigned' = pool), q
@@ -209,6 +211,8 @@ GET  /v1/documents/{token}                Public  — token-gated document data 
 POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)
 POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like
 GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?range=7d|30d)
+GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer — the marketer's
+                                     read-only mirror (same controller); engineers 403
 ```
 
 ## Frontend routes
@@ -239,7 +243,9 @@ GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?rang
                       Settle (confirm). Legacy rows render gross-only
 
 # Team workspace (/team/*) — Task 4 reframed this to five personal
-# destinations; inquiries/referrals/marketing pages were removed (admin-owned).
+# destinations; inquiries/referrals/spend-entry pages were removed (admin-owned).
+# The marketer surface (marketing + analytics) was added later — nav + pages
+# render for founder/marketer only (teamNav roles filter; backend 403s engineers).
 /team/login           Team auth
 /team/forgot          "Forgot password" — notifies the founder, no self-service reset
 /team                 Home — company announcements feed (published + audience team|all, newest first)
@@ -247,6 +253,8 @@ GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?rang
 /team/calendar        Calendar — month view over task deadlines + completed-date log (no table of its own)
 /team/payslips        Own payslips (monthly allowance/extras + one-time bonus entries, tagged by type) + a "Pending extras" block on top
 /team/profile         Self-service profile — display name + availability (Available|Busy)
+/team/marketing       Marketer-only — Threads analytics (coming-soon until the Threads API integration lands)
+/team/analytics       Marketer-only — read-only mirror of the site traffic overview (/v1/team/analytics/overview)
 
 # /partners is the PUBLIC marketing landing (pages/public/partners/index.vue,
 # stripPublicPrefix'd), not the portal — a route collision with the logged-in
