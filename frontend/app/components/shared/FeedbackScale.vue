@@ -1,9 +1,13 @@
 <script setup lang="ts">
 /**
- * The dot/pill rating scale used by the public /feedback/{token} form and the
- * admin review pages (shared per the §7 rule of three). Selected value fills
- * `--color-accent`; the run-up below it fills `--color-accent-soft`. Optional
- * scores clear when the selected pill is clicked again. No native inputs.
+ * The rating scale used by the public /feedback/{token} form and the admin
+ * review pages (shared per the §7 rule of three). Rendered as a joined
+ * segmented bar (Delighted/Typeform-style): one continuous control whose
+ * cells share dividers, so widths stay uniform at any container size.
+ * Selected value fills `--color-accent`; the run-up before it fills
+ * `--color-accent-soft`. Optional scores clear when the selected cell is
+ * clicked again. Every run — including 0–10 NPS — is a single bar on all
+ * viewports; cells just get denser on narrow screens. No native inputs.
  */
 const props = withDefaults(defineProps<{
   modelValue: number | null
@@ -29,37 +33,30 @@ const values = computed(() => {
   return list
 })
 
-// Denser pills for the 0–10 NPS run so it stays one calm row on desktop
-// (it wraps gracefully at 375px).
-const sizeClass = computed(() => (values.value.length > 6 ? 'size-8 text-[12px]' : 'size-9 text-[13px]'))
-
 function pick(v: number) {
   if (props.readonly) return
   emit('update:modelValue', v === props.modelValue ? null : v)
 }
-
-function styleFor(v: number) {
-  if (props.modelValue !== null && v === props.modelValue) {
-    return { borderColor: 'var(--color-accent)', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)' }
-  }
-  if (props.modelValue !== null && v < props.modelValue) {
-    return { borderColor: 'var(--color-accent-soft)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-  }
-  return { borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)' }
-}
 </script>
 
 <template>
-  <div>
-    <div class="flex flex-wrap gap-1.5" role="radiogroup">
+  <div class="w-full">
+    <div
+      class="flex rounded-lg border overflow-hidden"
+      :style="{ borderColor: 'var(--color-border)' }"
+      role="radiogroup"
+    >
       <button
         v-for="v in values"
         :key="v"
         type="button"
         role="radio"
-        class="rounded-lg border flex items-center justify-center font-medium tabular-nums transition-colors"
-        :class="[sizeClass, readonly ? 'cursor-default' : 'cursor-pointer']"
-        :style="styleFor(v)"
+        class="scale-cell flex-1 h-10 min-w-0 text-[13px] font-medium tabular-nums"
+        :class="{
+          'is-active': modelValue === v,
+          'is-fill': modelValue !== null && v < modelValue,
+          'cursor-pointer': !readonly,
+        }"
         :aria-checked="modelValue === v"
         :aria-label="`${v} of ${max}`"
         :disabled="readonly"
@@ -68,9 +65,35 @@ function styleFor(v: number) {
         {{ v }}
       </button>
     </div>
-    <div v-if="labels" class="flex items-center justify-between mt-1.5">
+    <div v-if="labels" class="flex items-baseline justify-between gap-6 mt-1.5">
       <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ labels[0] }}</span>
-      <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ labels[1] }}</span>
+      <span class="text-[11px] text-right" :style="{ color: 'var(--color-text-tertiary)' }">{{ labels[1] }}</span>
     </div>
   </div>
 </template>
+
+<style scoped>
+.scale-cell {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.scale-cell + .scale-cell {
+  border-left: 1px solid var(--color-border);
+}
+.scale-cell.is-fill {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.scale-cell.is-active {
+  background: var(--color-accent);
+  color: var(--color-on-accent, #fff);
+}
+.scale-cell:not(:disabled):not(.is-active):not(.is-fill):hover {
+  background: var(--color-bg-elevated);
+}
+.scale-cell:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+</style>
