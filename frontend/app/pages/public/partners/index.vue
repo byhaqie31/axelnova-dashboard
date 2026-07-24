@@ -4,7 +4,7 @@ definePageMeta({ layout: 'public' })
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 const siteUrl = 'https://axelnovaventures.com'
-const ogImage = `${siteUrl}/og-image.png`
+const ogImage = `${siteUrl}/og-image.jpg`
 const seoTitle = 'Partner Program — Axel Nova Ventures'
 const seoDescription = 'Refer a business to Axel Nova and earn up to 15% when the project closes. A professional referral program for property agents, freelancers, consultants, and agencies.'
 
@@ -14,6 +14,9 @@ useSeoMeta({
   ogTitle: seoTitle,
   ogDescription: seoDescription,
   ogImage,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: 'Axel Nova Ventures — Crafted by design. Built to last.',
   ogUrl: `${siteUrl}/partners`,
   twitterTitle: seoTitle,
   twitterDescription: seoDescription,

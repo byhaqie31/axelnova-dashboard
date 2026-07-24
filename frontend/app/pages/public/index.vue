@@ -12,7 +12,7 @@ import SectionHeader from '~/components/shared/SectionHeader.vue'
 import { MOTION } from '~/utils/motion'
 
 const siteUrl = 'https://axelnovaventures.com'
-const ogImage = `${siteUrl}/og-image.png`
+const ogImage = `${siteUrl}/og-image.jpg`
 const seoTitle = 'Axel Nova Ventures — Design & Engineering Studio'
 const seoDescription = 'Design-led software studio building fintech, SaaS, and bespoke web products. Vue · Nuxt · Laravel · Docker · AWS.'
 
@@ -22,6 +22,9 @@ useSeoMeta({
   ogTitle: seoTitle,
   ogDescription: seoDescription,
   ogImage,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: 'Axel Nova Ventures — Crafted by design. Built to last.',
   ogUrl: siteUrl,
   twitterTitle: seoTitle,
   twitterDescription: seoDescription,
