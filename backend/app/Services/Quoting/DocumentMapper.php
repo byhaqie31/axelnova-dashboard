@@ -23,7 +23,12 @@ class DocumentMapper
         'designedBy' => 'Designed by Qie / Axel Nova Ventures',
     ];
 
-    /** Bank / payment details shown on quotations, invoices, and receipts. */
+    /**
+     * Bank / payment details shown on quotations, invoices, and receipts.
+     *
+     * KEEP IN SYNC with `STUDIO_PAY` in frontend/server/utils/pdf/template.ts,
+     * which renders the same account in the invoice "How to pay" block.
+     */
     private const BANK = [
         'name' => 'OCBC Bank',
         'acct' => '7051415701',
@@ -206,8 +211,11 @@ class DocumentMapper
                 'label' => 'Balance due on completion',
                 'value' => $balance,
                 'accent' => true,
-                'note' => 'Payable to '.self::BANK['name'].' '.self::BANK['acct']
-                    .' ('.self::BANK['holder'].'), or by card / FPX online banking.',
+                // Kept short: the "How to pay" block on the invoice PDF carries the
+                // DuitNow QR and the full account details, so repeating them here
+                // would print the same digits twice on one page.
+                'note' => 'Payable by DuitNow QR, card, online banking (FPX), or bank '
+                    .'transfer to '.self::BANK['holder'].'.',
             ]);
         }
 
@@ -308,8 +316,11 @@ class DocumentMapper
                 'label' => 'Amount due',
                 'value' => $net,
                 'accent' => true,
-                'note' => 'Payable to '.self::BANK['name'].' '.self::BANK['acct']
-                    .' ('.self::BANK['holder'].'), or by card / FPX online banking.',
+                // Kept short: the "How to pay" block on the invoice PDF carries the
+                // DuitNow QR and the full account details, so repeating them here
+                // would print the same digits twice on one page.
+                'note' => 'Payable by DuitNow QR, card, online banking (FPX), or bank '
+                    .'transfer to '.self::BANK['holder'].'.',
             ])];
             if ($remaining > 0.009) {
                 $panels[] = [
