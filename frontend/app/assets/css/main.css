@@ -61,6 +61,16 @@
   --color-warning: #FF9F0A;
   --color-danger:  #FF3B30;
 
+  /* Chart series — the categorical pair for two-series charts (Revenue).
+     Validated, not eyeballed: CVD separation ΔE ~30 (protan) / ~29 (tritan)
+     against --color-accent on BOTH surfaces, so the two bars stay tellable
+     apart for colourblind readers. Amber is deliberately darker than
+     --color-warning so a series never reads as a warning state. Re-run the
+     check before changing either value — see docs/frontend/UI-STANDARDS.md. */
+  --chart-primary: var(--color-accent);
+  --chart-secondary: #D97706;
+  --chart-secondary-soft: rgba(217, 119, 6, 0.12);
+
   /* Silver — neutral metallic fill for secondary actions */
   --color-silver: #E2E2E7;
   --color-silver-hover: #D6D6DB;

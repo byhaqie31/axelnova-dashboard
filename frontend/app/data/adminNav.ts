@@ -52,6 +52,8 @@ export const adminNav: NavGroup[] = [
     items: [
       { to: '/admin/invoices', label: 'Invoices', icon: 'i-lucide-receipt-text', matchPrefix: '/admin/invoices' },
       { to: '/admin/payments', label: 'Payments', icon: 'i-lucide-wallet', matchPrefix: '/admin/payments' },
+      // Monthly booked-vs-collected reporting, derived from the ledger.
+      { to: '/admin/revenue', label: 'Revenue', icon: 'i-lucide-chart-column', matchPrefix: '/admin/revenue' },
     ],
   },
   {

@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\Admin\ProjectsController;
 use App\Http\Controllers\Api\V1\Admin\QuotationsController;
 use App\Http\Controllers\Api\V1\Admin\ReferralPartnersController;
 use App\Http\Controllers\Api\V1\Admin\ReferralsController;
+use App\Http\Controllers\Api\V1\Admin\RevenueController;
 use App\Http\Controllers\Api\V1\Admin\ServiceAddonsController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCategoriesController;
 use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
@@ -255,6 +256,10 @@ Route::middleware([
         Route::get('/payments/{payment}/receipt/preview', [PaymentsController::class, 'receiptPreview'])->name('payments.receipt.preview');
         Route::post('/payments/{payment}/receipt', [PaymentsController::class, 'issueReceipt'])->name('payments.receipt');
         Route::patch('/payments/{payment}/allocation', [PaymentsController::class, 'allocate'])->name('payments.allocation');
+
+        // Monthly money reporting — booked (orders won) vs collected (ledger
+        // cash), derived only. Founder-only by virtue of the cockpit group.
+        Route::get('/revenue/monthly', [RevenueController::class, 'monthly'])->name('revenue.monthly');
 
         // Partner referrals
         Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');
