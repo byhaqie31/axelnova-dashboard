@@ -120,7 +120,7 @@ paymentTerms    { title?, items[] }
 summary         { rows[ {label, price|priceText, negative?, total?, red?, priceMuted?} ] }
 panels[]        { label, value, note?, accent? }            # deposit / balance cards
 notes[]         { label, text }
-pay             { online?, bank?, acct?, note? }
+pay             { online?, bank?, holder?, acct?, note? }
 ```
 
 A full `payload` can also be passed straight through (the "customized builder"
@@ -136,6 +136,7 @@ override path — see Roadmap).
 | `types.ts` | the `DocumentData` contract |
 | `fonts.ts` | `FONT_FACES` — 6 Geist faces, base64 woff2 |
 | `logo.ts` | `STUDIO_LOGO` — base64 logomark |
+| `qr.ts` | `DUITNOW_QR` — base64 DuitNow QR payment card (invoices only) |
 | `template.ts` | shared CSS + `renderStandard` / `renderDetailed` + `renderDocumentHTML(data)` dispatch on `data.layout` |
 | `pdf.ts` | `renderDocumentPDF(data)` — Playwright-core → system Chromium, `preferCSSPageSize` |
 
@@ -198,6 +199,37 @@ entering the paid amount + method + ref. `DocumentMapper::forOrder` builds the
 panels from those: invoice → "Deposit received" + accent "Balance due on
 completion"; receipt → "Paid in full".
 
+### "How to pay" block (invoices)
+
+Invoices — and only invoices — render a **How to pay** block under the
+deposit/balance panels: the DuitNow QR on the left, then *Card & online banking*
+and *Bank transfer* (account, holder, and the invoice number as the payment
+reference) on the right. Receipts are already settled and quotations aren't
+payable yet, so neither gets it.
+
+Two things about it are deliberate:
+
+- **The bank details are owned by the renderer** (`STUDIO_PAY` in `template.ts`),
+  not frozen into `documents.payload`. Every invoice, however old, must point at
+  the account currently being paid into — a frozen copy would send clients to a
+  dead account the day it changes. This is the one intentional exception to the
+  frozen-snapshot rule, and it applies to payment *instructions* only, never to
+  amounts. `data.pay` still wins when a payload supplies it. `STUDIO_PAY` must
+  stay in sync with `DocumentMapper::BANK`, which words the same account into the
+  panel notes.
+- **The QR is static**, so it carries no amount — the caption tells the payer to
+  key in the total. A per-invoice dynamic QR would mean generating an EMVCo
+  payload per document; not built.
+
+Stripe and Billplz are named as available methods, but the gateways aren't wired
+yet (see [PAYMENTS-LEDGER.md](PAYMENTS-LEDGER.md)) — the block asks the client to
+email for a payment link. Replace that line with a real checkout URL when the
+gateway phases land.
+
+The block is `break-inside: avoid`: a QR split across a page break is
+unscannable, so it moves whole to the next page rather than splitting. On a short
+invoice that can add a second page.
+
 **Orders-page Documents panel** —
 [`admin/orders/[id].vue`](../../frontend/app/pages/admin/orders/%5Bid%5D.vue)
 lists issued documents (with View-PDF links) and an issue form. See
@@ -240,6 +272,25 @@ and re-emit the `FONT_FACES` template string.
 alpha bbox + downscaled to 140 px tall (~9 KB), base64 data URI. The public PNG
 at `frontend/public/axel_nova_logo.png` is still the **site's** OG/logo asset —
 keep it; the PDF just uses an inlined copy.
+
+### Regenerate the DuitNow QR
+`qr.ts` is `frontend/public/axn-duitnow-qr.png` cropped to its content box, given
+back a 30px quiet zone, and quantised to 8 colours (~32 KB → ~42 KB base64).
+
+**Never resample a QR** — it stays at native resolution so module edges are
+pixel-exact. And use 8 colours, not 4: a 4-colour median-cut palette is spent
+entirely on pink shades and silently drops the black "DuitNow" / merchant-name
+text.
+
+After regenerating, verify no module flipped — sample both images on the 77×77
+grid (QR version 15) at module centres and diff the matrices. Watch the grid
+size: fitting the wrong module count makes an intact QR look corrupted.
+
+The rendered width is set in CSS (`.hp-qr`, 36mm) and is a scannability
+constraint as much as a layout one — 36mm puts the 77 modules at ~0.42mm each,
+not far above the ~0.33mm floor phone cameras need on a QR this dense. It is
+sized to match the height of the three methods beside it. Don't shrink it
+further to save page space; crop the card instead (below).
 
 ### Add a detailed section type
 Add the interface to `types.ts`, a render partial + CSS in `template.ts`, and

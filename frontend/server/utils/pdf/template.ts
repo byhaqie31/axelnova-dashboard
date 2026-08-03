@@ -1,5 +1,6 @@
 import { FONT_FACES } from "./fonts";
 import { STUDIO_LOGO } from "./logo";
+import { DUITNOW_QR } from "./qr";
 import type {
   DocumentData,
   ComputedTotals,
@@ -10,6 +11,7 @@ import type {
   SummaryRow,
   Panel,
   NoteLine,
+  PaymentInfo,
 } from "./types";
 
 /* ----------------------------------------------------------------- helpers */
@@ -218,6 +220,23 @@ tbody tr:last-child td{border-bottom:0;}
 .panel .note{font-size:10px;color:var(--muted);line-height:1.55;margin-top:10px;}
 .panel .note b{color:var(--ink);font-weight:500;}
 
+/* ---- how to pay (invoice) ---- */
+/* Kept whole across a page break — a half-split QR is unscannable. */
+.howpay{break-inside:avoid;page-break-inside:avoid;}
+.hp-body{display:flex;gap:26px;margin-top:14px;align-items:stretch;}
+/* 36mm renders the 77-module DuitNow QR at ~0.42mm per module. That is close to
+   the ~0.33mm floor phone cameras need on a QR this dense — sized to match the
+   height of the three methods beside it, so don't shrink it further. */
+.hp-qr{flex:0 0 36mm;width:36mm;}
+.hp-qr img{width:36mm;height:auto;display:block;border:1px solid var(--line);
+  border-radius:8px;}
+.hp-methods{flex:1;display:flex;flex-direction:column;justify-content:space-between;}
+.hp-m + .hp-m{margin-top:13px;padding-top:13px;border-top:1px solid var(--line);}
+.hp-mt{font-size:11.5px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+.hp-ml{font-size:10.5px;color:var(--muted);line-height:1.7;}
+.hp-ml b{color:var(--ink);font-weight:500;}
+.hp-ml .mono{font-family:'Geist Mono',monospace;color:var(--ink);}
+
 /* ---- bottom notes ---- */
 .notes{margin-top:16px;padding-top:13px;border-top:1px solid var(--line);}
 .notes .n{font-size:10.5px;color:var(--body);line-height:1.55;margin-bottom:5px;}
@@ -308,6 +327,69 @@ function bulletHTML(list: BulletList, cur?: string): string {
 function sectionHeaderHTML(title: string, promo?: string): string {
   const pill = promo ? `<span class="promo">${esc(promo)}</span>` : "";
   return `<div class="sec-h"><span class="sq"></span><span class="t">${esc(title)}</span>${pill}</div>`;
+}
+
+/**
+ * Bank details for the invoice "How to pay" block.
+ *
+ * Deliberately owned by the renderer rather than frozen into each payload:
+ * every invoice, however old, must show the account that is *currently* being
+ * paid into. A frozen copy would leave older invoices pointing at a dead
+ * account the day this changes. `data.pay` still wins when a payload supplies
+ * it, so custom builder payloads can override per-document.
+ *
+ * KEEP IN SYNC with `DocumentMapper::BANK` (backend), which words the same
+ * details into the panel notes.
+ */
+const STUDIO_PAY: PaymentInfo = {
+  bank: "OCBC Bank",
+  holder: "Axel Nova Ventures",
+  acct: "7051415701",
+  online: "Card (credit & debit) and FPX online banking",
+};
+
+/**
+ * Invoice "How to pay" block — DuitNow QR, card / online banking, bank transfer.
+ *
+ * Invoice-only: a receipt is already settled and a quotation isn't payable yet.
+ * The QR is a *static* merchant QR, so it carries no amount — the caption tells
+ * the payer to key in the total themselves.
+ */
+function payBlockHTML(data: DocumentData): string {
+  const pay = { ...STUDIO_PAY, ...(data.pay ?? {}) };
+  const transfer = [pay.bank, pay.holder].filter(Boolean).join(" · ");
+
+  // Three methods, easiest first: scan the QR to the left, transfer manually,
+  // or ask for a card link. The QR's own instructions live here rather than
+  // under the image so all three read as one column.
+  const methods = [
+    `<div class="hp-m">
+      <div class="hp-mt">How to scan</div>
+      <div class="hp-ml">Open any Malaysian banking or e-wallet app, scan the
+        DuitNow QR, then key in the amount due above.</div>
+    </div>`,
+    `<div class="hp-m">
+      <div class="hp-mt">Bank transfer</div>
+      ${transfer ? `<div class="hp-ml"><b>${esc(transfer)}</b></div>` : ""}
+      ${pay.acct ? `<div class="hp-ml"><span class="mono">${esc(pay.acct)}</span></div>` : ""}
+      ${data.number ? `<div class="hp-ml">Reference <span class="mono">${esc(data.number)}</span></div>` : ""}
+    </div>`,
+    `<div class="hp-m">
+      <div class="hp-mt">Card (credit &amp; debit)</div>
+      <div class="hp-ml">Prefer to pay by card? Request a payment link from our
+        admin at <b>${esc(data.studio.email)}</b> and we'll send one over.</div>
+    </div>`,
+  ].join("");
+
+  return `<div class="sec howpay">
+    ${sectionHeaderHTML("How to pay")}
+    <div class="hp-body">
+      <div class="hp-qr">
+        <img src="${DUITNOW_QR}" alt="DuitNow QR — ${esc(data.studio.name)}">
+      </div>
+      <div class="hp-methods">${methods}</div>
+    </div>
+  </div>`;
 }
 
 function sectionHTML(sec: Section, cur: string): string {
@@ -492,7 +574,7 @@ function renderStandard(data: DocumentData): string {
     <div class="pay">
       <div class="plabel">Payment</div>
       ${data.pay?.online ? `<div class="ln"><b>Online</b>&nbsp; ${esc(data.pay.online)}</div>` : ""}
-      ${data.pay?.bank ? `<div class="ln"><b>Transfer</b>&nbsp; ${esc(data.pay.bank)}</div>` : ""}
+      ${data.pay?.bank ? `<div class="ln"><b>Transfer</b>&nbsp; ${esc([data.pay.bank, data.pay.holder].filter(Boolean).join(" · "))}</div>` : ""}
       ${data.pay?.acct ? `<div class="ln"><b>Account</b>&nbsp; <span class="mono">${esc(data.pay.acct)}</span></div>` : ""}
     </div>
     <div class="accept">
@@ -612,6 +694,9 @@ function renderDetailed(data: DocumentData): string {
   // Deposit / balance panels
   if (data.panels?.length)
     parts.push(`<div class="panels">${data.panels.map((p) => panelHTML(p, cur)).join("")}</div>`);
+
+  // How to pay — invoices only, directly under the amount-due panel it refers to.
+  if (data.kind === "invoice") parts.push(payBlockHTML(data));
 
   // Bottom notes. Frozen invoice/receipt payloads may carry the admin's
   // free-text notes as a plain string — normalize to NoteLine[] before mapping.

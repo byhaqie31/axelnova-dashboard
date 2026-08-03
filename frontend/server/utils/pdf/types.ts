@@ -38,6 +38,8 @@ export interface PaymentInfo {
   online?: string;
   bank?: string;
   acct?: string;
+  /** account holder — shown on its own line in the invoice "How to pay" block */
+  holder?: string;
   /** free prose, e.g. "Payable by card, online banking (FPX)… to Axel Nova Ventures." */
   note?: string;
 }

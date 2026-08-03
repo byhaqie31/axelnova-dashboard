@@ -207,6 +207,22 @@ POST /v1/admin/invoices/{invoice}/send    Sanctum — queue the client invoice e
 GET  /v1/documents/{token}                Public  — token-gated document data (JSON)
 # Frontend Nitro: GET /api/documents/{token}/pdf — renders & streams the PDF
 
+# Revenue reporting (derived — no table of its own)
+GET  /v1/admin/revenue/monthly       Sanctum — booked vs collected per calendar month
+                                     (?months=6|12|24, anything else falls back to 12).
+                                     BOOKED = Σ orders.final_amount_myr of non-cancelled orders
+                                     created that month (what we sold); COLLECTED = signed Σ over
+                                     succeeded payments by paid_at (what we banked — refunds are
+                                     negative rows and net out on their own, and are ALSO reported
+                                     separately as `refunded`). The two diverge by months under
+                                     deposit terms; that gap is the point. Series is dense
+                                     (zero-filled) so quiet months keep their slot. Month bucketing
+                                     is SQL DATE_FORMAT and relies on APP_TIMEZONE=Asia/Kuala_Lumpur
+                                     matching the stored timestamps — change both sides together.
+                                     Deliberately NOT on AnalyticsController: that one is exposed to
+                                     the marketer surface via role:founder,marketer, and revenue must
+                                     not ride a route shared with a non-founder role.
+
 # Analytics (see ANALYTICS.md)
 POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)
 POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like
@@ -236,6 +252,10 @@ GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer �
                       row → detail page. /admin/tasks/new + /admin/tasks/[id] are full pages (no slideover);
                       detail carries pay/duration/payment status + Mark paid/Delete, and is read-only once
                       the task is in progress or beyond
+/admin/revenue        Revenue — monthly booked-vs-collected reporting (6/12/24-month window).
+                      Totals row (booked / collected / net of fees / fees), a grouped bar chart
+                      (one shared MYR axis — never a second scale), and a table of exact figures.
+                      Read-only and fully derived from `payments` + `orders`; adds no table
 /admin/announcements  Announcements — post/edit (slideover), publish toggle (§12.2). No delete
 /admin/payroll        Payroll — generate a monthly payslip (member + period, with live preview) or
                       Record one-time payment (bonus / ad-hoc payout, optional pending-tasks sweep,

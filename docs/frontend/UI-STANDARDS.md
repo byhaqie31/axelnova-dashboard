@@ -55,6 +55,36 @@ All colors are semantic CSS variables defined in `:root` (light) and `.dark` (da
 | `--color-warning` | `#FF9F0A` | (same) | In-progress |
 | `--color-danger` | `#FF3B30` | (same) | Destructive |
 
+### Chart series
+
+For two-series charts (currently `/admin/revenue`). **Never reuse the status colors
+for a data series** — green/orange/red are reserved for state, and a bar in warning
+orange reads as an alert rather than a number.
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--chart-primary` | `--color-accent` (`#0071E3`) | `#2997FF` | Series 1 — the headline measure (collected) |
+| `--chart-secondary` | `#D97706` | (same) | Series 2 — the comparison measure (booked) |
+| `--chart-secondary-soft` | `rgba(217,119,6,0.12)` | (same) | Tinted fills / hover wash |
+
+These values are **validated, not chosen by eye.** The pair clears colorblind
+separation at ΔE ≈ 30 (protanopia) and ≈ 29 (tritanopia) against `--color-accent`
+on both the light (`#FFFFFF`) and dark (`#141B33`) chart surfaces, plus the
+lightness-band, chroma-floor and 3:1 contrast checks. The obvious brand-native pick
+— accent blue against `--grad-aurora-violet` — **fails** at ΔE 3.2, which is why the
+amber exists. `#D97706` is deliberately darker than `--color-warning` (`#FF9F0A`) so
+a series never reads as a warning state. Re-run the check before changing either
+value.
+
+Rules that go with them:
+
+- **One axis.** Two measures share a chart only when they share a unit. Never a
+  second y-scale — plot separately or index to a common base instead.
+- **A legend is always present for ≥2 series**, so identity is never carried by
+  color alone. Pair every chart with a table of exact figures.
+- **Values on hover, not on every mark.** Text uses text tokens; the colored swatch
+  beside it carries identity.
+
 ### Iridescent gradient stops
 
 Used for premium moments only — hero text, top-of-nav hairline, brand dot. Never for body content.
