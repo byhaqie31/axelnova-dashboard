@@ -117,7 +117,7 @@ class ReferralsController extends Controller
             return response()->json(['message' => 'The referral must be converted (its deposit collected) before requesting commission details.'], 422);
         }
 
-        $commission = round((float) $anchor->final_amount_myr * $referral->effectivePct() / 100, 2);
+        $commission = Referral::capCommission((float) $anchor->final_amount_myr * $referral->effectivePct() / 100);
         if ($commission <= 0) {
             return response()->json(['message' => 'The order has no final amount yet — set it before emailing.'], 422);
         }

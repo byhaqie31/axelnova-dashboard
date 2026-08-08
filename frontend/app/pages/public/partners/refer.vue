@@ -50,7 +50,7 @@ const relationships: { value: 'cold' | 'warm' | 'closed', label: string }[] = [
 const tiers = [
   { name: 'Cold lead', rate: '5%' },
   { name: 'Warm intro', rate: '10%' },
-  { name: 'Closed referral', rate: 'Up to 15%' },
+  { name: 'Closed referral', rate: 'Up to 15%*' },
 ]
 
 const submitted = ref(false)
@@ -396,7 +396,8 @@ useScrollReveal('.reveal')
             </div>
           </div>
           <p class="text-[12px] leading-relaxed mt-4 pt-4 border-t" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }">
-            Commission is paid on the final project value, within 14 working days of cleared payment.
+            *Commission is paid on the final project value, capped at RM1,500 per referral,
+            within 14 working days of cleared payment.
           </p>
         </div>
 

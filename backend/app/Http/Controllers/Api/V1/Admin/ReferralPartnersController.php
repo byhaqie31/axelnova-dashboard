@@ -7,6 +7,7 @@ use App\Http\Resources\ReferrerDetailResource;
 use App\Http\Resources\ReferrerResource;
 use App\Mail\PartnerPasscodeMail;
 use App\Models\ExternalAccount;
+use App\Models\Referral;
 use App\Models\Referrer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -67,9 +68,9 @@ class ReferralPartnersController extends Controller
             $collected = (float) $order->amount_paid_myr;
             $contract = (float) $order->final_amount_myr;
             if ($ref->status === 'converted') {
-                $earned += round($collected * $rate / 100, 2);
+                $earned += Referral::capCommission($collected * $rate / 100);
             }
-            $estimated += max(0, round(($contract - $collected) * $rate / 100, 2));
+            $estimated += Referral::pendingCommission($rate, $contract, $collected);
         }
 
         return (new ReferrerDetailResource($referralPartner))

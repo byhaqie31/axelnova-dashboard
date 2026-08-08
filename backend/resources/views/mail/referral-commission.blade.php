@@ -3,7 +3,7 @@
 
 Your referral of **{{ $referral->business_name }}** has turned into a signed project. Thank you — this is exactly what the Partner Program is for.
 
-Based on your **{{ $referral->commission_tier_pct }}%** tier of the project value, your estimated commission is:
+Based on your **{{ $referral->effectivePct() }}%** rate on the project value (capped at RM {{ number_format(\App\Models\Referral::COMMISSION_CAP_MYR) }} per referral), your estimated commission is:
 
 @component('mail::panel')
 **RM {{ number_format($commission, 2) }}**

@@ -51,7 +51,7 @@ const steps = [
         >
           <span class="size-1.5 rounded-full" style="background: var(--color-accent);" />
           <span class="text-[12px] font-medium" style="color: var(--color-text);">
-            Partner Program · Earn up to 15%
+            Partner Program · Earn up to 15%*
           </span>
         </div>
 
@@ -79,7 +79,7 @@ const steps = [
         </div>
 
         <p class="mt-5 text-[13px]" style="color: var(--color-text-tertiary);">
-          5% for a name, up to 15% for a closed referral · smaller projects earn a flat RM150.
+          *5% for a name, up to 15% for a closed referral, capped at RM1,500 per referral · smaller projects earn a flat RM150.
         </p>
       </div>
 

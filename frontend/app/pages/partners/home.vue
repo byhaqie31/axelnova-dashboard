@@ -88,7 +88,8 @@ const firstName = computed(() => me.value?.profile?.name?.split(' ')[0] ?? '')
         </h1>
         <p class="text-[13px] mt-1" style="color: var(--color-text-secondary);">
           Commission is earned <span style="color: var(--color-text);">per referral</span> — {{ tierPcts.map(p => `${p}%`).join(' / ') }} of the collected
-          project value, depending on how closely you're connected to each business you refer.
+          project value, depending on how closely you're connected to each business you refer,
+          capped at {{ myr(data.partner.commission_cap_myr) }} per referral.
           Payouts are arranged manually; we'll email you when a referral converts.
         </p>
       </div>
