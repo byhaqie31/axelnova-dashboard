@@ -32,5 +32,8 @@
     "eslint": "^10.6.0",
     "typescript": "^6.0.3",
     "vue-tsc": "^3.3.6"
+  },
+  "overrides": {
+    "nostics": "^1.2.0"
   }
 }
