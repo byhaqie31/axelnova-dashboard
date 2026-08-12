@@ -83,3 +83,24 @@ single files — after editing them on the host, `docker compose up -d --force-r
   entries when the L12 upgrade lands.
 - **Frontend**: `npm audit --omit=dev --audit-level=high` — production dependencies
   only, high severity and above (dev-tool advisories don't ship to users).
+
+### The `nostics` override — do not remove without testing SSR
+
+`package.json` pins `overrides: { "nostics": "^1.2.0" }`. Without it, the dev-only
+`devframe` (pulled in by `@nuxt/devtools`) requires `nostics@^0.2.0`, which npm hoists
+to the top-level `node_modules/nostics` while Nuxt keeps `1.2.0` nested. Nitro treats
+`nostics` as an external and copies the **hoisted** copy into
+`.output/server/node_modules/`, so the built server imports `createConsoleReporter`
+from a 0.2.0 that doesn't export it — every SSR request then dies with a 500
+(`SyntaxError: The requested module 'nostics' does not provide an export named
+'createConsoleReporter'`). This took production down on 2026-08-12.
+
+CI never catches this: `nuxt build` succeeds, and the failure only appears when the
+built server handles a request. If you touch this override, verify by **running the
+production image**, not just building it:
+
+```bash
+docker build -t axelnova-frontend-check frontend/
+docker run -d --name fe-check -p 127.0.0.1:3998:3000 -e NODE_ENV=production axelnova-frontend-check
+curl -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3998/   # must be 200, not 500
+```
