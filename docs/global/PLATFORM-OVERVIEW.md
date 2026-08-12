@@ -284,7 +284,7 @@ The public **layout** (`public.vue`) wraps every storefront page:
 | `/projects` | **Project registry** | Filterable grid — stack pills (All/Laravel/Nuxt/Docker/Redis/MySQL/FastAPI) + status dropdown (All/Live/In progress/Planning). Fed by `GET /api/v1/projects`. |
 | `/projects/[id]` | **Project detail** | Status + featured badges, title, description, "Visit project" / "Source" links, cover image, long description, stack + tags. Fed by `GET /api/v1/projects/{slug}`. |
 | `/quote`, `/quote/preview`, `/quote/success` | **Quote builder** | The lead funnel — see [section 9](#9-the-quote-builder-funnel). |
-| `/partners` | **Partner program** | Referral program landing — audience cards, 3-step "how it works", **commission tiers** (5% cold / 10% warm / up to 15% closed), terms snapshot, 8-item FAQ, CTA to `/partners/refer`. |
+| `/partners` | **Partner program** | Referral program landing — audience cards, 3-step "how it works", **commission tiers** (5% cold / 10% warm / up to 15% closed, capped at RM1,500 per referral), terms snapshot, 8-item FAQ, CTA to `/partners/refer`. |
 | `/partners/refer` | **Refer a business** | Referral **form** (your details + business details + relationship tier + agree-to-terms) → **Web3Forms**. Success state + tier reference cards. |
 | `/proposals/[slug]` | **Proposal viewer** | Confidential, `noindex`. Custom layout (no public chrome). Renders a proposal: scope, timeline, pricing, sign section. (`demo` slug = sample; others 404.) |
 | `/investor/roofly` | **Investor brief** | `noindex`. Roofly investor materials hub — pitch deck / investment package / financial summary cards + "request a walkthrough" mailto. |

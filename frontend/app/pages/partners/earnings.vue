@@ -62,7 +62,8 @@ const tierLabels: Record<string, string> = {
       <h2 class="text-[16px] font-semibold tracking-tight mb-1" style="color: var(--color-text);">Commission bands</h2>
       <p class="text-[12px] mb-4" style="color: var(--color-text-secondary);">
         Each referral earns by how closely you're connected to the business. Your default tier is highlighted;
-        individual referrals can sit in a different band.
+        individual referrals can sit in a different band. Payouts are capped at
+        {{ myr(data.partner.commission_cap_myr) }} per referral.
       </p>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div

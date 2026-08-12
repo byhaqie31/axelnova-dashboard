@@ -278,7 +278,7 @@ const allFaqs = computed<FAQ[]>(() => [
 const jsonLdScripts = computed(() => {
   const base = [
     {
-      type: 'application/ld+json',
+      type: 'application/ld+json' as const,
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'Service',
@@ -294,7 +294,7 @@ const jsonLdScripts = computed(() => {
       }),
     },
     {
-      type: 'application/ld+json',
+      type: 'application/ld+json' as const,
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
@@ -308,7 +308,7 @@ const jsonLdScripts = computed(() => {
   ]
   if (allFaqs.value.length) {
     base.push({
-      type: 'application/ld+json',
+      type: 'application/ld+json' as const,
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'FAQPage',

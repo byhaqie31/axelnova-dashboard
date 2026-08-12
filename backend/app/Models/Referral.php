@@ -21,6 +21,13 @@ class Referral extends Model
         'closed' => 15,
     ];
 
+    /**
+     * Per-referral payout ceiling (MYR). Whatever the tier, a single referral
+     * never pays out more than this — the public programme copy advertises it,
+     * so every derived commission figure must respect it.
+     */
+    public const COMMISSION_CAP_MYR = 1500;
+
     protected $fillable = [
         'referral_partner_id',
         'referrer_name',
@@ -87,9 +94,26 @@ class Referral extends Model
         return self::COMMISSION_TIERS[$tier] ?? self::COMMISSION_TIERS['cold'];
     }
 
+    /** Apply the per-referral payout ceiling to a raw commission amount. */
+    public static function capCommission(float $amount): float
+    {
+        return round(min($amount, self::COMMISSION_CAP_MYR), 2);
+    }
+
+    /**
+     * The not-yet-collected slice of an order's commission. Both the contract
+     * total and the collected-so-far portion are capped first, so once the cap
+     * is reached nothing further accrues (capped-total minus capped-collected).
+     */
+    public static function pendingCommission(float $rate, float $contract, float $collected): float
+    {
+        return round(max(0, min($contract * $rate / 100, self::COMMISSION_CAP_MYR)
+            - min($collected * $rate / 100, self::COMMISSION_CAP_MYR)), 2);
+    }
+
     /**
      * Commission owed once converted — the linked order's final value times
-     * this referral's tier. Null until an order with a final amount is linked.
+     * this referral's tier, capped. Null until an order with a final amount is linked.
      */
     public function commissionAmount(): ?float
     {
@@ -98,6 +122,6 @@ class Referral extends Model
             return null;
         }
 
-        return round($final * $this->commission_tier_pct / 100, 2);
+        return self::capCommission($final * $this->commission_tier_pct / 100);
     }
 }

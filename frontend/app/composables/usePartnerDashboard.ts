@@ -17,7 +17,7 @@ export interface PartnerDashboardReferral {
 }
 
 export interface PartnerDashboard {
-  partner: { name: string, code: string, relationship_tier: string, commission_tiers: Record<string, number> }
+  partner: { name: string, code: string, relationship_tier: string, commission_tiers: Record<string, number>, commission_cap_myr: number }
   stats: { earned_myr: number, estimated_myr: number, referrals_count: number }
   ref_link: string
   referrals: PartnerDashboardReferral[]

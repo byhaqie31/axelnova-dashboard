@@ -60,8 +60,9 @@ So a referred company that clicks a link, inquires, gets quoted, and pays — ea
 ## 5. Commission math (derived, never stored)
 
 - **Effective rate** = `commission_pct ?? commission_tier_pct`.
-- **Earned** = Σ over `converted` referrals of `rate × collected` (`order.amount_paid_myr`).
-- **Estimated (pending)** = Σ over referrals that **have an order** and aren't fully collected of `rate × (final_amount_myr − amount_paid_myr)` — this covers both accepted drafts (order exists, no deposit yet) and partially-collected converted ones.
+- **Per-referral cap** — `Referral::COMMISSION_CAP_MYR` (RM 1,500). Whatever the tier, a single referral never pays out more; every derived figure clamps through `Referral::capCommission()` / `Referral::pendingCommission()`. The public pages advertise the cap (asterisk on "up to 15%"), and the tier bands (5/10/15) are unchanged.
+- **Earned** = Σ over `converted` referrals of `min(rate × collected, cap)` (`order.amount_paid_myr`).
+- **Estimated (pending)** = Σ over referrals that **have an order** and aren't fully collected of `min(rate × final_amount_myr, cap) − min(rate × amount_paid_myr, cap)` — the plain remainder below the cap, zero once the collected side reaches it. Covers both accepted drafts (order exists, no deposit yet) and partially-collected converted ones.
 - A **draft with only a quotation** (no order yet) is listed as `draft` with **no dollar figure** — the value isn't fixed until an order does (`final_amount_myr`); the quotation itself is a range.
 - A refund lowers `amount_paid_myr`, so earned recomputes automatically. No stored commission column anywhere.
 

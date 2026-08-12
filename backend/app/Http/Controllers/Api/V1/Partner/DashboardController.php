@@ -52,9 +52,9 @@ class DashboardController extends Controller
             $collected = (float) ($order->amount_paid_myr ?? 0);
             $contract = (float) ($order->final_amount_myr ?? 0);
 
-            $earnedForRef = $referral->status === 'converted' ? round($collected * $rate / 100, 2) : 0.0;
+            $earnedForRef = $referral->status === 'converted' ? Referral::capCommission($collected * $rate / 100) : 0.0;
             $earned += $earnedForRef;
-            $estimated += $order ? max(0, round(($contract - $collected) * $rate / 100, 2)) : 0.0;
+            $estimated += $order ? Referral::pendingCommission($rate, $contract, $collected) : 0.0;
 
             return [
                 'id' => $referral->id,
@@ -75,6 +75,7 @@ class DashboardController extends Controller
                 // The bands (tier → %), so the portal can explain the varying rate
                 // instead of quoting one fixed number.
                 'commission_tiers' => Referral::COMMISSION_TIERS,
+                'commission_cap_myr' => Referral::COMMISSION_CAP_MYR,
             ],
             'stats' => [
                 'earned_myr' => round($earned, 2),

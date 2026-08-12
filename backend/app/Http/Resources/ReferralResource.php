@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Referral;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -46,8 +47,8 @@ class ReferralResource extends JsonResource
             'anchor_order_number' => $anchor?->order_number,
             'contract_myr' => $anchor ? $contract : null,
             'collected_myr' => $anchor ? $collected : null,
-            'earned_myr' => ($this->status === 'converted' && $anchor) ? round($collected * $rate / 100, 2) : null,
-            'estimated_myr' => $anchor ? round(max(0, $contract - $collected) * $rate / 100, 2) : null,
+            'earned_myr' => ($this->status === 'converted' && $anchor) ? Referral::capCommission($collected * $rate / 100) : null,
+            'estimated_myr' => $anchor ? Referral::pendingCommission($rate, $contract, $collected) : null,
             'commission_email_sent_at' => $this->commission_email_sent_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
         ];

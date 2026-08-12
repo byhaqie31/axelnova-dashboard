@@ -101,7 +101,7 @@ const tiers = [
   },
   {
     name: 'Closed referral',
-    rate: 'Up to 15%',
+    rate: 'Up to 15%*',
     desc: 'You’ve already talked it through with them — we only scope and deliver.',
     featured: true,
   },
@@ -109,6 +109,7 @@ const tiers = [
 
 const termsSnapshot = [
   'Commission applies only to projects that are signed and paid in full.',
+  'Payouts are capped at RM1,500 per referral, whatever the tier.',
   'First valid referral wins — a business stays attributed to you for 90 days.',
   'No commission on existing Axel Nova clients, duplicate referrals, or self-referrals.',
   'Paid within 14 working days of cleared payment, via local bank transfer.',
@@ -122,7 +123,7 @@ const faqs = [
   },
   {
     q: 'How much can I earn?',
-    a: 'Between 5% and 15% of the project value, depending on how involved you are — from passing a cold contact to handing over a business you’ve already talked it through with. Starter-tier projects earn a flat RM150 referral fee.',
+    a: 'Between 5% and 15% of the project value, depending on how involved you are — from passing a cold contact to handing over a business you’ve already talked it through with. Payouts are capped at RM1,500 per referral, and Starter-tier projects earn a flat RM150 referral fee.',
   },
   {
     q: 'Do I have to sell anything?',
@@ -211,7 +212,7 @@ useScrollReveal('.reveal')
         style="font-size: clamp(48px, 8vw, 104px);"
       >
         <span ref="heroLine1" class="block">Refer a business.</span>
-        <span ref="heroLine2" class="block text-gradient">Earn up to 15%.</span>
+        <span ref="heroLine2" class="block text-gradient">Earn up to 15%*.</span>
       </h1>
 
       <p
@@ -344,9 +345,9 @@ useScrollReveal('.reveal')
           style="color: var(--color-text-tertiary);"
         />
         <p class="text-[13px] leading-relaxed" style="color: var(--color-text-secondary);">
-          Commission tiers apply to Professional-tier projects and above, from RM3,000.
-          Smaller Starter-tier projects earn a flat RM150 referral fee. All commission is subject to the
-          Partner Program terms.
+          *Commission tiers apply to Professional-tier projects and above, from RM3,000, and payouts are
+          capped at RM1,500 per referral. Smaller Starter-tier projects earn a flat RM150 referral fee.
+          All commission is subject to the Partner Program terms.
         </p>
       </div>
     </section>

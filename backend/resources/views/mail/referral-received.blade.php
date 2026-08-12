@@ -3,7 +3,7 @@
 
 I've received your referral of **{{ $referral->business_name }}** and made a note of it. I'll reach out to them (usually within 3 business days) and keep you posted on how it goes.
 
-If it becomes a signed, paid project, your commission follows per the Partner Program terms (your current tier is **{{ $referral->commission_tier_pct }}%** of the final project value).
+If it becomes a signed, paid project, your commission follows per the Partner Program terms (your current tier is **{{ $referral->commission_tier_pct }}%** of the final project value, capped at RM {{ number_format(\App\Models\Referral::COMMISSION_CAP_MYR) }} per referral).
 
 Thanks for thinking of me. It genuinely means a lot.
 
