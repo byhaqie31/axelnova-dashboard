@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\Quoting\ScopeSummary;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,7 +27,9 @@ class OrderResource extends JsonResource
             'estimate_eta_unit' => $this->whenLoaded('quotation', fn () => $this->quotation?->estimate_eta_unit),
             'submitted_at' => $this->whenLoaded('quotation', fn () => $this->quotation?->submitted_at?->toISOString()),
             'quotation_document' => $this->when($detailRoute && $this->relationLoaded('quotation'), fn () => $this->quotation?->document),
-            'quotation_scope' => $this->when($detailRoute && $this->relationLoaded('quotation'), fn () => $this->quotation?->form_payload),
+            // Curated per-package scope groups (normalizer-read, scalars only) —
+            // never the raw form_payload, whose audit objects aren't displayable.
+            'quotation_scope' => $this->when($detailRoute && $this->relationLoaded('quotation'), fn () => $this->quotation ? ScopeSummary::forQuotation($this->quotation) : []),
             'quotation_addons' => $this->when(
                 $detailRoute && $this->relationLoaded('quotation') && $this->quotation?->relationLoaded('addons'),
                 fn () => $this->quotation->addons->map(fn ($a) => [

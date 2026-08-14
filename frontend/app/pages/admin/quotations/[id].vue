@@ -31,6 +31,7 @@ interface Quotation {
   updated_by: { id: number, name: string } | null
   public_token: string | null
   form_payload: Record<string, any> | null
+  scope_display?: Array<{ package_key: string | null, label: string | null, scope: Record<string, any> }> | null
   document: Record<string, any> | null
   addons: { key: string; label: string; amount_myr: string }[]
   referral_partner_id: number | null
@@ -357,7 +358,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
             </div>
           </div>
 
-          <AdminScopeDetails :scope="quotation.form_payload" variant="card" />
+          <AdminScopeDetails :scope="quotation.scope_display ?? quotation.form_payload" variant="card" />
           </template>
         </div>
 

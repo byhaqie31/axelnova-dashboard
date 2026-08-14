@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\Quoting\ScopeSummary;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -49,7 +50,10 @@ class QuotationResource extends JsonResource
                 'commission_pct' => $this->referrer->commission_pct,
             ] : null),
             'public_token' => $this->when(! $listRoute, $this->public_token),
+            // Raw payload stays for the builder's hydration; the spec grid reads
+            // scope_display (normalizer-curated, scalars only) instead.
             'form_payload' => $this->when(! $listRoute, $this->form_payload),
+            'scope_display' => $this->when(! $listRoute, fn () => ScopeSummary::forQuotation($this->resource)),
             'document' => $this->when(! $listRoute, $this->document),
             'addons' => $this->whenLoaded('addons', fn () => $this->addons->map(fn ($a) => [
                 'key' => $a->addon_key,

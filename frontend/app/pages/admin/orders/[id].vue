@@ -40,7 +40,7 @@ interface Order {
   estimate_min_myr?: string
   estimate_max_myr?: string
   quotation_document?: Record<string, any> | null
-  quotation_scope?: Record<string, any> | null
+  quotation_scope?: Array<{ package_key: string | null, label: string | null, scope: Record<string, any> }> | null
   quotation_addons?: { key: string; label: string; amount_myr: string }[]
   invoices?: OrderInvoice[]
   receipts?: OrderReceipt[]
@@ -246,6 +246,29 @@ const lineItems = computed(() => {
   return Array.isArray(items) ? items : []
 })
 
+// What the quotation says the work IS — title + intro straight from the
+// authored document (both layouts store them at document level).
+const projectTitle = computed(() => order.value?.quotation_document?.project ?? null)
+const projectIntro = computed(() => order.value?.quotation_document?.intro ?? null)
+
+// Detailed-layout quotations carry their scope as priced sections; surface
+// them like the PDF's summary table (title · section total).
+const docSections = computed(() => {
+  const d = order.value?.quotation_document
+  if (d?.layout !== 'detailed') return []
+  const sections = d?.payload?.sections
+  if (!Array.isArray(sections)) return []
+  return sections.map((s: { title?: unknown, total?: unknown }) => ({ title: String(s?.title ?? ''), total: Number(s?.total) || 0 }))
+})
+
+// A detailed/bespoke quote is an agreed price (min == max), not a range —
+// show the exact figure instead of a degenerate "RM 153k – RM 153k".
+const agreedAmount = computed(() => {
+  const min = Number(order.value?.estimate_min_myr)
+  const max = Number(order.value?.estimate_max_myr)
+  return min > 0 && min === max ? max : null
+})
+
 </script>
 
 <template>
@@ -315,11 +338,29 @@ v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold
             </span>
           </div>
 
+          <!-- What the quotation says the work is — title + intro lead the card. -->
+          <div v-if="projectTitle || projectIntro" class="mb-4">
+            <p v-if="projectTitle" class="text-[14px] font-semibold" style="color: var(--color-text);">{{ projectTitle }}</p>
+            <p v-if="projectIntro" class="text-[13px] leading-relaxed line-clamp-3 mt-1" style="color: var(--color-text-secondary);">{{ projectIntro }}</p>
+          </div>
+
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style="color: var(--color-text-secondary);">
             <span v-if="packageLabel" class="font-medium" style="color: var(--color-text);">{{ packageLabel }}</span>
             <code v-if="order.package_key" class="font-mono text-[12px]" style="color: var(--color-text-tertiary);">{{ order.package_key }}</code>
             <span v-if="order.estimate_eta_value && order.estimate_eta_unit">· {{ formatEta(order.estimate_eta_value, order.estimate_eta_unit) }}</span>
-            <span v-if="order.estimate_min_myr && order.estimate_max_myr">· Est. {{ fmtMyr(order.estimate_min_myr) }} – {{ fmtMyr(order.estimate_max_myr) }}</span>
+            <span v-if="agreedAmount">· Agreed <span class="font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(agreedAmount) }}</span></span>
+            <span v-else-if="order.estimate_min_myr && order.estimate_max_myr">· Est. {{ fmtMyr(order.estimate_min_myr) }} – {{ fmtMyr(order.estimate_max_myr) }}</span>
+          </div>
+
+          <!-- Detailed quotation: priced scope sections, mirroring the PDF summary. -->
+          <div v-if="docSections.length" class="mt-5 pt-4 border-t" style="border-color: var(--color-border);">
+            <p class="text-[11px] font-medium uppercase tracking-wider mb-2" style="color: var(--color-text-tertiary);">Scope sections</p>
+            <div class="space-y-2">
+              <div v-for="(s, i) in docSections" :key="i" class="flex justify-between items-baseline gap-4">
+                <span class="text-[13px]" style="color: var(--color-text);">{{ s.title }}</span>
+                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ fmtMyrExact(s.total) }}</span>
+              </div>
+            </div>
           </div>
 
           <div v-if="lineItems.length" class="mt-5 pt-4 border-t" style="border-color: var(--color-border);">
