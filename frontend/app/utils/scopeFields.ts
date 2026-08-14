@@ -31,6 +31,10 @@ export function classifyScopeFields(payload: Record<string, any> | null | undefi
   const fields: ScopeField[] = []
   for (const [k, v] of Object.entries(payload)) {
     if (SKIP.has(k) || v === '' || v === null || (Array.isArray(v) && !v.length)) continue
+    // Objects and arrays-of-objects are structure (audit blobs, nested shapes),
+    // not scope — skip them so nothing ever renders as "[object Object]".
+    if (typeof v === 'object' && !Array.isArray(v)) continue
+    if (Array.isArray(v) && v.some(x => typeof x === 'object')) continue
     const label = humanizeScope(k)
     if (typeof v === 'boolean') fields.push({ key: k, label, kind: 'bool', value: v ? 'Yes' : 'No', on: v })
     else if (typeof v === 'number') fields.push({ key: k, label, kind: 'number', value: String(v), on: false })
