@@ -284,6 +284,20 @@ tbody tr:last-child td{border-bottom:0;}
 .credit .tag{font-size:10.5px;color:var(--muted);margin-top:3px;}
 .credit .contact{font-size:10px;color:var(--body);
   margin-top:9px;letter-spacing:.01em;}
+
+/* ---- pagination ---- */
+/* Chromium reads break-*; the page-break-* spellings ride along for any
+   engine that only knows the legacy names. Atomic units never split … */
+tr,.sum-row,.tot-row,.sec-total,.panel,.opt,.hp-m,.deposit,.credit{
+  break-inside:avoid;page-break-inside:avoid;}
+/* … headings, eyebrows and labels never strand at a page foot … */
+.sec-h,.bul-eyebrow,.eyebrow,.plabel,.opts-h{
+  break-after:avoid;page-break-after:avoid;}
+/* … sections themselves may flow across pages … */
+.sec,.opts-block{break-inside:auto;}
+/* … and a table that does flow repeats its header row on the next page, so a
+   continuation never opens on bare ITEM / DETAIL / PRICE with no context. */
+thead{display:table-header-group;}
 `;
 
 /* ---------------------------------------------------------------- partials */
