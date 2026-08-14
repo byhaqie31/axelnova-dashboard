@@ -214,8 +214,10 @@ const doc = reactive({
 // valid_for_days after sending.
 const validUntil = ref('')
 
-const defaultTerms = [
-  '50% deposit to commence; balance due on delivery before handover.',
+// Deposit bullet derived from the doc's deposit_pct — mirrors
+// DocumentMapper::defaultTerms so the prefill never contradicts the deposit field.
+const defaultTerms = (depositPct: number) => [
+  `${depositPct}% deposit to commence; balance due on delivery before handover.`,
   'Revisions are included as scoped per phase; further rounds are quoted separately.',
   'Third-party costs (domains, fonts, hosting) are billed at cost where applicable.',
 ]
@@ -352,8 +354,8 @@ function loadFromQuotation(q: QuotationLike) {
       }
     }
     doc.items = items
-    doc.termsText = (p.paymentTerms?.items ?? defaultTerms).join('\n')
     doc.deposit_pct = d.deposit_pct ?? 50
+    doc.termsText = (p.paymentTerms?.items ?? defaultTerms(doc.deposit_pct)).join('\n')
     detailedInitial.value = p
     detailed.value = true
   }
@@ -363,8 +365,8 @@ function loadFromQuotation(q: QuotationLike) {
     doc.items = (d.items ?? []).map((it: any) => ({
       title: it.title ?? '', desc: it.desc ?? '', qty: Number(it.qty ?? 1), unit: it.unit ?? '', rate: Number(it.rate ?? 0),
     }))
-    doc.termsText = (d.terms ?? defaultTerms).join('\n')
     doc.deposit_pct = d.deposit_pct ?? 50
+    doc.termsText = (d.terms ?? defaultTerms(doc.deposit_pct)).join('\n')
     detailedInitial.value = null
     detailed.value = false
   }
@@ -412,7 +414,7 @@ onMounted(async () => {
     loadFromQuotation(props.quotation)
   }
   else {
-    doc.termsText = defaultTerms.join('\n')
+    doc.termsText = defaultTerms(doc.deposit_pct).join('\n')
     if (props.inquiryId) {
       try {
         const res = await apiFetch<{ data: any }>(`/api/v1/admin/inquiries/${props.inquiryId}`)

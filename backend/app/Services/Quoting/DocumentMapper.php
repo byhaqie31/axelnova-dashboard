@@ -36,16 +36,44 @@ class DocumentMapper
         'online' => 'Card (credit & debit) and FPX online banking',
     ];
 
-    private const DEFAULT_TERMS = [
-        '50% deposit to commence; balance due on delivery before handover.',
-        'Revisions are included as scoped per phase; further rounds are quoted separately.',
-        'Third-party costs (domains, fonts, hosting) are billed at cost where applicable.',
-    ];
+    /**
+     * The three standard payment terms, with the deposit bullet derived from the
+     * document's actual deposit_pct — the single source of these strings for the
+     * seeder, the detailed builder, and this mapper.
+     */
+    public static function defaultTerms(int $depositPct): array
+    {
+        return [
+            "{$depositPct}% deposit to commence; balance due on delivery before handover.",
+            'Revisions are included as scoped per phase; further rounds are quoted separately.',
+            'Third-party costs (domains, fonts, hosting) are billed at cost where applicable.',
+        ];
+    }
+
+    /**
+     * Rewrite the standard deposit bullet to the document's actual deposit_pct.
+     * Frozen payloads/terms may carry the boilerplate with a stale figure (the old
+     * hardcoded 50%) while deposit_pct says otherwise — align on read so the PDF
+     * never contradicts its own deposit cards. Hand-authored terms don't match the
+     * boilerplate opening and pass through untouched.
+     */
+    private static function alignDepositTerm(array $terms, int $depositPct): array
+    {
+        return array_map(
+            fn ($term) => preg_replace(
+                '/^\d+(?:\.\d+)?% deposit to commence\b/',
+                "{$depositPct}% deposit to commence",
+                (string) $term,
+            ),
+            $terms,
+        );
+    }
 
     public static function toDocumentData(Quotation $quotation): array
     {
         $doc = $quotation->document ?? [];
         $validForDays = (int) ($quotation->pricingConfig?->config['valid_for_days'] ?? 30);
+        $depositPct = (int) ($doc['deposit_pct'] ?? 50);
 
         $issuedAt = $quotation->sent_at ?? $quotation->created_at ?? now();
         // Prefer the stored expiry (set when the quote was sent) so the PDF's
@@ -53,9 +81,12 @@ class DocumentMapper
         $validUntil = $quotation->expires_at
             ?? ($quotation->created_at ?? now())->copy()->addDays($validForDays);
 
-        $terms = ! empty($doc['terms']) && is_array($doc['terms'])
-            ? array_values(array_filter($doc['terms']))
-            : self::DEFAULT_TERMS;
+        $terms = self::alignDepositTerm(
+            ! empty($doc['terms']) && is_array($doc['terms'])
+                ? array_values(array_filter($doc['terms']))
+                : self::defaultTerms($depositPct),
+            $depositPct,
+        );
 
         // Detailed / customized layout — the builder authors the full presentation
         // content (sections, included, options, care, summary, panels, …) under
@@ -64,6 +95,15 @@ class DocumentMapper
         if (($doc['layout'] ?? 'standard') === 'detailed') {
             $payload = is_array($doc['payload'] ?? null) ? $doc['payload'] : [];
             $payloadClient = is_array($payload['client'] ?? null) ? $payload['client'] : [];
+
+            // Frozen detailed payloads carry their own paymentTerms — align the
+            // deposit bullet with the document's actual deposit_pct on read.
+            if (is_array($payload['paymentTerms']['items'] ?? null)) {
+                $payload['paymentTerms']['items'] = self::alignDepositTerm(
+                    $payload['paymentTerms']['items'],
+                    $depositPct,
+                );
+            }
 
             return array_filter(array_merge($payload, [
                 'layout' => 'detailed',
@@ -112,7 +152,7 @@ class DocumentMapper
             'discount' => (float) ($doc['discount'] ?? 0),
             'taxLabel' => $doc['tax_label'] ?? 'SST',
             'taxRate' => (float) ($doc['tax_rate'] ?? 0),
-            'depositPct' => (int) ($doc['deposit_pct'] ?? 50),
+            'depositPct' => $depositPct,
             'terms' => $terms,
             'pay' => [
                 'online' => self::BANK['online'],

@@ -15,13 +15,6 @@ namespace App\Services\Quoting;
  */
 final class DetailedDocumentBuilder
 {
-    /** Mirrors DocumentSeeder / DocumentMapper — the three standard payment terms. */
-    private const DEFAULT_TERMS = [
-        '50% deposit to commence; balance due on delivery before handover.',
-        'Revisions are included as scoped per phase; further rounds are quoted separately.',
-        'Third-party costs (domains, fonts, hosting) are billed at cost where applicable.',
-    ];
-
     /**
      * @param  array<string, mixed>  $detailed  Validated connector `detailed` input.
      * @return array{document: array<string, mixed>, total: float} total = Σ section prices (the agreed range, min == max).
@@ -71,7 +64,9 @@ final class DetailedDocumentBuilder
             'included' => self::buildIncluded($detailed['included'] ?? []),
             'options' => self::buildOptions($detailed['options'] ?? []),
             'care' => self::buildCare($detailed['care'] ?? []),
-            'paymentTerms' => ['items' => self::DEFAULT_TERMS],
+            // Deposit bullet derived from the proposal's own deposit_pct — the
+            // panels above already show that figure, so the terms must agree.
+            'paymentTerms' => ['items' => DocumentMapper::defaultTerms($depositPct)],
         ], fn ($v) => $v !== null && $v !== []);
 
         return [
