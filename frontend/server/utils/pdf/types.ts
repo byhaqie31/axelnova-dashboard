@@ -27,11 +27,14 @@ export interface Studio {
 
 export interface Client {
   name: string;
+  /** omitted by the mapper when it already serves as the display name */
+  company?: string;
   /** e.g. "Attn. Daniel Foong, Marketing Lead" */
   attn?: string;
   /** multi-line allowed; "\n" becomes <br> */
   address?: string;
   email?: string;
+  phone?: string;
 }
 
 export interface PaymentInfo {

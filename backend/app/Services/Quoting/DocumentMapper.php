@@ -115,12 +115,7 @@ class DocumentMapper
                 'studio' => array_merge(self::STUDIO, array_filter([
                     'logo' => config('services.studio.logo_url') ?: null,
                 ])),
-                'client' => array_filter([
-                    'name' => $quotation->name ?: $quotation->company ?: 'Client',
-                    'attn' => $payloadClient['attn'] ?? null,
-                    'address' => $payloadClient['address'] ?? null,
-                    'email' => $quotation->email,
-                ]),
+                'client' => self::client($quotation, $payloadClient),
                 'project' => $payload['project'] ?? self::defaultProject($quotation),
             ]), fn ($v) => $v !== null && $v !== []);
         }
@@ -139,12 +134,7 @@ class DocumentMapper
                 // URL or base64 data URI; null/blank falls back to the bundled mark.
                 'logo' => config('services.studio.logo_url') ?: null,
             ])),
-            'client' => array_filter([
-                'name' => $quotation->name ?: $quotation->company ?: 'Client',
-                'attn' => $doc['client']['attn'] ?? null,
-                'address' => $doc['client']['address'] ?? null,
-                'email' => $quotation->email,
-            ]),
+            'client' => self::client($quotation, is_array($doc['client'] ?? null) ? $doc['client'] : []),
             'project' => $doc['project'] ?? self::defaultProject($quotation),
             'subtitle' => $doc['subtitle'] ?? null,
             'intro' => $doc['intro'] ?? null,
@@ -418,6 +408,28 @@ class DocumentMapper
         ]);
 
         return $bits ? implode("\n", $bits) : null;
+    }
+
+    /**
+     * The quotation's client identity for the PDF — name, company, email, phone
+     * from the row's contact snapshot (each omitted when blank), plus any
+     * document-authored attn/address lines. Company is dropped when it already
+     * serves as the display name (a company-only contact) so it never prints twice.
+     *
+     * @param  array<string, mixed>  $docClient
+     */
+    private static function client(Quotation $quotation, array $docClient): array
+    {
+        $name = $quotation->name ?: $quotation->company ?: 'Client';
+
+        return array_filter([
+            'name' => $name,
+            'company' => $quotation->company !== $name ? $quotation->company : null,
+            'attn' => $docClient['attn'] ?? null,
+            'address' => $docClient['address'] ?? null,
+            'email' => $quotation->email,
+            'phone' => $quotation->phone,
+        ]);
     }
 
     private static function defaultProject(Quotation $quotation): string

@@ -2,6 +2,7 @@ import { FONT_FACES } from "./fonts";
 import { STUDIO_LOGO } from "./logo";
 import { DUITNOW_QR } from "./qr";
 import type {
+  Client,
   DocumentData,
   ComputedTotals,
   DetailRow,
@@ -113,6 +114,8 @@ html,body{background:var(--paper);color:var(--ink);
 .eyebrow{font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.28em;
   text-transform:uppercase;color:var(--red);}
 .hero{margin-top:22px;}
+/* Client identity under the "Prepared for" eyebrow (detailed quotation). */
+.hero-client{margin-top:12px;}
 .hero .title{font-family:'Geist',sans-serif;font-weight:600;font-size:25px;
   letter-spacing:-.015em;line-height:1.05;margin-top:11px;}
 .hero .subtitle{margin-top:7px;font-size:13px;color:var(--muted);}
@@ -542,7 +545,7 @@ function renderStandard(data: DocumentData): string {
     <div class="party">
       <div class="plabel">${data.kind === "quotation" ? "Prepared for" : "Billed to"}</div>
       <div class="pname">${esc(data.client.name)}</div>
-      <div class="pln">${[esc(data.client.attn), addr, esc(data.client.email)].filter(Boolean).join("<br>")}</div>
+      <div class="pln">${[esc(data.client.company), esc(data.client.attn), addr, esc(data.client.email), esc(data.client.phone)].filter(Boolean).join("<br>")}</div>
     </div>
   </div>
 
@@ -598,11 +601,24 @@ function renderDetailed(data: DocumentData): string {
   const cur = data.currency;
   const parts: string[] = [headHTML(data), `<div class="rule"></div>`];
 
-  // Hero — quotation leads with the client as the title; invoice/receipt use a
-  // Bill-to / Project split.
+  // Hero — quotation opens with who it's for (name, company, email, phone —
+  // any null line skipped) under the "Prepared for" eyebrow, then the project
+  // title; invoice/receipt use a Bill-to / Project split.
   if (data.kind === "quotation") {
+    const c = data.client ?? ({ name: "" } as Client);
+    const contactLines = [c.company, c.email, c.phone]
+      .filter(Boolean)
+      .map((x) => esc(x))
+      .join("<br>");
+    const clientBlock = c.name || contactLines
+      ? `<div class="hero-client">
+          ${c.name ? `<div class="pname">${esc(c.name)}</div>` : ""}
+          ${contactLines ? `<div class="pln">${contactLines}</div>` : ""}
+        </div>`
+      : "";
     parts.push(`<div class="hero">
       <div class="eyebrow">Prepared for</div>
+      ${clientBlock}
       <div class="title">${esc(data.project)}</div>
       ${data.subtitle ? `<div class="subtitle">${esc(data.subtitle)}</div>` : ""}
       ${data.intro ? `<div class="intro">${esc(data.intro)}</div>` : ""}
