@@ -380,17 +380,23 @@ class QuotationsController extends Controller
         ]);
     }
 
-    /** Resolve an existing client by id, or upsert one by email (same as the public funnel). */
+    /**
+     * Resolve an existing client by id, or upsert one by email. Trusted-writer
+     * semantics: supplied non-empty fields update the record, absent/empty ones
+     * preserve it — see Client::upsertContact.
+     */
     private function resolveClient(array $data): Client
     {
         if (! empty($data['client_id'])) {
             return Client::findOrFail($data['client_id']);
         }
 
-        return Client::firstOrCreate(
-            ['email' => $data['email']],
-            ['name' => $data['name'], 'phone' => $data['phone'] ?? null, 'company' => $data['company'] ?? null],
-        );
+        return Client::upsertContact([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'company' => $data['company'] ?? null,
+        ]);
     }
 
     /**
