@@ -72,14 +72,14 @@ class DocumentMapper
     public static function toDocumentData(Quotation $quotation): array
     {
         $doc = $quotation->document ?? [];
-        $validForDays = (int) ($quotation->pricingConfig?->config['valid_for_days'] ?? 30);
         $depositPct = (int) ($doc['deposit_pct'] ?? 50);
 
-        $issuedAt = $quotation->sent_at ?? $quotation->created_at ?? now();
-        // Prefer the stored expiry (set when the quote was sent) so the PDF's
-        // "valid until" matches the lifecycle; fall back for self-serve/unsent rows.
-        $validUntil = $quotation->expires_at
-            ?? ($quotation->created_at ?? now())->copy()->addDays($validForDays);
+        // issued_at re-stamps on every draft write and freezes once the quote
+        // leaves draft — so the header always shows when the record was last
+        // authored, never created_at (a weeks-old date on an active draft) and
+        // never updated_at (which moves on post-send status flips).
+        $issuedAt = $quotation->issuedDate();
+        $validUntil = $quotation->validUntil();
 
         $terms = self::alignDepositTerm(
             ! empty($doc['terms']) && is_array($doc['terms'])
