@@ -19,12 +19,9 @@ namespace App\Services\Quoting;
  */
 final class DocumentSeeder
 {
-    /** Mirrors DocumentMapper::DEFAULT_TERMS — the three standard quotation terms. */
-    private const DEFAULT_TERMS = [
-        '50% deposit to commence; balance due on delivery before handover.',
-        'Revisions are included as scoped per phase; further rounds are quoted separately.',
-        'Third-party costs (domains, fonts, hosting) are billed at cost where applicable.',
-    ];
+    /** The deposit every seeded document starts at — drives both the stored
+     *  deposit_pct and the matching terms bullet, so they can never drift. */
+    private const DEPOSIT_PCT = 50;
 
     public function __construct(private readonly PricingEngine $engine) {}
 
@@ -112,8 +109,8 @@ final class DocumentSeeder
             'document' => [
                 'layout' => 'standard',
                 'items' => $items,
-                'terms' => self::DEFAULT_TERMS,
-                'deposit_pct' => 50,
+                'terms' => DocumentMapper::defaultTerms(self::DEPOSIT_PCT),
+                'deposit_pct' => self::DEPOSIT_PCT,
             ],
             'assumptions' => $assumptions,
         ];

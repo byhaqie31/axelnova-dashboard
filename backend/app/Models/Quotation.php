@@ -58,11 +58,28 @@ class Quotation extends Model
         'ip_address',
         'user_agent',
         'submitted_at',
+        'issued_at',
         'viewed_at',
         'sent_at',
         'expires_at',
         'referral_partner_id',
     ];
+
+    /**
+     * A draft's issue date follows its latest write and freezes the moment the
+     * status leaves 'draft' (the transition save itself already carries the new
+     * status, so it no longer matches here). Deliberately NOT updated_at: that
+     * moves on every write — a status flip to sent/accepted would silently
+     * extend the document's validity.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Quotation $quotation): void {
+            if ($quotation->status === 'draft') {
+                $quotation->issued_at = now();
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -73,6 +90,7 @@ class Quotation extends Model
             'estimate_max_myr' => 'decimal:2',
             'estimate_eta_value' => 'integer',
             'submitted_at' => 'datetime',
+            'issued_at' => 'datetime',
             'viewed_at' => 'datetime',
             'sent_at' => 'datetime',
             'expires_at' => 'datetime',
@@ -101,6 +119,28 @@ class Quotation extends Model
     public function isPreSend(): bool
     {
         return in_array($this->status, self::PRE_SEND_STATUSES, true);
+    }
+
+    /** Days a quotation stays valid, from the active pricing config's catalog. */
+    public function validForDays(): int
+    {
+        return (int) ($this->pricingConfig?->config['valid_for_days'] ?? 30);
+    }
+
+    /** The date this quotation presents as its issue date (pre-migration rows fall back to created_at). */
+    public function issuedDate(): CarbonInterface
+    {
+        return $this->issued_at ?? $this->created_at ?? now();
+    }
+
+    /**
+     * Computed validity: issued date + valid_for_days — never stored. A stored
+     * expires_at (stamped by send(), or set explicitly by the admin) wins when
+     * present, so a deliberate lifecycle expiry stays authoritative.
+     */
+    public function validUntil(): CarbonInterface
+    {
+        return $this->expires_at ?? $this->issuedDate()->copy()->addDays($this->validForDays());
     }
 
     /** True when this is a sent quote already past its expiry date. */

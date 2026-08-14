@@ -24,13 +24,13 @@ class ClientQuoteMail extends Mailable
 
     public function content(): Content
     {
-        $validForDays = $this->quote->pricingConfig?->config['valid_for_days'] ?? 30;
-
         return new Content(
             markdown: 'mail.client-quote',
             with: [
                 'quote' => $this->quote,
-                'validUntil' => now()->addDays($validForDays)->format('d F Y'),
+                // Same computed validity as the PDF header — the stored expiry
+                // (stamped by send() just before this job is queued) wins.
+                'validUntil' => $this->quote->validUntil()->format('d F Y'),
                 'whatsappUrl' => config('services.admin.whatsapp_url')
                     .'?text='.rawurlencode("Hi Qie, I'd like to chat about quote {$this->quote->reference_code}."),
                 'pdfUrl' => $this->quote->public_token

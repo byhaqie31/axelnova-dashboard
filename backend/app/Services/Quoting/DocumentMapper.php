@@ -16,7 +16,7 @@ class DocumentMapper
     /** Studio details on every document. */
     private const STUDIO = [
         'name' => 'Axel Nova Ventures',
-        'tagline' => 'Simple, effortless, human.',
+        'tagline' => 'simple, effortless, human.',
         'reg' => 'Reg. 202603119899 (CA0420977-U)',
         'email' => 'baihaqie@axelnova.tech',
         'site' => 'axelnovaventures.com',
@@ -36,26 +36,57 @@ class DocumentMapper
         'online' => 'Card (credit & debit) and FPX online banking',
     ];
 
-    private const DEFAULT_TERMS = [
-        '50% deposit to commence; balance due on delivery before handover.',
-        'Revisions are included as scoped per phase; further rounds are quoted separately.',
-        'Third-party costs (domains, fonts, hosting) are billed at cost where applicable.',
-    ];
+    /**
+     * The three standard payment terms, with the deposit bullet derived from the
+     * document's actual deposit_pct — the single source of these strings for the
+     * seeder, the detailed builder, and this mapper.
+     */
+    public static function defaultTerms(int $depositPct): array
+    {
+        return [
+            "{$depositPct}% deposit to commence; balance due on delivery before handover.",
+            'Revisions are included as scoped per phase; further rounds are quoted separately.',
+            'Third-party costs (domains, fonts, hosting) are billed at cost where applicable.',
+        ];
+    }
+
+    /**
+     * Rewrite the standard deposit bullet to the document's actual deposit_pct.
+     * Frozen payloads/terms may carry the boilerplate with a stale figure (the old
+     * hardcoded 50%) while deposit_pct says otherwise — align on read so the PDF
+     * never contradicts its own deposit cards. Hand-authored terms don't match the
+     * boilerplate opening and pass through untouched.
+     */
+    private static function alignDepositTerm(array $terms, int $depositPct): array
+    {
+        return array_map(
+            fn ($term) => preg_replace(
+                '/^\d+(?:\.\d+)?% deposit to commence\b/',
+                "{$depositPct}% deposit to commence",
+                (string) $term,
+            ),
+            $terms,
+        );
+    }
 
     public static function toDocumentData(Quotation $quotation): array
     {
         $doc = $quotation->document ?? [];
-        $validForDays = (int) ($quotation->pricingConfig?->config['valid_for_days'] ?? 30);
+        $depositPct = (int) ($doc['deposit_pct'] ?? 50);
 
-        $issuedAt = $quotation->sent_at ?? $quotation->created_at ?? now();
-        // Prefer the stored expiry (set when the quote was sent) so the PDF's
-        // "valid until" matches the lifecycle; fall back for self-serve/unsent rows.
-        $validUntil = $quotation->expires_at
-            ?? ($quotation->created_at ?? now())->copy()->addDays($validForDays);
+        // issued_at re-stamps on every draft write and freezes once the quote
+        // leaves draft — so the header always shows when the record was last
+        // authored, never created_at (a weeks-old date on an active draft) and
+        // never updated_at (which moves on post-send status flips).
+        $issuedAt = $quotation->issuedDate();
+        $validUntil = $quotation->validUntil();
 
-        $terms = ! empty($doc['terms']) && is_array($doc['terms'])
-            ? array_values(array_filter($doc['terms']))
-            : self::DEFAULT_TERMS;
+        $terms = self::alignDepositTerm(
+            ! empty($doc['terms']) && is_array($doc['terms'])
+                ? array_values(array_filter($doc['terms']))
+                : self::defaultTerms($depositPct),
+            $depositPct,
+        );
 
         // Detailed / customized layout — the builder authors the full presentation
         // content (sections, included, options, care, summary, panels, …) under
@@ -64,6 +95,15 @@ class DocumentMapper
         if (($doc['layout'] ?? 'standard') === 'detailed') {
             $payload = is_array($doc['payload'] ?? null) ? $doc['payload'] : [];
             $payloadClient = is_array($payload['client'] ?? null) ? $payload['client'] : [];
+
+            // Frozen detailed payloads carry their own paymentTerms — align the
+            // deposit bullet with the document's actual deposit_pct on read.
+            if (is_array($payload['paymentTerms']['items'] ?? null)) {
+                $payload['paymentTerms']['items'] = self::alignDepositTerm(
+                    $payload['paymentTerms']['items'],
+                    $depositPct,
+                );
+            }
 
             return array_filter(array_merge($payload, [
                 'layout' => 'detailed',
@@ -75,12 +115,7 @@ class DocumentMapper
                 'studio' => array_merge(self::STUDIO, array_filter([
                     'logo' => config('services.studio.logo_url') ?: null,
                 ])),
-                'client' => array_filter([
-                    'name' => $quotation->name ?: $quotation->company ?: 'Client',
-                    'attn' => $payloadClient['attn'] ?? null,
-                    'address' => $payloadClient['address'] ?? null,
-                    'email' => $quotation->email,
-                ]),
+                'client' => self::client($quotation, $payloadClient),
                 'project' => $payload['project'] ?? self::defaultProject($quotation),
             ]), fn ($v) => $v !== null && $v !== []);
         }
@@ -99,12 +134,7 @@ class DocumentMapper
                 // URL or base64 data URI; null/blank falls back to the bundled mark.
                 'logo' => config('services.studio.logo_url') ?: null,
             ])),
-            'client' => array_filter([
-                'name' => $quotation->name ?: $quotation->company ?: 'Client',
-                'attn' => $doc['client']['attn'] ?? null,
-                'address' => $doc['client']['address'] ?? null,
-                'email' => $quotation->email,
-            ]),
+            'client' => self::client($quotation, is_array($doc['client'] ?? null) ? $doc['client'] : []),
             'project' => $doc['project'] ?? self::defaultProject($quotation),
             'subtitle' => $doc['subtitle'] ?? null,
             'intro' => $doc['intro'] ?? null,
@@ -112,11 +142,11 @@ class DocumentMapper
             'discount' => (float) ($doc['discount'] ?? 0),
             'taxLabel' => $doc['tax_label'] ?? 'SST',
             'taxRate' => (float) ($doc['tax_rate'] ?? 0),
-            'depositPct' => (int) ($doc['deposit_pct'] ?? 50),
+            'depositPct' => $depositPct,
             'terms' => $terms,
             'pay' => [
                 'online' => self::BANK['online'],
-                'bank' => self::BANK['name'].' — '.self::BANK['holder'],
+                'bank' => self::BANK['name'].' · '.self::BANK['holder'],
                 'acct' => self::BANK['acct'],
             ],
         ];
@@ -380,10 +410,32 @@ class DocumentMapper
         return $bits ? implode("\n", $bits) : null;
     }
 
+    /**
+     * The quotation's client identity for the PDF — name, company, email, phone
+     * from the row's contact snapshot (each omitted when blank), plus any
+     * document-authored attn/address lines. Company is dropped when it already
+     * serves as the display name (a company-only contact) so it never prints twice.
+     *
+     * @param  array<string, mixed>  $docClient
+     */
+    private static function client(Quotation $quotation, array $docClient): array
+    {
+        $name = $quotation->name ?: $quotation->company ?: 'Client';
+
+        return array_filter([
+            'name' => $name,
+            'company' => $quotation->company !== $name ? $quotation->company : null,
+            'attn' => $docClient['attn'] ?? null,
+            'address' => $docClient['address'] ?? null,
+            'email' => $quotation->email,
+            'phone' => $quotation->phone,
+        ]);
+    }
+
     private static function defaultProject(Quotation $quotation): string
     {
         return $quotation->company
-            ? "{$quotation->company} — project quotation"
+            ? "{$quotation->company} · project quotation"
             : 'Project quotation';
     }
 

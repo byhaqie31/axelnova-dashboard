@@ -2,6 +2,7 @@ import { FONT_FACES } from "./fonts";
 import { STUDIO_LOGO } from "./logo";
 import { DUITNOW_QR } from "./qr";
 import type {
+  Client,
   DocumentData,
   ComputedTotals,
   DetailRow,
@@ -55,14 +56,17 @@ export function computeTotals(d: DocumentData): ComputedTotals {
 
 /* -------------------------------------------------------------------- CSS */
 
-/* One shared design system (Geist + the brass-free red/gradient palette).
-   Sizes are tuned to the AXN-011 reference render — re-check one-page fit
-   before reflowing vertical spacing. */
+/* One shared design system — Satoshi + the Axel Nova house palette (pink /
+   purple, soft pink surfaces). Every colour lives in :root; no literal hex
+   below it. Sizes are tuned to the AXN-011 reference render — re-check
+   one-page fit before reflowing vertical spacing. */
 const CSS = `
 :root{
-  --paper:#FFFFFF; --ink:#1C1C1E; --body:#39393C; --muted:#6B6B70; --faint:#9A9AA0;
-  --line:#ECEAE7; --line2:#F0EEEB; --strong:#1C1C1E;
-  --red:#EE1C25; --red-deep:#C8141C;
+  --paper:#FFFFFF;
+  --ink:#1B0F1D; --body:#4B3B4D; --muted:#8A7789;
+  --primary:#D11E72; --accent:#8B3DD6;
+  --surface:#FDF4F8; --surface-strong:#FDEDF5;
+  --hairline:#EFE0E9;
   --green:#0E8A3E;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -71,49 +75,51 @@ const CSS = `
   margin:15mm 18mm 13mm;
   @bottom-left{
     content:var(--pgfoot-l);
-    font-family:'Geist Mono',monospace; font-size:8px; letter-spacing:.02em;
-    color:var(--faint); padding-bottom:1mm;
+    font-family:'Satoshi',sans-serif; font-size:8px; letter-spacing:.02em;
+    color:var(--muted); padding-bottom:1mm;
   }
   @bottom-right{
     content:"Page " counter(page) " of " counter(pages);
-    font-family:'Geist Mono',monospace; font-size:8px; letter-spacing:.04em;
-    color:var(--faint); padding-bottom:1mm;
+    font-family:'Satoshi',sans-serif; font-size:8px; letter-spacing:.04em;
+    color:var(--muted); padding-bottom:1mm;
   }
 }
 html,body{background:var(--paper);color:var(--ink);
-  font-family:'Geist',sans-serif;-webkit-font-smoothing:antialiased;
-  font-feature-settings:"tnum" 1;}
+  font-family:'Satoshi',sans-serif;-webkit-font-smoothing:antialiased;
+  font-feature-settings:"tnum" 1;font-variant-numeric:tabular-nums;}
 .sheet{position:relative;}
-/* Brand gradient hairline — flows at the top of page one (matches the logo). */
+/* Brand gradient hairline — flows at the top of page one. */
 .topbar{height:2.5px;border-radius:2px;margin-bottom:7mm;
-  background:linear-gradient(90deg,#4E7DF4 0%,#7E76EE 48%,#BE76E6 100%);}
+  background:linear-gradient(90deg,var(--primary) 0%,var(--accent) 100%);}
 
 /* ---- header ---- */
 .head{display:flex;justify-content:space-between;align-items:flex-start;}
 .brand{display:flex;gap:13px;align-items:flex-start;}
 .brand .logo{height:38px;width:auto;display:block;margin-top:1px;}
-.brand .wm{font-family:'Geist',sans-serif;font-weight:600;font-size:16px;line-height:1.12;
+.brand .wm{font-weight:700;font-size:16px;line-height:1.12;
   letter-spacing:-.005em;color:var(--ink);}
 .brand .tag{margin-top:6px;font-size:10.5px;color:var(--muted);letter-spacing:.005em;}
 .doc{text-align:right;}
-.doc .kind-big{font-family:'Geist',sans-serif;font-weight:600;font-size:28px;
-  letter-spacing:-.01em;line-height:1;margin-bottom:9px;}
+.doc .kind-big{font-weight:700;font-size:28px;
+  letter-spacing:-.01em;line-height:1;margin-bottom:9px;color:var(--ink);}
 .doc .pair{margin-top:9px;}
-.doc .lab{font-family:'Geist Mono',monospace;font-size:8.5px;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--faint);}
-.doc .val{font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--ink);
-  margin-top:3px;}
+.doc .lab{font-size:8.5px;font-weight:500;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);}
+.doc .val{font-size:11.5px;color:var(--ink);margin-top:3px;}
 
-/* ---- rule with red leading segment ---- */
-.rule{position:relative;height:1px;background:var(--line);margin:16px 0 0;}
+/* ---- rule with primary leading segment ---- */
+.rule{position:relative;height:.5px;background:var(--hairline);margin:16px 0 0;}
 .rule:before{content:"";position:absolute;top:0;left:0;width:11%;height:1.6px;
-  background:var(--red);}
+  background:var(--primary);}
 
 /* ---- hero ---- */
-.eyebrow{font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.28em;
-  text-transform:uppercase;color:var(--red);}
+.eyebrow{display:inline-block;font-size:9px;font-weight:500;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--primary);
+  background:var(--surface-strong);border-radius:999px;padding:3px 10px;}
 .hero{margin-top:22px;}
-.hero .title{font-family:'Geist',sans-serif;font-weight:600;font-size:25px;
+/* Client identity under the "Prepared for" eyebrow (detailed quotation). */
+.hero-client{margin-top:12px;}
+.hero .title{font-weight:700;font-size:25px;color:var(--ink);
   letter-spacing:-.015em;line-height:1.05;margin-top:11px;}
 .hero .subtitle{margin-top:7px;font-size:13px;color:var(--muted);}
 .hero .intro{margin-top:14px;font-size:11.5px;line-height:1.65;color:var(--body);
@@ -122,73 +128,75 @@ html,body{background:var(--paper);color:var(--ink);
 /* ---- parties (standard) ---- */
 .parties{display:flex;gap:40px;margin-top:18px;}
 .party{flex:1;}
-.plabel{font-family:'Geist Mono',monospace;font-size:8.5px;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--faint);margin-bottom:8px;}
-.pname{font-size:12.5px;font-weight:600;letter-spacing:-.005em;}
+.plabel{font-size:8.5px;font-weight:500;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.pname{font-size:12.5px;font-weight:700;letter-spacing:-.005em;color:var(--ink);}
 .pln{font-size:10.5px;color:var(--muted);line-height:1.7;margin-top:4px;}
 
-/* ---- section header (red square bullet) ---- */
+/* ---- section header (primary square marker; .alt = accent) ---- */
 .sec{margin-top:26px;}
 .sec-h{display:flex;align-items:center;gap:11px;}
-.sec-h .sq{width:8px;height:8px;border-radius:2px;background:var(--red);flex:none;}
-.sec-h .t{font-family:'Geist',sans-serif;font-weight:600;font-size:14.5px;
+.sec-h .sq{width:8px;height:8px;border-radius:2px;background:var(--primary);flex:none;}
+.sec-h.alt .sq{background:var(--accent);}
+.sec-h .t{font-weight:700;font-size:14.5px;color:var(--ink);
   letter-spacing:-.01em;}
 
 /* ---- tables ---- */
 table{width:100%;border-collapse:collapse;margin-top:14px;}
-thead th{font-family:'Geist Mono',monospace;font-size:8.5px;letter-spacing:.16em;
+thead th{font-size:8.5px;letter-spacing:.16em;
   text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;
-  padding:0 0 9px;border-bottom:1px solid var(--line);}
+  padding:0 0 9px;border-bottom:.5px solid var(--hairline);}
 th.r,td.r{text-align:right;}
-tbody td{padding:11px 0;border-bottom:1px solid var(--line);vertical-align:top;}
+tbody td{padding:11px 0;border-bottom:.5px solid var(--hairline);vertical-align:top;}
 tbody tr:last-child td{border-bottom:0;}
 .c-item{font-size:11.5px;font-weight:500;color:var(--ink);padding-right:14px;
   white-space:nowrap;}
 .c-detail{font-size:11px;color:var(--body);line-height:1.55;padding-right:18px;}
-.c-price{font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--ink);
+.c-price{font-size:11.5px;color:var(--ink);
   text-align:right;white-space:nowrap;}
-.c-price .was{color:var(--faint);text-decoration:line-through;margin-right:7px;}
-.price-free{color:var(--red);}
+.c-price .was{color:var(--muted);text-decoration:line-through;margin-right:7px;}
+.price-free{color:var(--primary);}
 .price-muted{color:var(--muted);}
 
 /* ---- section total ---- */
 .sec-total{display:flex;justify-content:space-between;align-items:baseline;
-  border-top:1.4px solid var(--strong);padding-top:11px;margin-top:0;}
-.sec-total .l{font-weight:600;font-size:11.5px;}
-.sec-total .v{font-family:'Geist Mono',monospace;font-weight:500;font-size:13px;
-  color:var(--red-deep);}
+  border-top:1.4px solid var(--ink);padding-top:11px;margin-top:0;}
+.sec-total .l{font-weight:700;font-size:11.5px;}
+.sec-total .v{font-weight:500;font-size:13px;color:var(--primary);}
 .sec-note{font-size:10.5px;color:var(--muted);margin-top:13px;line-height:1.5;}
 
-/* ---- bullet lists (red dots) ---- */
+/* ---- bullet lists (primary dots) ---- */
 .bul{list-style:none;margin-top:14px;}
 .bul.two{column-count:2;column-gap:34px;}
 .bul li{position:relative;padding-left:17px;margin-bottom:9px;font-size:11px;
   color:var(--body);line-height:1.5;break-inside:avoid;}
 .bul li:before{content:"";position:absolute;left:1px;top:5px;width:5px;height:5px;
-  border-radius:50%;background:var(--red);}
-.bul-eyebrow{font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.22em;
-  text-transform:uppercase;color:var(--red);margin-bottom:4px;}
+  border-radius:50%;background:var(--primary);}
+.bul-eyebrow{display:inline-block;font-size:9px;font-weight:500;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--primary);
+  background:var(--surface-strong);border-radius:999px;padding:3px 10px;
+  margin-bottom:7px;}
 
 /* ---- option cards ---- */
 .opts-h{display:flex;align-items:center;gap:12px;margin-top:26px;}
-.opts-h .promo{font-family:'Geist Mono',monospace;font-size:8px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--red);border:1px solid var(--red);
+.opts-h .promo{font-size:8px;font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--primary);background:var(--surface-strong);
   border-radius:999px;padding:3px 9px;}
 .opts{display:flex;gap:18px;margin-top:14px;}
-.opt{flex:1;border:1px solid var(--line);border-radius:9px;padding:18px 19px 19px;}
-.opt.accent{border-color:var(--red);}
-.opt .badge{font-family:'Geist Mono',monospace;font-size:8.5px;letter-spacing:.16em;
+.opt{flex:1;border:1px solid var(--hairline);border-radius:9px;
+  background:var(--surface);padding:18px 19px 19px;}
+.opt.accent{border-color:var(--primary);}
+.opt .badge{font-size:8.5px;font-weight:500;letter-spacing:.16em;
   text-transform:uppercase;color:var(--muted);}
-.opt.accent .badge{color:var(--red);}
-.opt .t{font-weight:600;font-size:13.5px;margin-top:11px;letter-spacing:-.01em;}
+.opt.accent .badge{color:var(--primary);}
+.opt .t{font-weight:700;font-size:13.5px;margin-top:11px;letter-spacing:-.01em;}
 .opt .s{font-size:10.5px;color:var(--muted);margin-top:6px;line-height:1.45;}
 .opt .price{display:flex;align-items:baseline;gap:10px;margin-top:22px;}
-.opt .price .v{font-family:'Geist Mono',monospace;font-weight:500;font-size:20px;
-  color:var(--ink);}
-.opt.accent .price .v{color:var(--red-deep);}
-.opt .price .was{font-family:'Geist Mono',monospace;font-size:12px;color:var(--faint);
+.opt .price .v{font-weight:500;font-size:20px;color:var(--ink);}
+.opt.accent .price .v{color:var(--primary);}
+.opt .price .was{font-size:12px;color:var(--muted);
   text-decoration:line-through;}
-.opt .price .note{font-family:'Geist Mono',monospace;font-size:9.5px;color:var(--muted);}
+.opt .price .note{font-size:9.5px;color:var(--muted);}
 
 /* ---- generic blocks ---- */
 .para{font-size:11px;color:var(--body);line-height:1.6;margin-top:13px;max-width:155mm;}
@@ -196,27 +204,27 @@ tbody tr:last-child td{border-bottom:0;}
 /* ---- summary ---- */
 .sum{margin-top:14px;}
 .sum-row{display:flex;justify-content:space-between;align-items:baseline;
-  padding:11px 0;border-bottom:1px solid var(--line);font-size:11.5px;}
+  padding:11px 0;border-bottom:.5px solid var(--hairline);font-size:11.5px;}
 .sum-row .l{color:var(--ink);}
-.sum-row .v{font-family:'Geist Mono',monospace;color:var(--ink);}
+.sum-row .v{color:var(--ink);}
 .sum-row.muted .l,.sum-row.muted .v{color:var(--muted);}
-.sum-row.redv .v{color:var(--red);}
+.sum-row.redv .v{color:var(--primary);}
 .sum-row.greenv .v{color:var(--green);}
-.sum-row.total{border-top:1.4px solid var(--strong);border-bottom:0;margin-top:1px;
+.sum-row.total{border-top:1.4px solid var(--ink);border-bottom:0;margin-top:1px;
   padding-top:13px;}
-.sum-row.total .l{font-weight:600;font-size:13px;}
-.sum-row.total .v{font-size:14px;font-weight:500;color:var(--red-deep);}
+.sum-row.total .l{font-weight:700;font-size:13px;}
+.sum-row.total .v{font-size:14px;font-weight:500;color:var(--primary);}
 
 /* ---- panels ---- */
 .panels{display:flex;gap:18px;margin-top:18px;}
-.panel{flex:1;border:1px solid var(--line);border-radius:9px;padding:17px 19px 18px;}
-.panel.accent{border-color:var(--red);}
-.panel .val{font-family:'Geist Mono',monospace;font-size:22px;
-  color:var(--ink);letter-spacing:-.01em;}
-.panel .label{font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.16em;
+.panel{flex:1;border:1px solid var(--hairline);border-radius:9px;
+  background:var(--surface);padding:17px 19px 18px;}
+.panel.accent{border-color:var(--primary);}
+.panel .val{font-size:22px;color:var(--ink);letter-spacing:-.01em;}
+.panel .label{font-size:9px;font-weight:500;letter-spacing:.16em;
   text-transform:uppercase;color:var(--muted);margin-top:6px;}
-.panel.accent .label{color:var(--red);}
-.panel.accent .val{color:var(--red);}
+.panel.accent .label{color:var(--primary);}
+.panel.accent .val{color:var(--primary);}
 .panel .note{font-size:10px;color:var(--muted);line-height:1.55;margin-top:10px;}
 .panel .note b{color:var(--ink);font-weight:500;}
 
@@ -228,19 +236,19 @@ tbody tr:last-child td{border-bottom:0;}
    the ~0.33mm floor phone cameras need on a QR this dense — sized to match the
    height of the three methods beside it, so don't shrink it further. */
 .hp-qr{flex:0 0 36mm;width:36mm;}
-.hp-qr img{width:36mm;height:auto;display:block;border:1px solid var(--line);
+.hp-qr img{width:36mm;height:auto;display:block;border:1px solid var(--hairline);
   border-radius:8px;}
 .hp-methods{flex:1;display:flex;flex-direction:column;justify-content:space-between;}
-.hp-m + .hp-m{margin-top:13px;padding-top:13px;border-top:1px solid var(--line);}
-.hp-mt{font-size:11.5px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+.hp-m + .hp-m{margin-top:13px;padding-top:13px;border-top:.5px solid var(--hairline);}
+.hp-mt{font-size:11.5px;font-weight:700;color:var(--ink);margin-bottom:6px;}
 .hp-ml{font-size:10.5px;color:var(--muted);line-height:1.7;}
 .hp-ml b{color:var(--ink);font-weight:500;}
-.hp-ml .mono{font-family:'Geist Mono',monospace;color:var(--ink);}
+.hp-ml .mono{color:var(--ink);}
 
 /* ---- bottom notes ---- */
-.notes{margin-top:16px;padding-top:13px;border-top:1px solid var(--line);}
+.notes{margin-top:16px;padding-top:13px;border-top:.5px solid var(--hairline);}
 .notes .n{font-size:10.5px;color:var(--body);line-height:1.55;margin-bottom:5px;}
-.notes .n b{color:var(--ink);font-weight:600;}
+.notes .n b{color:var(--ink);font-weight:700;}
 
 /* ---- standard totals ---- */
 .foot{display:flex;justify-content:space-between;gap:44px;margin-top:18px;}
@@ -248,33 +256,48 @@ tbody tr:last-child td{border-bottom:0;}
 .totals{width:78mm;}
 .tot-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
   padding:8px 0;}
-.tot-row .v{font-family:'Geist Mono',monospace;color:var(--ink);}
-.tot-row.grand{border-top:1.4px solid var(--strong);margin-top:4px;padding-top:12px;
-  font-size:13px;font-weight:600;color:var(--ink);}
-.tot-row.grand .v{font-size:14px;font-weight:500;color:var(--red-deep);}
-.deposit{margin-top:14px;border:1px solid var(--red);border-radius:9px;padding:15px 18px;}
-.deposit .val{font-family:'Geist Mono',monospace;font-size:22px;color:var(--red);}
-.deposit .label{font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--red);margin-top:6px;}
+.tot-row .v{color:var(--ink);}
+.tot-row.grand{border-top:1.4px solid var(--ink);margin-top:4px;padding-top:12px;
+  font-size:13px;font-weight:700;color:var(--ink);}
+.tot-row.grand .v{font-size:14px;font-weight:500;color:var(--primary);}
+.deposit{margin-top:14px;border:1px solid var(--primary);border-radius:9px;
+  background:var(--surface);padding:15px 18px;}
+.deposit .val{font-size:22px;color:var(--primary);}
+.deposit .label{font-size:9px;font-weight:500;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--primary);margin-top:6px;}
 .deposit .bal{font-size:10px;color:var(--muted);margin-top:9px;}
 
 /* ---- payment / acceptance (standard) ---- */
-.lower{display:flex;gap:44px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);}
+.lower{display:flex;gap:44px;margin-top:18px;padding-top:14px;border-top:.5px solid var(--hairline);}
 .pay{flex:1;}
 .pay .ln{font-size:10.5px;color:var(--muted);line-height:1.9;}
 .pay .ln b{color:var(--ink);font-weight:500;}
-.pay .mono{font-family:'Geist Mono',monospace;color:var(--ink);}
+.pay .mono{color:var(--ink);}
 .accept{width:78mm;}
-.sign{margin-top:22px;border-top:1px solid var(--strong);padding-top:7px;
-  font-family:'Geist Mono',monospace;font-size:8.5px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--faint);}
+.sign{margin-top:22px;border-top:1px solid var(--ink);padding-top:7px;
+  font-size:8.5px;font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);}
 
 /* ---- designed-by credit (end of body) ---- */
-.credit{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);}
-.credit .name{font-weight:600;font-size:12px;}
+.credit{margin-top:30px;padding-top:14px;border-top:.5px solid var(--hairline);}
+.credit .name{font-weight:700;font-size:12px;}
 .credit .tag{font-size:10.5px;color:var(--muted);margin-top:3px;}
-.credit .contact{font-family:'Geist Mono',monospace;font-size:10px;color:var(--body);
+.credit .contact{font-size:10px;color:var(--body);
   margin-top:9px;letter-spacing:.01em;}
+
+/* ---- pagination ---- */
+/* Chromium reads break-*; the page-break-* spellings ride along for any
+   engine that only knows the legacy names. Atomic units never split … */
+tr,.sum-row,.tot-row,.sec-total,.panel,.opt,.hp-m,.deposit,.credit{
+  break-inside:avoid;page-break-inside:avoid;}
+/* … headings, eyebrows and labels never strand at a page foot … */
+.sec-h,.bul-eyebrow,.eyebrow,.plabel,.opts-h{
+  break-after:avoid;page-break-after:avoid;}
+/* … sections themselves may flow across pages … */
+.sec,.opts-block{break-inside:auto;}
+/* … and a table that does flow repeats its header row on the next page, so a
+   continuation never opens on bare ITEM / DETAIL / PRICE with no context. */
+thead{display:table-header-group;}
 `;
 
 /* ---------------------------------------------------------------- partials */
@@ -324,9 +347,9 @@ function bulletHTML(list: BulletList, cur?: string): string {
   return `${eyebrow}<ul class="bul${list.columns === 2 ? " two" : ""}">${items}</ul>${note}`;
 }
 
-function sectionHeaderHTML(title: string, promo?: string): string {
+function sectionHeaderHTML(title: string, promo?: string, alt = false): string {
   const pill = promo ? `<span class="promo">${esc(promo)}</span>` : "";
-  return `<div class="sec-h"><span class="sq"></span><span class="t">${esc(title)}</span>${pill}</div>`;
+  return `<div class="sec-h${alt ? " alt" : ""}"><span class="sq"></span><span class="t">${esc(title)}</span>${pill}</div>`;
 }
 
 /**
@@ -385,7 +408,7 @@ function payBlockHTML(data: DocumentData): string {
     ${sectionHeaderHTML("How to pay")}
     <div class="hp-body">
       <div class="hp-qr">
-        <img src="${DUITNOW_QR}" alt="DuitNow QR — ${esc(data.studio.name)}">
+        <img src="${DUITNOW_QR}" alt="DuitNow QR · ${esc(data.studio.name)}">
       </div>
       <div class="hp-methods">${methods}</div>
     </div>
@@ -542,7 +565,7 @@ function renderStandard(data: DocumentData): string {
     <div class="party">
       <div class="plabel">${data.kind === "quotation" ? "Prepared for" : "Billed to"}</div>
       <div class="pname">${esc(data.client.name)}</div>
-      <div class="pln">${[esc(data.client.attn), addr, esc(data.client.email)].filter(Boolean).join("<br>")}</div>
+      <div class="pln">${[esc(data.client.company), esc(data.client.attn), addr, esc(data.client.email), esc(data.client.phone)].filter(Boolean).join("<br>")}</div>
     </div>
   </div>
 
@@ -598,11 +621,24 @@ function renderDetailed(data: DocumentData): string {
   const cur = data.currency;
   const parts: string[] = [headHTML(data), `<div class="rule"></div>`];
 
-  // Hero — quotation leads with the client as the title; invoice/receipt use a
-  // Bill-to / Project split.
+  // Hero — quotation opens with who it's for (name, company, email, phone —
+  // any null line skipped) under the "Prepared for" eyebrow, then the project
+  // title; invoice/receipt use a Bill-to / Project split.
   if (data.kind === "quotation") {
+    const c = data.client ?? ({ name: "" } as Client);
+    const contactLines = [c.company, c.email, c.phone]
+      .filter(Boolean)
+      .map((x) => esc(x))
+      .join("<br>");
+    const clientBlock = c.name || contactLines
+      ? `<div class="hero-client">
+          ${c.name ? `<div class="pname">${esc(c.name)}</div>` : ""}
+          ${contactLines ? `<div class="pln">${contactLines}</div>` : ""}
+        </div>`
+      : "";
     parts.push(`<div class="hero">
       <div class="eyebrow">Prepared for</div>
+      ${clientBlock}
       <div class="title">${esc(data.project)}</div>
       ${data.subtitle ? `<div class="subtitle">${esc(data.subtitle)}</div>` : ""}
       ${data.intro ? `<div class="intro">${esc(data.intro)}</div>` : ""}
@@ -650,7 +686,7 @@ function renderDetailed(data: DocumentData): string {
       priceMuted: true,
     }));
     parts.push(`<div class="sec">
-      ${sectionHeaderHTML(data.care.title)}
+      ${sectionHeaderHTML(data.care.title, undefined, true)}
       ${data.care.intro ? `<div class="para" style="margin-top:11px">${esc(data.care.intro)}</div>` : ""}
       ${tableHTML(rows, cur, headers)}
       ${data.care.note ? `<div class="sec-note">${esc(data.care.note)}</div>` : ""}

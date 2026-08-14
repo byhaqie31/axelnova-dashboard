@@ -376,17 +376,14 @@ class QuotationDraftController extends Controller
         return md5((string) json_encode($normalised));
     }
 
-    /** Upsert the client by email — the same dedup pattern as the public funnel. */
+    /**
+     * Upsert the client by email. Per-field last-write-wins (trusted writer):
+     * supplied non-empty fields update the record, absent/empty ones preserve
+     * it — see Client::upsertContact.
+     */
     private function upsertClient(array $client): Client
     {
-        return Client::firstOrCreate(
-            ['email' => $client['email']],
-            [
-                'name' => $client['name'],
-                'phone' => $client['phone'] ?? null,
-                'company' => $client['company'] ?? null,
-            ],
-        );
+        return Client::upsertContact($client);
     }
 
     /** Persist the add-on rows (union across packages) for the quotation. */
