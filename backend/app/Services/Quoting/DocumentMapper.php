@@ -16,7 +16,7 @@ class DocumentMapper
     /** Studio details on every document. */
     private const STUDIO = [
         'name' => 'Axel Nova Ventures',
-        'tagline' => 'Simple, effortless, human.',
+        'tagline' => 'simple, effortless, human.',
         'reg' => 'Reg. 202603119899 (CA0420977-U)',
         'email' => 'baihaqie@axelnova.tech',
         'site' => 'axelnovaventures.com',
@@ -146,7 +146,7 @@ class DocumentMapper
             'terms' => $terms,
             'pay' => [
                 'online' => self::BANK['online'],
-                'bank' => self::BANK['name'].' — '.self::BANK['holder'],
+                'bank' => self::BANK['name'].' · '.self::BANK['holder'],
                 'acct' => self::BANK['acct'],
             ],
         ];
@@ -435,7 +435,7 @@ class DocumentMapper
     private static function defaultProject(Quotation $quotation): string
     {
         return $quotation->company
-            ? "{$quotation->company} — project quotation"
+            ? "{$quotation->company} · project quotation"
             : 'Project quotation';
     }
 
