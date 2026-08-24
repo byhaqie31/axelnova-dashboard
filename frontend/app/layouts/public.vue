@@ -8,6 +8,15 @@ const colorMode = useColorMode()
 const mobileOpen = ref(false)
 const scrolled = ref(false)
 const navHidden = ref(false)
+// The homepage hero hides the header until its morphing pill docks at the top
+// (set by HeroEpoch). On the homepage the dock state is the ONLY thing that
+// controls header visibility — hide-on-scroll-down would immediately re-hide
+// the header right after the dock handoff, since the user is scrolling down
+// at that moment. Other pages keep the normal hide/reveal behavior.
+const heroImmersive = useState('hero-immersive', () => false)
+const headerHidden = computed(() =>
+  route.path === '/' ? heroImmersive.value : (navHidden.value && !mobileOpen.value),
+)
 const headerRef = ref<HTMLElement | null>(null)
 const navCta = ref<ComponentPublicInstance | HTMLElement | null>(null)
 
@@ -81,21 +90,17 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
     <!-- NAV -->
     <header
       ref="headerRef"
-      class="sticky top-0 z-50 nav-header"
-      :class="{ 'nav-header-hidden': navHidden && !mobileOpen }"
+      class="fixed top-0 inset-x-0 z-50 nav-header"
+      :class="{ 'nav-header-hidden': headerHidden }"
     >
       <!-- Iridescent gradient hairline (always visible on refresh) -->
       <div class="aurora-line" />
 
-      <div
-        class="backdrop-blur-xl border-b transition-colors duration-300"
-        :style="{
-          background: scrolled ? 'var(--nav-bg-scrolled)' : 'var(--nav-bg-top)',
-          borderColor: 'var(--color-border)'
-        }"
-      >
+      <!-- Floating pill bar — same glass-nav surface as the hero's morphing
+           pill, so the homepage dock handoff reads as one continuous element. -->
+      <div class="px-3 sm:px-6 pt-3">
         <nav
-          class="max-w-7xl mx-auto px-6 flex items-center justify-between nav-bar"
+          class="glass-nav max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between nav-bar"
           :style="{ height: scrolled ? '44px' : '48px' }"
         >
           <BrandMark />
@@ -246,7 +251,9 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
       </div>
     </header>
 
-    <main class="flex-1">
+    <!-- The floating header is fixed (no flow space); every page except the
+         homepage — whose hero starts at the viewport top — pads for it. -->
+    <main class="flex-1" :class="{ 'pt-16': route.path !== '/' }">
       <slot />
     </main>
 

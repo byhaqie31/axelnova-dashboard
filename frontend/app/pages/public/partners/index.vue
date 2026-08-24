@@ -192,9 +192,11 @@ useScrollReveal('.reveal')
 <template>
   <div>
     <!-- HERO -->
+    <!-- -mt-16 cancels the layout's fixed-header padding so the aurora hero
+         bleeds to the true viewport top, running under the floating pill. -->
     <section
-      class="bg-aurora flex flex-col items-center justify-center text-center px-6 relative overflow-hidden"
-      style="min-height: calc(100vh - 49px);"
+      class="bg-aurora -mt-16 flex flex-col items-center justify-center text-center px-6 relative overflow-hidden"
+      style="min-height: 100svh;"
     >
       <div
         ref="heroBadge"
