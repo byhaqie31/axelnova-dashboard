@@ -409,9 +409,13 @@ onUnmounted(() => {
           style="color: var(--hero-fg-muted);"
         >
           Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS
-          platforms, and bespoke digital products. Every solution is custom-designed and
-          engineered around your needs, using the right combination of Vue, Nuxt, Laravel,
-          GSAP, and Three.js.
+          platforms, and bespoke digital products.
+          <!-- Second sentence is desktop-only — on phones the description ends
+               at "products." to keep the hero copy tight. -->
+          <span class="hidden md:inline">
+            Every solution is custom-designed and engineered around your needs, using the
+            right combination of Vue, Nuxt, Laravel, GSAP, and Three.js.
+          </span>
         </p>
 
         <div ref="heroCtaWrap" class="hero-cta mt-7">
