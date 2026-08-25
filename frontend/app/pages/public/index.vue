@@ -73,6 +73,7 @@ interface ApiProject {
   status: 'live' | 'soon' | 'wip' | 'planning'
   url: string | null
   repo: string | null
+  cover_image_url: string | null
   tags: string[]
   stack: string[]
   featured: boolean
@@ -95,6 +96,7 @@ const projects = computed<Project[]>(() => {
     status: p.status,
     url: p.url ?? undefined,
     repo: p.repo ?? undefined,
+    coverImage: p.cover_image_url ?? undefined,
     tags: p.tags ?? [],
     stack: p.stack ?? [],
     featured: p.featured,

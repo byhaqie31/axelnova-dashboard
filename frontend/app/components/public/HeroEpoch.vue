@@ -9,6 +9,7 @@ const motion = useMotion()
 
 const heroShell   = ref<HTMLElement | null>(null)
 const heroCard    = ref<HTMLElement | null>(null)
+const heroContent = ref<HTMLElement | null>(null)
 const videoEl     = ref<HTMLVideoElement | null>(null)
 const heroBadge   = ref<HTMLElement | null>(null)
 const heroHeadline = ref<HTMLElement | null>(null)
@@ -106,7 +107,11 @@ const INTRO_FLAG = 'axn-hero-intro-seen'
 // beat it; asset waiting itself is still capped at LOADER_CAP_MS.
 const LOADER_MIN_MS = 4000
 const LOADER_CAP_MS = 2500
-const showLoader = ref(false)
+// Starts true so the overlay ships in the SSR HTML and covers the page from the
+// first paint. Repeat visits and reduced motion are hidden pre-paint by CSS
+// (`html[data-intro-seen] .hero-loader`, stamped by the inline script in
+// nuxt.config), then unmounted below — so they never see a frame of it.
+const showLoader = ref(true)
 const loaderDone = ref(false)
 
 // The layout header stays hidden for the whole hero experience — it only
@@ -132,8 +137,13 @@ onMounted(() => {
   const els = [heroBadge.value, heroNav.value].filter(Boolean) as HTMLElement[]
   // Reduced motion is a full no-op — no entrances, no loader, no pinned zoom;
   // the scoped fullscreen CSS is also gated on no-preference, so SSR painted
-  // the plain card and nothing here needs to run.
-  if (reduced || !els.length) return
+  // the plain card and nothing here needs to run. The SSR'd overlay is already
+  // display:none here (the pre-paint script stamps reduced motion too); drop it
+  // from the tree so it can't trap focus or clicks.
+  if (reduced || !els.length) {
+    showLoader.value = false
+    return
+  }
 
   heroImmersive.value = true
 
@@ -198,6 +208,24 @@ onMounted(() => {
       const avail = window.innerWidth - padX * 2
       const fill = window.innerWidth >= 768 ? 0.62 : 1
       return Math.min(3, Math.max(1.1, (avail * fill) / el.offsetWidth))
+    }
+    // The opening pose also sits the whole copy block LOWER — near the optical
+    // centre of the fullscreen card instead of hard against its top padding,
+    // which left a dead band under the headline (only the eyebrow + headline
+    // exist in this pose; the description and CTA are still faded out). It
+    // rides back to the designed top-left slot as the zoom plays.
+    //
+    // Transform only, never layout: `.hero-shell` is the pin trigger, so a
+    // height change here would corrupt the pin spacer and the marquee wrap's
+    // negative margin. Function value so invalidateOnRefresh recomputes it on
+    // resize and across the breakpoint. Mirrored by `.hero-boot .hero-content`
+    // in the scoped CSS for the pre-hydration paint — keep the two in sync.
+    if (heroContent.value) {
+      zoomTl.from(
+        heroContent.value,
+        { y: () => window.innerHeight * (window.innerWidth >= 768 ? 0.22 : 0.12) },
+        0,
+      )
     }
     if (heroBadge.value) {
       zoomTl.from(heroBadge.value, { scale: 1.15, transformOrigin: '0% 0%' }, 0)
@@ -272,8 +300,10 @@ onMounted(() => {
     // Fresh load: show the loader, hold scroll, and wait on fonts + the
     // video's first frame — hard-capped so a slow CDN never blocks the page.
     // The entrance starts from the loader's `reveal` event.
-    showLoader.value = true
     try { sessionStorage.setItem(INTRO_FLAG, '1') } catch { /* ignore */ }
+    // NB: the matching `data-intro-seen` attribute is stamped in
+    // `onLoaderHidden`, NOT here — the CSS rule keyed off it hides the loader,
+    // so setting it now would kill the intro a frame after hydration.
     motion.lenis?.stop()
 
     const videoReady = new Promise<void>((resolve) => {
@@ -291,8 +321,15 @@ onMounted(() => {
     })
   }
   else {
-    // Repeat visit this session — no loader; gate on fonts as before, with a
-    // fallback if fonts.ready stalls.
+    // Repeat visit this session — no loader. CSS already hid the SSR'd overlay
+    // before paint, so dropping it here is invisible. Must run before the
+    // safety timer below, which sizes its window off `showLoader`.
+    showLoader.value = false
+    // Keep <html> in sync with sessionStorage: the pre-paint script only sees
+    // storage as it was at page load, so a later client-side nav back to `/`
+    // would otherwise remount the SSR-default overlay unhidden for a frame.
+    document.documentElement.setAttribute('data-intro-seen', '')
+    // Gate on fonts as before, with a fallback if fonts.ready stalls.
     fontGate = window.setTimeout(start, 600)
     document.fonts?.ready.then(() => {
       clearTimeout(fontGate)
@@ -319,6 +356,15 @@ const onLoaderReveal = () => {
   startEntrance?.()
 }
 
+// The overlay is fully gone. Only now is it safe to mark the intro as seen:
+// `html[data-intro-seen] .hero-loader` is what hides the loader, so stamping it
+// any earlier cuts the intro short. This is what keeps a later client-side nav
+// back to `/` from flashing the SSR-default overlay.
+const onLoaderHidden = () => {
+  document.documentElement.setAttribute('data-intro-seen', '')
+  showLoader.value = false
+}
+
 onUnmounted(() => {
   clearTimeout(safetyTimer)
   clearTimeout(fontGate)
@@ -342,7 +388,7 @@ onUnmounted(() => {
     <!-- Intro loader (fresh loads only) — teleported so the pinned section's
          positioning can never affect the fixed overlay. -->
     <Teleport to="body">
-      <HeroLoader v-if="showLoader" :done="loaderDone" @reveal="onLoaderReveal" />
+      <HeroLoader v-if="showLoader" :done="loaderDone" @reveal="onLoaderReveal" @hidden="onLoaderHidden" />
     </Teleport>
 
     <!-- HERO CARD + VIDEO BACKGROUND — starts fullscreen (scoped CSS below),
@@ -380,7 +426,10 @@ onUnmounted(() => {
       </div>
 
       <!-- Text content -->
-      <div class="hero-content relative z-20 flex-1 px-6 sm:px-10 md:px-16 pt-12 md:pt-16 flex flex-col items-start">
+      <div
+        ref="heroContent"
+        class="hero-content relative z-20 flex-1 px-6 sm:px-10 md:px-16 pt-12 md:pt-16 flex flex-col items-start"
+      >
         <div
           ref="heroBadge"
           class="hero-badge inline-flex items-center gap-2 rounded-full border px-3 py-1 backdrop-blur-md"
@@ -573,9 +622,14 @@ onUnmounted(() => {
     opacity: 0;
     visibility: hidden;
   }
-  /* Boot copy pose: eyebrow + headline big in their top-left corner, no
-     description, no CTA, no navbar — the pre-hydration mirror of the scrub's
-     from() values. Corner-origin scaling keeps them anchored in place. */
+  /* Boot copy pose: eyebrow + headline big, sat low toward the optical centre
+     of the fullscreen card, no description, no CTA, no navbar — the
+     pre-hydration mirror of the scrub's from() values. Corner-origin scaling
+     keeps the text anchored in place; the block's drop is a separate transform
+     on the wrapper. svh to match the card's own height unit. */
+  .hero-boot .hero-content {
+    transform: translateY(12svh);
+  }
   .hero-boot .hero-badge {
     transform-origin: 0 0;
     transform: scale(1.15);
@@ -614,6 +668,9 @@ onUnmounted(() => {
      pre-hydration paint (phones stay at the base 1.15 so the lines fit). */
   .hero-boot .epoch-headline {
     transform: scale(1.9);
+  }
+  .hero-boot .hero-content {
+    transform: translateY(22svh);
   }
 }
 

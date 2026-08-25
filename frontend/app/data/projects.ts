@@ -15,6 +15,14 @@ export interface Project {
   status: ProjectStatus
   url?: string
   repo?: string
+  /**
+   * Preview image for the card's browser-window viewport — maps to the API's
+   * `cover_image_url`. Either a self-hosted capture under `/previews/<slug>.webp`
+   * or an absolute URL. Set it: it renders during SSR, so the card is never
+   * blank. Without it the card falls back to a live mShots screenshot, which
+   * generates asynchronously and can stay empty for seconds or forever.
+   */
+  coverImage?: string
   tags: string[]
   stack: string[]
   featured: boolean

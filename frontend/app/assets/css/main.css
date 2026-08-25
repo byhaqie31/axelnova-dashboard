@@ -315,6 +315,17 @@ html.lenis {
   scroll-behavior: auto;
 }
 
+/* Homepage intro loader (HeroLoader). It is SSR-rendered so it covers the page
+   from the first paint — mounting it client-side let the hero paint first and
+   then flashed the loader over it. The inline head script in nuxt.config
+   stamps [data-intro-seen] BEFORE paint for repeat visits and reduced motion,
+   so those never see it; HeroEpoch also stamps it when it writes the session
+   flag, which keeps client-side navs back to `/` from flashing the overlay for
+   one frame. Attribute selector, not a colorMode binding — FOUC rule. */
+html[data-intro-seen] .hero-loader {
+  display: none;
+}
+
 body {
   font-family: var(--font-sans);
   background: var(--color-bg);
@@ -409,6 +420,57 @@ h1 { letter-spacing: -0.045em; }
   0%   { transform: translate3d(0, 0, 0) scale(1); }
   50%  { transform: translate3d(2%, 1%, 0) scale(1.04); }
   100% { transform: translate3d(-2%, -1%, 0) scale(1.02); }
+}
+
+/* Animated grid — the homepage loading screen's backdrop.
+
+   This is its OWN absolutely-positioned layer, deliberately not a `::before` on
+   a wrapper like `.bg-aurora` above. A wrapper utility has to set
+   `position: relative`, and main.css is unlayered so that would beat Tailwind's
+   `fixed` on the loader root — collapsing the overlay into normal flow and
+   letting the page show through underneath it. Drop this element INSIDE the
+   fixed root instead; never put a positioning utility on the root itself.
+
+   Lines are drawn from `--color-border`, so light/dark come for free. The mask
+   fades the grid toward the edges so it reads as depth rather than wallpaper,
+   and the accent bloom gives the mark something to sit on. */
+.loader-grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.loader-grid::before,
+.loader-grid::after {
+  content: '';
+  position: absolute;
+}
+.loader-grid::before {
+  /* Oversized so the diagonal pan never exposes an edge. */
+  inset: -60%;
+  background-image:
+    linear-gradient(to right, var(--color-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  /* One full cell per cycle, linear — the loop is then seamless. */
+  animation: loader-grid-pan 6s linear infinite;
+  -webkit-mask-image: radial-gradient(58% 58% at 50% 50%, #000 0%, transparent 100%);
+  mask-image: radial-gradient(58% 58% at 50% 50%, #000 0%, transparent 100%);
+}
+.loader-grid::after {
+  inset: 0;
+  background: radial-gradient(38% 38% at 50% 45%, var(--color-accent-soft) 0%, transparent 70%);
+  animation: loader-grid-bloom 4.5s ease-in-out infinite;
+}
+
+@keyframes loader-grid-pan {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(64px, 64px, 0); }
+}
+@keyframes loader-grid-bloom {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50%      { opacity: 0.9;  transform: scale(1.08); }
 }
 
 /* Iridescent hairline (top of navbar / dividers) */
@@ -981,5 +1043,7 @@ input[type="number"] {
     scroll-behavior: auto !important;
   }
   .bg-aurora::before { animation: none; }
+  .loader-grid::before,
+  .loader-grid::after { animation: none; }
   .aurora-line { animation: none; }
 }

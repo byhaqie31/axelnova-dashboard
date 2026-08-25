@@ -188,10 +188,16 @@ v-model="form.repo" type="url" placeholder="https://github.com/…" class="conta
       </div>
 
       <div>
-        <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Cover image URL</label>
+        <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Cover image</label>
+        <!-- `text`, not `url`: self-hosted captures are root-relative paths,
+             which a url input rejects before the request is even sent. -->
         <input
-v-model="form.cover_image_url" type="url" class="contact-input w-full"
+v-model="form.cover_image_url" type="text" placeholder="/previews/my-project.webp" class="contact-input w-full"
           :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
+        <p class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">
+          Shown in the featured card's browser frame. A path under <code>/previews/</code> or an absolute URL. Leave empty to fall back to a live screenshot, which often loads slowly or not at all.
+        </p>
+        <p v-if="errors.cover_image_url?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.cover_image_url[0] }}</p>
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4">

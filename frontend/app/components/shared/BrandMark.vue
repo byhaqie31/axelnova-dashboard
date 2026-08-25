@@ -1,5 +1,7 @@
 <script setup lang="ts">
-type Variant = 'default' | 'compact' | 'mark-only'
+// `stacked` is the branding-moment pose (the homepage loading screen): an
+// oversized mark sitting above the wordmark, rather than a small mark beside it.
+type Variant = 'default' | 'compact' | 'mark-only' | 'stacked'
 
 const props = withDefaults(defineProps<{
   variant?: Variant
@@ -12,14 +14,29 @@ const props = withDefaults(defineProps<{
   wordmark: 'Axel Nova Ventures',
 })
 
-const iconSize = computed(() => props.variant === 'compact' ? 'size-6' : 'size-7.5')
-const wordmarkSize = computed(() => props.variant === 'compact' ? 'text-[13px]' : 'text-[15px]')
+const iconSize = computed(() => {
+  switch (props.variant) {
+    case 'compact': return 'size-6'
+    case 'stacked': return 'size-16 sm:size-20'
+    default: return 'size-7.5'
+  }
+})
+const wordmarkSize = computed(() => {
+  switch (props.variant) {
+    case 'compact': return 'text-[13px]'
+    case 'stacked': return 'text-[17px] sm:text-[19px]'
+    default: return 'text-[15px]'
+  }
+})
+const layout = computed(() =>
+  props.variant === 'stacked' ? 'flex-col items-center gap-3.5' : 'items-center gap-2',
+)
 </script>
 
 <template>
   <NuxtLink
     :to="to"
-    :class="[wordmarkSize, 'font-semibold tracking-tight inline-flex items-center gap-2', props.class]"
+    :class="[wordmarkSize, layout, 'font-semibold tracking-tight inline-flex', props.class]"
   >
     <img
       src="/favicon/apple-touch-icon.png"

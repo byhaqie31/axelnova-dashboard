@@ -104,6 +104,23 @@ export default defineNuxtConfig({
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/favicon/apple-touch-icon.png' },
         { rel: 'manifest', href: '/favicon/site.webmanifest' },
       ],
+      // The homepage intro loader is rendered during SSR so it covers the page
+      // from the very first paint — a client-only overlay lets the hero paint
+      // first and then slams over it. This runs before paint (same trick as the
+      // `.dark` class) and stamps the cases that must NEVER see a loader:
+      // repeat visits this session, and reduced motion. `main.css` hides
+      // `.hero-loader` on that attribute. Private mode throws on
+      // sessionStorage — treat that as "seen", matching HeroEpoch's default.
+      script: [
+        {
+          tagPosition: 'head',
+          innerHTML: `(function(){try{if(sessionStorage.getItem('axn-hero-intro-seen')||matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.setAttribute('data-intro-seen','')}catch(e){document.documentElement.setAttribute('data-intro-seen','')}})()`,
+        },
+      ],
+      // Without JS the overlay would never be torn down — never show it.
+      noscript: [
+        { tagPosition: 'head', innerHTML: '<style>.hero-loader{display:none}</style>' },
+      ],
     },
     // Page transitions are GSAP-driven via JS hooks on <NuxtPage> in app.vue.
   },
