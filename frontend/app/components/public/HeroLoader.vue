@@ -2,13 +2,19 @@
 import BrandMark from '~/components/shared/BrandMark.vue'
 import { MOTION } from '~/utils/motion'
 
-// Purely visual overlay for the homepage intro. The parent (HeroEpoch) owns the
+// Purely visual overlay for the homepage intro. Rendered during SSR (see the
+// `.hero-loader` rules in main.css + the pre-paint script in nuxt.config) so it
+// covers the page from the first paint instead of flashing over an already
+// painted hero. The parent (HeroEpoch) owns the
 // readiness logic and flips `done` when fonts + the video's first frame are in
 // (or its cap expires); this component completes the bar, fades itself out, and
 // emits `reveal` the moment the fade starts so the hero entrance can begin
 // underneath it. Token-based colors only — no colorMode binding (FOUC rule).
 const props = defineProps<{ done: boolean }>()
-const emit = defineEmits<{ reveal: [] }>()
+// `reveal` fires as the fade-out BEGINS, so the hero entrance can run underneath
+// it. `hidden` fires once the overlay is fully gone — that is the only safe
+// moment to mark the intro as seen, because the marker itself hides the loader.
+const emit = defineEmits<{ reveal: [], hidden: [] }>()
 
 const motion = useMotion()
 const rootEl = ref<HTMLElement | null>(null)
@@ -36,10 +42,11 @@ watch(() => props.done, (done) => {
   if (!rootEl.value || !barEl.value) {
     visible.value = false
     emit('reveal')
+    emit('hidden')
     return
   }
   creepTween?.kill()
-  outTl = gsap.timeline({ onComplete: () => { visible.value = false } })
+  outTl = gsap.timeline({ onComplete: () => { visible.value = false; emit('hidden') } })
   outTl.to(barEl.value, { width: '100%', duration: 0.25, ease: 'power1.out' })
   outTl.to(rootEl.value, {
     opacity: 0,
@@ -59,12 +66,18 @@ onUnmounted(() => {
   <div
     v-if="visible"
     ref="rootEl"
-    class="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-6"
+    class="hero-loader fixed inset-0 z-[90] overflow-hidden flex flex-col items-center justify-center gap-7 md:gap-9"
     style="background: var(--color-bg);"
     aria-hidden="true"
   >
-    <BrandMark class="pointer-events-none" />
-    <div class="h-0.5 w-40 overflow-hidden rounded-full" style="background: var(--color-border);">
+    <!-- Backdrop layer. Must stay a CHILD: putting a positioning utility on the
+         root above would beat Tailwind's `fixed` (main.css is unlayered) and
+         drop the overlay into normal flow, exposing the page behind it. -->
+    <span class="loader-grid" />
+
+    <BrandMark variant="stacked" class="pointer-events-none" />
+    <!-- Bar tracks the mark's desktop step so the lockup stays proportional. -->
+    <div class="h-0.5 w-40 md:w-60 overflow-hidden rounded-full" style="background: var(--color-border);">
       <div ref="barEl" class="h-full rounded-full" style="width: 0%; background: var(--grad-iridescent);" />
     </div>
     <span class="eyebrow loader-label" style="color: var(--color-text-secondary);">Loading</span>

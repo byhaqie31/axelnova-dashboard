@@ -140,7 +140,7 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
 
             <NuxtLink
               ref="navCta"
-              to="/services"
+              to="/contact"
               class="nav-cta-accent hidden md:inline-flex btn-pill btn-pill-accent"
               style="height: 32px; font-size: 12px; padding: 0 16px;"
             >

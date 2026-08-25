@@ -83,7 +83,11 @@ class ProjectsController extends Controller
             'stack.*' => ['string', 'max:50'],
             'featured' => ['boolean'],
             'sort_order' => ['integer', 'min:0'],
-            'cover_image_url' => ['nullable', 'url', 'max:500'],
+            // Absolute URL or a root-relative path, so self-hosted captures
+            // under frontend/public/previews can be referenced as
+            // `/previews/<slug>.webp`. The prefix check keeps out schemes like
+            // javascript: and data:, which land straight in an <img src>.
+            'cover_image_url' => ['nullable', 'string', 'max:500', 'regex:#^(https?://|/[^/])#'],
             'active' => ['boolean'],
         ];
     }

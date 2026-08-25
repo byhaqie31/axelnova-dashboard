@@ -262,7 +262,7 @@ pages/
 When Nuxt fixes the `(group)` route-group syntax in a future release, this hook can be removed in favor of `pages/(public)/...`. Probe it on each Nuxt upgrade with a test page; until then, the hook stays.
 
 ### `BrandMark`
-- Variants: `default` (icon + wordmark), `compact` (smaller, used in admin topbar), `mark-only` (icon only)
+- Variants: `default` (icon + wordmark), `compact` (smaller, used in admin topbar), `mark-only` (icon only), `stacked` (oversized mark **above** the wordmark — the branding-moment pose, used by `HeroLoader`; 64 / 80 / **120px** at base / `sm` / `md`, wordmark 17 / 19 / 28px)
 - Wraps the canonical `.brand-logo-glow` drop-shadow — never reimplement the gradient/glow inline
 - Used in `public.vue` header AND footer, `admin.vue` topbar, `portal.vue` header
 
@@ -284,6 +284,16 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 - Status pill with colored dot (Live / Soon / In progress).
 - Hover: `translateY(-4px)` + `card-glow` radial wash + arrow CTA fades in.
 
+### `FeaturedProjectCard`
+The landing "Featured projects" card (`components/shared/`, rendered by `FeaturedProjectsCarousel`). A fake browser window — traffic-light chrome + host address bar — over an `aspect-3/2` preview, then name, like button, status pill, description, and stack tags.
+
+Preview source, in priority order:
+1. **`project.coverImage`** (API `cover_image_url`) — a self-hosted capture at `/previews/<slug>.webp`, captured at 1280×800 @2x. Renders during SSR, so the card is filled on first paint. **This is the intended path** — set it for every featured project.
+2. **mShots** (`s.wp.com/mshots/v1/…`) — keyless live screenshots, fallback only. It generates asynchronously and the first hit returns a placeholder, so the card shimmers through 4 retries and can stay blank for seconds or forever. Never rely on it for a project that is actually featured.
+3. Gradient tile, when there is no URL either.
+
+A cover that 404s falls through to step 2 rather than leaving a broken image in the frame.
+
 ### Domain primitives
 
 - **`PriceTag`** — MYR-formatted (Intl `ms-MY`). Props: `min`, `max?`, `prefix?`, `compact?`. Renders ranges with en-dash, prefixed values with em-dash separator.
@@ -292,6 +302,9 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 - **`ReferenceCode`** — monospace document-code display (e.g. `AXNQ-2026-0012`) with click-to-copy via `useClipboard`. Renders any string; falls back to plain span when `copyable={false}`.
 - **`DateRange`** — Intl `en-MY` formatted dates. Formats: `short`, `long`, `relative`. Accepts optional `prefix` ("Valid until", "Issued").
 - **`FeedbackScale`** (`components/shared/FeedbackScale.vue`) — the dot/pill rating scale shared by the public `/feedback/{token}` form and the admin review pages. Props: `modelValue`, `max` (5 ratings / 10 NPS), `min` (NPS passes 0), `readonly`, optional `labels` end-captions. Selected pill fills `--color-accent`, the run-up below fills `--color-accent-soft`; clicking the selected pill clears an optional score. No native inputs.
+
+### `.icon-gradient`
+Fills an icon glyph with `--grad-text-accent`, so an icon paired with `.text-gradient` text reads as one lockup (the hero pill's "Axel Nova" chevron). Do **not** reach for `.text-gradient` on an icon — it clips a gradient to *text*, and an icon has none, so it renders as nothing. `UIcon` draws the glyph as a mask over `background-color: currentColor`, which is why replacing the background paints the glyph itself.
 
 ### Filter pills
 - 28px tall, 16px horizontal padding, hairline border.
@@ -307,7 +320,8 @@ Highlights:
 
 - **Tokens, never magic numbers:** durations 0.3/0.6/0.9/1.2s, default ease `power3.out`, staggers 0.08/0.1/0.14, reveals y: 52 from `top 85%`.
 - **Dashboard register is faster:** 0.3–0.5s; no parallax/magnetic/SplitText on admin/portal.
-- **Aurora drift:** 24s `ease-in-out` infinite alternate (background mesh).
+- **Aurora drift:** 24s `ease-in-out` infinite alternate (background mesh, `.bg-aurora` — a top-anchored band for page sections).
+- **Loader grid:** `.loader-grid` — the homepage loading screen's backdrop. 64px cells drawn from `--color-border` panning one full cell per 6s (linear, so the loop is seamless), radially masked so it fades toward the edges, over a 4.5s `--color-accent-soft` bloom. It is **its own absolutely-positioned child element**, not a `::before` on a wrapper — see hard rule 8.
 - **Aurora line shift:** 14s ease-in-out infinite (navbar gradient hairline).
 - **Page transition:** GSAP JS hooks on `<NuxtPage>` (`out-in`): leave 0.3s, enter 0.45s.
 - **Reduced motion:** entrances are no-ops (content instantly visible), Lenis disabled; essential state transitions kept.
@@ -342,6 +356,8 @@ Highlights:
 5. **One primary CTA per screen.**
 6. **Tailwind v4 canonical classes** — `tracking-tighter`, not `tracking-[-0.05em]`; `border-b-0!`, not `!border-b-0`.
 7. **Iridescent gradients are sparse.** Hero headline accent, brand dot, top-of-nav hairline, CTA banner backdrop. That's it.
+8. **Never put a `main.css` positioning utility on a Tailwind-positioned element.** `main.css` is unlayered, so its `position:` beats Tailwind's layered `fixed` / `absolute` on the same element. A decorative wrapper class that sets `position: relative` will silently drop a `fixed` overlay into normal flow, where it shrinks to its content and exposes the page behind it. Make the decoration its own absolutely-positioned **child** instead. (Same trap as the `h1 {}` base rule beating layered typography utilities.)
+9. **Full-screen intro overlays render during SSR.** A `v-if` flipped in `onMounted` paints the page first and then slams the overlay over it — the same class of bug as rule 1. Ship the overlay in the server HTML, and hide the cases that must not see it with a pre-paint inline script + an attribute selector (`html[data-intro-seen] .hero-loader`), never with a `colorMode`- or hydration-dependent binding. Always pair it with a `<noscript>` rule that hides the overlay, so a JS failure can't leave the page permanently covered.
 
 ---
 

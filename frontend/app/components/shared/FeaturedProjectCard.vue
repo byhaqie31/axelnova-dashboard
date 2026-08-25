@@ -4,18 +4,30 @@ import LikeButton from '~/components/shared/LikeButton.vue'
 
 const props = defineProps<{ project: Project }>()
 
-// --- Live preview ----------------------------------------------------------
-// WordPress mShots turns a live URL into a screenshot with no API key and no
-// watermark. It generates asynchronously: the first hit returns a small
-// "generating preview" placeholder, then serves the real capture once ready.
-// We detect the placeholder by its width and retry a few times; on persistent
-// failure (or no URL) we fall back to a gradient tile.
+// --- Preview ---------------------------------------------------------------
+// Three sources, in priority order:
+//
+//   1. `coverImage` — a self-hosted capture (`/previews/<slug>.webp`, set via
+//      the project's Cover image field). Renders during SSR, so the card is
+//      filled on first paint. This is what every featured project should use.
+//   2. mShots — WordPress's keyless screenshot service. It generates
+//      asynchronously: the first hit returns a small "generating preview"
+//      placeholder, then the real capture once ready. We detect the
+//      placeholder by its width and retry a few times. That leaves the card
+//      blank for seconds and permanently blank when the service never warms
+//      up, which is why it is only a fallback for projects with no capture.
+//   3. a gradient tile, when there is no URL either.
 const SHOT_W = 1280
 const SHOT_H = 800
 const MAX_RETRIES = 4
 
+// A cover that 404s (stale path) drops through to the mShots path rather than
+// leaving a broken image in the frame.
+const coverFailed = ref(false)
+const cover = computed(() => (coverFailed.value ? null : props.project.coverImage ?? null))
+
 const shotBase = computed(() =>
-  props.project.url
+  !cover.value && props.project.url
     ? `https://s.wp.com/mshots/v1/${encodeURIComponent(props.project.url)}?w=${SHOT_W}&h=${SHOT_H}`
     : null,
 )
@@ -110,8 +122,19 @@ const statusMeta = (status: Project['status']) => {
 
       <!-- viewport -->
       <div class="relative aspect-3/2 overflow-hidden" style="background: var(--color-bg-secondary);">
-        <!-- skeleton while the shot loads -->
-        <span v-if="!loaded && !failed" aria-hidden class="fshimmer absolute inset-0" />
+        <!-- self-hosted capture: no shimmer, no retry — it is in the SSR HTML -->
+        <img
+          v-if="cover"
+          :src="cover"
+          :alt="`Preview of ${project.name}`"
+          loading="lazy"
+          decoding="async"
+          class="fshot absolute inset-0 size-full object-cover object-top"
+          @error="coverFailed = true"
+        >
+
+        <!-- skeleton while the mShots capture generates -->
+        <span v-if="!cover && !loaded && !failed" aria-hidden class="fshimmer absolute inset-0" />
 
         <img
           v-if="shotSrc && !failed"
@@ -126,9 +149,9 @@ const statusMeta = (status: Project['status']) => {
           @error="onShotError"
         >
 
-        <!-- fallback: no URL or screenshot failed -->
+        <!-- fallback: no cover, and no URL or the screenshot failed -->
         <div
-          v-if="!shotSrc || failed"
+          v-if="!cover && (!shotSrc || failed)"
           class="absolute inset-0 flex items-center justify-center"
           style="background: radial-gradient(120% 120% at 0% 0%, var(--color-accent-soft) 0%, transparent 60%), var(--color-bg-secondary);"
         >
