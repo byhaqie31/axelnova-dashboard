@@ -262,7 +262,7 @@ pages/
 When Nuxt fixes the `(group)` route-group syntax in a future release, this hook can be removed in favor of `pages/(public)/...`. Probe it on each Nuxt upgrade with a test page; until then, the hook stays.
 
 ### `BrandMark`
-- Variants: `default` (icon + wordmark), `compact` (smaller, used in admin topbar), `mark-only` (icon only), `stacked` (oversized 64/80px mark **above** the wordmark — the branding-moment pose, used by `HeroLoader`)
+- Variants: `default` (icon + wordmark), `compact` (smaller, used in admin topbar), `mark-only` (icon only), `stacked` (oversized mark **above** the wordmark — the branding-moment pose, used by `HeroLoader`; 64 / 80 / **120px** at base / `sm` / `md`, wordmark 17 / 19 / 28px)
 - Wraps the canonical `.brand-logo-glow` drop-shadow — never reimplement the gradient/glow inline
 - Used in `public.vue` header AND footer, `admin.vue` topbar, `portal.vue` header
 
@@ -302,6 +302,9 @@ A cover that 404s falls through to step 2 rather than leaving a broken image in 
 - **`ReferenceCode`** — monospace document-code display (e.g. `AXNQ-2026-0012`) with click-to-copy via `useClipboard`. Renders any string; falls back to plain span when `copyable={false}`.
 - **`DateRange`** — Intl `en-MY` formatted dates. Formats: `short`, `long`, `relative`. Accepts optional `prefix` ("Valid until", "Issued").
 - **`FeedbackScale`** (`components/shared/FeedbackScale.vue`) — the dot/pill rating scale shared by the public `/feedback/{token}` form and the admin review pages. Props: `modelValue`, `max` (5 ratings / 10 NPS), `min` (NPS passes 0), `readonly`, optional `labels` end-captions. Selected pill fills `--color-accent`, the run-up below fills `--color-accent-soft`; clicking the selected pill clears an optional score. No native inputs.
+
+### `.icon-gradient`
+Fills an icon glyph with `--grad-text-accent`, so an icon paired with `.text-gradient` text reads as one lockup (the hero pill's "Axel Nova" chevron). Do **not** reach for `.text-gradient` on an icon — it clips a gradient to *text*, and an icon has none, so it renders as nothing. `UIcon` draws the glyph as a mask over `background-color: currentColor`, which is why replacing the background paints the glyph itself.
 
 ### Filter pills
 - 28px tall, 16px horizontal padding, hairline border.

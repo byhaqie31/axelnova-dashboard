@@ -91,10 +91,52 @@ const dockBottomPx = () => (window.innerWidth >= 640 ? 40 : 24)
 
 // Scroll cue / "Axel Nova" button on the collapsed pill: ride through the
 // whole zoom-out in one smooth move.
+// Dwell: the first time the page reaches the composed view — the settled card
+// with the marquee tucked under it — hold scroll for a beat so the full designed
+// layout registers before the visitor moves on.
+//
+// ONCE per page load, and never longer than DWELL_MS. A scroll lock that can
+// re-fire reads as a broken page rather than a pause, so it self-kills.
+const DWELL_MS = 3000
+let dwellTimer: number | undefined
+let dwellSt: import('gsap/ScrollTrigger').ScrollTrigger | null = null
+let dwellDone = false
+// True while `scrollPastIntro` is animating. The dwell must not grab scroll
+// mid-flight: lenis.stop() aborts an in-progress scrollTo, which would strand
+// the page short of its target. That path starts the dwell from onComplete.
+let programmaticScroll = false
+// Read by the safety timer, which otherwise releases scroll under the dwell.
+let dwelling = false
+
+const startDwell = () => {
+  if (dwellDone || !motion.lenis) return
+  dwellDone = true
+  dwellSt?.kill()
+  dwelling = true
+  motion.lenis.stop()
+  dwellTimer = window.setTimeout(() => {
+    dwelling = false
+    motion.lenis?.start()
+  }, DWELL_MS)
+}
+
 const scrollPastIntro = () => {
-  const end = zoomTl?.scrollTrigger?.end ?? window.innerHeight
-  if (motion.lenis) motion.lenis.scrollTo(end, { duration: 1.4 })
-  else window.scrollTo({ top: end, behavior: 'smooth' })
+  // The pin's end IS the composed view — past it the hero is in natural flow
+  // with the marquee under it.
+  const target = zoomTl?.scrollTrigger?.end ?? window.innerHeight
+  if (motion.lenis) {
+    programmaticScroll = true
+    motion.lenis.scrollTo(target, {
+      duration: 1.4,
+      onComplete: () => {
+        programmaticScroll = false
+        startDwell()
+      },
+    })
+  }
+  else {
+    window.scrollTo({ top: target, behavior: 'smooth' })
+  }
 }
 let safetyTimer: number | undefined
 let fontGate: number | undefined
@@ -166,6 +208,11 @@ onMounted(() => {
       scrollTrigger: {
         trigger: heroShell.value,
         start: 'top top',
+        // One viewport, deliberately. A longer pin CANNOT hold the composed
+        // page view: while pinned, the spacer occupies the layout below the
+        // fixed hero, so the marquee and stats sit hundreds of px off-screen
+        // and the "hold" is a card floating over white space. The dwell on the
+        // composed view is a timed hold AFTER the pin releases — see startDwell.
         end: '+=100%',
         pin: true,
         scrub: 0.6,
@@ -246,6 +293,19 @@ onMounted(() => {
     // here because the scrub's inline styles are applied whenever a refresh
     // runs, so the pill would be measured in the wrong state.
     const ScrollTriggerRef = motion.ScrollTrigger
+
+    // Scrolling in under your own steam reaches the composed view at the pin's
+    // end — hold there once. Skipped while `scrollPastIntro` is mid-animation;
+    // that path fires the dwell from its onComplete instead.
+    dwellSt = ScrollTriggerRef.create({
+      start: () => (zoomTl?.scrollTrigger?.end ?? window.innerHeight),
+      end: () => ScrollTriggerRef.maxScroll(window),
+      onEnter: () => {
+        if (programmaticScroll) return
+        startDwell()
+      },
+    })
+
     dockSt = ScrollTriggerRef.create({
       start: () => {
         const pinEnd = zoomTl?.scrollTrigger?.end ?? window.innerHeight
@@ -341,7 +401,9 @@ onMounted(() => {
   // so nothing is stranded hidden (or scroll-locked). If the gate never fired,
   // reveal flat. Loader path gets a longer window (cap + fade + entrance).
   safetyTimer = window.setTimeout(() => {
-    motion.lenis?.start()
+    // Don't release scroll out from under an active dwell — that lock owns
+    // lenis until its own timer fires.
+    if (!dwelling) motion.lenis?.start()
     if (!heroTl) {
       gsap.set(els, { clearProps: 'opacity' })
       return
@@ -370,6 +432,10 @@ onUnmounted(() => {
   clearTimeout(fontGate)
   clearTimeout(loaderCap)
   clearTimeout(loaderMin)
+  // Leaving mid-dwell must never strand the next page with scroll locked.
+  clearTimeout(dwellTimer)
+  dwelling = false
+  dwellSt?.kill()
   heroImmersive.value = false // never leave the layout header hidden
   motion.lenis?.start()
   dockSt?.kill()
@@ -500,7 +566,7 @@ onUnmounted(() => {
           >
             <img src="/favicon/apple-touch-icon.png" alt="" aria-hidden="true" class="size-6 object-contain">
             <span class="text-gradient text-[14px] font-semibold tracking-tight whitespace-nowrap">Axel Nova</span>
-            <UIcon name="i-lucide-chevron-down" class="hero-pill-cue size-4" style="color: var(--color-text-secondary);" />
+            <UIcon name="i-lucide-chevron-down" class="hero-pill-cue icon-gradient size-4" />
           </button>
 
           <!-- Expanded layer: the header nav, brand → links → CTA -->
@@ -685,7 +751,10 @@ onUnmounted(() => {
 .epoch-headline {
   font-weight: 500;
   letter-spacing: -0.025em;
-  line-height: 1.05;
+  /* 1.05 was too tight for a two-line display setting: the descenders in
+     "design." ran into the caps of "Built", and the intro pose magnifies that
+     up to 3x. Still tight enough to read as display type. */
+  line-height: 1.15;
 }
 
 .epoch-nav-link {

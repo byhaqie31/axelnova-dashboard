@@ -66,7 +66,7 @@ onUnmounted(() => {
   <div
     v-if="visible"
     ref="rootEl"
-    class="hero-loader fixed inset-0 z-[90] overflow-hidden flex flex-col items-center justify-center gap-7"
+    class="hero-loader fixed inset-0 z-[90] overflow-hidden flex flex-col items-center justify-center gap-7 md:gap-9"
     style="background: var(--color-bg);"
     aria-hidden="true"
   >
@@ -76,7 +76,8 @@ onUnmounted(() => {
     <span class="loader-grid" />
 
     <BrandMark variant="stacked" class="pointer-events-none" />
-    <div class="h-0.5 w-40 overflow-hidden rounded-full" style="background: var(--color-border);">
+    <!-- Bar tracks the mark's desktop step so the lockup stays proportional. -->
+    <div class="h-0.5 w-40 md:w-60 overflow-hidden rounded-full" style="background: var(--color-border);">
       <div ref="barEl" class="h-full rounded-full" style="width: 0%; background: var(--grad-iridescent);" />
     </div>
     <span class="eyebrow loader-label" style="color: var(--color-text-secondary);">Loading</span>

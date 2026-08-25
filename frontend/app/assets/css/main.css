@@ -379,6 +379,15 @@ h1 { letter-spacing: -0.045em; }
   background-clip: text;
   color: transparent;
 }
+/* Fill an icon glyph with the wordmark gradient, so an icon paired with
+   `.text-gradient` text reads as one lockup. `.text-gradient` itself does
+   nothing here — it clips a gradient to TEXT, and an icon has none. UIcon draws
+   the glyph as a mask over `background-color: currentColor`, so replacing the
+   background paints the glyph itself. Theme-aware via the token. */
+.icon-gradient {
+  background: var(--grad-text-accent);
+}
+
 .text-gradient-mono {
   background: var(--grad-text-premium);
   -webkit-background-clip: text;

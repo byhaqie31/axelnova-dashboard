@@ -17,19 +17,19 @@ const props = withDefaults(defineProps<{
 const iconSize = computed(() => {
   switch (props.variant) {
     case 'compact': return 'size-6'
-    case 'stacked': return 'size-16 sm:size-20'
+    case 'stacked': return 'size-16 sm:size-20 md:size-30'
     default: return 'size-7.5'
   }
 })
 const wordmarkSize = computed(() => {
   switch (props.variant) {
     case 'compact': return 'text-[13px]'
-    case 'stacked': return 'text-[17px] sm:text-[19px]'
+    case 'stacked': return 'text-[17px] sm:text-[19px] md:text-[28px]'
     default: return 'text-[15px]'
   }
 })
 const layout = computed(() =>
-  props.variant === 'stacked' ? 'flex-col items-center gap-3.5' : 'items-center gap-2',
+  props.variant === 'stacked' ? 'flex-col items-center gap-3.5 md:gap-5' : 'items-center gap-2',
 )
 </script>
 
