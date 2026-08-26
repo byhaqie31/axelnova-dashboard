@@ -19,13 +19,19 @@ class AnalyticsController extends Controller
 {
     /**
      * Traffic overview for the admin analytics page. Page-view metrics over a
-     * 7- or 30-day window: total + unique visitors, a per-day series for the
+     * 7-, 30- or 90-day window: total + unique visitors, a per-day series for the
      * chart, and top paths / referrers. (Likes, service interest and the quote
      * funnel are added in later slices.)
      */
     public function overview(Request $request): JsonResponse
     {
-        $range = $request->query('range') === '30d' ? 30 : 7;
+        // Whitelist, so an unknown value falls back to 7 rather than letting a
+        // caller pick an arbitrary window size.
+        $range = match ($request->query('range')) {
+            '90d' => 90,
+            '30d' => 30,
+            default => 7,
+        };
         $since = now()->subDays($range - 1)->startOfDay();
 
         $base = fn () => PageView::where('viewed_at', '>=', $since);

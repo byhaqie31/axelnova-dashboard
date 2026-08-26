@@ -11,7 +11,16 @@ interface Overview {
   topLikedProjects: { id: number; name: string; likes: number }[]
 }
 
-const range = ref<'7d' | '30d'>('7d')
+// Keys must match the whitelist in AnalyticsController::overview — an unknown
+// value there silently falls back to 7 days rather than erroring.
+const RANGES = [
+  { key: '7d', label: 'Last 7 days' },
+  { key: '30d', label: 'Last 30 days' },
+  { key: '90d', label: 'Last 90 days' },
+] as const
+type RangeKey = typeof RANGES[number]['key']
+
+const range = ref<RangeKey>('7d')
 const data = ref<Overview | null>(null)
 const loading = ref(true)
 const error = ref('')
@@ -36,15 +45,103 @@ watch(range, load)
 const maxCount = computed(() => Math.max(1, ...(data.value?.views.series.map(s => s.count) ?? [0])))
 const hasViews = computed(() => (data.value?.views.total ?? 0) > 0)
 
-function barHeight(c: number) {
-  return `${c > 0 ? Math.max(6, (c / maxCount.value) * 100) : 2}%`
+// Bars are scaled, not resized: at 90 days that is 90 elements animating at
+// once on every range change, and transform stays off the layout path.
+function barScale(c: number) {
+  return c > 0 ? Math.max(0.06, c / maxCount.value) : 0.02
 }
+// 90 days will not fit at the 7-day spacing on a phone; tighten it up.
+const dense = computed(() => (data.value?.views.series.length ?? 0) > 45)
 function fmtDay(d: string) {
   return new Date(d).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
 }
 function hostOf(ref: string) {
   try { return new URL(ref).hostname.replace(/^www\./, '') }
   catch { return ref }
+}
+
+// --- Bar readout -----------------------------------------------------------
+// The old `title` attribute is a hover-only native tooltip, so on a phone the
+// chart's daily numbers were unreachable. Tap toggles a card on the bar; mouse
+// still gets it on hover. Guarded by pointerType so a tap doesn't also fire the
+// synthetic mouse events and immediately re-open what the tap just closed.
+const activeBar = ref<number | null>(null)
+
+function onBarEnter(i: number, e: PointerEvent) {
+  if (e.pointerType === 'mouse') activeBar.value = i
+}
+function onBarLeave(e: PointerEvent) {
+  if (e.pointerType === 'mouse') activeBar.value = null
+}
+function onBarClick(i: number) {
+  activeBar.value = activeBar.value === i ? null : i
+}
+// Centre of the active bar as a percentage, clamped so the card never hangs off
+// either edge of the chart.
+function readoutLeft(i: number) {
+  const n = data.value?.views.series.length ?? 1
+  return `clamp(64px, ${((i + 0.5) / n) * 100}%, calc(100% - 64px))`
+}
+const activePoint = computed(() =>
+  activeBar.value === null ? null : data.value?.views.series[activeBar.value] ?? null,
+)
+// Any range change re-renders the chart — a stale index would point at the
+// wrong day.
+watch(() => data.value, () => { activeBar.value = null })
+
+// --- Top referrers ---------------------------------------------------------
+// The API groups by full referrer URL, so one site shows up several times
+// (different paths on the same host). Fold them onto the host and sum.
+const mergedReferrers = computed(() => {
+  const totals = new Map<string, number>()
+  for (const r of data.value?.topReferrers ?? []) {
+    const host = hostOf(r.referrer)
+    totals.set(host, (totals.get(host) ?? 0) + r.count)
+  }
+  return [...totals.entries()]
+    .map(([host, count]) => ({ host, count }))
+    .sort((a, b) => b.count - a.count)
+})
+
+// --- Top pages -------------------------------------------------------------
+// Raw paths are hard to scan. Most routes title-case cleanly from their slug;
+// only the ones whose slug does not say what the page is need an override.
+const PAGE_LABELS: Record<string, string> = {
+  '/': 'Main page',
+  '/quote': 'Quote builder',
+  '/partners/refer': 'Refer a project',
+}
+
+// Routes whose child segment is an opaque identifier, never a page name. The
+// feedback one matters: that segment is the one-time access token from the
+// client's email, so title-casing it would print a live token in the admin UI.
+const PREFIX_LABELS: [string, string][] = [
+  ['/feedback/', 'Feedback form'],
+]
+
+function titleCase(s: string) {
+  return s.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// Catch-all for ids we haven't named: long and separator-less is an identifier,
+// not a slug. Real page slugs are hyphenated ("trip-money", "privacy-policy").
+function looksOpaque(s: string) {
+  return s.length > 20 && !s.includes('-')
+}
+
+function pageLabel(path: string) {
+  const clean = path.replace(/\/+$/, '') || '/'
+  if (PAGE_LABELS[clean]) return PAGE_LABELS[clean]
+  for (const [prefix, label] of PREFIX_LABELS) {
+    if (clean.startsWith(prefix)) return label
+  }
+  const segs = clean.split('/').filter(Boolean)
+  if (!segs.length) return 'Main page'
+  const section = titleCase(segs[0]!)
+  const tail = segs[segs.length - 1]!
+  if (segs.length > 1 && looksOpaque(tail)) return section
+  // Detail pages read better with their section: "Trip Money · Project".
+  return segs.length > 1 ? `${titleCase(tail)} · ${section.replace(/s$/, '')}` : titleCase(tail)
 }
 
 // Not-yet-built metrics (later Phase B slices).
@@ -61,17 +158,20 @@ const planned = [
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Analytics</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Traffic, engagement, and conversion signals.</p>
       </div>
-      <div class="flex gap-1.5">
+      <div class="flex gap-1.5 flex-wrap">
         <button
-type="button" class="standard-pill" :style="range === '7d'
-          ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-          : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
-          @click="range = '7d'">Last 7 days</button>
-        <button
-type="button" class="standard-pill" :style="range === '30d'
-          ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
-          : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
-          @click="range = '30d'">Last 30 days</button>
+          v-for="r in RANGES"
+          :key="r.key"
+          type="button"
+          class="standard-pill"
+          :style="range === r.key
+            ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+            : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
+          :aria-pressed="range === r.key"
+          @click="range = r.key"
+        >
+          {{ r.label }}
+        </button>
       </div>
     </div>
 
@@ -103,14 +203,61 @@ type="button" class="standard-pill" :style="range === '30d'
         <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">Visits to the public site will appear here.</p>
       </div>
       <div v-else>
-        <div class="flex items-end gap-1 h-44">
-          <div
-            v-for="pt in data?.views.series"
-            :key="pt.date"
-            class="flex-1 rounded-t-[3px] transition-[height] duration-300"
-            :style="{ height: barHeight(pt.count), background: pt.count > 0 ? 'var(--color-accent)' : 'var(--color-border)', minWidth: '3px' }"
-            :title="`${fmtDay(pt.date)}: ${pt.count} view${pt.count === 1 ? '' : 's'}`"
-          />
+        <!-- pt-14 reserves a band for the readout card so it never overlaps the
+             totals above, and the bars keep their original h-44 scale. -->
+        <div class="relative pt-14">
+          <!-- Readout card. Anchored to the active bar and clamped to the chart
+               so it stays on screen at either edge. -->
+          <Transition name="readout-fade">
+            <div
+              v-if="activePoint"
+              class="readout-card absolute top-0 z-10 -translate-x-1/2 rounded-xl border px-3 py-2 pointer-events-none whitespace-nowrap"
+              :style="{
+                left: readoutLeft(activeBar!),
+                borderColor: 'var(--color-border)',
+                background: 'var(--color-bg-elevated)',
+                boxShadow: 'var(--shadow-lg)',
+              }"
+              role="status"
+            >
+              <p class="text-[10px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">
+                {{ fmtDay(activePoint.date) }}
+              </p>
+              <p class="text-[17px] font-bold tabular-nums leading-tight" style="color: var(--color-text);">
+                {{ activePoint.count.toLocaleString() }}
+                <span class="text-[11px] font-medium" style="color: var(--color-text-secondary);">
+                  view{{ activePoint.count === 1 ? '' : 's' }}
+                </span>
+              </p>
+            </div>
+          </Transition>
+
+          <!-- Each button is the full column height, not just the drawn bar, so
+               a near-zero day (2% tall) and a 3px-wide 90-day bar are both
+               still tappable. -->
+          <div class="flex items-stretch h-44" :class="dense ? 'gap-px' : 'gap-1'">
+            <button
+              v-for="(pt, i) in data?.views.series"
+              :key="pt.date"
+              type="button"
+              class="analytics-bar flex-1 h-full flex items-end"
+              :style="{ minWidth: dense ? '2px' : '3px' }"
+              :aria-label="`${fmtDay(pt.date)}: ${pt.count} view${pt.count === 1 ? '' : 's'}`"
+              :aria-pressed="activeBar === i"
+              @pointerenter="onBarEnter(i, $event)"
+              @pointerleave="onBarLeave($event)"
+              @click="onBarClick(i)"
+            >
+              <span
+                class="analytics-bar-fill block w-full h-full rounded-t-[3px]"
+                :style="{
+                  transform: `scaleY(${barScale(pt.count)})`,
+                  background: pt.count > 0 ? 'var(--color-accent)' : 'var(--color-border)',
+                  opacity: activeBar !== null && activeBar !== i ? 0.45 : 1,
+                }"
+              />
+            </button>
+          </div>
         </div>
         <div class="flex justify-between mt-2 text-[10px] font-medium uppercase tracking-wide" style="color: var(--color-text-tertiary);">
           <span>{{ fmtDay(data!.views.series[0]!.date) }}</span>
@@ -126,7 +273,7 @@ type="button" class="standard-pill" :style="range === '30d'
         <div v-if="!data?.topPaths.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No data.</div>
         <ul v-else class="space-y-2.5">
           <li v-for="p in data.topPaths" :key="p.path" class="flex items-center justify-between gap-3">
-            <span class="font-mono text-[12px] truncate" style="color: var(--color-text);">{{ p.path }}</span>
+            <span class="text-[13px] truncate" style="color: var(--color-text);">{{ pageLabel(p.path) }}</span>
             <span class="text-[12px] font-semibold tabular-nums shrink-0" style="color: var(--color-text-secondary);">{{ p.count.toLocaleString() }}</span>
           </li>
         </ul>
@@ -134,10 +281,10 @@ type="button" class="standard-pill" :style="range === '30d'
 
       <section class="rounded-2xl border p-6" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Top referrers</p>
-        <div v-if="!data?.topReferrers.length" class="text-[13px]" style="color: var(--color-text-tertiary);">Mostly direct — no referrers recorded.</div>
+        <div v-if="!mergedReferrers.length" class="text-[13px]" style="color: var(--color-text-tertiary);">Mostly direct — no referrers recorded.</div>
         <ul v-else class="space-y-2.5">
-          <li v-for="r in data.topReferrers" :key="r.referrer" class="flex items-center justify-between gap-3">
-            <span class="text-[12px] truncate" style="color: var(--color-text);">{{ hostOf(r.referrer) }}</span>
+          <li v-for="r in mergedReferrers" :key="r.host" class="flex items-center justify-between gap-3">
+            <span class="text-[12px] truncate" style="color: var(--color-text);">{{ r.host }}</span>
             <span class="text-[12px] font-semibold tabular-nums shrink-0" style="color: var(--color-text-secondary);">{{ r.count.toLocaleString() }}</span>
           </li>
         </ul>
@@ -185,3 +332,45 @@ type="button" class="standard-pill" :style="range === '30d'
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Bars are buttons now — give them a real touch target and a hover cue without
+   changing the chart's geometry. */
+.analytics-bar {
+  cursor: pointer;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+}
+.analytics-bar:hover .analytics-bar-fill {
+  filter: brightness(1.08);
+}
+
+/* scaleY from the bottom, so a range change animates 90 bars on the compositor
+   instead of triggering 90 layout passes. */
+.analytics-bar-fill {
+  transform-origin: bottom;
+  transition: transform 0.3s, opacity 0.2s, filter 0.2s;
+}
+.analytics-bar:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.readout-fade-enter-active,
+.readout-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.readout-fade-enter-from,
+.readout-fade-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .readout-fade-enter-active,
+  .readout-fade-leave-active { transition: none; }
+  .analytics-bar-fill { transition: none; }
+}
+</style>
