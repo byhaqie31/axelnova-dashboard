@@ -1,6 +1,6 @@
 # Deploy & Ops — axelnova-dashboard
 
-Production runs at **https://axelnovaventures.com**. Stack lives on a Hostinger VPS (`vps` SSH alias) — backend, frontend, and queue worker in Docker via [docker-compose.prod.yml](./docker-compose.prod.yml); fronted by system **nginx** which terminates TLS and routes traffic.
+Production runs at **https://axelnovaventures.com**. Stack lives on a Hostinger VPS (`vps` SSH alias) — backend, frontend, and queue worker in Docker via [docker-compose.prod.yml](./docker-compose.prod.yml). Public traffic arrives over a **Cloudflare Tunnel** (`cloudflared`) which hands off to system **nginx** on loopback; nginx still terminates TLS and routes to the containers. See [Edge & tunnel](#edge--tunnel) — the tunnel is not optional, the direct origin path is broken.
 
 ## Daily flow
 
@@ -34,12 +34,54 @@ Total: ~30s when only source changes; ~2 min for a full rebuild (PHP extension r
 
 | Component | Where | Purpose |
 |---|---|---|
-| nginx (system) | `/etc/nginx/sites-available/axelnovaventures.com` | TLS terminator + reverse proxy. Routes `/api/*` → `127.0.0.1:8003`, everything else → `127.0.0.1:3003` |
+| Cloudflare Tunnel | `cloudflared` systemd service, config `/etc/cloudflared/config.yml` | **Public entry point.** Dials out to Cloudflare and holds 4 QUIC connections; every hostname maps to `https://127.0.0.1:443` (`noTLSVerify`, loopback hop). Tunnel `axelnova`, id `db431d01-ce3e-4155-b929-46ea2e3bac73` |
+| nginx (system) | `/etc/nginx/sites-available/axelnovaventures.com` | TLS terminator + reverse proxy, now reached from loopback by `cloudflared`. Routes `/api/*` → `127.0.0.1:8003`, everything else → `127.0.0.1:3003` |
 | Frontend (Nuxt 4 SSR) | `axelnova-frontend` container | Built from [frontend/Dockerfile](./frontend/Dockerfile), port 3000 → host 3003 |
 | Backend (Laravel 11) | `axelnova-backend` container | nginx + php-fpm via supervisord, built from [backend/Dockerfile](./backend/Dockerfile), port 8003 |
 | Queue worker | `axelnova-queue` container | Same image as backend; runs `php artisan queue:work`. Healthcheck disabled (no HTTP server) |
 | MySQL | `axelnova-mysql` (shared infra at `~/infra/`) | Shared with portfolio-v2; reachable as `mysql:3306` from app containers via `axelnova-shared` Docker network |
-| TLS cert | `/etc/letsencrypt/live/axelnovaventures.com/` | Let's Encrypt, auto-renewed via certbot timer |
+| TLS cert | `/etc/letsencrypt/live/axelnovaventures.com/` | Let's Encrypt, auto-renewed via certbot timer. Covers apex + `admin` only — **not `www`**, which is why `www` rides the apex vhost through the tunnel's `httpHostHeader`. ⚠️ Renewal is unverified since the tunnel cutover — run `sudo certbot renew --dry-run` before 2026-10-07 |
+
+## Edge & tunnel
+
+**Why this exists.** On 2026-08-26 the site was ~65% unreachable for cold visitors (6–23s TTFB or outright timeouts). `tcpdump` on the VPS showed Cloudflare's SYN arriving, the origin answering SYN-ACK in 0.1 ms, and Cloudflare never receiving it — **outbound packets from this VPS to Cloudflare's IP ranges are dropped by Hostinger's network.** Kernel counters at the time: `TCPSynRetrans` 4.82M, `TCPTimeouts` 5.80M. The apps, host, nginx and DNS were all verified healthy; origin served in 40 ms locally and 140 ms when reached directly.
+
+A Cloudflare Tunnel fixes it by inverting the direction: the VPS dials **out** and holds the connection, so there are no inbound handshakes left to drop. Measured immediately after cutover: **0.17–0.26s, 0% failure**, versus 1.5–6s with a third timing out.
+
+```
+Visitor → Cloudflare edge → [tunnel, outbound] → cloudflared → nginx :443 → containers
+```
+
+DNS for `axelnovaventures.com`, `www`, and `admin` are CNAMEs to the tunnel — there is no longer an `A` record pointing at the origin IP.
+
+```bash
+sudo systemctl status cloudflared        # should be active (running)
+cloudflared tunnel info axelnova         # expect 4 connections (kul/sin POPs)
+sudo journalctl -u cloudflared -n 50     # connection churn / errors
+sudo systemctl restart cloudflared
+```
+
+**⚠️ Real client IP.** `cloudflared` connects to nginx from `127.0.0.1`, so loopback **must** be trusted or every visitor logs as `127.0.0.1` — which silently collapses Laravel's per-IP throttles into one global bucket (the quote form's 8/hour/IP would become 8/hour for the whole site). `/etc/nginx/conf.d/cloudflare-realip.conf` therefore carries, alongside the Cloudflare ranges:
+
+```nginx
+set_real_ip_from 127.0.0.1;
+set_real_ip_from ::1;
+real_ip_header CF-Connecting-IP;
+```
+
+Verify after any nginx or tunnel change by hitting the site and confirming `/var/log/nginx/access.log` shows a real client IP, not `127.0.0.1`.
+
+**Rollback.** Delete the CNAMEs in the Cloudflare dashboard and re-add `A @ 187.77.151.66 Proxied` (plus `A admin`). Nothing on the VPS needs changing — nginx, Docker and the certs were never touched by the cutover. Expect the original packet loss to return.
+
+**Still open.** The Hostinger network fault is *routed around*, not fixed — a support ticket with the tcpdump evidence is warranted. Other sites on the same box (roofly, hop, portfolio, axelnova.tech) remain on the broken path and can be added as extra `ingress` entries on the same tunnel.
+
+## Page caching
+
+Public marketing routes carry `swr` route rules in [frontend/nuxt.config.ts](./frontend/nuxt.config.ts): `/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}` at 300s, `/legal/**` at 3600s. This matters most for the homepage, which `await`s the projects API during SSR — without it every cold visitor waits on the backend before seeing anything.
+
+The emitted `Cache-Control: s-maxage=…, stale-while-revalidate` also lets Cloudflare cache the HTML at the edge, so cold arrivals are served from a nearby POP without touching the origin.
+
+**Authenticated and per-recipient routes are deliberately excluded and must stay that way** — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**`. Caching any of them would serve one visitor's page to another. Verify with `curl -I` that those return no `s-maxage`.
 
 ## Common ops
 
@@ -142,7 +184,7 @@ docker exec axelnova-mysql mysqldump -uaxelnova_dashboard_user -p"$DB_PW" axelno
 
 ## Things to know
 
-- `TrustProxies` is wired so Laravel respects `X-Forwarded-*` headers from nginx — correct client IP for per-IP rate limiting and HTTPS-aware redirect URLs
+- `TrustProxies` is wired so Laravel respects `X-Forwarded-*` headers from nginx — correct client IP for per-IP rate limiting and HTTPS-aware redirect URLs. This depends on nginx resolving the real IP first; see the real-client-IP warning under [Edge & tunnel](#edge--tunnel)
 - Public-form throttles are env-aware: in production quotes/referrals 8/hour/IP, inquiries 20/hour/IP (spam protection); 1000/min in non-production (dev/staging testing)
 - Sanctum stateful middleware only runs on admin routes; public endpoints are pure stateless POSTs
 - Branch protection on `main` means no direct pushes — every change goes through a PR

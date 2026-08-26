@@ -233,6 +233,9 @@ GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer �
 
 ## Frontend routes
 
+Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
+
+
 ```
 /                     Portfolio home
 /projects             Project listing
