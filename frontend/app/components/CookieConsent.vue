@@ -1,15 +1,39 @@
 <script setup lang="ts">
-// Lightweight consent banner. Shown until the visitor decides; the choice is
+// Lightweight consent banner. Shown to referred visitors until they decide
+// (see `show` below for why it is not shown to everyone); the choice is
 // recorded in the axn_consent cookie (see useCookieConsent). We set no non-essential
 // cookie before consent — the functional axn_ref attribution cookie is only written
 // after "Accept" (handled by the ref-capture plugin watching `granted`).
 const { decided, accept, decline } = useCookieConsent()
+
+// Only ask when there is actually something to ask about. The one
+// consent-gated cookie on this site is the functional `axn_ref` attribution
+// cookie, and it is only ever written for a visitor who arrived through a
+// partner link. Essential cookies (including the `axn_consent` record of this
+// very choice) need no consent, so a visitor who never touches a referral link
+// has no non-essential cookie to decide about and is never prompted.
+//
+// Two sources, deliberately. `axn_pending_ref` is set by a CLIENT-ONLY plugin,
+// so it is always null during SSR — reading the query too keeps the server and
+// the first client render in agreement (otherwise `v-if` differs and hydration
+// mismatches). The state is what keeps the banner up after a client-side nav
+// away from the `?ref=` URL, where the code is still pending a decision.
+const route = useRoute()
+const pendingRef = useState<string | null>('axn_pending_ref', () => null)
+
+const hasReferral = computed(() => {
+  if (pendingRef.value) return true
+  const q = route.query.ref
+  return typeof q === 'string' && q.trim() !== ''
+})
+
+const show = computed(() => !decided.value && hasReferral.value)
 </script>
 
 <template>
   <Transition name="consent-fade">
     <div
-      v-if="!decided"
+      v-if="show"
       class="consent-banner"
       role="dialog"
       aria-live="polite"
