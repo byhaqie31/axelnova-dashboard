@@ -78,6 +78,29 @@ export default defineNuxtConfig({
     // Task 9: the single-page portal became a multi-page portal — keep old
     // bookmarks/emails pointing at /partners/portal working.
     '/partners/portal': { redirect: { to: '/partners/home', statusCode: 301 } },
+
+    // Public marketing pages render identically for every visitor, so a cold
+    // arrival (a Google click, which is ALWAYS cold) should never pay for the
+    // SSR round-trip. `swr` serves the cached HTML immediately and revalidates
+    // in the background. The homepage matters most: it `await`s the projects
+    // API during SSR, so without this every first-time visitor waits on the
+    // backend before seeing anything.
+    //
+    // Deliberately NOT listed — do not add them:
+    //   /admin, /portal, /team, /partners  — authenticated, HTML is per-user
+    //   /feedback/**, /proposals/**        — token/client-scoped, per-recipient
+    //   /quote/**                          — form + live pricing config
+    // Caching any of those would serve one visitor's page to another.
+    '/': { swr: 300 },
+    '/about': { swr: 300 },
+    '/company': { swr: 300 },
+    '/contact': { swr: 300 },
+    '/services': { swr: 300 },
+    '/services/**': { swr: 300 },
+    '/projects': { swr: 300 },
+    '/projects/**': { swr: 300 },
+    // Legal copy changes on the order of never.
+    '/legal/**': { swr: 3600 },
   },
 
   app: {
