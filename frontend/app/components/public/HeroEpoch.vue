@@ -11,6 +11,10 @@ const heroShell   = ref<HTMLElement | null>(null)
 const heroCard    = ref<HTMLElement | null>(null)
 const heroContent = ref<HTMLElement | null>(null)
 const videoEl     = ref<HTMLVideoElement | null>(null)
+// Desktop-only ambient video. MUST default false so the server never emits the
+// element — a <video> in the SSR HTML starts downloading before hydration could
+// remove it, which is the whole cost we are avoiding. Set in onMounted.
+const showVideo   = ref(false)
 const heroBadge   = ref<HTMLElement | null>(null)
 const heroHeadline = ref<HTMLElement | null>(null)
 const heroSub     = ref<HTMLElement | null>(null)
@@ -89,54 +93,17 @@ const DOCK_TOP_PX = 12
 const padTopPx = () => (window.innerWidth >= 768 ? 40 : 24)
 const dockBottomPx = () => (window.innerWidth >= 640 ? 40 : 24)
 
-// Scroll cue / "Axel Nova" button on the collapsed pill: ride through the
-// whole zoom-out in one smooth move.
-// Dwell: the first time the page reaches the composed view — the settled card
-// with the marquee tucked under it — hold scroll for a beat so the full designed
-// layout registers before the visitor moves on.
+// Scroll cue / "Axel Nova" button on the collapsed pill: ride through the whole
+// zoom-out in one smooth move, landing on the composed view (the pin's end —
+// past it the hero is in natural flow with the marquee tucked under it).
 //
-// ONCE per page load, and never longer than DWELL_MS. A scroll lock that can
-// re-fire reads as a broken page rather than a pause, so it self-kills.
-const DWELL_MS = 3000
-let dwellTimer: number | undefined
-let dwellSt: import('gsap/ScrollTrigger').ScrollTrigger | null = null
-let dwellDone = false
-// True while `scrollPastIntro` is animating. The dwell must not grab scroll
-// mid-flight: lenis.stop() aborts an in-progress scrollTo, which would strand
-// the page short of its target. That path starts the dwell from onComplete.
-let programmaticScroll = false
-// Read by the safety timer, which otherwise releases scroll under the dwell.
-let dwelling = false
-
-const startDwell = () => {
-  if (dwellDone || !motion.lenis) return
-  dwellDone = true
-  dwellSt?.kill()
-  dwelling = true
-  motion.lenis.stop()
-  dwellTimer = window.setTimeout(() => {
-    dwelling = false
-    motion.lenis?.start()
-  }, DWELL_MS)
-}
-
+// There is deliberately NO scroll hold on arrival. A timed `lenis.stop()` here
+// was tried and removed: freezing the page, even briefly, reads as a broken
+// site rather than a pause. Don't reintroduce one.
 const scrollPastIntro = () => {
-  // The pin's end IS the composed view — past it the hero is in natural flow
-  // with the marquee under it.
   const target = zoomTl?.scrollTrigger?.end ?? window.innerHeight
-  if (motion.lenis) {
-    programmaticScroll = true
-    motion.lenis.scrollTo(target, {
-      duration: 1.4,
-      onComplete: () => {
-        programmaticScroll = false
-        startDwell()
-      },
-    })
-  }
-  else {
-    window.scrollTo({ top: target, behavior: 'smooth' })
-  }
+  if (motion.lenis) motion.lenis.scrollTo(target, { duration: 1.4 })
+  else window.scrollTo({ top: target, behavior: 'smooth' })
 }
 let safetyTimer: number | undefined
 let fontGate: number | undefined
@@ -164,12 +131,16 @@ const heroImmersive = useState('hero-immersive', () => false)
 onMounted(() => {
   const { gsap, reduced } = motion
 
-  if (videoEl.value) {
-    // Vue can drop the `muted` prop on hydration, which breaks autoplay — force it.
-    videoEl.value.muted = true
-    // Background footage is ambient motion — pause it under reduced motion, like
-    // the aurora mesh and the marquee.
-    if (reduced) videoEl.value.pause()
+  // Mount the ambient video only where it earns its 2.6 MB: desktop, motion on.
+  // Phones get the 16 KiB poster still, which is the whole background there.
+  // Reduced motion never wants ambient footage, so it skips the download too.
+  showVideo.value = !reduced && window.matchMedia('(min-width: 768px)').matches
+  if (showVideo.value) {
+    // Wait for the v-if to render before touching the element.
+    nextTick(() => {
+      // Vue can drop the `muted` prop on hydration, which breaks autoplay — force it.
+      if (videoEl.value) videoEl.value.muted = true
+    })
   }
 
   // Entrance targets fade opacity ONLY — their transforms belong to the zoom
@@ -211,10 +182,17 @@ onMounted(() => {
         // One viewport, deliberately. A longer pin CANNOT hold the composed
         // page view: while pinned, the spacer occupies the layout below the
         // fixed hero, so the marquee and stats sit hundreds of px off-screen
-        // and the "hold" is a card floating over white space. The dwell on the
-        // composed view is a timed hold AFTER the pin releases — see startDwell.
+        // and the "hold" is a card floating over white space. The composed view
+        // only exists once the pin releases, so don't lengthen this to create a
+        // dwell — and don't add a timed scroll lock either (tried, removed: a
+        // frozen page reads as broken).
         end: '+=100%',
         pin: true,
+        // Prepare the pin one tick early. Without it the switch to fixed
+        // positioning lands in the same frame as the scroll that triggers it,
+        // which reads as a hitch — most visible on touch, where momentum
+        // scrolling gives the main thread less slack.
+        anticipatePin: 1,
         scrub: 0.6,
         invalidateOnRefresh: true,
       },
@@ -293,18 +271,6 @@ onMounted(() => {
     // here because the scrub's inline styles are applied whenever a refresh
     // runs, so the pill would be measured in the wrong state.
     const ScrollTriggerRef = motion.ScrollTrigger
-
-    // Scrolling in under your own steam reaches the composed view at the pin's
-    // end — hold there once. Skipped while `scrollPastIntro` is mid-animation;
-    // that path fires the dwell from its onComplete instead.
-    dwellSt = ScrollTriggerRef.create({
-      start: () => (zoomTl?.scrollTrigger?.end ?? window.innerHeight),
-      end: () => ScrollTriggerRef.maxScroll(window),
-      onEnter: () => {
-        if (programmaticScroll) return
-        startDwell()
-      },
-    })
 
     dockSt = ScrollTriggerRef.create({
       start: () => {
@@ -401,9 +367,7 @@ onMounted(() => {
   // so nothing is stranded hidden (or scroll-locked). If the gate never fired,
   // reveal flat. Loader path gets a longer window (cap + fade + entrance).
   safetyTimer = window.setTimeout(() => {
-    // Don't release scroll out from under an active dwell — that lock owns
-    // lenis until its own timer fires.
-    if (!dwelling) motion.lenis?.start()
+    motion.lenis?.start()
     if (!heroTl) {
       gsap.set(els, { clearProps: 'opacity' })
       return
@@ -432,10 +396,6 @@ onUnmounted(() => {
   clearTimeout(fontGate)
   clearTimeout(loaderCap)
   clearTimeout(loaderMin)
-  // Leaving mid-dwell must never strand the next page with scroll locked.
-  clearTimeout(dwellTimer)
-  dwelling = false
-  dwellSt?.kill()
   heroImmersive.value = false // never leave the layout header hidden
   motion.lenis?.start()
   dockSt?.kill()
@@ -464,16 +424,29 @@ onUnmounted(() => {
       class="hero-card relative w-full max-w-350 mx-auto rounded-[48px] overflow-hidden h-150 flex flex-col"
       :style="{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-lg)' }"
     >
-      <!-- Background video layer -->
+      <!-- Background media layer.
+           The poster is a still from the same footage (16 KiB) and always
+           renders — it is the mobile background outright, and on desktop it
+           paints instantly while the video streams in over it.
+           The <video> is mounted ONLY on desktop (see `showVideo`): the clip is
+           2.6 MB, 57% of the mobile payload, and rendering the element at all
+           is what triggers the download. Gate the element, not its `preload`. -->
       <div class="absolute inset-0 pointer-events-none z-0 overflow-hidden select-none" aria-hidden="true">
+        <img
+          src="/hero-poster.webp"
+          alt=""
+          fetchpriority="high"
+          class="absolute inset-0 w-full h-full object-cover scale-105"
+        >
         <video
+          v-if="showVideo"
           ref="videoEl"
-          class="w-full h-full object-cover scale-105 transition-transform duration-1000"
+          class="relative w-full h-full object-cover scale-105 transition-transform duration-1000"
           autoplay
           loop
           muted
           playsinline
-          preload="auto"
+          preload="metadata"
         >
           <!-- Placeholder source — self-host to R2 and swap before shipping. -->
           <source

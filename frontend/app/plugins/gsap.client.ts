@@ -6,6 +6,12 @@ import Lenis from 'lenis'
 export default defineNuxtPlugin((nuxtApp) => {
   gsap.registerPlugin(ScrollTrigger, SplitText)
 
+  // Mobile browsers resize the viewport as the URL bar hides/shows. Left alone,
+  // every one of those resizes refreshes ScrollTrigger mid-scroll, which
+  // re-measures the pinned hero and shows up as a stutter or a jump. Height-only
+  // resizes are exactly the case to ignore; real orientation changes still fire.
+  ScrollTrigger.config({ ignoreMobileResize: true })
+
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   let lenis: Lenis | null = null
 

@@ -10,7 +10,29 @@ import MockupPreviewModal from '~/components/public/MockupPreviewModal.vue'
 const { mockups, loading, load } = useMockupRegistry(Infinity)
 const previewing = ref<RegistryMockup | null>(null)
 
-onMounted(load)
+// The registry fetch cascades into ~10 third-party mShots screenshots — about
+// 1 MB, a third of the homepage's mobile payload. `loading="lazy"` on the cards
+// is not enough on its own: browsers prefetch lazy images aggressively, so they
+// still compete with the initial load. Don't fetch the registry at all until
+// the section is close to view.
+const rootEl = ref<HTMLElement | null>(null)
+let io: IntersectionObserver | null = null
+
+onMounted(() => {
+  if (!rootEl.value || typeof IntersectionObserver === 'undefined') {
+    load()
+    return
+  }
+  io = new IntersectionObserver((entries) => {
+    if (!entries.some(e => e.isIntersecting)) return
+    io?.disconnect()
+    io = null
+    load()
+  }, { rootMargin: '300px' })
+  io.observe(rootEl.value)
+})
+
+onUnmounted(() => io?.disconnect())
 
 const rowA = computed(() => mockups.value.filter((_, i) => i % 2 === 0))
 const rowB = computed(() => mockups.value.filter((_, i) => i % 2 === 1))
@@ -23,7 +45,7 @@ const paused = computed(() => heldA.value || heldB.value)
 </script>
 
 <template>
-  <div>
+  <div ref="rootEl">
     <!-- edge fades hint the rows continue off-canvas (modal Teleports out) -->
     <div class="mmask space-y-5">
       <!-- loading skeletons keep both rows' shape while the registry arrives -->
