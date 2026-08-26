@@ -40,7 +40,7 @@ Total: ~30s when only source changes; ~2 min for a full rebuild (PHP extension r
 | Backend (Laravel 11) | `axelnova-backend` container | nginx + php-fpm via supervisord, built from [backend/Dockerfile](./backend/Dockerfile), port 8003 |
 | Queue worker | `axelnova-queue` container | Same image as backend; runs `php artisan queue:work`. Healthcheck disabled (no HTTP server) |
 | MySQL | `axelnova-mysql` (shared infra at `~/infra/`) | Shared with portfolio-v2; reachable as `mysql:3306` from app containers via `axelnova-shared` Docker network |
-| TLS cert | `/etc/letsencrypt/live/axelnovaventures.com/` | Let's Encrypt, auto-renewed via certbot timer. Covers apex + `admin` only — **not `www`**, which is why `www` rides the apex vhost through the tunnel's `httpHostHeader`. ⚠️ Renewal is unverified since the tunnel cutover — run `sudo certbot renew --dry-run` before 2026-10-07 |
+| TLS cert | `/etc/letsencrypt/live/axelnovaventures.com/` | Let's Encrypt (ECDSA), auto-renewed via certbot timer. Covers `axelnovaventures.com`, `www.axelnovaventures.com`, `admin.axelnovaventures.com`; expires 2026-11-24. HTTP-01 renewal through the tunnel is verified working — see [ACME through the tunnel](#acme-through-the-tunnel) |
 
 ## Edge & tunnel
 
@@ -53,6 +53,12 @@ Visitor → Cloudflare edge → [tunnel, outbound] → cloudflared → nginx :44
 ```
 
 DNS for `axelnovaventures.com`, `www`, and `admin` are CNAMEs to the tunnel — there is no longer an `A` record pointing at the origin IP.
+
+### ACME through the tunnel
+
+HTTP-01 validation works through the tunnel, but **only for hostnames nginx actually recognises**. A hostname served via a tunnel `httpHostHeader` rewrite will fail with a 404 on the challenge path, because certbot's temporary server block never matches the rewritten Host.
+
+`www` hit exactly this: it originally rode the apex vhost via `httpHostHeader`, so `certbot --nginx` could not authenticate it. The fix was to make it real rather than disguised — add `www.axelnovaventures.com` to `server_name` in the vhost, drop the `httpHostHeader` line from the tunnel ingress, then re-run certbot. Keep it that way: if you add a hostname to the tunnel, give it a genuine `server_name` in nginx or its certificate will never renew.
 
 ```bash
 sudo systemctl status cloudflared        # should be active (running)
