@@ -49,12 +49,14 @@ onUnmounted(() => {
       >
         {{ title }}
       </h2>
+      <!-- Slot variant for callers whose subtitle differs by viewport
+           (e.g. "hover a card" on desktop vs "swipe left" on touch). -->
       <p
-        v-if="subtitle"
+        v-if="subtitle || $slots.subtitle"
         class="mt-4 text-[17px] leading-relaxed"
         style="color: var(--color-text-secondary);"
       >
-        {{ subtitle }}
+        <slot name="subtitle">{{ subtitle }}</slot>
       </p>
     </div>
 

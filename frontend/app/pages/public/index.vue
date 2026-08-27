@@ -156,9 +156,14 @@ useScrollReveal('.reveal')
       <SectionHeader
         eyebrow="Selected work"
         title="Featured projects."
-        subtitle="A few live builds — hover a card to visit the real site."
         :action="{ label: 'View all', to: '/projects' }"
-      />
+      >
+        <!-- Hover doesn't exist on touch — tell mobile users to swipe instead. -->
+        <template #subtitle>
+          <span class="hidden sm:inline">A few live builds — hover a card to visit the real site.</span>
+          <span class="sm:hidden">A few live builds — swipe left to see more, tap a card to visit the real site.</span>
+        </template>
+      </SectionHeader>
 
       <FeaturedProjectsCarousel
         v-if="featuredProjects.length"
