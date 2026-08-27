@@ -77,6 +77,21 @@ real_ip_header CF-Connecting-IP;
 
 Verify after any nginx or tunnel change by hitting the site and confirming `/var/log/nginx/access.log` shows a real client IP, not `127.0.0.1`.
 
+**⚠️ Trusted proxies — do not set this back to `*`.** [bootstrap/app.php](../../backend/bootstrap/app.php) trusts only loopback + the private/docker ranges. It used to be `trustProxies(at: '*')`, which makes Symfony treat every hop as trusted and read the **leftmost** `X-Forwarded-For` entry — and Cloudflare *appends* to whatever `X-Forwarded-For` the visitor sent, so that entry was attacker-controlled. Every per-IP throttle in the app (login 10/min, quotes 8/hour, inquiries, feedback) could be bypassed by rotating one header value. Trusting only the real hops makes Symfony walk the chain from the right and stop at the first untrusted entry.
+
+Belt and braces, [`ResolveCloudflareClientIp`](../../backend/app/Http/Middleware/ResolveCloudflareClientIp.php) runs before `TrustProxies` and collapses the chain to `CF-Connecting-IP` when present. Cloudflare **overwrites** that header on every proxied request, so a visitor cannot forge it — which means the client IP stays correct even if the host nginx vhost is ever changed to not append `$proxy_add_x_forwarded_for`. It is only honoured when the socket peer is a private address (the container publishes on `127.0.0.1:8003`, so nothing off-host can set it).
+
+Verify after deploy — the same forged header must **not** win a fresh rate-limit bucket:
+
+```bash
+# Rotate X-Forwarded-For twice against the same real client. The second call
+# must show a DECREMENTED X-RateLimit-Remaining (same bucket), not a reset one.
+curl -sD - -o /dev/null -H 'X-Forwarded-For: 9.9.9.9' https://axelnovaventures.com/api/v1/services | grep -i x-ratelimit
+curl -sD - -o /dev/null -H 'X-Forwarded-For: 8.8.8.8' https://axelnovaventures.com/api/v1/services | grep -i x-ratelimit
+```
+
+**Global rate-limit floor.** `throttleApi()` in [bootstrap/app.php](../../backend/bootstrap/app.php) puts every `/api` route under the `api` limiter defined in [AppServiceProvider](../../backend/app/Providers/AppServiceProvider.php): **300/min per public IP**, **3000/min for internal traffic** (the Nuxt SSR server calls the API from inside the docker network, so every visitor to a server-rendered page shares that one source IP — a per-visitor ceiling there would throttle the whole site during a spike). The tight per-route throttles still run on top. Note this costs one cache read+write per request against the `database` cache store; moving `CACHE_STORE` to Redis is the natural next step if request volume grows.
+
 **Rollback.** Delete the CNAMEs in the Cloudflare dashboard and re-add `A @ 187.77.151.66 Proxied` (plus `A admin`). Nothing on the VPS needs changing — nginx, Docker and the certs were never touched by the cutover. Expect the original packet loss to return.
 
 **Still open.** The Hostinger network fault is *routed around*, not fixed — a support ticket with the tcpdump evidence is warranted. Other sites on the same box (roofly, hop, portfolio, axelnova.tech) remain on the broken path and can be added as extra `ingress` entries on the same tunnel.

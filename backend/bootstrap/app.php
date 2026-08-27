@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\EnsurePartnerType;
+use App\Http\Middleware\ResolveCloudflareClientIp;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,10 +18,48 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Trust the local nginx reverse proxy so Laravel reads the real client IP
-        // and scheme from X-Forwarded-* headers (correct per-IP rate limiting,
-        // HTTPS-aware URL generation behind TLS-terminating nginx).
-        $middleware->trustProxies(at: '*');
+        // Trust ONLY the proxy hops that actually front this container, so
+        // Laravel reads the real client IP and scheme from X-Forwarded-*
+        // (correct per-IP rate limiting, HTTPS-aware URL generation).
+        //
+        // The production chain is:
+        //   visitor → Cloudflare edge → cloudflared (loopback) → host nginx → container
+        // Host nginx rewrites $remote_addr from CF-Connecting-IP and appends it
+        // to X-Forwarded-For, so the RIGHTMOST forwarded entry is the true client.
+        //
+        // This was `at: '*'`, which makes Symfony treat every hop as trusted and
+        // return the LEFTMOST X-Forwarded-For entry instead. Cloudflare APPENDS
+        // to any attacker-supplied X-Forwarded-For, so that entry was fully
+        // attacker-controlled — every per-IP throttle in the app (login 10/min,
+        // quotes 8/hour, inquiries, feedback) could be bypassed by rotating one
+        // header value. Trusting only the private hops makes Symfony walk the
+        // chain from the right and stop at the first untrusted entry: the real IP.
+        //
+        // Safe to trust the private ranges: the container publishes on
+        // 127.0.0.1:8003 (docker-compose.prod.yml), so nothing off-host can
+        // reach it directly to forge a hop.
+        // Must run before TrustProxies: collapses the forwarded chain to
+        // Cloudflare's un-forgeable CF-Connecting-IP when one is present, so the
+        // real client IP does not depend on the host nginx vhost appending
+        // correctly (that file lives on the VPS, not in this repo).
+        $middleware->prepend(ResolveCloudflareClientIp::class);
+
+        $middleware->trustProxies(at: [
+            '127.0.0.1',
+            '::1',
+            '10.0.0.0/8',      // docker / private
+            '172.16.0.0/12',   // docker bridge networks (axelnova-shared is 172.20/16)
+            '192.168.0.0/16',
+            'fc00::/7',        // IPv6 unique-local
+        ]);
+
+        // Global rate-limit floor on every /api route (see the 'api' limiter in
+        // AppServiceProvider). Throttling used to be opt-in per route group,
+        // which left the public token lookups (/v1/documents/{token},
+        // /v1/feedback/{token}) and the authenticated writes on /v1/partner,
+        // /v1/team and /v1/admin with no ceiling at all. The tighter per-route
+        // throttles still apply on top of this.
+        $middleware->throttleApi();
 
         // Baseline security headers on every response (API + health check).
         $middleware->append(SecurityHeaders::class);
