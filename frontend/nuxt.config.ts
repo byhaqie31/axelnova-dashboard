@@ -114,19 +114,23 @@ export default defineNuxtConfig({
     head: {
       title: 'Axel Nova Ventures',
       htmlAttrs: { lang: 'en' },
+      // Site-wide FALLBACK meta only — every indexable public page sets its own
+      // title/description via usePublicSeo() (unique copy per page beats one
+      // shared description for rankings). Keep this in sync with the studio
+      // positioning, and note the OG image is og-image.jpg (no .png exists).
       meta: [
-        { name: 'description', content: 'UI/UX engineer with 7 years of building — fintech, SaaS, and products that need real craft.' },
+        { name: 'description', content: 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { property: 'og:title', content: 'Axel Nova Ventures' },
-        { property: 'og:description', content: 'UI/UX-focused software engineer. Vue · Nuxt · Laravel · Docker · AWS.' },
+        { property: 'og:description', content: 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.' },
         { property: 'og:type', content: 'website' },
         { property: 'og:site_name', content: 'Axel Nova Ventures' },
         { property: 'og:locale', content: 'en_US' },
-        { property: 'og:image', content: 'https://axelnovaventures.com/og-image.png' },
+        { property: 'og:image', content: 'https://axelnovaventures.com/og-image.jpg' },
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'Axel Nova Ventures' },
-        { name: 'twitter:description', content: 'UI/UX-focused software engineer. Vue · Nuxt · Laravel · Docker · AWS.' },
-        { name: 'twitter:image', content: 'https://axelnovaventures.com/og-image.png' },
+        { name: 'twitter:description', content: 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.' },
+        { name: 'twitter:image', content: 'https://axelnovaventures.com/og-image.jpg' },
       ],
       link: [
         { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/favicon/favicon-96x96.png' },

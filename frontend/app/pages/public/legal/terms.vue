@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'Terms of Service — Axel Nova Ventures',
+  description: 'The terms governing use of the Axel Nova Ventures website and services.',
+  path: '/legal/terms',
+})
+
 const prohibitions = [
   'Use the website for any unlawful purpose or in violation of applicable laws',
   'Reproduce, distribute, or create derivative works from our content without written permission',

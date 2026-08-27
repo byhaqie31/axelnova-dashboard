@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'Refund Policy — Axel Nova Ventures',
+  description: 'Axel Nova Ventures\' refund and cancellation terms for project engagements.',
+  path: '/legal/refund',
+})
+
 const futureScope = [
   'Digital product purchases (templates, UI kits, design systems)',
   'SaaS subscription plans and seat licences',

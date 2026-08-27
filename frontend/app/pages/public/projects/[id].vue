@@ -31,6 +31,16 @@ const { data: apiResponse, error } = await useFetch<{ data: ApiProject }>(
 const project = computed(() => apiResponse.value?.data)
 const notFound = computed(() => Boolean(error.value) || (!project.value && !apiResponse.value))
 
+// The fetch above awaits during SSR, so crawlers get the real project name
+// and summary (falling back to the listing copy for a missing slug).
+usePublicSeo({
+  title: project.value ? `${project.value.name} — Axel Nova Ventures` : 'Projects — Axel Nova Ventures',
+  description: project.value?.description
+    || 'Selected work by Axel Nova Ventures — immersive websites, SaaS platforms, and bespoke digital products designed and engineered end to end.',
+  path: `/projects/${slug.value}`,
+  image: project.value?.cover_image_url ?? undefined,
+})
+
 const statusMeta = (status: ApiProject['status']) => {
   switch (status) {
     case 'live':     return { label: 'Live',        color: 'var(--color-success)', bg: 'rgba(48,209,88,0.14)' }

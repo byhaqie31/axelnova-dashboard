@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'Projects — Axel Nova Ventures',
+  description: 'Selected work by Axel Nova Ventures — immersive websites, SaaS platforms, and bespoke digital products designed and engineered end to end.',
+  path: '/projects',
+})
+
 import { onClickOutside } from '@vueuse/core'
 import type { Project } from '~/data/projects'
 import ProjectCard from '~/components/shared/ProjectCard.vue'

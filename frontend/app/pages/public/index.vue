@@ -14,7 +14,7 @@ import { MOTION } from '~/utils/motion'
 const siteUrl = 'https://axelnovaventures.com'
 const ogImage = `${siteUrl}/og-image.jpg`
 const seoTitle = 'Axel Nova Ventures — Design & Engineering Studio'
-const seoDescription = 'Design-led software studio building fintech, SaaS, and bespoke web products. Vue · Nuxt · Laravel · Docker · AWS.'
+const seoDescription = 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.'
 
 useSeoMeta({
   title: seoTitle,
