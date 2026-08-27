@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\InquiryResource;
 use App\Models\Inquiry;
 use App\Services\Referrals\ReferralAttributionService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -29,12 +30,14 @@ class InquiriesController extends Controller
             });
         }
 
+        // Range comparisons keep the created_at index usable (whereDate wraps
+        // the column in DATE() and forces a scan).
         if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+            $query->where('created_at', '>=', Carbon::parse($request->date_from)->startOfDay());
         }
 
         if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+            $query->where('created_at', '<', Carbon::parse($request->date_to)->addDay()->startOfDay());
         }
 
         return InquiryResource::collection($query->paginate(20));

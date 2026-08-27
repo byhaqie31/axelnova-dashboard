@@ -36,8 +36,9 @@ const ordersPending = ref<number | null>(null)
 const loading = ref(true)
 const error = ref('')
 
-// Displayed metric values — counted up briefly (dashboard register, ~0.9s)
-// when the real numbers arrive. Instant under reduced motion.
+// Displayed metric values — counted up briefly (dashboard register, ~0.45s)
+// when the real numbers arrive. Instant under reduced motion. Kept short:
+// the number the user came for should be readable almost immediately.
 const shown = reactive({ total: 0, refs: 0, orders: 0, inq: 0, draft: 0, views: 0, revenue: 0, collected: 0, pending: 0 })
 
 function countTo(key: keyof typeof shown, end: number) {
@@ -48,39 +49,56 @@ function countTo(key: keyof typeof shown, end: number) {
   const proxy = { v: shown[key] }
   motion.gsap.to(proxy, {
     v: end,
-    duration: 0.9,
+    duration: 0.45,
     ease: MOTION.ease.settle,
     snap: { v: 1 },
     onUpdate: () => { shown[key] = Math.round(proxy.v) },
   })
 }
 
+interface DashboardCounts {
+  quotations_total: number
+  quotations_draft: number
+  referrals_active: number
+  orders_total: number
+  inquiries_new: number
+  views_7d: number
+}
+
 async function load() {
   loading.value = true
   error.value = ''
-  try {
-    const [recentRes, refsAllRes, refsRejRes, ordersRes, inqRes, draftRes] = await Promise.all([
-      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/quotations?include_accepted=1&page=1'),
-      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/referrals?page=1'),
-      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/referrals?status=rejected&page=1'),
-      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/orders?page=1'),
-      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/inquiries?status=new&page=1'),
-      apiFetch<{ data: unknown[]; meta: { total: number } }>('/api/v1/admin/quotations?status=draft&page=1'),
-    ])
-    // Active referrals = all referrals minus rejected.
-    const activeRefs = Math.max(0, refsAllRes.meta.total - refsRejRes.meta.total)
-    totalQuotations.value = recentRes.meta.total
-    activeReferrals.value = activeRefs
-    activeOrders.value = ordersRes.meta.total
-    openInquiries.value = inqRes.meta.total
-    draftQuotations.value = draftRes.meta.total
-    countTo('total', recentRes.meta.total)
-    countTo('refs', activeRefs)
-    countTo('orders', ordersRes.meta.total)
-    countTo('inq', inqRes.meta.total)
-    countTo('draft', draftRes.meta.total)
 
-    // Orders money roll-up — best-effort; never let it break the dashboard.
+  // Two independent requests, fired together, each releasing its own part of
+  // the UI as it lands — nothing waits on the slower of the two. The counts
+  // endpoint replaces the five paginated list fetches (used only for
+  // meta.total) and the analytics overview call this page used to make.
+  const counts = (async () => {
+    try {
+      const c = await apiFetch<DashboardCounts>('/api/v1/admin/dashboard/counts')
+      totalQuotations.value = c.quotations_total
+      activeReferrals.value = c.referrals_active
+      activeOrders.value = c.orders_total
+      openInquiries.value = c.inquiries_new
+      draftQuotations.value = c.quotations_draft
+      pageViews7d.value = c.views_7d
+      countTo('total', c.quotations_total)
+      countTo('refs', c.referrals_active)
+      countTo('orders', c.orders_total)
+      countTo('inq', c.inquiries_new)
+      countTo('draft', c.quotations_draft)
+      countTo('views', c.views_7d)
+    }
+    catch {
+      error.value = 'Failed to load dashboard. Check your session.'
+    }
+    finally {
+      loading.value = false
+    }
+  })()
+
+  // Orders money roll-up — best-effort; never let it break the dashboard.
+  const money = (async () => {
     try {
       const st = await apiFetch<{ revenue: number; collected: number; pending: number; active_count: number }>('/api/v1/admin/orders/stats')
       ordersRevenue.value = st.revenue
@@ -91,21 +109,9 @@ async function load() {
       countTo('pending', Math.round(st.pending))
     }
     catch { /* leave the figures as — */ }
+  })()
 
-    // Page views — best-effort; a tracking hiccup must never break the dashboard.
-    try {
-      const ov = await apiFetch<{ views: { total: number } }>('/api/v1/admin/analytics/overview?range=7d')
-      pageViews7d.value = ov.views.total
-      countTo('views', ov.views.total)
-    }
-    catch { /* leave the tile as — */ }
-  }
-  catch {
-    error.value = 'Failed to load dashboard. Check your session.'
-  }
-  finally {
-    loading.value = false
-  }
+  await Promise.all([counts, money])
 }
 
 // Recent inquiries feed — Today / Last 7 days / Last 30 days (quotations keep to

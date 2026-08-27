@@ -5,13 +5,26 @@ import { MOTION } from '~/utils/motion'
 // Under reduced motion the hooks complete instantly. Hooks only run on the
 // client, where plugins/gsap.client.ts has provided $gsap.
 const motion = import.meta.client ? useMotion() : null
+const router = useRouter()
+
+// Auth surfaces (admin/portal/team/partners/investor) skip the animation
+// entirely: with mode 'out-in' the incoming page — and therefore its onMounted
+// data fetch — cannot start until the leave animation finishes, so the fade
+// serialized 300ms in front of every API call. Work tools stay instant.
+const AUTH_SURFACE = /^\/(admin|portal|team|partners|investor)(\/|$)/
+
+function skipTransition(): boolean {
+  if (!motion || motion.reduced) return true
+  // By transition time the router has already committed the target route.
+  return AUTH_SURFACE.test(router.currentRoute.value.path)
+}
 
 const pageTransition = {
   css: false,
   mode: 'out-in' as const,
   onLeave(el: Element, done: () => void) {
-    if (!motion || motion.reduced) return done()
-    motion.gsap.to(el, {
+    if (skipTransition()) return done()
+    motion!.gsap.to(el, {
       opacity: 0,
       y: -20,
       duration: 0.3,
@@ -20,8 +33,8 @@ const pageTransition = {
     })
   },
   onEnter(el: Element, done: () => void) {
-    if (!motion || motion.reduced) return done()
-    motion.gsap.fromTo(el,
+    if (skipTransition()) return done()
+    motion!.gsap.fromTo(el,
       { opacity: 0, y: 24 },
       {
         opacity: 1,

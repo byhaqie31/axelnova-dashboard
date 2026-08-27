@@ -172,8 +172,9 @@ async function save() {
 }
 
 onMounted(async () => {
-  await loadCategories()
-  await fetchPackage()
+  // Categories + package are independent — fetch together; only siblings
+  // genuinely depend on the loaded package's category.
+  await Promise.all([loadCategories(), fetchPackage()])
   if (form.service_category_id) await loadSiblings(form.service_category_id)
 })
 </script>

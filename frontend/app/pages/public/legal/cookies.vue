@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'Cookie Policy — Axel Nova Ventures',
+  description: 'How Axel Nova Ventures uses cookies and similar technologies on this site.',
+  path: '/legal/cookies',
+})
+
 const cookieTypes = [
   {
     name: 'Essential Cookies',

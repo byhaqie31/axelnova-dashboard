@@ -98,8 +98,8 @@ async function save() {
 }
 
 onMounted(async () => {
-  await fetchAddon()
-  await loadSiblings()
+  // Independent fetches — run together instead of a waterfall.
+  await Promise.all([fetchAddon(), loadSiblings()])
 })
 </script>
 

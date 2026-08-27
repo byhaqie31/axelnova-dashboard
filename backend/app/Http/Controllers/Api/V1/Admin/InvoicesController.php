@@ -22,12 +22,19 @@ class InvoicesController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Invoice::with(['order.client', 'order.quotation'])->latest('issued_at');
+        // Column-constrained loads: the list resource reads only these fields —
+        // never pull full quotation rows (JSON blobs) for 20 invoices.
+        $query = Invoice::with([
+            'order:id,order_number,quotation_id,client_id',
+            'order.client:id,name,email',
+            'order.quotation:id,reference_code',
+        ])->latest('issued_at');
 
         // `overdue` is a derived state (issued + past due), not a stored status.
         $status = $request->query('status');
         if ($status === 'overdue') {
-            $query->where('status', 'issued')->whereDate('due_at', '<', today());
+            // due_at is a DATE column — plain comparison is index-friendly.
+            $query->where('status', 'issued')->where('due_at', '<', today()->toDateString());
         } elseif ($status) {
             $query->where('status', $status);
         }

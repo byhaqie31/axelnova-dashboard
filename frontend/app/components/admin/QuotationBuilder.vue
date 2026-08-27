@@ -586,38 +586,43 @@ function buildPayload() {
 // loads, but the baseline is snapshotted post-nextTick (in onMounted) so that
 // seeding never trips a false dirty.
 const baseline = ref('')
+// Computed (not a function) so the payload serializes once per reactive
+// change — dirty + the staleness watcher share the same cached string
+// instead of re-stringifying the whole document per read.
+const fingerprint = computed(() => JSON.stringify(buildPayload()))
 function formFingerprint(): string {
-  return JSON.stringify(buildPayload())
+  return fingerprint.value
 }
-const dirty = computed(() => formFingerprint() !== baseline.value)
+const dirty = computed(() => fingerprint.value !== baseline.value)
 
-// ── Live document preview ────────────────────────────────────────────────────
+// ── Document preview (lazy) ──────────────────────────────────────────────────
 // Reuses buildPayload() so the preview is the exact data that would be saved,
-// rendered through the real PDF template (no persist).
+// rendered through the real PDF template (no persist). Fetched only when the
+// preview modal is actually opened — the old debounced fetch-on-every-edit
+// server-rendered a document nobody was looking at.
 const previewData = ref<Record<string, any> | null>(null)
 const previewLoading = ref(false)
-let previewTimer: ReturnType<typeof setTimeout> | undefined
+const previewStale = ref(true)
+
+watch(fingerprint, () => { previewStale.value = true })
 
 async function fetchPreview() {
   previewLoading.value = true
   try {
     previewData.value = await apiFetch('/api/v1/admin/quotations/preview', { method: 'POST', body: buildPayload() })
+    previewStale.value = false
   }
   catch {
-    // keep last good preview
+    // keep last good preview (stays stale, retried on next open)
   }
   finally {
     previewLoading.value = false
   }
 }
 
-watch(() => formFingerprint(), () => {
-  clearTimeout(previewTimer)
-  previewTimer = setTimeout(fetchPreview, 400)
-})
-
-onMounted(() => nextTick(fetchPreview))
-onBeforeUnmount(() => clearTimeout(previewTimer))
+function onPreviewOpen() {
+  if (previewStale.value && !previewLoading.value) fetchPreview()
+}
 
 // Persist without UI feedback — shared by the Save button and the send flow
 // so sending doesn't fire two toasts ("saved" then "sent"). `silent` skips the
@@ -1110,7 +1115,7 @@ type="button"
       </div>
 
       <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <AdminDocumentPreviewModal :data="previewData" :disabled="!previewData" block />
+        <AdminDocumentPreviewModal :data="previewData" block @open="onPreviewOpen" />
         <button v-if="!isEdit" type="button" class="btn-pill btn-pill-accent w-full justify-center text-[13px]" :disabled="saving" @click="save">
           {{ saving ? 'Saving…' : 'Save draft' }}
         </button>

@@ -14,7 +14,7 @@ import { MOTION } from '~/utils/motion'
 const siteUrl = 'https://axelnovaventures.com'
 const ogImage = `${siteUrl}/og-image.jpg`
 const seoTitle = 'Axel Nova Ventures — Design & Engineering Studio'
-const seoDescription = 'Design-led software studio building fintech, SaaS, and bespoke web products. Vue · Nuxt · Laravel · Docker · AWS.'
+const seoDescription = 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.'
 
 useSeoMeta({
   title: seoTitle,
@@ -156,9 +156,14 @@ useScrollReveal('.reveal')
       <SectionHeader
         eyebrow="Selected work"
         title="Featured projects."
-        subtitle="A few live builds — hover a card to visit the real site."
         :action="{ label: 'View all', to: '/projects' }"
-      />
+      >
+        <!-- Hover doesn't exist on touch — tell mobile users to swipe instead. -->
+        <template #subtitle>
+          <span class="hidden sm:inline">A few live builds — hover a card to visit the real site.</span>
+          <span class="sm:hidden">A few live builds — swipe left to see more, tap a card to visit the real site.</span>
+        </template>
+      </SectionHeader>
 
       <FeaturedProjectsCarousel
         v-if="featuredProjects.length"

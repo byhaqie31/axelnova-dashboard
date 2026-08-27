@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'Privacy Policy — Axel Nova Ventures',
+  description: 'How Axel Nova Ventures collects, uses, and protects your personal data.',
+  path: '/legal/privacy-policy',
+})
+
 const collectItems = [
   'Name and email address',
   'Message content submitted via the contact form',

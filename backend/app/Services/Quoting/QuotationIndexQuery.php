@@ -3,6 +3,7 @@
 namespace App\Services\Quoting;
 
 use App\Models\Quotation;
+use Carbon\Carbon;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -100,12 +101,14 @@ final class QuotationIndexQuery
             });
         }
 
+        // Range comparisons (not whereDate) so the submitted_at index stays
+        // usable — DATE(submitted_at) would force a full scan.
         if ($this->dateFrom !== null && $this->dateFrom !== '') {
-            $query->whereDate('submitted_at', '>=', $this->dateFrom);
+            $query->where('submitted_at', '>=', Carbon::parse($this->dateFrom)->startOfDay());
         }
 
         if ($this->dateTo !== null && $this->dateTo !== '') {
-            $query->whereDate('submitted_at', '<=', $this->dateTo);
+            $query->where('submitted_at', '<', Carbon::parse($this->dateTo)->addDay()->startOfDay());
         }
 
         return $query;

@@ -19,7 +19,12 @@ class OrdersController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Order::with(['client', 'quotation'])->latest('created_at');
+        // Column-constrained quotation load: the list resource reads only these
+        // scalars — never pull the form_payload/document JSON blobs for 20 rows.
+        $query = Order::with([
+            'client',
+            'quotation:id,reference_code,package_key,estimate_min_myr,estimate_max_myr,estimate_eta_value,estimate_eta_unit,submitted_at',
+        ])->latest('created_at');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);

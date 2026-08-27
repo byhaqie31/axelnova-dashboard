@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
-import { visibleAdminNav, isAdminNavActive, isGroupPinned, type NavGroup, type Role } from '~/data/adminNav'
+import { visibleAdminNav, isAdminNavActive, isGroupPinned, type NavGroup } from '~/data/adminNav'
 
 useSeoMeta({ robots: 'noindex, nofollow' })
 
@@ -28,15 +28,16 @@ function migrateGroupLabel(cookie: Ref<Record<string, boolean>>) {
 migrateGroupLabel(navGroupsOpen)
 
 const route = useRoute()
-const { logout, apiFetch, jumpToTeam } = useAdminAuth()
+const { logout, jumpToTeam } = useAdminAuth()
 
 // Light / dark toggle — flips the persisted colour-mode preference (same engine
 // as the public site). @nuxt/ui swaps the `.dark` class before paint.
 const colorMode = useColorMode()
 const toggleDark = () => { colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark' }
 
-interface Me { id: number, name: string, email: string, role?: Role }
-const me = ref<Me | null>(null)
+// Shared /admin/me singleton — pages that also need the identity read the
+// same state instead of refetching (see useAdminMe).
+const { me, load: loadMe } = useAdminMe()
 
 // Role stays undefined until Phase 0 adds it to `/admin/me`; visibleAdminNav is
 // permissive meanwhile, so all seven groups render for the current founder.
@@ -80,15 +81,7 @@ function toggleGroup(group: NavGroup): void {
   navGroupsOpen.value = { ...navGroupsOpen.value, [group.label]: !isGroupOpen(group) }
 }
 
-async function fetchMe() {
-  try {
-    me.value = await apiFetch<Me>('/api/v1/admin/me')
-  }
-  catch {
-    // Non-fatal — middleware will bounce to /admin/login on hard auth failures.
-  }
-}
-onMounted(fetchMe)
+onMounted(loadMe)
 
 watch(() => route.fullPath, () => {
   mobileNavOpen.value = false
@@ -133,16 +126,21 @@ useHead({ title: 'Admin Portal' })
           >
             <UIcon :name="mobileNavOpen ? 'i-fluent-dismiss-24-regular' : 'i-fluent-line-horizontal-3-24-regular'" class="size-5" />
           </button>
-          <!-- Desktop: collapse the sidebar to an icon-only rail -->
-          <button
-            class="hidden md:inline-flex items-center justify-center size-8 rounded-md transition-colors hover:bg-(--color-bg-secondary)"
-            :style="{ color: 'var(--color-text)' }"
-            :aria-pressed="sidebarCollapsed"
-            :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-            @click="sidebarCollapsed = !sidebarCollapsed"
-          >
-            <UIcon name="i-fluent-line-horizontal-3-24-regular" class="size-5" />
-          </button>
+          <!-- Desktop: collapse the sidebar to an icon-only rail. The wrapper
+               mirrors the rail's 68px width (md:-ml-6 cancels the header's
+               px-6) so the toggle sits on the same center axis as the rail
+               icons below it. -->
+          <div class="hidden md:flex md:w-[68px] md:-ml-6 justify-center shrink-0">
+            <button
+              class="inline-flex items-center justify-center size-8 rounded-md transition-colors hover:bg-(--color-bg-secondary)"
+              :style="{ color: 'var(--color-text)' }"
+              :aria-pressed="sidebarCollapsed"
+              :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+              @click="sidebarCollapsed = !sidebarCollapsed"
+            >
+              <UIcon name="i-fluent-line-horizontal-3-24-regular" class="size-5" />
+            </button>
+          </div>
           <BrandMark to="/admin" wordmark="Admin Portal" />
         </div>
 

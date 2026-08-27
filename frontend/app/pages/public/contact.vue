@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'Contact — Axel Nova Ventures',
+  description: 'Start a project with Axel Nova Ventures. Tell us about your website, SaaS platform, or product idea — every inquiry gets a personal reply.',
+  path: '/contact',
+})
+
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 const form = reactive({

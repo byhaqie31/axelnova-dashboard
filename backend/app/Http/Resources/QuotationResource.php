@@ -26,7 +26,7 @@ class QuotationResource extends JsonResource
             'package_key' => $this->package_key,
             // Non-catalog quotes (bespoke / detailed) surface a derived "Custom"
             // descriptor so the list shows a real label + provenance, not "—".
-            'custom_package' => $this->customPackage(),
+            'custom_package' => $listRoute ? $this->customPackageLean() : $this->customPackage(),
             'estimate_min_myr' => $this->estimate_min_myr,
             'estimate_max_myr' => $this->estimate_max_myr,
             'estimate_eta_value' => $this->estimate_eta_value,

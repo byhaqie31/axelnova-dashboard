@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'Disclaimer — Axel Nova Ventures',
+  description: 'Legal disclaimer for content and services on the Axel Nova Ventures website.',
+  path: '/legal/disclaimer',
+})
+
 useScrollReveal('.reveal')
 </script>
 

@@ -36,16 +36,36 @@ class FeedbackController extends Controller
             });
         }
 
-        // Stat tiles ride along so the index is one round-trip.
+        // Stat tiles ride along so the index is one round-trip — and one table
+        // scan (conditional aggregates), not four. AVG skips NULLs by itself.
+        $statsRow = Feedback::query()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("COALESCE(SUM(status = 'pending'), 0) as pending")
+            ->selectRaw("COALESCE(SUM(status = 'published'), 0) as published")
+            ->selectRaw('AVG(overall) as avg_overall')
+            ->first();
+
         $stats = [
-            'total' => Feedback::count(),
-            'pending' => Feedback::where('status', 'pending')->count(),
-            'published' => Feedback::where('status', 'published')->count(),
-            'avg_overall' => round((float) Feedback::whereNotNull('overall')->avg('overall'), 1) ?: null,
+            'total' => (int) $statsRow->total,
+            'pending' => (int) $statsRow->pending,
+            'published' => (int) $statsRow->published,
+            'avg_overall' => round((float) $statsRow->avg_overall, 1) ?: null,
         ];
 
         return FeedbackResource::collection($query->paginate(20))
             ->additional(['stats' => $stats]);
+    }
+
+    /**
+     * Every row's wall position, two ints per row — feeds the detail page's
+     * sort-order picker, which needs the full occupancy map (the paginated
+     * index caps at 20 and would silently hide positions).
+     */
+    public function sortOrders(): JsonResponse
+    {
+        return response()->json([
+            'data' => Feedback::orderBy('sort_order')->get(['id', 'sort_order']),
+        ]);
     }
 
     /**

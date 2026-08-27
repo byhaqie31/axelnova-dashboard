@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'About the Founder — Axel Nova Ventures',
+  description: 'The story behind Axel Nova Ventures — founded by Ahmad Baihaqie, a software engineer crafting design-led digital products from Kuala Lumpur, Malaysia.',
+  path: '/about',
+})
+
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 const photos = [

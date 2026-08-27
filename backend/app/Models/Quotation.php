@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class Quotation extends Model
 {
@@ -109,6 +110,20 @@ class Quotation extends Model
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', now())
             ->update(['status' => 'expired']);
+    }
+
+    /**
+     * Cache-gated expireOverdue for hot read paths (the admin list): the sweep
+     * is an UPDATE with row locks + a binlog write, so run it at most once a
+     * minute across all requests instead of on every GET.
+     */
+    public static function expireOverdueThrottled(): void
+    {
+        if (! Cache::add('quotations:expire-overdue:gate', 1, 60)) {
+            return;
+        }
+
+        static::expireOverdue();
     }
 
     /**
@@ -303,6 +318,25 @@ class Quotation extends Model
      *
      * @return array{label: string, via_connector: bool}|null
      */
+    /**
+     * customPackage() for the list query, which selects the two derived scalars
+     * (custom_project / custom_created_via, JSON-extracted in SQL) instead of
+     * fetching + decoding the full document/form_payload blobs per row.
+     */
+    public function customPackageLean(): ?array
+    {
+        if ($this->package_key !== null) {
+            return null;
+        }
+
+        $project = $this->getAttribute('custom_project');
+
+        return [
+            'label' => filled($project) ? (string) $project : 'Custom',
+            'via_connector' => $this->getAttribute('custom_created_via') === 'mcp_connector',
+        ];
+    }
+
     public function customPackage(): ?array
     {
         if ($this->package_key !== null) {

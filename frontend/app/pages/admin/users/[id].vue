@@ -46,7 +46,9 @@ interface Profile {
 const profile = ref<Profile | null>(null)
 const loading = ref(true)
 const error = ref('')
-const meId = ref<number | null>(null)
+// Shared /admin/me singleton — the layout already loads it once per hard load.
+const { me: adminMe, load: loadMe } = useAdminMe()
+const meId = computed(() => adminMe.value?.id ?? null)
 
 const form = reactive({
   name: '',
@@ -77,15 +79,10 @@ async function fetchProfile() {
     loading.value = false
   }
 }
-async function fetchMe() {
-  try {
-    meId.value = (await apiFetch<{ id: number }>('/api/v1/admin/me')).id
-  }
-  catch { /* non-fatal — self-deactivate guard also enforced server-side */ }
-}
 onMounted(() => {
   fetchProfile()
-  fetchMe()
+  // non-fatal if it misses — self-deactivate guard also enforced server-side
+  loadMe()
 })
 
 const dirty = computed(() => {

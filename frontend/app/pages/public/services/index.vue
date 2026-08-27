@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'Services & Packages — Axel Nova Ventures',
+  description: 'Web design and development services by Axel Nova Ventures — from landing pages to full SaaS builds, with transparent packages and instant online estimates.',
+  path: '/services',
+})
+
 import { useApiBase } from '~/composables/useApiBase'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import LikeButton from '~/components/shared/LikeButton.vue'

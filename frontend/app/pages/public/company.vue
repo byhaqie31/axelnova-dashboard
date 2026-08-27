@@ -1,6 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+usePublicSeo({
+  title: 'Our Studio — Axel Nova Ventures',
+  description: 'How Axel Nova Ventures works: design-first thinking, intentional engineering, and human-centered digital products — from first sketch to production.',
+  path: '/company',
+})
+
 const stats = [
   { label: 'Registered Name', value: 'Axel Nova Ventures' },
   { label: 'Registration No.', value: '202603119899 (CA0420977-U)' },

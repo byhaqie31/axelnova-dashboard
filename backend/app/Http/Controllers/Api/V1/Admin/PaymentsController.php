@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Services\Payments\PaymentService;
 use App\Services\Quoting\DocumentIssuer;
 use App\Services\Quoting\DocumentMapper;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -40,11 +41,12 @@ class PaymentsController extends Controller
         if ($request->filled('order_id')) {
             $query->where('order_id', $request->order_id);
         }
+        // Range comparisons keep the paid_at index usable (whereDate defeats it).
         if ($request->filled('date_from')) {
-            $query->whereDate('paid_at', '>=', $request->date_from);
+            $query->where('paid_at', '>=', Carbon::parse($request->date_from)->startOfDay());
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('paid_at', '<=', $request->date_to);
+            $query->where('paid_at', '<', Carbon::parse($request->date_to)->addDay()->startOfDay());
         }
 
         if ($request->filled('search')) {

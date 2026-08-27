@@ -9,6 +9,11 @@ import { taskPriorityMeta, taskPriorityOptions, taskStatusOptions, type TaskReco
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
+// One rendered list per viewport: table and mobile cards used to BOTH mount
+// (CSS-hidden), doubling row DOM. No SSR mismatch: these branches render only
+// after the client-side fetch resolves (SSR always shows the loading state).
+const isDesktop = useMediaQuery('(min-width: 768px)')
+
 const { apiFetch } = useAdminAuth()
 const toast = useAdminToast()
 
@@ -73,7 +78,8 @@ async function fetchTasks() {
 
 async function fetchTeammates() {
   try {
-    teammates.value = await apiFetch<Teammate[]>('/api/v1/admin/users')
+    // Shared roster singleton — cached across the tasks pages' pickers.
+    teammates.value = await useAdminRoster().load()
   }
   catch {
     // Assignee filter degrades to "Anyone" only; the list itself still loads.
@@ -181,7 +187,7 @@ function fmtDeadline(iso: string | null) {
     </div>
 
     <!-- Desktop: table — one clean line per task, uniform 13px. -->
-    <div v-else class="hidden md:block admin-table-card">
+    <div v-else-if="isDesktop" class="admin-table-card">
       <div class="overflow-x-auto">
         <table class="w-full text-left">
           <thead>
@@ -233,7 +239,7 @@ function fmtDeadline(iso: string | null) {
     </div>
 
     <!-- Mobile: cards -->
-    <div v-if="!loading && tasks.length" class="md:hidden space-y-2.5">
+    <div v-if="!loading && !isDesktop && tasks.length" class="space-y-2.5">
       <div
         v-for="t in tasks" :key="t.id" class="rounded-xl border p-4 cursor-pointer"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"

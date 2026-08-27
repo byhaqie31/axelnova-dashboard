@@ -19,10 +19,12 @@ class PricingConfigObserver
     public function saved(PricingConfig $config): void
     {
         Cache::forget('quote_builder_config_v1');
+        Cache::forget('pricing_config_active_v1');
     }
 
     public function deleted(PricingConfig $config): void
     {
         Cache::forget('quote_builder_config_v1');
+        Cache::forget('pricing_config_active_v1');
     }
 }

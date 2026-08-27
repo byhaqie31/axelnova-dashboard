@@ -105,7 +105,8 @@ async function fetchTask() {
 }
 async function fetchTeammates() {
   try {
-    teammates.value = await apiFetch<Teammate[]>('/api/v1/admin/users')
+    // Shared roster singleton — cached across the tasks pages' pickers.
+    teammates.value = await useAdminRoster().load()
   }
   catch { /* picker degrades to "Leave open" only */ }
 }
