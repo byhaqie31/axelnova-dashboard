@@ -91,6 +91,13 @@ export default defineNuxtConfig({
     //   /feedback/**, /proposals/**        — token/client-scoped, per-recipient
     //   /quote/**                          — form + live pricing config
     // Caching any of those would serve one visitor's page to another.
+    // The admin SPA renders nothing during SSR anyway (the bearer token lives
+    // in localStorage, every fetch is in onMounted), so a server render only
+    // adds a full Nitro round-trip in front of a data-free shell — serve the
+    // static SPA shell instead. Auth still enforced by the API + route guard.
+    '/admin': { ssr: false },
+    '/admin/**': { ssr: false },
+
     '/': { swr: 300 },
     '/about': { swr: 300 },
     '/company': { swr: 300 },

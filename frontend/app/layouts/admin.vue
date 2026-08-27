@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BrandMark from '~/components/shared/BrandMark.vue'
-import { visibleAdminNav, isAdminNavActive, isGroupPinned, type NavGroup, type Role } from '~/data/adminNav'
+import { visibleAdminNav, isAdminNavActive, isGroupPinned, type NavGroup } from '~/data/adminNav'
 
 useSeoMeta({ robots: 'noindex, nofollow' })
 
@@ -28,15 +28,16 @@ function migrateGroupLabel(cookie: Ref<Record<string, boolean>>) {
 migrateGroupLabel(navGroupsOpen)
 
 const route = useRoute()
-const { logout, apiFetch, jumpToTeam } = useAdminAuth()
+const { logout, jumpToTeam } = useAdminAuth()
 
 // Light / dark toggle — flips the persisted colour-mode preference (same engine
 // as the public site). @nuxt/ui swaps the `.dark` class before paint.
 const colorMode = useColorMode()
 const toggleDark = () => { colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark' }
 
-interface Me { id: number, name: string, email: string, role?: Role }
-const me = ref<Me | null>(null)
+// Shared /admin/me singleton — pages that also need the identity read the
+// same state instead of refetching (see useAdminMe).
+const { me, load: loadMe } = useAdminMe()
 
 // Role stays undefined until Phase 0 adds it to `/admin/me`; visibleAdminNav is
 // permissive meanwhile, so all seven groups render for the current founder.
@@ -80,15 +81,7 @@ function toggleGroup(group: NavGroup): void {
   navGroupsOpen.value = { ...navGroupsOpen.value, [group.label]: !isGroupOpen(group) }
 }
 
-async function fetchMe() {
-  try {
-    me.value = await apiFetch<Me>('/api/v1/admin/me')
-  }
-  catch {
-    // Non-fatal — middleware will bounce to /admin/login on hard auth failures.
-  }
-}
-onMounted(fetchMe)
+onMounted(loadMe)
 
 watch(() => route.fullPath, () => {
   mobileNavOpen.value = false

@@ -150,7 +150,9 @@ function nudgeSort(delta: number) {
 
 async function fetchSiblings() {
   try {
-    const res = await apiFetch<{ data: Sibling[] }>('/api/v1/admin/feedback')
+    // Dedicated lightweight endpoint: every row's {id, sort_order} — the
+    // paginated index caps at 20 and would hide occupied positions.
+    const res = await apiFetch<{ data: Sibling[] }>('/api/v1/admin/feedback/sort-orders')
     siblings.value = res.data
     if (isNew.value) form.sort_order = nextAvailableSort.value
   }

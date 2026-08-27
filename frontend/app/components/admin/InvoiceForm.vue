@@ -146,10 +146,12 @@ function submitBody(): Record<string, unknown> {
   return body
 }
 
-// ── Live preview ───────────────────────────────────────────────────────────
+// ── Document preview (lazy) ────────────────────────────────────────────────
+// Fetched only when the preview modal opens — the old debounced fetch on
+// every keystroke server-rendered a document nobody was looking at.
 const previewData = ref<Record<string, any> | null>(null)
 const previewLoading = ref(false)
-let previewTimer: ReturnType<typeof setTimeout> | undefined
+const previewStale = ref(true)
 // Latest-wins guard: rapid edits (e.g. switching invoice type) can resolve out
 // of order — only the most recent request may write previewData.
 let previewSeq = 0
@@ -160,23 +162,24 @@ async function fetchPreview() {
   previewLoading.value = true
   try {
     const data = await apiFetch<Record<string, any>>(`/api/v1/admin/orders/${props.order.id}/documents/preview`, { method: 'POST', body: fullBody() })
-    if (seq === previewSeq) previewData.value = data
+    if (seq === previewSeq) {
+      previewData.value = data
+      previewStale.value = false
+    }
   }
   catch {
-    // keep last good preview
+    // keep last good preview (stays stale, retried on next open)
   }
   finally {
     if (seq === previewSeq) previewLoading.value = false
   }
 }
 
-watch(form, () => {
-  clearTimeout(previewTimer)
-  previewTimer = setTimeout(fetchPreview, 350)
-}, { deep: true })
+watch(form, () => { previewStale.value = true }, { deep: true })
 
-onMounted(fetchPreview)
-onBeforeUnmount(() => clearTimeout(previewTimer))
+function onPreviewOpen() {
+  if (previewStale.value && !previewLoading.value) fetchPreview()
+}
 
 function submit() {
   if (!props.amountsLocked && !(Number(form.amount) > 0)) {
@@ -310,7 +313,7 @@ function fmtMyr(amount: string | number) {
       <p v-else class="text-[11px]" style="color: var(--color-text-tertiary);">Saving re-freezes the document with the <strong>same invoice number</strong> — the PDF link stays valid.</p>
 
       <div class="flex gap-2">
-        <AdminDocumentPreviewModal :data="previewData" :disabled="!previewData" />
+        <AdminDocumentPreviewModal :data="previewData" @open="onPreviewOpen" />
         <button
           type="button" class="btn-pill btn-pill-primary flex-1 justify-center text-[13px]"
           :class="{ 'opacity-50': submitting }" :disabled="submitting" @click="submit">

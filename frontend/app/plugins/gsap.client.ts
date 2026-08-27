@@ -43,12 +43,26 @@ export default defineNuxtPlugin((nuxtApp) => {
     })
   }
 
+  // Auth surfaces (admin/portal/team/partners/investor) are dense work UIs:
+  // smooth-scroll interpolation there just adds per-frame repaints under the
+  // sticky blurred headers. lerp 1 applies scroll deltas immediately (native
+  // feel) while keeping the same Lenis instance alive for the public pages —
+  // destroying/recreating it would strand the refs components captured.
+  const AUTH_SURFACE = /^\/(admin|portal|team|partners|investor)(\/|$)/
+
   // After each navigation, reset scroll (through Lenis so its internal position
   // stays in sync) and recalculate ScrollTrigger positions against the new layout.
   nuxtApp.hook('page:finish', () => {
-    if (lenis) lenis.scrollTo(0, { immediate: true })
-    else window.scrollTo({ top: 0 })
-    ScrollTrigger.refresh()
+    if (lenis) {
+      lenis.options.lerp = AUTH_SURFACE.test(window.location.pathname) ? 1 : 0.1
+      lenis.scrollTo(0, { immediate: true })
+    }
+    else {
+      window.scrollTo({ top: 0 })
+    }
+    // Re-measuring forces a full-document reflow — skip it on pages that
+    // registered no ScrollTriggers (all of the admin portal).
+    if (ScrollTrigger.getAll().length) ScrollTrigger.refresh()
   })
 
   return {

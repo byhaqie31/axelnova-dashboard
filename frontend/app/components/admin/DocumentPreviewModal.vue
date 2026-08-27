@@ -24,7 +24,16 @@ const variantClass = {
   preview: 'btn-pill-preview',
 }
 
+// Emitted when the overlay opens — lets callers fetch preview data lazily
+// (the quotation builder only renders its document once someone looks).
+const emit = defineEmits<{ open: [] }>()
+
 const open = ref(false)
+
+function show() {
+  open.value = true
+  emit('open')
+}
 
 onKeyStroke('Escape', () => { if (open.value) open.value = false })
 </script>
@@ -38,7 +47,7 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
     :class="[variantClass[variant], block ? 'w-full justify-center text-[13px]' : 'self-stretch min-h-[34px] text-[12px]']"
     :style="block ? undefined : { padding: '0 16px' }"
     :disabled="disabled"
-    @click="open = true"
+    @click="show"
   >
     <UIcon name="i-lucide-eye" class="size-4" /> {{ label }}
   </button>

@@ -167,9 +167,8 @@ async function save() {
 }
 
 onMounted(async () => {
-  await fetchCategory()
-  await loadSiblings()
-  await loadScopeFields()
+  // Independent fetches — run together instead of a 3-deep waterfall.
+  await Promise.all([fetchCategory(), loadSiblings(), loadScopeFields()])
 })
 </script>
 

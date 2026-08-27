@@ -40,13 +40,16 @@ const error = ref('')
 
 // The signed-in founder — used to block self-deactivation in the UI (the
 // backend already rejects it, this just avoids the round-trip).
-const me = ref<{ id: number } | null>(null)
+const { me, load: loadMe } = useAdminMe()
 
 async function fetchUsers() {
   loading.value = true
   error.value = ''
   try {
     users.value = await apiFetch<UserRecord[]>('/api/v1/admin/users')
+    // This page is the roster's only writer — drop the shared picker cache
+    // (useAdminRoster) so the tasks pages refetch after any mutation here.
+    useAdminRoster().invalidate()
   }
   catch {
     error.value = 'Failed to load the team roster. Check your session.'
@@ -56,19 +59,16 @@ async function fetchUsers() {
   }
 }
 
-async function fetchMe() {
-  try {
-    me.value = await apiFetch<{ id: number }>('/api/v1/admin/me')
-  }
-  catch {
-    // Non-fatal — only used to gray out the "deactivate self" action.
-  }
-}
-
 onMounted(() => {
   fetchUsers()
-  fetchMe()
+  // Shared /admin/me singleton (the layout already loads it) — only used to
+  // gray out the "deactivate self" action.
+  loadMe()
 })
+
+// One rendered list per viewport: the table and the mobile cards used to BOTH
+// mount (CSS-hidden), doubling row DOM. Admin is client-only, so no SSR mismatch.
+const isDesktop = useMediaQuery('(min-width: 768px)')
 
 // ── Client-side search + filters. The roster is small (a founder's team, not
 // a customer list) so one unpaginated GET + local filtering keeps this simple.
@@ -329,7 +329,7 @@ onKeyStroke('Escape', () => {
     </div>
 
     <!-- Desktop: table -->
-    <div v-else class="hidden md:block admin-table-card">
+    <div v-else-if="isDesktop" class="admin-table-card">
       <div class="overflow-x-auto">
         <table class="w-full text-left">
           <thead>
@@ -392,7 +392,7 @@ onKeyStroke('Escape', () => {
     </div>
 
     <!-- Mobile: cards -->
-    <div v-if="!loading && filteredUsers.length" class="md:hidden space-y-2.5">
+    <div v-if="!loading && !isDesktop && filteredUsers.length" class="space-y-2.5">
       <div
         v-for="u in filteredUsers" :key="u.id" class="rounded-xl border p-4 cursor-pointer"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
+// One rendered list per viewport: table and mobile cards used to BOTH mount
+// (CSS-hidden), doubling row DOM. Admin is client-only, so no SSR mismatch.
+const isDesktop = useMediaQuery('(min-width: 768px)')
+
 const { apiFetch } = useAdminAuth()
 
 interface Order {
@@ -128,7 +132,7 @@ v-else-if="!orders.length" class="rounded-2xl border p-12 text-center"
       </p>
     </div>
 
-    <div v-else class="hidden md:block admin-table-card">
+    <div v-else-if="isDesktop" class="admin-table-card">
       <div class="overflow-x-auto">
       <table class="w-full text-left">
         <thead>
@@ -183,7 +187,7 @@ v-for="o in orders" :key="o.id"
     </div>
 
     <!-- Mobile: cards -->
-    <div v-if="orders.length" class="md:hidden space-y-2.5">
+    <div v-if="!isDesktop && orders.length" class="space-y-2.5">
       <button
         v-for="o in orders"
         :key="o.id"

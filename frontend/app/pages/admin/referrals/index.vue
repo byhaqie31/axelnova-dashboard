@@ -10,6 +10,10 @@ import DateRange from '~/components/shared/primitives/DateRange.vue'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
+// One rendered list per viewport: table and mobile cards used to BOTH mount
+// (CSS-hidden), doubling row DOM. Admin is client-only, so no SSR mismatch.
+const isDesktop = useMediaQuery('(min-width: 768px)')
+
 const route = useRoute()
 const router = useRouter()
 const { apiFetch } = useAdminAuth()
@@ -395,7 +399,7 @@ watch(activeView, (view) => {
       </div>
 
       <!-- Desktop: table -->
-      <div v-else class="hidden md:block admin-table-card">
+      <div v-else-if="isDesktop" class="admin-table-card">
         <div class="overflow-x-auto">
           <table class="w-full text-left">
             <thead>
@@ -441,7 +445,7 @@ v-for="h in ['Partner', 'Code', 'Tier', 'Referrals', 'Status', 'Last login', 'Ac
       </div>
 
       <!-- Mobile: cards -->
-      <div v-if="!partnersLoading && partners.length" class="md:hidden space-y-2.5">
+      <div v-if="!partnersLoading && !isDesktop && partners.length" class="space-y-2.5">
         <div
           v-for="p in partners"
           :key="p.id"
@@ -489,7 +493,7 @@ v-for="h in ['Partner', 'Code', 'Tier', 'Referrals', 'Status', 'Last login', 'Ac
       </div>
 
       <!-- Desktop: table -->
-      <div v-else class="hidden md:block admin-table-card">
+      <div v-else-if="isDesktop" class="admin-table-card">
         <div class="overflow-x-auto">
           <table class="w-full text-left">
             <thead>
@@ -530,7 +534,7 @@ v-for="r in referrals" :key="r.id"
       </div>
 
       <!-- Mobile: cards -->
-      <div v-if="!referralsLoading && referrals.length" class="md:hidden space-y-2.5">
+      <div v-if="!referralsLoading && !isDesktop && referrals.length" class="space-y-2.5">
         <button
           v-for="r in referrals"
           :key="r.id"
