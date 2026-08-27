@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Admin\AnalyticsController;
 use App\Http\Controllers\Api\V1\Admin\AnnouncementsController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
+use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\ExpensesController;
 use App\Http\Controllers\Api\V1\Admin\FeedbackController as AdminFeedbackController;
 use App\Http\Controllers\Api\V1\Admin\InquiriesController;
@@ -165,6 +166,9 @@ Route::middleware([
         Route::get('/clients/{client}', [ClientsController::class, 'show'])->name('clients.show');
         Route::put('/clients/{client}', [ClientsController::class, 'update'])->name('clients.update');
 
+        // Dashboard landing counts — one cached request for the stat tiles.
+        Route::get('/dashboard/counts', [DashboardController::class, 'counts'])->name('dashboard.counts');
+
         // Analytics overview (traffic / engagement) + revenue attribution
         Route::get('/analytics/overview', [AnalyticsController::class, 'overview'])->name('analytics.overview');
         Route::get('/analytics/attribution', [AnalyticsController::class, 'attribution'])->name('analytics.attribution');
@@ -282,6 +286,9 @@ Route::middleware([
         // moderation, and the publish gate (consent required, nothing auto-publishes).
         Route::get('/feedback', [AdminFeedbackController::class, 'index'])->name('feedback.index');
         Route::post('/feedback', [AdminFeedbackController::class, 'store'])->name('feedback.store');
+        // Must precede the {feedback} bind. Feeds the detail page's sort-order
+        // picker with EVERY row's position (the paginated index truncates at 20).
+        Route::get('/feedback/sort-orders', [AdminFeedbackController::class, 'sortOrders'])->name('feedback.sort-orders');
         Route::get('/feedback/{feedback}', [AdminFeedbackController::class, 'show'])->name('feedback.show');
         Route::put('/feedback/{feedback}', [AdminFeedbackController::class, 'update'])->name('feedback.update');
         Route::post('/feedback/{feedback}/status', [AdminFeedbackController::class, 'updateStatus'])->name('feedback.status');

@@ -15,7 +15,9 @@ class ProjectsController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Project::query()->orderBy('sort_order')->orderByDesc('id');
+        // withCount so likes_count aggregates in one query — the resource's
+        // fallback would otherwise fire a COUNT per row.
+        $query = Project::query()->withCount('likes')->orderBy('sort_order')->orderByDesc('id');
 
         if ($request->filled('search')) {
             $search = $request->search;

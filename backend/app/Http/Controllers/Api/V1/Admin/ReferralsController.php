@@ -16,7 +16,11 @@ class ReferralsController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Referral::with('order')->latest('created_at');
+        // quotation + quotation.order ride along so the resource's anchor and
+        // quotation_reference fields never lazy-load per row (was an N+1 that
+        // pulled full JSON-blob quotation rows for every page).
+        $query = Referral::with(['order', 'quotation:id,reference_code', 'quotation.order'])
+            ->latest('created_at');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);

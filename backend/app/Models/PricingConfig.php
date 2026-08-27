@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 #[ObservedBy([PricingConfigObserver::class])]
 class PricingConfig extends Model
@@ -30,6 +31,13 @@ class PricingConfig extends Model
 
     public static function getActive(): self
     {
-        return static::where('active', true)->firstOrFail();
+        // Every PricingEngine::active() (quote store/update, ScopeSummary,
+        // DocumentMapper) resolves the active row — cache it; the observer
+        // forgets the key on any save/delete so activations apply immediately.
+        return Cache::remember(
+            'pricing_config_active_v1',
+            3600,
+            fn () => static::where('active', true)->firstOrFail(),
+        );
     }
 }

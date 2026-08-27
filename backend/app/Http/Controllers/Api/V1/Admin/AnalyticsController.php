@@ -10,10 +10,10 @@ use App\Models\Order;
 use App\Models\PageView;
 use App\Models\Payment;
 use App\Models\Project;
-use App\Models\Quotation;
 use App\Models\Referrer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AnalyticsController extends Controller
 {
@@ -32,6 +32,21 @@ class AnalyticsController extends Controller
             '30d' => 30,
             default => 7,
         };
+
+        // Five aggregates over page_views (the highest-write table) recompute an
+        // identical answer for every viewer — cache the whole payload briefly.
+        $payload = Cache::remember(
+            "admin:analytics:overview:{$range}",
+            120,
+            fn () => $this->buildOverview($range),
+        );
+
+        return response()->json($payload);
+    }
+
+    /** @return array<string, mixed> */
+    private function buildOverview(int $range): array
+    {
         $since = now()->subDays($range - 1)->startOfDay();
 
         $base = fn () => PageView::where('viewed_at', '>=', $since);
@@ -69,7 +84,7 @@ class AnalyticsController extends Controller
             ->get()
             ->map(fn ($r) => ['referrer' => $r->referrer, 'count' => (int) $r->c]);
 
-        return response()->json([
+        return [
             'range' => $range,
             'views' => [
                 'total' => $total,
@@ -79,7 +94,7 @@ class AnalyticsController extends Controller
             'topPaths' => $topPaths,
             'topReferrers' => $topReferrers,
             'topLikedProjects' => $this->topLikedProjects(),
-        ]);
+        ];
     }
 
     /**
@@ -93,76 +108,78 @@ class AnalyticsController extends Controller
      */
     public function attribution(Request $request): JsonResponse
     {
+        // Grouped in SQL (this used to load every order/payment/quotation/inquiry
+        // into PHP), and cached briefly — the roll-up is identical for every viewer.
+        return response()->json(Cache::remember('admin:analytics:attribution', 300, fn () => $this->buildAttribution()));
+    }
+
+    /** @return array<string, mixed> */
+    private function buildAttribution(): array
+    {
         // Collected = signed SUM over succeeded rows (refunds are negative, so they
         // net out), grouped per order.
-        $collectedByOrder = Payment::query()
+        $collectedSub = Payment::query()
             ->where('status', PaymentStatus::Succeeded)
             ->groupBy('order_id')
-            ->selectRaw('order_id, SUM(amount_myr) as collected')
-            ->pluck('collected', 'order_id');
+            ->selectRaw('order_id, SUM(amount_myr) as collected');
 
-        $orders = Order::query()->get(['id', 'quotation_id', 'final_amount_myr']);
-
-        // quotation_id → originating inquiry source (web / referral / other).
-        $sourceByQuotation = Inquiry::query()
+        // One originating-inquiry source per quotation (web / referral / other).
+        $sourceSub = Inquiry::query()
             ->whereNotNull('quotation_id')
-            ->pluck('source', 'quotation_id');
+            ->groupBy('quotation_id')
+            ->selectRaw('quotation_id, MAX(source) as source');
 
-        $bySource = [];
-        $totalContracted = 0.0;
-        $totalCollected = 0.0;
+        // Contracted vs collected by inquiry source. No originating inquiry →
+        // a directly-built or public quote, bucketed under 'direct'.
+        $bySourceRows = Order::query()
+            ->leftJoinSub($collectedSub, 'p', 'p.order_id', '=', 'orders.id')
+            ->leftJoinSub($sourceSub, 'i', 'i.quotation_id', '=', 'orders.quotation_id')
+            ->groupByRaw("COALESCE(i.source, 'direct')")
+            ->selectRaw("COALESCE(i.source, 'direct') as source")
+            ->selectRaw('COUNT(*) as orders_count')
+            ->selectRaw('COALESCE(SUM(orders.final_amount_myr), 0) as contracted')
+            ->selectRaw('COALESCE(SUM(p.collected), 0) as collected')
+            ->get();
 
-        foreach ($orders as $order) {
-            // No originating inquiry → a directly-built or public quote.
-            $source = $sourceByQuotation[$order->quotation_id] ?? 'direct';
-            $contracted = (float) $order->final_amount_myr;
-            $collected = (float) ($collectedByOrder[$order->id] ?? 0);
+        $bySource = $bySourceRows->map(fn ($r) => [
+            'source' => $r->source,
+            'orders' => (int) $r->orders_count,
+            'contracted' => (float) $r->contracted,
+            'collected' => (float) $r->collected,
+        ]);
 
-            $totalContracted += $contracted;
-            $totalCollected += $collected;
+        // Roll up contracted/collected per order under its referrer via the
+        // normalized chain (order → quotation.referral_partner_id), or the
+        // "Public" bucket when the quotation carries no partner (or the order
+        // has no quotation at all).
+        $rollupRows = Order::query()
+            ->leftJoinSub($collectedSub, 'p', 'p.order_id', '=', 'orders.id')
+            ->leftJoin('quotations as q', fn ($join) => $join
+                ->on('q.id', '=', 'orders.quotation_id')
+                ->whereNull('q.deleted_at'))
+            ->groupBy('q.referral_partner_id')
+            ->selectRaw('q.referral_partner_id as partner_id')
+            ->selectRaw('COUNT(*) as orders_count')
+            ->selectRaw('COALESCE(SUM(orders.final_amount_myr), 0) as contracted')
+            ->selectRaw('COALESCE(SUM(p.collected), 0) as collected')
+            ->get();
 
-            $bySource[$source] ??= ['source' => $source, 'orders' => 0, 'contracted' => 0.0, 'collected' => 0.0];
-            $bySource[$source]['orders']++;
-            $bySource[$source]['contracted'] += $contracted;
-            $bySource[$source]['collected'] += $collected;
-        }
+        $referrers = Referrer::query()
+            ->whereIn('id', $rollupRows->pluck('partner_id')->filter())
+            ->get(['id', 'name', 'email', 'commission_pct'])
+            ->keyBy('id');
 
-        // quotation_id → referral_partner_id, for orders reached via the normalized
-        // chain (payment → order → quotation.referral_partner_id).
-        $referrerByQuotation = Quotation::query()
-            ->whereNotNull('referral_partner_id')
-            ->pluck('referral_partner_id', 'id');
-
-        $referrers = Referrer::query()->get(['id', 'name', 'email', 'commission_pct'])->keyBy('id');
-
-        // Roll up contracted/collected per order under its referrer (or the
-        // "Public" bucket when the quotation carries no referral_partner_id, or
-        // the order has no quotation at all).
-        $rollup = [];
-        foreach ($orders as $order) {
-            $partnerId = $referrerByQuotation[$order->quotation_id] ?? null;
-            $key = $partnerId ?? 'public';
-
-            $contracted = (float) $order->final_amount_myr;
-            $collected = (float) ($collectedByOrder[$order->id] ?? 0);
-
-            $rollup[$key] ??= ['partner_id' => $partnerId, 'orders' => 0, 'contracted' => 0.0, 'collected' => 0.0];
-            $rollup[$key]['orders']++;
-            $rollup[$key]['contracted'] += $contracted;
-            $rollup[$key]['collected'] += $collected;
-        }
-
-        $byReferrer = collect($rollup)->map(function ($row) use ($referrers) {
-            $referrer = $row['partner_id'] !== null ? $referrers->get($row['partner_id']) : null;
+        $byReferrer = $rollupRows->map(function ($row) use ($referrers) {
+            $referrer = $row->partner_id !== null ? $referrers->get($row->partner_id) : null;
             $pct = $referrer ? (int) $referrer->commission_pct : 0;
-            $collected = $row['collected'];
+            $collected = (float) $row->collected;
 
             return [
                 'referrer' => $referrer?->name ?? 'Public',
                 'email' => $referrer?->email,
-                'referrals' => $row['orders'],
+                'referrals' => (int) $row->orders_count,
                 'commission_pct' => $pct,
-                'contracted' => round($row['contracted'], 2),
+                'contracted' => round((float) $row->contracted, 2),
                 'collected' => round($collected, 2),
                 // Derived, never stored — payout stays manual (plan §3).
                 'commission_est' => round($collected * $pct / 100, 2),
@@ -171,14 +188,14 @@ class AnalyticsController extends Controller
             ->sortByDesc('collected')
             ->values();
 
-        return response()->json([
+        return [
             'totals' => [
-                'contracted' => round($totalContracted, 2),
-                'collected' => round($totalCollected, 2),
+                'contracted' => round((float) $bySourceRows->sum('contracted'), 2),
+                'collected' => round((float) $bySourceRows->sum('collected'), 2),
             ],
-            'bySource' => collect($bySource)->sortByDesc('collected')->values(),
+            'bySource' => $bySource->sortByDesc('collected')->values(),
             'byReferrer' => $byReferrer,
-        ]);
+        ];
     }
 
     /** All-time most-liked projects (likes accumulate, so not range-bound). */

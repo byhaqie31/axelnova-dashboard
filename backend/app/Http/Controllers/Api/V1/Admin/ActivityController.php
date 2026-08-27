@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -23,11 +24,12 @@ class ActivityController extends Controller
         if ($request->filled('actor_id')) {
             $query->where('actor_id', $request->integer('actor_id'));
         }
+        // Range comparisons keep the created_at index usable (whereDate defeats it).
         if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+            $query->where('created_at', '>=', Carbon::parse($request->date_from)->startOfDay());
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+            $query->where('created_at', '<', Carbon::parse($request->date_to)->addDay()->startOfDay());
         }
 
         $logs = $query->paginate(30)->through(fn (ActivityLog $log) => [

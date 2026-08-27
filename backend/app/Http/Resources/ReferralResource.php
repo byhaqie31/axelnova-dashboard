@@ -40,7 +40,7 @@ class ReferralResource extends JsonResource
             'order_number' => $this->whenLoaded('order', fn () => $this->order?->order_number),
             'order_final_amount_myr' => $this->whenLoaded('order', fn () => $this->order?->final_amount_myr),
             'commission_amount_myr' => $this->whenLoaded('order', fn () => $this->commissionAmount()),
-            'quotation_reference' => $this->quotation?->reference_code,
+            'quotation_reference' => $this->whenLoaded('quotation', fn () => $this->quotation?->reference_code),
             // Anchor order (via quotation, legacy fallback) + derived commission at the
             // effective rate. earned counts only once converted (deposit collected).
             'anchor_order_id' => $anchor?->id,

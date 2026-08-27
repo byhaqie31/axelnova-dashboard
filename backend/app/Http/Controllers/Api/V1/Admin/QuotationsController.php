@@ -95,12 +95,26 @@ class QuotationsController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         // Self-heal overdue sent quotes before listing, so 'expired' is accurate
-        // (and filterable) without a scheduler.
-        Quotation::expireOverdue();
+        // (and filterable) without a scheduler. Cache-gated to at most one sweep
+        // per minute — an UPDATE on every GET serialized list loads before.
+        Quotation::expireOverdueThrottled();
 
         // Search + status + date-range + newest-first live in the shared query
         // object (the connector's list endpoint uses the SAME one).
-        $query = QuotationIndexQuery::fromAdminRequest($request)->builder()->with('addons');
+        // The list never serializes form_payload/document, so select scalars only
+        // — the two JSON blobs are the widest columns in the schema — plus the
+        // two extracted scalars customPackageLean() derives the "Custom" label from.
+        $query = QuotationIndexQuery::fromAdminRequest($request)->builder()
+            ->select([
+                'id', 'reference_code', 'source', 'client_id', 'name', 'email', 'phone',
+                'company', 'package_key', 'status', 'referral_partner_id',
+                'estimate_min_myr', 'estimate_max_myr', 'estimate_eta_value', 'estimate_eta_unit',
+                'submitted_at', 'issued_at', 'viewed_at', 'sent_at', 'expires_at',
+                'created_at', 'updated_at',
+            ])
+            ->selectRaw("JSON_UNQUOTE(COALESCE(JSON_EXTRACT(document, '$.project'), JSON_EXTRACT(document, '$.payload.project'))) as custom_project")
+            ->selectRaw("JSON_UNQUOTE(COALESCE(JSON_EXTRACT(form_payload, '$.source_meta.created_via'), JSON_EXTRACT(form_payload, '$.created_via'), JSON_EXTRACT(document, '$.created_via'))) as custom_created_via")
+            ->with('addons');
 
         return QuotationResource::collection($query->paginate(20));
     }

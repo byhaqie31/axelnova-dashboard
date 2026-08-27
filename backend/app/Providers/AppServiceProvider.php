@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Console\Commands\MintConnectorToken;
 use App\Models\Feedback;
 use App\Models\Payment;
+use App\Models\PersonalAccessToken as AppPersonalAccessToken;
 use App\Models\User;
 use App\Observers\FeedbackObserver;
 use App\Observers\PaymentObserver;
@@ -23,6 +24,10 @@ class AppServiceProvider extends ServiceProvider
             'app.admin_name' => env('ADMIN_NAME', 'Ahmad Baihaqie'),
             'app.calendly_url' => env('ADMIN_CALENDLY_URL', ''),
         ]);
+
+        // Throttled last_used_at stamping — otherwise every authenticated
+        // request performs an UPDATE on personal_access_tokens.
+        Sanctum::usePersonalAccessTokenModel(AppPersonalAccessToken::class);
 
         // The ledger's only writer of derived paid caches.
         Payment::observe(PaymentObserver::class);
