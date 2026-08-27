@@ -126,16 +126,21 @@ useHead({ title: 'Admin Portal' })
           >
             <UIcon :name="mobileNavOpen ? 'i-fluent-dismiss-24-regular' : 'i-fluent-line-horizontal-3-24-regular'" class="size-5" />
           </button>
-          <!-- Desktop: collapse the sidebar to an icon-only rail -->
-          <button
-            class="hidden md:inline-flex items-center justify-center size-8 rounded-md transition-colors hover:bg-(--color-bg-secondary)"
-            :style="{ color: 'var(--color-text)' }"
-            :aria-pressed="sidebarCollapsed"
-            :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-            @click="sidebarCollapsed = !sidebarCollapsed"
-          >
-            <UIcon name="i-fluent-line-horizontal-3-24-regular" class="size-5" />
-          </button>
+          <!-- Desktop: collapse the sidebar to an icon-only rail. The wrapper
+               mirrors the rail's 68px width (md:-ml-6 cancels the header's
+               px-6) so the toggle sits on the same center axis as the rail
+               icons below it. -->
+          <div class="hidden md:flex md:w-[68px] md:-ml-6 justify-center shrink-0">
+            <button
+              class="inline-flex items-center justify-center size-8 rounded-md transition-colors hover:bg-(--color-bg-secondary)"
+              :style="{ color: 'var(--color-text)' }"
+              :aria-pressed="sidebarCollapsed"
+              :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+              @click="sidebarCollapsed = !sidebarCollapsed"
+            >
+              <UIcon name="i-fluent-line-horizontal-3-24-regular" class="size-5" />
+            </button>
+          </div>
           <BrandMark to="/admin" wordmark="Admin Portal" />
         </div>
 

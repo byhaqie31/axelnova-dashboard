@@ -2,7 +2,8 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 // One rendered list per viewport: table and mobile cards used to BOTH mount
-// (CSS-hidden), doubling row DOM. Admin is client-only, so no SSR mismatch.
+// (CSS-hidden), doubling row DOM. No SSR mismatch: these branches render only
+// after the client-side fetch resolves (SSR always shows the loading state).
 const isDesktop = useMediaQuery('(min-width: 768px)')
 
 const { apiFetch } = useAdminAuth()

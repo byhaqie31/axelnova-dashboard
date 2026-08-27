@@ -91,12 +91,12 @@ export default defineNuxtConfig({
     //   /feedback/**, /proposals/**        — token/client-scoped, per-recipient
     //   /quote/**                          — form + live pricing config
     // Caching any of those would serve one visitor's page to another.
-    // The admin SPA renders nothing during SSR anyway (the bearer token lives
-    // in localStorage, every fetch is in onMounted), so a server render only
-    // adds a full Nitro round-trip in front of a data-free shell — serve the
-    // static SPA shell instead. Auth still enforced by the API + route guard.
-    '/admin': { ssr: false },
-    '/admin/**': { ssr: false },
+    // NOTE: do NOT add `ssr: false` for /admin/** yet, tempting as it is (the
+    // admin SSR shell is data-free — token in localStorage, fetches in
+    // onMounted). @nuxt/ui 4.9's colors plugin crashes on hydration of any
+    // non-server-rendered page (`injectHead().hooks.hookOnce` — unhead v2 API
+    // against nuxt 4.5's unhead v3), 500-ing every hard refresh inside /admin.
+    // Revisit after upgrading @nuxt/ui to >= 4.11 (unhead v3 compatible).
 
     '/': { swr: 300 },
     '/about': { swr: 300 },

@@ -66,8 +66,9 @@ onMounted(() => {
   loadMe()
 })
 
-// One rendered list per viewport: the table and the mobile cards used to BOTH
-// mount (CSS-hidden), doubling row DOM. Admin is client-only, so no SSR mismatch.
+// One rendered list per viewport: table and mobile cards used to BOTH mount
+// (CSS-hidden), doubling row DOM. No SSR mismatch: these branches render only
+// after the client-side fetch resolves (SSR always shows the loading state).
 const isDesktop = useMediaQuery('(min-width: 768px)')
 
 // ── Client-side search + filters. The roster is small (a founder's team, not
