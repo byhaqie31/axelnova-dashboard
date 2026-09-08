@@ -131,10 +131,11 @@ const form = reactive({
   allowance: '' as string | number,
 })
 
-// A freshly-created account's one-time credentials — shown in place of the
-// form until the founder acknowledges them (never retrievable again, since
-// the backend only stores the hash).
-const createdCredentials = ref<{ email: string, password: string } | null>(null)
+// One-time credentials — a freshly-created account's, or a teammate's after a
+// founder-issued password reset — shown in place of the form until the founder
+// acknowledges them (never retrievable again, since the backend only stores
+// the hash). `mode` only changes the heading copy.
+const createdCredentials = ref<{ email: string, password: string, mode: 'created' | 'reset' } | null>(null)
 
 // Crypto-random password — readable-ish (no ambiguous 0/O/1/l) but well past
 // the backend's 12-char minimum.
@@ -195,7 +196,7 @@ async function save() {
           monthly_allowance_myr: allowance,
         },
       })
-      createdCredentials.value = { email: form.email.trim(), password: form.password }
+      createdCredentials.value = { email: form.email.trim(), password: form.password, mode: 'created' }
       fetchUsers()
     }
     catch (e) {
@@ -235,25 +236,34 @@ function doneAfterCreate() {
   createdCredentials.value = null
 }
 
-// ── Deactivate / reactivate — confirm-before-act, one dialog for both.
-type PendingAction = { user: UserRecord, kind: 'deactivate' | 'reactivate' }
+// ── Deactivate / reactivate / reset password — confirm-before-act, one dialog
+// for all three. `kind` doubles as the POST /users/{id}/{kind} path segment.
+type PendingAction = { user: UserRecord, kind: 'deactivate' | 'reactivate' | 'reset-password' }
 const pendingAction = ref<PendingAction | null>(null)
 const acting = ref(false)
 
 const confirmCopy = computed(() => {
   if (!pendingAction.value) return { title: '', body: '', cta: '' }
   const { user, kind } = pendingAction.value
-  return kind === 'deactivate'
-    ? {
-        title: `Deactivate ${user.name}?`,
-        body: 'They’re signed out everywhere immediately and can’t log back in to /admin or /team until reactivated.',
-        cta: 'Deactivate',
-      }
-    : {
-        title: `Reactivate ${user.name}?`,
-        body: 'They can sign in again with their existing email and password.',
-        cta: 'Reactivate',
-      }
+  if (kind === 'deactivate') {
+    return {
+      title: `Deactivate ${user.name}?`,
+      body: 'They’re signed out everywhere immediately and can’t log back in to /admin or /team until reactivated.',
+      cta: 'Deactivate',
+    }
+  }
+  if (kind === 'reset-password') {
+    return {
+      title: `Reset ${user.name}’s password?`,
+      body: 'A new temporary password is generated and emailed to them, and shown to you once. Their current password stops working and they’re signed out everywhere.',
+      cta: 'Reset password',
+    }
+  }
+  return {
+    title: `Reactivate ${user.name}?`,
+    body: 'They can sign in again with their existing email and password.',
+    cta: 'Reactivate',
+  }
 })
 
 async function confirmAction() {
@@ -261,9 +271,18 @@ async function confirmAction() {
   if (!pending || acting.value) return
   acting.value = true
   try {
-    await apiFetch(`/api/v1/admin/users/${pending.user.id}/${pending.kind}`, { method: 'POST' })
-    toast.success(pending.kind === 'deactivate' ? 'Teammate deactivated' : 'Teammate reactivated')
+    const res = await apiFetch<{ password?: string }>(`/api/v1/admin/users/${pending.user.id}/${pending.kind}`, { method: 'POST' })
     pendingAction.value = null
+    if (pending.kind === 'reset-password') {
+      // Surface the one-time password in the same panel the create flow uses.
+      editingUser.value = null
+      createdCredentials.value = { email: pending.user.email, password: res.password ?? '', mode: 'reset' }
+      slideoverOpen.value = true
+      toast.success('Password reset', 'The new temporary password has been emailed to them.')
+    }
+    else {
+      toast.success(pending.kind === 'deactivate' ? 'Teammate deactivated' : 'Teammate reactivated')
+    }
     fetchUsers()
   }
   catch (e) {
@@ -373,6 +392,12 @@ onKeyStroke('Escape', () => {
                     <UIcon name="i-lucide-pencil" class="size-3.5" />Edit
                   </button>
                   <button
+                    v-if="!u.deactivated_at" type="button" class="btn-table-action"
+                    title="Issue a new temporary password"
+                    @click.stop="pendingAction = { user: u, kind: 'reset-password' }">
+                    <UIcon name="i-lucide-key-round" class="size-3.5" />Reset password
+                  </button>
+                  <button
                     v-if="u.deactivated_at" type="button" class="btn-table-action is-accent"
                     @click.stop="pendingAction = { user: u, kind: 'reactivate' }">
                     <UIcon name="i-lucide-user-check" class="size-3.5" />Reactivate
@@ -418,6 +443,11 @@ onKeyStroke('Escape', () => {
           <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Since {{ fmtDate(u.created_at) }}</span>
           <div class="flex items-center gap-1.5">
             <button
+              v-if="!u.deactivated_at" type="button" class="btn-pill btn-pill-ghost text-[12px]"
+              @click.stop="pendingAction = { user: u, kind: 'reset-password' }">
+              Reset password
+            </button>
+            <button
               v-if="u.deactivated_at" type="button" class="btn-pill btn-pill-accent text-[12px]"
               @click.stop="pendingAction = { user: u, kind: 'reactivate' }">
               Reactivate
@@ -441,7 +471,7 @@ onKeyStroke('Escape', () => {
             <div class="slideover-head">
               <div class="min-w-0">
                 <p class="text-[17px] font-bold tracking-tight truncate" style="color: var(--color-text);">
-                  {{ createdCredentials ? 'Account created' : editingUser === null ? 'New teammate' : 'Edit teammate' }}
+                  {{ createdCredentials ? (createdCredentials.mode === 'reset' ? 'Password reset' : 'Account created') : editingUser === null ? 'New teammate' : 'Edit teammate' }}
                 </p>
                 <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">
                   {{ createdCredentials
@@ -473,7 +503,9 @@ onKeyStroke('Escape', () => {
                 </div>
               </div>
               <p class="text-[11px]" style="color: var(--color-text-tertiary);">
-                They can sign in at /team/login and change nothing here — there's no self-service password reset, so keep a copy until it's handed off.
+                {{ createdCredentials.mode === 'reset'
+                  ? 'This has also been emailed to them. If it doesn’t land, share it directly — they can sign in at /team/login.'
+                  : 'They can sign in at /team/login. If they ever forget this, use “Reset password” on their row to issue a new one.' }}
               </p>
               <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]" @click="doneAfterCreate">
                 Done

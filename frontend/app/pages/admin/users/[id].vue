@@ -122,10 +122,27 @@ async function save() {
   }
 }
 
-// ── Deactivate / reactivate ────────────────────────────────────────────────
-const pendingAction = ref<'deactivate' | 'reactivate' | null>(null)
+// ── Deactivate / reactivate / reset password ───────────────────────────────
+// `pendingAction` doubles as the POST /users/{id}/{kind} path segment.
+const pendingAction = ref<'deactivate' | 'reactivate' | 'reset-password' | null>(null)
 const acting = ref(false)
 const isSelf = computed(() => !!profile.value && profile.value.id === meId.value)
+
+// One-time temporary password after a reset — the backend only stores the
+// hash, so this is the founder's only chance to copy it.
+const resetPassword = ref<string | null>(null)
+
+const confirmCopy = computed(() => {
+  const name = profile.value?.name ?? ''
+  switch (pendingAction.value) {
+    case 'deactivate':
+      return { title: `Deactivate ${name}?`, body: 'Locks them out of the workspace and revokes their active sessions. Their payslip history is kept.', cta: 'Deactivate' }
+    case 'reset-password':
+      return { title: `Reset ${name}’s password?`, body: 'A new temporary password is generated and emailed to them, and shown to you once. Their current password stops working and they’re signed out everywhere.', cta: 'Reset password' }
+    default:
+      return { title: `Reactivate ${name}?`, body: 'Restores their workspace access. They sign in fresh to get a new session.', cta: 'Reactivate' }
+  }
+})
 
 async function confirmAction() {
   const p = profile.value
@@ -133,6 +150,13 @@ async function confirmAction() {
   if (!p || !kind || acting.value) return
   acting.value = true
   try {
+    if (kind === 'reset-password') {
+      const res = await apiFetch<{ password: string }>(`/api/v1/admin/users/${p.id}/reset-password`, { method: 'POST' })
+      resetPassword.value = res.password
+      pendingAction.value = null
+      toast.success('Password reset', 'The new temporary password has been emailed to them.')
+      return
+    }
     const updated = await apiFetch<Partial<Profile>>(`/api/v1/admin/users/${p.id}/${kind}`, { method: 'POST' })
     profile.value = { ...p, ...updated }
     pendingAction.value = null
@@ -147,7 +171,8 @@ async function confirmAction() {
   }
 }
 onKeyStroke('Escape', () => {
-  if (pendingAction.value) pendingAction.value = null
+  if (pendingAction.value) { pendingAction.value = null; return }
+  if (resetPassword.value) resetPassword.value = null
 })
 
 function orNone(v: string | null): string {
@@ -257,12 +282,19 @@ const addressBlock = computed(() => {
                   Availability: {{ availabilityMeta(profile.availability)?.label ?? '—' }}
                 </p>
               </div>
-              <button
-                v-if="!profile.deactivated_at" type="button" class="btn-table-action is-danger"
-                :disabled="isSelf" :title="isSelf ? 'You can’t deactivate your own account' : undefined"
-                @click="pendingAction = 'deactivate'">
-                <UIcon name="i-lucide-user-x" class="size-3.5" /> Deactivate
-              </button>
+              <div v-if="!profile.deactivated_at" class="flex items-center gap-1.5 flex-wrap justify-end">
+                <button
+                  type="button" class="btn-table-action" title="Issue a new temporary password"
+                  @click="pendingAction = 'reset-password'">
+                  <UIcon name="i-lucide-key-round" class="size-3.5" /> Reset password
+                </button>
+                <button
+                  type="button" class="btn-table-action is-danger"
+                  :disabled="isSelf" :title="isSelf ? 'You can’t deactivate your own account' : undefined"
+                  @click="pendingAction = 'deactivate'">
+                  <UIcon name="i-lucide-user-x" class="size-3.5" /> Deactivate
+                </button>
+              </div>
               <button v-else type="button" class="btn-table-action is-accent" @click="pendingAction = 'reactivate'">
                 <UIcon name="i-lucide-user-check" class="size-3.5" /> Reactivate
               </button>
@@ -308,26 +340,45 @@ const addressBlock = computed(() => {
       </div>
     </template>
 
-    <!-- Deactivate / reactivate confirm -->
+    <!-- Deactivate / reactivate / reset-password confirm -->
     <Teleport to="body">
       <Transition name="confirm-fade">
         <div v-if="pendingAction && profile" class="confirm-overlay" @click.self="pendingAction = null">
           <div class="confirm-card" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
-            <h2 class="text-[17px] font-bold tracking-tight mb-2" style="color: var(--color-text);">
-              {{ pendingAction === 'deactivate' ? 'Deactivate' : 'Reactivate' }} {{ profile.name }}?
-            </h2>
-            <p class="text-[13px] leading-relaxed mb-6" style="color: var(--color-text-secondary);">
-              <template v-if="pendingAction === 'deactivate'">Locks them out of the workspace and revokes their active sessions. Their payslip history is kept.</template>
-              <template v-else>Restores their workspace access. They sign in fresh to get a new session.</template>
-            </p>
+            <h2 class="text-[17px] font-bold tracking-tight mb-2" style="color: var(--color-text);">{{ confirmCopy.title }}</h2>
+            <p class="text-[13px] leading-relaxed mb-6" style="color: var(--color-text-secondary);">{{ confirmCopy.body }}</p>
             <div class="flex items-center justify-end gap-2">
               <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="acting" @click="pendingAction = null">Cancel</button>
               <button
                 type="button" class="btn-pill text-[13px]"
                 :class="pendingAction === 'deactivate' ? 'btn-pill-danger' : 'btn-pill-accent'"
                 :disabled="acting" @click="confirmAction">
-                {{ acting ? 'Working…' : (pendingAction === 'deactivate' ? 'Deactivate' : 'Reactivate') }}
+                {{ acting ? 'Working…' : confirmCopy.cta }}
               </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- One-time reveal of the new temporary password -->
+    <Teleport to="body">
+      <Transition name="confirm-fade">
+        <div v-if="resetPassword && profile" class="confirm-overlay" @click.self="resetPassword = null">
+          <div class="confirm-card" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
+            <h2 class="text-[17px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Password reset</h2>
+            <p class="text-[12px] mb-4" style="color: var(--color-text-secondary);">
+              Emailed to {{ profile.email }}. It won’t be shown again — share it directly if the mail doesn’t land.
+            </p>
+            <div class="rounded-xl border p-4 mb-5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+              <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Temporary password</span>
+              <div class="flex items-center gap-2 mt-1">
+                <code class="text-[13px] flex-1 truncate" style="color: var(--color-text);">{{ resetPassword }}</code>
+                <AdminCopyButton :value="resetPassword" size="md" />
+              </div>
+            </div>
+            <div class="flex items-center justify-end">
+              <button type="button" class="btn-pill btn-pill-primary text-[13px]" @click="resetPassword = null">Done</button>
             </div>
           </div>
         </div>

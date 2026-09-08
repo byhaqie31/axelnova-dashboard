@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TeamPasswordResetMail;
 use App\Mail\TeamWelcomeMail;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -163,6 +165,52 @@ class UsersController extends Controller
         $user->forceFill(['deactivated_at' => null])->save();
 
         return response()->json($this->present($user->fresh()));
+    }
+
+    /**
+     * Issue a fresh temporary password for a teammate. This is the ONLY reset
+     * path for team accounts — the workspace "forgot password" just emails the
+     * founder to come here. Mints a random password (hashed by the model's
+     * `hashed` cast), revokes every outstanding token so any open session dies,
+     * emails the teammate their new credentials, and returns the plaintext once
+     * so the founder can hand it over directly if the mail doesn't land.
+     */
+    public function resetPassword(Request $request, User $user): JsonResponse
+    {
+        Gate::authorize('manage-users');
+
+        if ($user->isDeactivated()) {
+            return response()->json(['message' => 'Reactivate this teammate before resetting their password.'], 422);
+        }
+
+        $password = User::makeTemporaryPassword();
+
+        $user->forceFill(['password' => $password])->save();
+        $user->tokens()->delete();
+
+        ActivityLog::create([
+            'actor_id' => $request->user()->id,
+            'action' => 'team.password_reset',
+            'subject_type' => class_basename($user),
+            'subject_id' => $user->id,
+            'changes' => null,
+        ]);
+
+        // Same posture as provisioning: queued, and never allowed to fail the
+        // reset — the founder sees the one-time password on-screen as fallback.
+        try {
+            Mail::to($user->email, $user->name)->send(new TeamPasswordResetMail($user, $password));
+        } catch (\Throwable $e) {
+            Log::warning('Password reset email could not be queued for teammate.', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Password reset. The new temporary password has been emailed to the teammate.',
+            'password' => $password,
+        ]);
     }
 
     private function present(User $user): array

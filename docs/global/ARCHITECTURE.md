@@ -179,6 +179,12 @@ PATCH  /v1/admin/users/{user}        Edit {name?, role?, monthly_allowance_myr?}
 POST   /v1/admin/users/{user}/deactivate    Persistent lockout (`deactivated_at` + revokes tokens).
                                      Self-deactivation → 422; already-deactivated → 422 (idempotent guard)
 POST   /v1/admin/users/{user}/reactivate    Clears the lockout; already-active → 422
+POST   /v1/admin/users/{user}/reset-password    Founder-issued reset — the ONLY reset path for team accounts.
+                                     Mints a random 16-char temp password (User::makeTemporaryPassword,
+                                     hashed by the model cast), revokes the teammate's tokens, logs
+                                     `team.password_reset`, queues TeamPasswordResetMail to them, and
+                                     returns `{message, password}` once so the founder can hand it over
+                                     if the mail doesn't land. Deactivated teammate → 422
 
 # Announcements (cockpit side — Task 6)
 GET    /v1/admin/announcements       All rows, newest first (creator eager-loaded)
@@ -270,7 +276,8 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 # The marketer surface (marketing + analytics) was added later — nav + pages
 # render for founder/marketer only (teamNav roles filter; backend 403s engineers).
 /team/login           Team auth
-/team/forgot          "Forgot password" — notifies the founder, no self-service reset
+/team/forgot          "Forgot password" — no self-service reset; emails the founder (TeamPasswordResetRequestedMail),
+                      who issues a new temp password via "Reset password" on /admin/users (list row or detail page)
 /team                 Home — company announcements feed (published + audience team|all, newest first)
 /team/tasks           Tasks kanban — Available → In progress → Complete (payment is a card badge, not a column)
 /team/calendar        Calendar — month view over task deadlines + completed-date log (no table of its own)
