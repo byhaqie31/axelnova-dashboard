@@ -1,11 +1,13 @@
 <script setup lang="ts">
-// Task 7 — own payslips from the in-system payroll ledger. The endpoint is scoped
+// Task 7 — own payments (payroll entries) from the in-system payroll ledger.
+// Team-facing wording is "Payments"; the API path (/v1/team/payslips) and the
+// payroll_entries ledger keep their names. The endpoint is scoped
 // server-side to the session's own rows and returns two blocks: `pending_extras`
 // (completed-with-pay tasks not yet on a slip — money owed, shown on top) and the
 // payslip list itself, each itemised as allowance snapshot + task extras = gross.
 // Legacy rows (pre-Task-7) carry a gross only and render without a breakdown.
 definePageMeta({ layout: 'team', middleware: 'team-auth' })
-useHead({ title: 'Payslips — Team' })
+useHead({ title: 'Payments — Team' })
 
 const { apiFetch } = useTeamAuth()
 
@@ -70,7 +72,7 @@ async function fetchEntries() {
     pendingTotal.value = res.pending_extras.total_myr
   }
   catch {
-    error.value = 'Failed to load your payslips. Check your session.'
+    error.value = 'Failed to load your payments. Check your session.'
   }
   finally {
     loading.value = false
@@ -93,12 +95,12 @@ function fmtMyr(amount: number | null) {
 
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <h1 class="text-[28px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Payslips</h1>
+    <h1 class="text-[28px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Payments</h1>
     <p class="text-[14px] mb-8" style="color: var(--color-text-secondary);">Your payroll records — allowance plus settled task extras, amounts as agreed.</p>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
-    <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading payslips…</div>
+    <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading payments…</div>
 
     <template v-else>
       <!-- Pending extras — completed-with-pay tasks not yet on a payslip. -->
@@ -112,7 +114,7 @@ v-if="pendingTasks.length" class="rounded-2xl border p-5 mb-8"
           </div>
           <span class="text-[14px] font-bold tabular-nums" :style="{ color: 'var(--color-warning)' }">{{ fmtMyr(pendingTotal) }}</span>
         </div>
-        <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-secondary)' }">Completed task bonuses owed — they'll land on a future payslip.</p>
+        <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-secondary)' }">Completed task bonuses owed — they'll be included in a future payment.</p>
         <div class="space-y-1.5">
           <div v-for="t in pendingTasks" :key="t.id" class="flex items-center justify-between gap-3">
             <span class="text-[12px] truncate" :style="{ color: 'var(--color-text)' }">{{ t.title }}</span>
@@ -130,7 +132,7 @@ v-if="!entries.length" class="rounded-2xl border px-6 py-12 text-center"
         >
           <UIcon name="i-lucide-wallet" class="size-6" />
         </span>
-        <p class="text-[15px] font-semibold tracking-tight mb-1" style="color: var(--color-text);">No payslips yet</p>
+        <p class="text-[15px] font-semibold tracking-tight mb-1" style="color: var(--color-text);">No payments yet</p>
         <p class="text-[13px] max-w-sm mx-auto leading-relaxed" style="color: var(--color-text-secondary);">
           Entries appear here once payroll is generated for you.
         </p>

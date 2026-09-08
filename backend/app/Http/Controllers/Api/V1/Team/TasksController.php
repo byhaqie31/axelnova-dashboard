@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Team;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,26 +29,50 @@ use Illuminate\Validation\Rule;
  */
 class TasksController extends Controller
 {
-    /** The kanban feed: `{pool, mine}` in one round-trip. */
+    /**
+     * The kanban feed: `{pool, mine}` in one round-trip. A founder additionally
+     * gets `team` — every task assigned to someone else, any status — so they
+     * can monitor the whole board from the workspace. It's read-only by
+     * construction: claim/status below still refuse anything not yours, and
+     * the admin edit surface stays on /v1/admin/tasks. Non-founders never get
+     * the key at all.
+     */
     public function index(Request $request): JsonResponse
     {
-        $pool = Task::with(['creator', 'assignee'])
+        $user = $request->user();
+
+        $pool = $this->feedQuery()
             ->whereNull('assignee_id')
             ->where('status', 'open')
-            ->orderByRaw('deadline IS NULL, deadline ASC')
-            ->latest('id')
             ->get();
 
-        $mine = Task::with(['creator', 'assignee'])
-            ->where('assignee_id', $request->user()->id)
-            ->orderByRaw('deadline IS NULL, deadline ASC')
-            ->latest('id')
+        $mine = $this->feedQuery()
+            ->where('assignee_id', $user->id)
             ->get();
 
-        return response()->json([
+        $payload = [
             'pool' => TaskResource::collection($pool),
             'mine' => TaskResource::collection($mine),
-        ]);
+        ];
+
+        if ($user->isFounder()) {
+            $team = $this->feedQuery()
+                ->whereNotNull('assignee_id')
+                ->where('assignee_id', '!=', $user->id)
+                ->get();
+
+            $payload['team'] = TaskResource::collection($team);
+        }
+
+        return response()->json($payload);
+    }
+
+    /** Shared ordering + eager loads for every feed set: soonest deadline first, undated last. */
+    private function feedQuery(): Builder
+    {
+        return Task::with(['creator', 'assignee'])
+            ->orderByRaw('deadline IS NULL, deadline ASC')
+            ->latest('id');
     }
 
     /**

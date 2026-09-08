@@ -36,6 +36,8 @@ export interface TaskRecord {
 export interface TeamTasksFeed {
   pool: TaskRecord[]
   mine: TaskRecord[]
+  /** Founder-only: every task assigned to someone else (any status). Absent for other roles. */
+  team?: TaskRecord[]
 }
 
 /**

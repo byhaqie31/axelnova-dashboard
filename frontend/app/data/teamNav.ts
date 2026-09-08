@@ -20,7 +20,7 @@ export const teamNav: NavGroup[] = [
       { to: '/team', label: 'Home', icon: 'i-lucide-house' },
       { to: '/team/tasks', label: 'Tasks', icon: 'i-lucide-list-todo', matchPrefix: '/team/tasks' },
       { to: '/team/calendar', label: 'Calendar', icon: 'i-lucide-calendar', matchPrefix: '/team/calendar' },
-      { to: '/team/payslips', label: 'Payslips', icon: 'i-lucide-wallet', matchPrefix: '/team/payslips' },
+      { to: '/team/payments', label: 'Payments', icon: 'i-lucide-wallet', matchPrefix: '/team/payments' },
       { to: '/team/profile', label: 'Profile', icon: 'i-lucide-user', matchPrefix: '/team/profile' },
     ],
   },

@@ -119,7 +119,10 @@ GET   /v1/team/me                    Self profile (name, email, role, tier, avai
 PATCH /v1/team/me                    Self-service update — {name?, availability: 'available'|'busy'}
 GET   /v1/team/payslips              Own payslips (breakdown) + `pending_extras` (own completed-with-pay
                                      tasks not yet on a slip). Founder's full ledger is /v1/admin/payroll
-GET   /v1/team/tasks                 {pool, mine} — the kanban/calendar feed in one round-trip
+GET   /v1/team/tasks                 {pool, mine} — the kanban/calendar feed in one round-trip.
+                                     Founders also get `team` (every task assigned to someone else,
+                                     any status) for the whole-team view; the key is absent for other
+                                     roles. Read-only — claim/status still refuse tasks that aren't yours
 POST  /v1/team/tasks/{id}/claim      Pick up a pool task (assignee=me + in_progress; 409 if taken)
 PATCH /v1/team/tasks/{id}/status     Own tasks only — {status: in_progress|completed|open, note?};
                                      completing with pay forks to payment_pending; 'open' releases
@@ -279,9 +282,14 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 /team/forgot          "Forgot password" — no self-service reset; emails the founder (TeamPasswordResetRequestedMail),
                       who issues a new temp password via "Reset password" on /admin/users (list row or detail page)
 /team                 Home — company announcements feed (published + audience team|all, newest first)
-/team/tasks           Tasks kanban — Available → In progress → Complete (payment is a card badge, not a column)
-/team/calendar        Calendar — month view over task deadlines + completed-date log (no table of its own)
-/team/payslips        Own payslips (monthly allowance/extras + one-time bonus entries, tagged by type) + a "Pending extras" block on top
+/team/tasks           Tasks kanban — Available → In progress → Complete (payment is a card badge, not a column).
+                      Founders get a "Mine / Whole team" toggle: team scope adds everyone else's cards
+                      (dashed border + assignee chip, view-only) to every column; preference persists in localStorage
+/team/calendar        Calendar — month view over task deadlines + completed-date log (no table of its own).
+                      Same founder-only Mine / Whole team toggle as /team/tasks (shared preference)
+/team/payments        "Payments" — own payroll entries (monthly allowance/extras + one-time bonus entries, tagged by type)
+                      + a "Pending extras" block on top. Reads GET /v1/team/payslips (API path unchanged);
+                      /team/payslips 301-redirects here (nuxt.config routeRules)
 /team/profile         Self-service profile — display name + availability (Available|Busy)
 /team/marketing       Marketer-only — Threads analytics (coming-soon until the Threads API integration lands)
 /team/analytics       Marketer-only — read-only mirror of the site traffic overview (/v1/team/analytics/overview)

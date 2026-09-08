@@ -7,7 +7,9 @@ import { taskPriorityMeta, type TaskRecord } from '~/data/tasks'
 
 // `meta` renders a small trailing label (e.g. a relative date in the Upcoming
 // rail); omitted in the dense day-cell views.
-defineProps<{ task: TaskRecord, source: 'mine' | 'pool', meta?: string }>()
+// `team` = someone else's task in the founder's whole-team scope — tagged with
+// the assignee's first name so a day cell still reads at a glance.
+defineProps<{ task: TaskRecord, source: 'mine' | 'pool' | 'team', meta?: string }>()
 defineEmits<{ select: [] }>()
 </script>
 
@@ -15,13 +17,14 @@ defineEmits<{ select: [] }>()
   <button
     type="button"
     class="cal-row"
-    :class="source === 'pool' ? 'cal-row-pool' : 'cal-row-mine'"
-    :title="`${task.title}${source === 'pool' ? ' (pool)' : ''}`"
+    :class="source === 'pool' ? 'cal-row-pool' : source === 'team' ? 'cal-row-team' : 'cal-row-mine'"
+    :title="`${task.title}${source === 'pool' ? ' (pool)' : source === 'team' ? ` (${task.assignee_name})` : ''}`"
     @click="$emit('select')"
   >
     <span class="cal-row-dot" :style="{ background: taskPriorityMeta(task.priority)?.color }" />
     <span class="cal-row-title">{{ task.title }}</span>
     <span v-if="source === 'pool'" class="cal-row-tag">pool</span>
+    <span v-else-if="source === 'team'" class="cal-row-tag">{{ (task.assignee_name ?? '').split(' ')[0] }}</span>
     <span v-if="meta" class="cal-row-meta">{{ meta }}</span>
   </button>
 </template>
@@ -65,7 +68,8 @@ defineEmits<{ select: [] }>()
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cal-row-pool .cal-row-title {
+.cal-row-pool .cal-row-title,
+.cal-row-team .cal-row-title {
   color: var(--color-text-secondary);
 }
 .cal-row-tag {

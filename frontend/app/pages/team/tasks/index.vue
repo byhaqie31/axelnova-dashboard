@@ -15,6 +15,7 @@ definePageMeta({ layout: 'team', middleware: 'team-auth' })
 useHead({ title: 'Tasks — Team' })
 
 const { apiFetch } = useTeamAuth()
+const { me } = useTeamMe()
 const toast = useAdminToast()
 
 // Typed extraction of the API error message (avoids `catch (e: any)`).
@@ -24,6 +25,9 @@ function errMessage(e: unknown): string | undefined {
 
 const pool = ref<TaskRecord[]>([])
 const mine = ref<TaskRecord[]>([])
+// Founder-only: everyone else's assigned tasks. The API only sends the key to
+// founders, so this stays empty (and the toggle hidden) for other roles.
+const team = ref<TaskRecord[]>([])
 // Starts true — fetch runs in onMounted only, so a false default would render
 // the empty state during SSR/first paint (Task-2 convention).
 const loading = ref(true)
@@ -35,6 +39,7 @@ async function fetchBoard() {
     const res = await apiFetch<TeamTasksFeed>('/api/v1/team/tasks')
     pool.value = res.pool
     mine.value = res.mine
+    team.value = res.team ?? []
   }
   catch {
     error.value = 'Failed to load the board. Check your session.'
@@ -46,6 +51,25 @@ async function fetchBoard() {
 
 onMounted(fetchBoard)
 
+// ── Scope — founders can flip the board from "Mine" to "Whole team". In team
+// scope the In progress / Complete columns also show everyone else's cards
+// (read-only, labelled with the assignee) and Available gains their
+// admin-assigned-but-unstarted tasks. The choice sticks per browser.
+const isFounder = computed(() => me.value?.role === 'founder')
+const scope = ref<'mine' | 'team'>('mine')
+const SCOPE_KEY = 'team-tasks-scope'
+onMounted(() => {
+  try {
+    if (localStorage.getItem(SCOPE_KEY) === 'team') scope.value = 'team'
+  }
+  catch { /* storage unavailable — default to mine */ }
+})
+watch(scope, (v) => {
+  try { localStorage.setItem(SCOPE_KEY, v) }
+  catch { /* ignore */ }
+})
+const teamScope = computed(() => isFounder.value && scope.value === 'team')
+
 // Column split. "Available" = the shared pool PLUS my admin-assigned tasks that
 // I haven't started (status open) — those render with a "Start" action instead
 // of "Pick up" and an "Assigned to you" tag.
@@ -53,7 +77,14 @@ const myStartable = computed(() => mine.value.filter(t => t.status === 'open'))
 const inProgress = computed(() => mine.value.filter(t => t.status === 'in_progress'))
 const complete = computed(() => mine.value.filter(t => ['completed', 'payment_pending', 'paid'].includes(t.status)))
 
-const availableCount = computed(() => pool.value.length + myStartable.value.length)
+// Team-scope extras — someone else's cards, never actionable from here.
+const teamStartable = computed(() => teamScope.value ? team.value.filter(t => t.status === 'open') : [])
+const teamInProgress = computed(() => teamScope.value ? team.value.filter(t => t.status === 'in_progress') : [])
+const teamComplete = computed(() => teamScope.value ? team.value.filter(t => ['completed', 'payment_pending', 'paid'].includes(t.status)) : [])
+
+const availableCount = computed(() => pool.value.length + myStartable.value.length + teamStartable.value.length)
+const inProgressCount = computed(() => inProgress.value.length + teamInProgress.value.length)
+const completeCount = computed(() => complete.value.length + teamComplete.value.length)
 
 // ── Actions ──────────────────────────────────────────────────────────────
 const actingId = ref<number | null>(null)
@@ -62,7 +93,7 @@ const actingId = ref<number | null>(null)
 // variant decides which single action the footer offers (pool and startable
 // both have status `open` but different verbs). Acting closes the drawer and
 // hands off to the shared handler below.
-type DetailVariant = 'pool' | 'startable' | 'in_progress' | 'done'
+type DetailVariant = 'pool' | 'startable' | 'in_progress' | 'done' | 'team'
 const detailTask = ref<TaskRecord | null>(null)
 const detailVariant = ref<DetailVariant>('pool')
 
@@ -187,11 +218,25 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
 
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <div class="mb-8">
-      <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Tasks</h1>
-      <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
-        Pick up work from the pool, move it along, complete it with a note.
-      </p>
+    <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Tasks</h1>
+        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
+          {{ teamScope ? 'Everything in flight across the team — your own cards stay actionable.' : 'Pick up work from the pool, move it along, complete it with a note.' }}
+        </p>
+      </div>
+      <!-- Founder-only scope toggle -->
+      <div v-if="isFounder" class="flex gap-1.5" role="group" aria-label="Board scope">
+        <button
+          v-for="opt in ([['mine', 'Mine'], ['team', 'Whole team']] as const)" :key="opt[0]"
+          type="button" class="standard-pill"
+          :style="scope === opt[0] ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}"
+          :aria-pressed="scope === opt[0]"
+          @click="scope = opt[0]">
+          <UIcon :name="opt[0] === 'mine' ? 'i-lucide-user' : 'i-lucide-users'" class="size-3.5" />
+          {{ opt[1] }}
+        </button>
+      </div>
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
@@ -263,6 +308,28 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
               {{ actingId === t.id ? 'Picking up…' : 'Pick up' }}
             </button>
           </article>
+
+          <!-- Team scope: someone else's assigned-but-unstarted tasks (read-only). -->
+          <article
+            v-for="t in teamStartable" :key="`team-${t.id}`" class="kanban-card kanban-card-team"
+            role="button" tabindex="0" @click="openDetail(t, 'team')"
+            @keydown.enter="openDetail(t, 'team')" @keydown.space.prevent="openDetail(t, 'team')">
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <h3 class="kanban-card-title">{{ t.title }}</h3>
+              <span class="kanban-assignee"><UIcon name="i-lucide-user" class="size-3" />{{ t.assignee_name }}</span>
+            </div>
+            <p v-if="t.description" class="kanban-card-desc">{{ t.description }}</p>
+            <div class="kanban-card-meta">
+              <span
+                class="capitalize font-medium px-1.5 py-0.5 rounded"
+                :style="{ color: taskPriorityMeta(t.priority)?.color, background: taskPriorityMeta(t.priority)?.bg }">{{ t.priority }}</span>
+              <span v-if="deadlineInfo(t.deadline)" :style="{ color: deadlineInfo(t.deadline)!.overdue ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }">
+                {{ deadlineInfo(t.deadline)!.label }}
+              </span>
+              <span :style="{ color: 'var(--color-text-tertiary)' }">not started</span>
+              <TaskPayBadge :state="t.payment_state" :amount="t.pay_amount_myr" />
+            </div>
+          </article>
         </div>
       </section>
 
@@ -271,10 +338,10 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
         <header class="kanban-col-head">
           <UIcon name="i-lucide-loader-circle" class="size-4" :style="{ color: 'var(--color-accent)' }" />
           <h2>In progress</h2>
-          <span class="kanban-count">{{ inProgress.length }}</span>
+          <span class="kanban-count">{{ inProgressCount }}</span>
         </header>
 
-        <p v-if="!inProgress.length" class="kanban-empty">Nothing in flight. Pick something up.</p>
+        <p v-if="!inProgressCount" class="kanban-empty">{{ teamScope ? 'Nobody has anything in flight.' : 'Nothing in flight. Pick something up.' }}</p>
 
         <div v-else class="flex flex-col gap-2.5">
           <article
@@ -306,6 +373,30 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
               </button>
             </div>
           </article>
+
+          <!-- Team scope: everyone else's in-flight work (read-only). -->
+          <article
+            v-for="t in teamInProgress" :key="`team-${t.id}`" class="kanban-card kanban-card-team"
+            role="button" tabindex="0" @click="openDetail(t, 'team')"
+            @keydown.enter="openDetail(t, 'team')" @keydown.space.prevent="openDetail(t, 'team')">
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <h3 class="kanban-card-title">{{ t.title }}</h3>
+              <span class="kanban-assignee"><UIcon name="i-lucide-user" class="size-3" />{{ t.assignee_name }}</span>
+            </div>
+            <p v-if="t.description" class="kanban-card-desc">{{ t.description }}</p>
+            <div class="kanban-card-meta">
+              <span
+                class="capitalize font-medium px-1.5 py-0.5 rounded"
+                :style="{ color: taskPriorityMeta(t.priority)?.color, background: taskPriorityMeta(t.priority)?.bg }">{{ t.priority }}</span>
+              <span v-if="deadlineInfo(t.deadline)" :style="{ color: deadlineInfo(t.deadline)!.overdue ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }">
+                {{ deadlineInfo(t.deadline)!.label }}
+              </span>
+              <span v-if="t.started_at" :style="{ color: 'var(--color-text-tertiary)' }">
+                since {{ new Date(t.started_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) }}
+              </span>
+              <TaskPayBadge :state="t.payment_state" :amount="t.pay_amount_myr" />
+            </div>
+          </article>
         </div>
       </section>
 
@@ -314,10 +405,10 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
         <header class="kanban-col-head">
           <UIcon name="i-lucide-circle-check" class="size-4" :style="{ color: 'var(--color-success)' }" />
           <h2>Complete</h2>
-          <span class="kanban-count">{{ complete.length }}</span>
+          <span class="kanban-count">{{ completeCount }}</span>
         </header>
 
-        <p v-if="!complete.length" class="kanban-empty">Completed tasks land here.</p>
+        <p v-if="!completeCount" class="kanban-empty">Completed tasks land here.</p>
 
         <div v-else class="flex flex-col gap-2.5">
           <article
@@ -329,6 +420,24 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
               <StatusPill :status="t.status" type="task" />
             </div>
             <div class="kanban-card-meta">
+              <span v-if="t.completed_at" :style="{ color: 'var(--color-text-tertiary)' }">
+                done {{ new Date(t.completed_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) }}
+              </span>
+              <TaskPayBadge :state="t.payment_state" :amount="t.pay_amount_myr" />
+            </div>
+          </article>
+
+          <!-- Team scope: everyone else's finished work (read-only). -->
+          <article
+            v-for="t in teamComplete" :key="`team-${t.id}`" class="kanban-card kanban-card-done kanban-card-team"
+            role="button" tabindex="0" @click="openDetail(t, 'team')"
+            @keydown.enter="openDetail(t, 'team')" @keydown.space.prevent="openDetail(t, 'team')">
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <h3 class="kanban-card-title">{{ t.title }}</h3>
+              <StatusPill :status="t.status" type="task" />
+            </div>
+            <div class="kanban-card-meta">
+              <span class="kanban-assignee"><UIcon name="i-lucide-user" class="size-3" />{{ t.assignee_name }}</span>
               <span v-if="t.completed_at" :style="{ color: 'var(--color-text-tertiary)' }">
                 done {{ new Date(t.completed_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) }}
               </span>
@@ -452,6 +561,28 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
 }
 .kanban-card-done {
   opacity: 0.82;
+}
+/* Someone else's card (founder "Whole team" scope) — a dashed edge marks it as
+   observe-only; the assignee chip says whose it is. */
+.kanban-card-team {
+  border-style: dashed;
+}
+.kanban-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  max-width: 45%;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .kanban-card-title {
   font-size: 13px;
