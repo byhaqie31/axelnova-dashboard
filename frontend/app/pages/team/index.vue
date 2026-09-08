@@ -131,7 +131,7 @@ const tiles = computed(() => [
   { key: 'open', label: 'Open tasks', value: String(openCount.value), icon: 'i-lucide-list-todo', fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)', to: '/team/tasks' },
   { key: 'due', label: 'Due this week', value: String(dueThisWeek.value), icon: 'i-lucide-alarm-clock', fg: 'var(--color-warning)', bg: 'var(--color-warning-soft)', to: '/team/calendar' },
   { key: 'done', label: 'Completed this month', value: String(completedThisMonth.value), icon: 'i-lucide-circle-check', fg: 'var(--color-success)', bg: 'var(--color-success-soft)', to: '/team/calendar' },
-  { key: 'pay', label: 'Pending pay', value: `RM ${money.format(pendingPay.value)}`, icon: 'i-lucide-banknote', fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)', to: '/team/payslips' },
+  { key: 'pay', label: 'Pending pay', value: `RM ${money.format(pendingPay.value)}`, icon: 'i-lucide-banknote', fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)', to: '/team/payments' },
 ])
 
 // ── Next up (soonest upcoming, still-open deadline) ────────────────────────

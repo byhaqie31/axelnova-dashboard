@@ -119,7 +119,10 @@ GET   /v1/team/me                    Self profile (name, email, role, tier, avai
 PATCH /v1/team/me                    Self-service update — {name?, availability: 'available'|'busy'}
 GET   /v1/team/payslips              Own payslips (breakdown) + `pending_extras` (own completed-with-pay
                                      tasks not yet on a slip). Founder's full ledger is /v1/admin/payroll
-GET   /v1/team/tasks                 {pool, mine} — the kanban/calendar feed in one round-trip
+GET   /v1/team/tasks                 {pool, mine} — the kanban/calendar feed in one round-trip.
+                                     Founders also get `team` (every task assigned to someone else,
+                                     any status) for the whole-team view; the key is absent for other
+                                     roles. Read-only — claim/status still refuse tasks that aren't yours
 POST  /v1/team/tasks/{id}/claim      Pick up a pool task (assignee=me + in_progress; 409 if taken)
 PATCH /v1/team/tasks/{id}/status     Own tasks only — {status: in_progress|completed|open, note?};
                                      completing with pay forks to payment_pending; 'open' releases
@@ -179,6 +182,12 @@ PATCH  /v1/admin/users/{user}        Edit {name?, role?, monthly_allowance_myr?}
 POST   /v1/admin/users/{user}/deactivate    Persistent lockout (`deactivated_at` + revokes tokens).
                                      Self-deactivation → 422; already-deactivated → 422 (idempotent guard)
 POST   /v1/admin/users/{user}/reactivate    Clears the lockout; already-active → 422
+POST   /v1/admin/users/{user}/reset-password    Founder-issued reset — the ONLY reset path for team accounts.
+                                     Mints a random 16-char temp password (User::makeTemporaryPassword,
+                                     hashed by the model cast), revokes the teammate's tokens, logs
+                                     `team.password_reset`, queues TeamPasswordResetMail to them, and
+                                     returns `{message, password}` once so the founder can hand it over
+                                     if the mail doesn't land. Deactivated teammate → 422
 
 # Announcements (cockpit side — Task 6)
 GET    /v1/admin/announcements       All rows, newest first (creator eager-loaded)
@@ -270,11 +279,17 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 # The marketer surface (marketing + analytics) was added later — nav + pages
 # render for founder/marketer only (teamNav roles filter; backend 403s engineers).
 /team/login           Team auth
-/team/forgot          "Forgot password" — notifies the founder, no self-service reset
+/team/forgot          "Forgot password" — no self-service reset; emails the founder (TeamPasswordResetRequestedMail),
+                      who issues a new temp password via "Reset password" on /admin/users (list row or detail page)
 /team                 Home — company announcements feed (published + audience team|all, newest first)
-/team/tasks           Tasks kanban — Available → In progress → Complete (payment is a card badge, not a column)
-/team/calendar        Calendar — month view over task deadlines + completed-date log (no table of its own)
-/team/payslips        Own payslips (monthly allowance/extras + one-time bonus entries, tagged by type) + a "Pending extras" block on top
+/team/tasks           Tasks kanban — Available → In progress → Complete (payment is a card badge, not a column).
+                      Founders get a "Mine / Whole team" toggle: team scope adds everyone else's cards
+                      (dashed border + assignee chip, view-only) to every column; preference persists in localStorage
+/team/calendar        Calendar — month view over task deadlines + completed-date log (no table of its own).
+                      Same founder-only Mine / Whole team toggle as /team/tasks (shared preference)
+/team/payments        "Payments" — own payroll entries (monthly allowance/extras + one-time bonus entries, tagged by type)
+                      + a "Pending extras" block on top. Reads GET /v1/team/payslips (API path unchanged);
+                      /team/payslips 301-redirects here (nuxt.config routeRules)
 /team/profile         Self-service profile — display name + availability (Available|Busy)
 /team/marketing       Marketer-only — Threads analytics (coming-soon until the Threads API integration lands)
 /team/analytics       Marketer-only — read-only mirror of the site traffic overview (/v1/team/analytics/overview)

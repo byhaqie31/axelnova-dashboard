@@ -11,7 +11,8 @@ import { taskPriorityMeta, type TaskRecord } from '~/data/tasks'
 
 // Which single action applies, decided by the column the card lives in (pool and
 // startable both have status `open` but different verbs, so status alone won't do).
-type Variant = 'pool' | 'startable' | 'in_progress' | 'done'
+// `team` = someone else's card in the founder's whole-team view — observe only.
+type Variant = 'pool' | 'startable' | 'in_progress' | 'done' | 'team'
 
 const props = defineProps<{
   task: TaskRecord | null
@@ -57,8 +58,12 @@ const deadlineOverdue = computed(() => {
               <h2 class="text-[17px] font-bold tracking-tight leading-snug" style="color: var(--color-text);">
                 {{ task.title }}
               </h2>
-              <div class="mt-2">
+              <div class="mt-2 flex items-center gap-2 flex-wrap">
                 <StatusPill :status="task.status" type="task" />
+                <span
+                  v-if="variant === 'team'"
+                  class="text-[11px] font-medium"
+                  style="color: var(--color-text-tertiary);">{{ task.assignee_name }}’s task — view only</span>
               </div>
             </div>
             <button type="button" class="slideover-close" aria-label="Close" @click="emit('close')">
@@ -131,7 +136,7 @@ const deadlineOverdue = computed(() => {
           </div>
 
           <!-- Footer: the one contextual action (still not a form). -->
-          <div v-if="variant !== 'done'" class="slideover-foot">
+          <div v-if="variant !== 'done' && variant !== 'team'" class="slideover-foot">
             <button
               v-if="variant === 'pool'" type="button"
               class="btn-pill btn-pill-primary text-[13px] w-full justify-center"

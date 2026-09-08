@@ -159,6 +159,9 @@ Route::middleware([
         Route::patch('/users/{user}', [UsersController::class, 'update'])->name('users.update');
         Route::post('/users/{user}/deactivate', [UsersController::class, 'deactivate'])->name('users.deactivate');
         Route::post('/users/{user}/reactivate', [UsersController::class, 'reactivate'])->name('users.reactivate');
+        // Founder-only password reset — the only reset path for team accounts
+        // (/v1/team/forgot-password just notifies the founder to come here).
+        Route::post('/users/{user}/reset-password', [UsersController::class, 'resetPassword'])->name('users.reset-password');
 
         // Customers (clients) — typeahead for the builder + the Customers spine
         Route::get('/clients', [ClientsController::class, 'index'])->name('clients.index');

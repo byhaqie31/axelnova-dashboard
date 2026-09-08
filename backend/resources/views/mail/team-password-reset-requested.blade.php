@@ -7,7 +7,7 @@
 - **Email:** {{ $user->email }}
 - **Role:** {{ $user->role }}
 
-Reset their password from the Users screen, then let them know their new credentials.
+Open the Users screen and use **Reset password** on their row — a new temporary password is emailed to them and shown to you once.
 
 @component('mail::button', ['url' => rtrim(config('services.frontend.url'), '/').'/admin/users'])
 Open Users

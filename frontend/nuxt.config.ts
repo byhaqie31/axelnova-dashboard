@@ -78,6 +78,9 @@ export default defineNuxtConfig({
     // Task 9: the single-page portal became a multi-page portal — keep old
     // bookmarks/emails pointing at /partners/portal working.
     '/partners/portal': { redirect: { to: '/partners/home', statusCode: 301 } },
+    // Team "Payslips" was renamed "Payments" — keep old links + the home tile's
+    // bookmarks working.
+    '/team/payslips': { redirect: { to: '/team/payments', statusCode: 301 } },
 
     // Public marketing pages render identically for every visitor, so a cold
     // arrival (a Google click, which is ALWAYS cold) should never pay for the

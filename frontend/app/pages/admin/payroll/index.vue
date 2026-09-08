@@ -253,7 +253,7 @@ function roleLabel(role: string) {
       <p class="text-[14px] font-medium mb-1" :style="{ color: 'var(--color-text)' }">Founder only</p>
       <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
         The payroll roster is restricted. Your own payslips are on the
-        <NuxtLink to="/team/payslips" class="underline" :style="{ color: 'var(--color-accent)' }">team workspace</NuxtLink>.
+        <NuxtLink to="/team/payments" class="underline" :style="{ color: 'var(--color-accent)' }">team workspace</NuxtLink>.
       </p>
     </div>
 

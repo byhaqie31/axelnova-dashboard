@@ -45,6 +45,43 @@ class TeamTasksTest extends TestCase
         $this->assertEqualsCanonicalizing([$mineOpen->id, $mineDone->id], $mineIds->all());
     }
 
+    public function test_a_founder_also_gets_everyone_elses_assigned_tasks_as_team(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $marketer = User::factory()->marketer()->create();
+        $engineer = User::factory()->engineer()->create();
+
+        $pooled = Task::factory()->pooled()->create();
+        $mine = Task::factory()->assignedTo($founder)->inProgress()->create();
+        $theirsOpen = Task::factory()->assignedTo($marketer)->create(['status' => 'open']);
+        $theirsInProgress = Task::factory()->assignedTo($engineer)->inProgress()->create();
+        $theirsDone = Task::factory()->assignedTo($engineer)->completed()->create();
+
+        $response = $this->getJson('/api/v1/team/tasks', $this->teamHeaders($founder))->assertOk();
+
+        $this->assertEquals([$pooled->id], collect($response->json('pool'))->pluck('id')->all());
+        $this->assertEquals([$mine->id], collect($response->json('mine'))->pluck('id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$theirsOpen->id, $theirsInProgress->id, $theirsDone->id],
+            collect($response->json('team'))->pluck('id')->all(),
+        );
+
+        // Team cards carry the assignee so the board can label them.
+        $card = collect($response->json('team'))->firstWhere('id', $theirsInProgress->id);
+        $this->assertSame($engineer->name, $card['assignee_name']);
+    }
+
+    public function test_non_founders_never_receive_the_team_set(): void
+    {
+        $marketer = User::factory()->marketer()->create();
+        $engineer = User::factory()->engineer()->create();
+        Task::factory()->assignedTo($engineer)->inProgress()->create();
+
+        $response = $this->getJson('/api/v1/team/tasks', $this->teamHeaders($marketer))->assertOk();
+
+        $this->assertArrayNotHasKey('team', $response->json());
+    }
+
     public function test_an_assigned_but_open_task_is_not_in_the_pool(): void
     {
         $me = User::factory()->engineer()->create();

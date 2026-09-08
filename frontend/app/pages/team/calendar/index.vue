@@ -13,11 +13,32 @@ definePageMeta({ layout: 'team', middleware: 'team-auth' })
 useHead({ title: 'Calendar — Team' })
 
 const { apiFetch } = useTeamAuth()
+const { me } = useTeamMe()
 
 const pool = ref<TaskRecord[]>([])
 const mine = ref<TaskRecord[]>([])
+// Founder-only: everyone else's assigned tasks (the API omits the key otherwise).
+const team = ref<TaskRecord[]>([])
 const loading = ref(true)
 const error = ref('')
+
+// ── Scope — same founder-only "Mine / Whole team" switch as the Tasks board,
+// sharing its persisted preference so the two surfaces agree.
+const isFounder = computed(() => me.value?.role === 'founder')
+const scope = ref<'mine' | 'team'>('mine')
+const SCOPE_KEY = 'team-tasks-scope'
+onMounted(() => {
+  try {
+    if (localStorage.getItem(SCOPE_KEY) === 'team') scope.value = 'team'
+  }
+  catch { /* storage unavailable — default to mine */ }
+})
+watch(scope, (v) => {
+  try { localStorage.setItem(SCOPE_KEY, v) }
+  catch { /* ignore */ }
+})
+const teamScope = computed(() => isFounder.value && scope.value === 'team')
+const teamVisible = computed(() => teamScope.value ? team.value : [])
 
 async function fetchTasks() {
   error.value = ''
@@ -25,6 +46,7 @@ async function fetchTasks() {
     const res = await apiFetch<TeamTasksFeed>('/api/v1/team/tasks')
     pool.value = res.pool
     mine.value = res.mine
+    team.value = res.team ?? []
   }
   catch {
     error.value = 'Failed to load tasks. Check your session.'
@@ -88,12 +110,13 @@ const headerLabel = computed(() => {
 })
 
 // ── Shared chip index (all tasks, keyed by day) ────────────────────────────
-interface CalendarChip { task: TaskRecord, source: 'mine' | 'pool' }
+type ChipSource = 'mine' | 'pool' | 'team'
+interface CalendarChip { task: TaskRecord, source: ChipSource }
 interface CalendarDay { key: string, date: Date, inMonth: boolean, isToday: boolean, chips: CalendarChip[] }
 
 const chipsByDay = computed(() => {
   const map = new Map<string, CalendarChip[]>()
-  const add = (task: TaskRecord, source: 'mine' | 'pool') => {
+  const add = (task: TaskRecord, source: ChipSource) => {
     if (!task.deadline) return
     const key = dayKey(new Date(task.deadline))
     if (!map.has(key)) map.set(key, [])
@@ -101,6 +124,7 @@ const chipsByDay = computed(() => {
   }
   mine.value.forEach(t => add(t, 'mine'))
   pool.value.forEach(t => add(t, 'pool'))
+  teamVisible.value.forEach(t => add(t, 'team'))
   return map
 })
 
@@ -164,11 +188,12 @@ const cursorIsToday = computed(() => dayKey(cursor.value) === todayKey)
 const dayChips = computed(() => chipsByDay.value.get(dayKey(cursor.value)) ?? [])
 const overdueChips = computed<CalendarChip[]>(() => {
   const out: CalendarChip[] = []
-  const scan = (arr: TaskRecord[], source: 'mine' | 'pool') => arr.forEach((t) => {
+  const scan = (arr: TaskRecord[], source: ChipSource) => arr.forEach((t) => {
     if (t.deadline && !t.completed_at && new Date(t.deadline).getTime() < todayStart.getTime()) out.push({ task: t, source })
   })
   scan(mine.value, 'mine')
   scan(pool.value, 'pool')
+  scan(teamVisible.value, 'team')
   return out.sort((a, b) => new Date(a.task.deadline!).getTime() - new Date(b.task.deadline!).getTime())
 })
 
@@ -210,11 +235,12 @@ function pickDay(date: Date) {
 const UPCOMING_CAP = 10
 const upcomingAll = computed<CalendarChip[]>(() => {
   const out: CalendarChip[] = []
-  const scan = (arr: TaskRecord[], source: 'mine' | 'pool') => arr.forEach((t) => {
+  const scan = (arr: TaskRecord[], source: ChipSource) => arr.forEach((t) => {
     if (t.deadline && !t.completed_at && new Date(t.deadline).getTime() >= todayStart.getTime()) out.push({ task: t, source })
   })
   scan(mine.value, 'mine')
   scan(pool.value, 'pool')
+  scan(teamVisible.value, 'team')
   return out.sort((a, b) => new Date(a.task.deadline!).getTime() - new Date(b.task.deadline!).getTime())
 })
 const upcoming = computed(() => upcomingAll.value.slice(0, UPCOMING_CAP))
@@ -234,7 +260,7 @@ function relativeShort(iso: string): string {
 const completedLog = computed(() => {
   const year = cursor.value.getFullYear()
   const month = cursor.value.getMonth()
-  return mine.value
+  return [...mine.value, ...teamVisible.value]
     .filter((t) => {
       if (!t.completed_at) return false
       const d = new Date(t.completed_at)
@@ -293,11 +319,25 @@ function gcalUrl(task: TaskRecord): string {
 
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <div class="mb-6">
-      <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Calendar</h1>
-      <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
-        Your deadlines and open pool tasks — click any to see the details.
-      </p>
+    <div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Calendar</h1>
+        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
+          {{ teamScope ? 'Every deadline across the team, plus the open pool — click any to see the details.' : 'Your deadlines and open pool tasks — click any to see the details.' }}
+        </p>
+      </div>
+      <!-- Founder-only scope toggle (shared preference with the Tasks board) -->
+      <div v-if="isFounder" class="flex gap-1.5" role="group" aria-label="Calendar scope">
+        <button
+          v-for="opt in ([['mine', 'Mine'], ['team', 'Whole team']] as const)" :key="opt[0]"
+          type="button" class="standard-pill"
+          :style="scope === opt[0] ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}"
+          :aria-pressed="scope === opt[0]"
+          @click="scope = opt[0]">
+          <UIcon :name="opt[0] === 'mine' ? 'i-lucide-user' : 'i-lucide-users'" class="size-3.5" />
+          {{ opt[1] }}
+        </button>
+      </div>
     </div>
 
     <div class="lg:flex lg:gap-6">
@@ -449,6 +489,9 @@ function gcalUrl(task: TaskRecord): string {
                   <div class="min-w-0 flex items-center gap-2.5">
                     <UIcon name="i-lucide-circle-check" class="size-4 shrink-0" :style="{ color: 'var(--color-success)' }" />
                     <p class="text-[13px] font-medium truncate" :style="{ color: 'var(--color-text)' }">{{ t.title }}</p>
+                    <span
+                      v-if="teamScope && t.assignee_id !== me?.id" class="text-[11px] shrink-0 truncate"
+                      :style="{ color: 'var(--color-text-tertiary)' }">{{ t.assignee_name }}</span>
                   </div>
                   <div class="flex items-center gap-2.5 shrink-0">
                     <TaskPayBadge :state="t.payment_state" :amount="t.pay_amount_myr" />
@@ -515,7 +558,7 @@ function gcalUrl(task: TaskRecord): string {
               <div class="min-w-0">
                 <p class="text-[17px] font-bold tracking-tight" style="color: var(--color-text);">{{ selected.task.title }}</p>
                 <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">
-                  {{ selected.source === 'mine' ? 'Your task' : 'Pool task — unclaimed' }}
+                  {{ selected.source === 'mine' ? 'Your task' : selected.source === 'team' ? `${selected.task.assignee_name}’s task` : 'Pool task — unclaimed' }}
                 </p>
               </div>
               <button type="button" class="slideover-close" aria-label="Close" @click="closeChip">

@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Users;
 
+use App\Mail\TeamPasswordResetMail;
 use App\Mail\TeamWelcomeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -263,6 +265,67 @@ class AdminUsersTest extends TestCase
 
         $this->getJson('/api/v1/team/me', ['Authorization' => "Bearer {$memberToken}"])
             ->assertUnauthorized();
+    }
+
+    public function test_founder_can_reset_a_teammates_password_and_it_is_emailed_and_shown_once(): void
+    {
+        Mail::fake();
+
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->marketer()->create(['password' => 'old-password-123']);
+        $memberToken = $member->createToken('team-spa', ['workspace'])->plainTextToken;
+
+        $response = $this->postJson("/api/v1/admin/users/{$member->id}/reset-password", [], $this->adminHeaders($founder));
+
+        $response->assertOk();
+        $password = $response->json('password');
+        $this->assertIsString($password);
+        $this->assertGreaterThanOrEqual(16, strlen($password));
+
+        // The new password works, the old one does not, and it's stored hashed.
+        $fresh = $member->fresh();
+        $this->assertTrue(Hash::check($password, $fresh->password));
+        $this->assertFalse(Hash::check('old-password-123', $fresh->password));
+
+        // Every outstanding session dies with the reset.
+        $this->assertSame(0, $member->tokens()->count());
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/v1/team/me', ['Authorization' => "Bearer {$memberToken}"])
+            ->assertUnauthorized();
+
+        Mail::assertQueued(TeamPasswordResetMail::class, function (TeamPasswordResetMail $mail) use ($member, $password) {
+            return $mail->hasTo($member->email)
+                && $mail->user->is($member)
+                && $mail->password === $password;
+        });
+
+        $this->assertDatabaseHas('activity_log', [
+            'actor_id' => $founder->id,
+            'action' => 'team.password_reset',
+            'subject_id' => $member->id,
+        ]);
+    }
+
+    public function test_resetting_a_deactivated_teammates_password_is_rejected(): void
+    {
+        Mail::fake();
+        $member = User::factory()->marketer()->create(['deactivated_at' => now()]);
+
+        $this->postJson("/api/v1/admin/users/{$member->id}/reset-password", [], $this->adminHeaders())
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Reactivate this teammate before resetting their password.');
+
+        Mail::assertNothingQueued();
+    }
+
+    public function test_a_workspace_role_cannot_reset_a_password(): void
+    {
+        $marketer = User::factory()->marketer()->create();
+        $other = User::factory()->engineer()->create();
+        $token = $marketer->createToken('team-spa', ['workspace'])->plainTextToken;
+
+        $this->postJson("/api/v1/admin/users/{$other->id}/reset-password", [], ['Authorization' => "Bearer {$token}"])
+            ->assertForbidden();
     }
 
     public function test_a_founder_cannot_deactivate_their_own_account(): void
