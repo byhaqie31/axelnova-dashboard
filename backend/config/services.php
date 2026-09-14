@@ -11,7 +11,7 @@ return [
     'admin' => [
         'email' => env('ADMIN_NOTIFICATION_EMAIL', 'baihaqie@axelnova.tech'),
         'name' => env('ADMIN_NAME', 'Ahmad Baihaqie'),
-        'whatsapp_url' => env('ADMIN_WHATSAPP_URL', 'https://wa.me/60177109486'),
+        'whatsapp_url' => env('ADMIN_WHATSAPP_URL', 'https://wa.me/60183173103'),
     ],
 
     // Public site / Nuxt app — used to build links in emails + the referral link.
