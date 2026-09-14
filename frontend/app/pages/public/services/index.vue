@@ -214,9 +214,9 @@ const contactChannels = [
   {
     id: 'whatsapp',
     label: 'WhatsApp',
-    value: '+60 17-710 9486',
+    value: '+60 18-317 3103',
     helper: 'Fastest for quick questions and project chats.',
-    href: 'https://wa.me/60177109486?text=Hi%20Qie%2C%20I%27d%20like%20to%20discuss%20a%20project.',
+    href: 'https://wa.me/60183173103?text=Hi%20Qie%2C%20I%27d%20like%20to%20discuss%20a%20project.',
     target: '_blank',
     icon: 'i-fluent-chat-24-regular',
     iconColor: 'var(--color-success)',
@@ -238,9 +238,9 @@ const contactChannels = [
   {
     id: 'call',
     label: 'Call',
-    value: '+60 17-710 9486',
+    value: '+60 18-317 3103',
     helper: 'For urgent or complex scope, book a quick voice call.',
-    href: 'tel:+60177109486',
+    href: 'tel:+60183173103',
     target: '_self',
     icon: 'i-fluent-call-24-regular',
     iconColor: 'var(--grad-aurora-violet)',

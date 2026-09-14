@@ -31,10 +31,10 @@ const subjects = [
 const channels = [
   {
     label: 'WhatsApp',
-    value: '+60 17-710 9486',
+    value: '+60 18-317 3103',
     helper: 'Fastest for quick questions.',
     icon: 'i-fluent-chat-24-regular',
-    href: 'https://wa.me/60177109486?text=Hi%20Qie%2C%20I%27d%20like%20to%20connect.',
+    href: 'https://wa.me/60183173103?text=Hi%20Qie%2C%20I%27d%20like%20to%20connect.',
     external: true,
     iconColor: 'var(--color-success)',
     iconBg: 'rgba(48,209,88,0.14)',
@@ -51,10 +51,10 @@ const channels = [
   },
   {
     label: 'Phone',
-    value: '+60 17-710 9486',
+    value: '+60 18-317 3103',
     helper: 'For urgent conversations.',
     icon: 'i-fluent-call-24-regular',
-    href: 'tel:+60177109486',
+    href: 'tel:+60183173103',
     external: false,
     iconColor: '#A855F7',
     iconBg: 'rgba(168,85,247,0.14)',
