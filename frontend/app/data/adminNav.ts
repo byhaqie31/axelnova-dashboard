@@ -82,6 +82,7 @@ export const adminNav: NavGroup[] = [
     items: [
       { to: '/admin/services', label: 'Services', icon: 'i-lucide-briefcase-business', matchPrefix: '/admin/services' },
       { to: '/admin/projects', label: 'Projects', icon: 'i-lucide-folder-kanban', matchPrefix: '/admin/projects' },
+      { to: '/admin/blog', label: 'Blog', icon: 'i-lucide-newspaper', matchPrefix: '/admin/blog' },
     ],
   },
   {

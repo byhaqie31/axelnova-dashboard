@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Admin\ActivityController;
 use App\Http\Controllers\Api\V1\Admin\AnalyticsController;
 use App\Http\Controllers\Api\V1\Admin\AnnouncementsController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
+use App\Http\Controllers\Api\V1\Admin\BlogPostsController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\ExpensesController;
@@ -32,6 +33,7 @@ use App\Http\Controllers\Api\V1\InquiryController;
 use App\Http\Controllers\Api\V1\LikesController;
 use App\Http\Controllers\Api\V1\Partner\AuthController as PartnerAuthController;
 use App\Http\Controllers\Api\V1\Partner\DashboardController as PartnerDashboardController;
+use App\Http\Controllers\Api\V1\PublicBlogController;
 use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
 use App\Http\Controllers\Api\V1\PublicTestimonialsController;
@@ -55,6 +57,12 @@ Route::get('/v1/quote-builder/config', [QuoteBuilderConfigController::class, 'sh
 Route::get('/v1/services', [PublicServicesController::class, 'index'])->name('services.index');
 Route::get('/v1/projects', [PublicProjectsController::class, 'index'])->name('projects.index');
 Route::get('/v1/projects/{slug}', [PublicProjectsController::class, 'show'])->name('projects.show');
+
+// Public — the blog (BLOG.md). Published posts only; drafts and deleted rows
+// 404. `/slugs` is the unpaginated feed the frontend sitemap reads.
+Route::get('/v1/blog/posts', [PublicBlogController::class, 'index'])->name('blog.index');
+Route::get('/v1/blog/slugs', [PublicBlogController::class, 'slugs'])->name('blog.slugs');
+Route::get('/v1/blog/posts/{slug}', [PublicBlogController::class, 'show'])->name('blog.show');
 
 // Public — token-gated quotation document data for the PDF renderer (unguessable token).
 Route::get('/v1/documents/{token}', [DocumentController::class, 'show'])->name('documents.show');
@@ -338,6 +346,17 @@ Route::middleware([
         Route::get('/projects/{project}', [ProjectsController::class, 'show'])->name('projects.show');
         Route::put('/projects/{project}', [ProjectsController::class, 'update'])->name('projects.update');
         Route::delete('/projects/{project}', [ProjectsController::class, 'destroy'])->name('projects.destroy');
+
+        // CMS — Blog (BLOG.md). `render` is the editor's preview helper and
+        // saves nothing; publish/unpublish flip the public gate.
+        Route::get('/blog/posts', [BlogPostsController::class, 'index'])->name('blog.index');
+        Route::post('/blog/posts', [BlogPostsController::class, 'store'])->name('blog.store');
+        Route::post('/blog/render', [BlogPostsController::class, 'render'])->name('blog.render');
+        Route::get('/blog/posts/{blogPost}', [BlogPostsController::class, 'show'])->name('blog.show');
+        Route::put('/blog/posts/{blogPost}', [BlogPostsController::class, 'update'])->name('blog.update');
+        Route::post('/blog/posts/{blogPost}/publish', [BlogPostsController::class, 'publish'])->name('blog.publish');
+        Route::post('/blog/posts/{blogPost}/unpublish', [BlogPostsController::class, 'unpublish'])->name('blog.unpublish');
+        Route::delete('/blog/posts/{blogPost}', [BlogPostsController::class, 'destroy'])->name('blog.destroy');
     });
 
 // Team workspace — Sanctum, workspace tier (three internal roles: founder/

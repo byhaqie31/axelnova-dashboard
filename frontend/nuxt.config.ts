@@ -29,6 +29,8 @@ export default defineNuxtConfig({
   },
 
   sitemap: {
+    // Published blog posts come from the backend (server/api/__sitemap__/urls.ts).
+    sources: ['/api/__sitemap__/urls'],
     exclude: [
       '/admin/**',
       '/portal/**',
@@ -109,6 +111,8 @@ export default defineNuxtConfig({
     '/services/**': { swr: 300 },
     '/projects': { swr: 300 },
     '/projects/**': { swr: 300 },
+    '/blog': { swr: 300 },
+    '/blog/**': { swr: 300 },
     // Legal copy changes on the order of never.
     '/legal/**': { swr: 3600 },
   },

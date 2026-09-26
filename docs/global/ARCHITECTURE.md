@@ -74,6 +74,12 @@ axelnova-dashboard/
 | `payroll_entries` | The payslip ledger (Task 7). Two `kind`s share the table: `monthly` (the recurring run) and `one_time` (an ad-hoc bonus / payout). Itemised as `allowance_snapshot_myr` (the member's `users.monthly_allowance_myr` FROZEN at generation; null = none on file, distinct from 0; monthly only) + `task_extras_myr` (Σ of the linked pending task bonuses) + `discretionary_myr` (the manual one-off amount; one_time only), with `gross_myr` kept as the TOTAL so legacy consumers stay valid. **The per-period double-count guard is monthly-scoped** — `UNIQUE (user_id, monthly_period)` where `monthly_period` is a generated column = `period_label` for monthly rows, NULL for one-offs (so several one-offs can share a month; monthly stays one-per-period). One-offs still carry a YYYY-MM `period_label` (the payment's month) so year-to-date rollups bucket them; the UI labels them by `one_time_type` (collaboration/signing/festive/performance/spot/other — `collaboration` = **Project collaboration**, a one-off project with an engineer who has a team login; it is also what a task's mark-paid records under, with gross = the task's pay as `task_extras_myr` and `discretionary_myr` 0). `paid_at` is the sole settlement marker (no status column); settling flips the linked task extras to `paid`. Pre-Task-7 rows carry a hand-entered gross with null snapshot / 0 extras — the UI reads them as `legacy` (gated on `monthly` so a discretionary one-off is never misflagged) and renders gross-only. **The settled payslip IS the team-comp expense record** — there is no general finance/expenses/P&L module in this repo (only `company_expenses` — renamed from `marketing_expenses`, it was always general company spend — + this table; `payments` is client revenue), so nothing double-counts; P&L aggregation is future work. Statutory maths (EPF/SOCSO/EIS/PCB) stays out of scope |
 | `announcements` | Company notices authored from the cockpit (Task 6). `audience` scopes visibility once published: `team` (workspace only), `partners` (**forward hook** — the partner portal doesn't read this table yet), or `all` (both). `published_at` null = draft; publishing sets it once (re-publishing an already-published row keeps the original timestamp; toggling off reverts to draft). No soft-deletes, no delete endpoint — "unpublish" is the only retraction verb |
 
+### Blog (see [BLOG.md](./BLOG.md))
+
+| Table | Purpose |
+|-------|---------|
+| `blog_posts` | One row per article. Scalars (title, unique `slug`, `excerpt`, cover URL + alt, `category`, `tags` json, `cta_*`, `seo_*`, derived `reading_minutes`, `status` draft\|published, `published_at`) + a `sections` json column — the ordered list of `{id, heading, body_md, image_url, image_alt, quote, quote_by}`. **Markdown is the storage format**; `App\Support\BlogMarkdown` renders it to safe HTML on read (raw HTML stripped, unsafe links dropped). Images are URLs only. Soft-deletes; the slug unique index is absolute (deleted rows included), so `BlogPost::uniqueSlug` checks `withTrashed()`. Founder-authored from `/admin/blog`; only `published` rows are served publicly |
+
 ### Partner portal (portal restructure, Task 9 — type-aware referrer + investor)
 
 | Table | Purpose |
@@ -235,6 +241,19 @@ GET  /v1/admin/revenue/monthly       Sanctum — booked vs collected per calenda
                                      the marketer surface via role:founder,marketer, and revenue must
                                      not ride a route shared with a non-founder role.
 
+# Blog (see BLOG.md)
+GET  /v1/blog/posts                  Public  — published cards, newest first, ?category=, 12/page + categories
+GET  /v1/blog/posts/{slug}           Public  — full article (rendered sections + toc + related); draft → 404
+GET  /v1/blog/slugs                  Public  — unpaginated slug feed for the frontend sitemap
+GET    /v1/admin/blog/posts          Cockpit — all posts (?status, ?q) + page-view counts
+POST   /v1/admin/blog/posts          Cockpit — create (draft)
+GET    /v1/admin/blog/posts/{id}     Cockpit — editable record (Markdown)
+PUT    /v1/admin/blog/posts/{id}     Cockpit — update (published edits go live on save)
+POST   /v1/admin/blog/posts/{id}/publish     Cockpit — completeness gate (422) → published, stamps published_at once
+POST   /v1/admin/blog/posts/{id}/unpublish   Cockpit — back to draft
+DELETE /v1/admin/blog/posts/{id}     Cockpit — soft delete
+POST   /v1/admin/blog/render         Cockpit — preview renderer over unsaved form state (saves nothing)
+
 # Analytics (see ANALYTICS.md)
 POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)
 POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like
@@ -245,13 +264,15 @@ GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer �
 
 ## Frontend routes
 
-Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
+Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
 
 
 ```
 /                     Portfolio home
 /projects             Project listing
 /projects/[id]        Project detail
+/blog                 Blog index — published posts, category pills (?category=), pagination
+/blog/[slug]          Article — one shared layout (BlogArticle), TOC, closing CTA, share row, related
 /services             Services & pricing
 /about                About page
 /contact              Contact form (Web3Forms)
@@ -276,6 +297,11 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
                       Record one-time payment (bonus / ad-hoc payout, optional pending-tasks sweep,
                       mark-paid-now toggle), itemised ledger (allowance/extras/discretionary/gross),
                       Settle (confirm). Legacy rows render gross-only
+
+/admin/blog           Blog CMS — list (status / search filters, views), New post
+/admin/blog/[id]      Editor (`new` or an id) — title, introduction, ordered section cards (Markdown-backed
+                      rich text + optional image / quote), side rail (cover URL, category, tags, CTA, SEO,
+                      slug), Start-from-template, Import Markdown, backend-rendered Preview, Publish gate
 
 # Team workspace (/team/*) — Task 4 reframed this to five personal
 # destinations; inquiries/referrals/spend-entry pages were removed (admin-owned).

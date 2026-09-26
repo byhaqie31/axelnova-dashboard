@@ -1056,3 +1056,33 @@ input[type="number"] {
   .loader-grid::after { animation: none; }
   .aurora-line { animation: none; }
 }
+
+/* ── Blog article body + TOC (docs/global/BLOG.md, UI-STANDARDS §7) ──────
+   Backend-rendered Markdown lands in `.blog-prose` via v-html, so the element
+   styles live here (tokens only). H2 is owned by the article layout; the body
+   starts at h3. `.blog-section-anchor` clears the fixed header for TOC jumps. */
+.blog-prose { font-size: 17px; line-height: 1.75; color: var(--color-text-secondary); }
+.blog-prose p { margin: 0 0 1.25em; }
+.blog-prose p:last-child { margin-bottom: 0; }
+.blog-prose strong { color: var(--color-text); font-weight: 600; }
+.blog-prose a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; }
+.blog-prose a:hover { color: var(--color-accent-hover); }
+.blog-prose h3 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--color-text); margin: 2em 0 0.6em; }
+.blog-prose h4 { font-size: 17px; font-weight: 600; color: var(--color-text); margin: 1.6em 0 0.5em; }
+.blog-prose ul, .blog-prose ol { margin: 0 0 1.25em; padding-left: 1.4em; }
+.blog-prose li { margin: 0.35em 0; }
+.blog-prose ul { list-style: disc; }
+.blog-prose ol { list-style: decimal; }
+.blog-prose blockquote { margin: 1.5em 0; padding: 0.25em 0 0.25em 1.1em; border-left: 3px solid var(--color-accent); color: var(--color-text); font-style: italic; }
+.blog-prose code { font-size: 0.9em; padding: 0.15em 0.4em; border-radius: 6px; background: var(--color-bg-secondary); color: var(--color-text); }
+.blog-prose pre { margin: 1.5em 0; padding: 1em 1.2em; border-radius: 14px; overflow-x: auto; background: var(--color-bg-sunken); border: 1px solid var(--color-border); }
+.blog-prose pre code { padding: 0; background: transparent; }
+.blog-prose img { max-width: 100%; height: auto; border-radius: 14px; margin: 1.5em 0; }
+.blog-prose hr { border: 0; border-top: 1px solid var(--color-border); margin: 2.5em 0; }
+.blog-section-anchor { scroll-margin-top: 6rem; }
+.blog-toc a { color: var(--color-text-secondary); transition: color 0.15s ease; }
+.blog-toc a:hover, .blog-toc a.is-active { color: var(--color-text); }
+
+/* The admin editor's Tiptap surface — give the empty editor some body. */
+.blog-editor .ProseMirror { min-height: 160px; padding: 12px 14px; outline: none; }
+.blog-editor .ProseMirror p.is-editor-empty:first-child::before { color: var(--color-text-tertiary); content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }

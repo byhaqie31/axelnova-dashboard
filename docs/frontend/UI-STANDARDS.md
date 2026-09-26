@@ -306,6 +306,9 @@ A cover that 404s falls through to step 2 rather than leaving a broken image in 
 ### `.icon-gradient`
 Fills an icon glyph with `--grad-text-accent`, so an icon paired with `.text-gradient` text reads as one lockup (the hero pill's "Axel Nova" chevron). Do **not** reach for `.text-gradient` on an icon — it clips a gradient to *text*, and an icon has none, so it renders as nothing. `UIcon` draws the glyph as a mask over `background-color: currentColor`, which is why replacing the background paints the glyph itself.
 
+### Blog prose (`.blog-prose`, `.blog-toc`)
+Article bodies arrive as backend-sanitised HTML (see [BLOG.md](../global/BLOG.md)) and are styled by element in `main.css` under `.blog-prose` — 17px / 1.75 body in `--color-text-secondary`, `strong` and headings in `--color-text`, links in `--color-accent`, blockquote with an accent left rule, `code` on `--color-bg-secondary`, `pre` on `--color-bg-sunken`, rounded images. The body starts at `h3` (the layout owns `h2` section headings, which carry `.blog-section-anchor` for a 6rem scroll margin under the fixed header). `.blog-toc` links go secondary → text on hover / `.is-active`. Reading width is `max-w-[68ch]`. Tokens only; verified light + dark.
+
 ### Filter pills
 - 28px tall, 16px horizontal padding, hairline border.
 - Active: solid `--color-text`, `--shadow-sm`.

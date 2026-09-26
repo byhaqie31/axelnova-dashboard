@@ -80,3 +80,12 @@ live client prototypes from the registry at `https://axelnova.my/projects/regist
 - `SectionHeader` gained an optional `action.target: '_blank'` for the external
   "View all" → `https://axelnova.my/` (the root showcase; the admin dashboard's
   section keeps the `/projects/` listing).
+
+### `BlogCard`
+One post in the `/blog` grid and the article's "More from the blog" row. Cover is a URL (a soft `newspaper` placeholder when absent), meta line (category · date · reading time), title, 3-line excerpt. Whole card is a `NuxtLink`.
+
+### `BlogToc`
+"On this page" — anchors from the backend `toc`. An `IntersectionObserver` highlights the heading nearest the top (`.is-active`, styled in `main.css` under `.blog-toc`); degrades to a plain list without it.
+
+### `BlogArticle`
+The one article layout, shared by `pages/public/blog/[slug].vue` and the admin editor's preview (`preview` prop hides share + related and makes the CTA inert). Renders backend-sanitised `body_html` into `.blog-prose` via `v-html` — never raw Markdown or user HTML. TOC is inline on mobile and sticky on `lg+` when there are 3+ sections. See [BLOG.md](../global/BLOG.md).
