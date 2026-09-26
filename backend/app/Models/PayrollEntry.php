@@ -23,7 +23,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *                 immediately, outside the monthly cycle. Not period-guarded;
  *                 `allowance_snapshot_myr` is null, `one_time_type` labels it. It
  *                 still carries a YYYY-MM `period_label` (the payment's month) so
- *                 year-to-date rollups bucket it correctly.
+ *                 year-to-date rollups bucket it correctly. The `collaboration`
+ *                 type (Project collaboration — a one-off project with an engineer
+ *                 who has a team login) is ALSO what an ad-hoc task mark-paid
+ *                 records under (Admin\TasksController::markPaid): gross = the
+ *                 task's pay as a task extra, `discretionary_myr` 0, settled on
+ *                 creation, the task linked — so no task payment ever bypasses the
+ *                 ledger.
  *
  * The settled payslip IS the team-comp expense record — there is no separate
  * finance/expenses/P&L module in this repo (only `company_expenses` and the
@@ -38,8 +44,11 @@ class PayrollEntry extends Model
 
     public const KIND_ONE_TIME = 'one_time';
 
+    /** The one-off type an ad-hoc task payment (mark-paid) is recorded under. */
+    public const TYPE_COLLABORATION = 'collaboration';
+
     /** Reason labels a one-off can carry — validated at the controller. */
-    public const ONE_TIME_TYPES = ['signing', 'festive', 'performance', 'spot', 'other'];
+    public const ONE_TIME_TYPES = [self::TYPE_COLLABORATION, 'signing', 'festive', 'performance', 'spot', 'other'];
 
     protected $fillable = [
         'user_id',

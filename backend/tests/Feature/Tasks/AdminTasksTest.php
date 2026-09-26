@@ -6,12 +6,14 @@ use App\Models\PayrollEntry;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
  * The founder's cockpit surface for tasks: CRUD + filters + mark-paid. The
  * state-machine rules the admin owns are pinned here — assignment never moves
- * status, mark-paid only fires when a completed task actually owes a bonus.
+ * status, mark-paid only fires when a completed task actually owes a bonus and
+ * records that payout in payroll as a Project collaboration one-off.
  * (Team-side transitions live in TeamTasksTest.)
  */
 class AdminTasksTest extends TestCase
@@ -169,7 +171,8 @@ class AdminTasksTest extends TestCase
     public function test_mark_paid_from_payment_pending_stamps_paid_at(): void
     {
         $founder = User::factory()->founder()->create();
-        $task = Task::factory()->paymentPending()->create(['created_by' => $founder->id]);
+        $member = User::factory()->engineer()->create();
+        $task = Task::factory()->assignedTo($member)->paymentPending()->create(['created_by' => $founder->id]);
 
         $this->postJson("/api/v1/admin/tasks/{$task->id}/mark-paid", [], $this->adminHeaders($founder))
             ->assertOk()
@@ -182,8 +185,9 @@ class AdminTasksTest extends TestCase
     public function test_mark_paid_accepts_the_completed_with_pay_edge(): void
     {
         $founder = User::factory()->founder()->create();
+        $member = User::factory()->engineer()->create();
         // A bonus attached AFTER a no-pay completion leaves status 'completed'.
-        $task = Task::factory()->completed()->withPay(120)->create(['created_by' => $founder->id]);
+        $task = Task::factory()->assignedTo($member)->completed()->withPay(120)->create(['created_by' => $founder->id]);
 
         $this->postJson("/api/v1/admin/tasks/{$task->id}/mark-paid", [], $this->adminHeaders($founder))
             ->assertOk()
@@ -193,16 +197,141 @@ class AdminTasksTest extends TestCase
     public function test_mark_paid_rejects_a_task_that_owes_nothing(): void
     {
         $founder = User::factory()->founder()->create();
+        $member = User::factory()->engineer()->create();
         $headers = $this->adminHeaders($founder);
 
-        $openWithPay = Task::factory()->withPay(100)->create(['created_by' => $founder->id]);
-        $completedNoPay = Task::factory()->completed()->create(['created_by' => $founder->id, 'pay_amount_myr' => null]);
+        $openWithPay = Task::factory()->assignedTo($member)->withPay(100)->create(['created_by' => $founder->id]);
+        $completedNoPay = Task::factory()->assignedTo($member)->completed()->create(['created_by' => $founder->id, 'pay_amount_myr' => null]);
 
         $this->postJson("/api/v1/admin/tasks/{$openWithPay->id}/mark-paid", [], $headers)
             ->assertUnprocessable();
 
         $this->postJson("/api/v1/admin/tasks/{$completedNoPay->id}/mark-paid", [], $headers)
             ->assertUnprocessable();
+    }
+
+    public function test_mark_paid_records_a_collaboration_payroll_entry_for_the_assignee(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->engineer()->create();
+        $task = Task::factory()->assignedTo($member)->paymentPending()->create([
+            'created_by' => $founder->id,
+            'pay_amount_myr' => 250,
+        ]);
+
+        $response = $this->postJson("/api/v1/admin/tasks/{$task->id}/mark-paid", [
+            'paid_at' => '2026-03-10',
+            'method' => 'duitnow',
+            'note' => 'Landing page sprint',
+        ], $this->adminHeaders($founder))
+            ->assertOk()
+            ->assertJsonPath('data.status', 'paid')
+            ->assertJsonPath('data.payment_state', 'paid')
+            ->assertJsonPath('data.payroll_period_label', '2026-03');
+
+        // The payment lands in the ledger as a settled Project collaboration
+        // one-off for the assignee — gross = the task's pay, kept as a task extra.
+        $entry = PayrollEntry::find($response->json('data.payroll_entry_id'));
+        $this->assertNotNull($entry);
+        $this->assertSame($member->id, $entry->user_id);
+        $this->assertSame(PayrollEntry::KIND_ONE_TIME, $entry->kind);
+        $this->assertSame('collaboration', $entry->one_time_type);
+        $this->assertNull($entry->allowance_snapshot_myr);
+        $this->assertSame(250, $entry->task_extras_myr);
+        $this->assertSame(0, $entry->discretionary_myr);
+        $this->assertSame(250, $entry->gross_myr);
+        $this->assertSame('2026-03', $entry->period_label);
+        $this->assertSame('2026-03-10', $entry->paid_at->toDateString());
+        $this->assertSame('duitnow', $entry->method);
+        $this->assertSame('Landing page sprint', $entry->note);
+        $this->assertSame($founder->id, $entry->created_by);
+        $this->assertTrue($entry->isSettled());
+        $this->assertFalse($entry->isLegacy());
+
+        // The task rides the entry: linked, paid, stamped with the same date.
+        $fresh = $task->fresh();
+        $this->assertSame($entry->id, $fresh->payroll_entry_id);
+        $this->assertSame('2026-03-10', $fresh->paid_at->toDateString());
+    }
+
+    public function test_mark_paid_defaults_to_paid_now_in_the_current_month(): void
+    {
+        Carbon::setTestNow('2026-07-20 09:00:00');
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->engineer()->create();
+        $task = Task::factory()->assignedTo($member)->paymentPending()->create(['created_by' => $founder->id]);
+
+        $this->postJson("/api/v1/admin/tasks/{$task->id}/mark-paid", [], $this->adminHeaders($founder))
+            ->assertOk()
+            ->assertJsonPath('data.payroll_period_label', '2026-07');
+
+        $entry = $task->fresh()->payrollEntry;
+        $this->assertSame('2026-07-20 09:00:00', $entry->paid_at->toDateTimeString());
+        $this->assertNull($entry->method);
+        $this->assertNull($entry->note);
+        Carbon::setTestNow();
+    }
+
+    public function test_mark_paid_counts_in_the_members_payroll_and_their_own_payments(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->engineer()->create();
+        $task = Task::factory()->assignedTo($member)->paymentPending()->create([
+            'created_by' => $founder->id,
+            'pay_amount_myr' => 400,
+        ]);
+
+        $this->postJson("/api/v1/admin/tasks/{$task->id}/mark-paid", ['paid_at' => '2026-05-02'], $this->adminHeaders($founder))
+            ->assertOk();
+
+        // Founder's payroll detail for the member: paid + extras totals include it,
+        // and the entry lists the task it settles.
+        $detail = $this->getJson("/api/v1/admin/payroll/user/{$member->id}", $this->adminHeaders($founder))->assertOk();
+        $this->assertSame(400, $detail->json('summary_by_year.2026.paid_total_myr'));
+        $this->assertSame(400, $detail->json('summary_by_year.2026.extras_total_myr'));
+        $this->assertSame(0, $detail->json('summary_by_year.2026.discretionary_total_myr'));
+        $this->assertSame('collaboration', $detail->json('entries.0.one_time_type'));
+        $this->assertSame($task->title, $detail->json('entries.0.tasks.0.title'));
+
+        // The roster's year-to-date paid total includes it.
+        $roster = $this->getJson('/api/v1/admin/payroll/roster?period_label=2026-06', $this->adminHeaders($founder))->assertOk();
+        $this->assertSame(400, $roster->json('summary.paid_this_year_myr'));
+
+        // The member sees it on their own Payments page, and it is no longer owed.
+        $this->app['auth']->forgetGuards(); // drop the cached founder before switching tokens
+        $teamToken = $member->createToken('team-spa', ['workspace'])->plainTextToken;
+        $own = $this->getJson('/api/v1/team/payslips', ['Authorization' => "Bearer {$teamToken}"])->assertOk();
+        $this->assertSame('collaboration', $own->json('payslips.data.0.one_time_type'));
+        $this->assertSame(400, $own->json('payslips.data.0.gross_myr'));
+        $this->assertSame(0, $own->json('pending_extras.total_myr'));
+    }
+
+    public function test_mark_paid_refuses_an_unassigned_task(): void
+    {
+        $founder = User::factory()->founder()->create();
+        // Pooled yet owed a bonus — there is nobody to record the payment against.
+        $task = Task::factory()->pooled()->completed()->withPay(100)->create(['created_by' => $founder->id]);
+
+        $this->postJson("/api/v1/admin/tasks/{$task->id}/mark-paid", [], $this->adminHeaders($founder))
+            ->assertUnprocessable();
+
+        $this->assertSame('completed', $task->fresh()->status);
+        $this->assertNull($task->fresh()->paid_at);
+        $this->assertSame(0, PayrollEntry::count());
+    }
+
+    public function test_mark_paid_validates_the_paid_date(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->engineer()->create();
+        $task = Task::factory()->assignedTo($member)->paymentPending()->create(['created_by' => $founder->id]);
+
+        $this->postJson("/api/v1/admin/tasks/{$task->id}/mark-paid", ['paid_at' => 'not-a-date'], $this->adminHeaders($founder))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['paid_at']);
+
+        $this->assertSame('payment_pending', $task->fresh()->status);
+        $this->assertSame(0, PayrollEntry::count());
     }
 
     public function test_mark_paid_rejects_a_task_already_on_a_payslip(): void

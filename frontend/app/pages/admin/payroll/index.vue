@@ -134,7 +134,11 @@ onKeyStroke('Escape', () => {
 })
 
 // ── Record a one-time payment (bonus / ad-hoc payout, outside the monthly run) ─
+// `collaboration` (Project collaboration — a one-off project with an engineer
+// who has a team login) is also what a task's Mark paid records under, so it
+// leads the list and is the default here.
 const oneTimeTypes = [
+  { value: 'collaboration', label: 'Project collaboration' },
   { value: 'signing', label: 'Signing' },
   { value: 'festive', label: 'Festive' },
   { value: 'performance', label: 'Performance' },
@@ -143,7 +147,7 @@ const oneTimeTypes = [
 ]
 const oneTimeOpen = ref(false)
 const otUserId = ref(0)
-const otType = ref('signing')
+const otType = ref('collaboration')
 const otAmount = ref('')
 const otIncludeTasks = ref(false)
 const otNote = ref('')
@@ -173,7 +177,7 @@ function todayIso() {
 }
 function openOneTime() {
   otUserId.value = roster.value.find(r => !r.deactivated)?.user_id ?? roster.value[0]?.user_id ?? 0
-  otType.value = 'signing'
+  otType.value = 'collaboration'
   otAmount.value = ''
   otIncludeTasks.value = false
   otNote.value = ''
