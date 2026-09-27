@@ -268,7 +268,7 @@ All theming is via **CSS variables** in `app/assets/css/main.css` (never hardcod
 ## 8. The storefront — public pages
 
 The public **layout** (`public.vue`) wraps every storefront page:
-- **Header:** brand mark, nav (Home · About · Company · Projects · Services · Partners · Contact), dark-mode toggle, "Let's talk" CTA, mobile drawer. Smart-hides on scroll-down, reveals on scroll-up.
+- **Header:** brand mark, nav (Home · About · Company · Blog · Projects · Services · Partners · Contact), dark-mode toggle, "Let's talk" CTA, mobile drawer. Smart-hides on scroll-down, reveals on scroll-up.
 - **Footer:** company registration block (Axel Nova Ventures, 202603119899 / CA0420977-U, Kuala Lumpur) with an availability dot; 5 link columns (Explore, Services, Support, Legal); bottom bar with socials (GitHub, LinkedIn, portfolio, email) + a discreet admin link.
 
 ### Page-by-page
@@ -283,6 +283,8 @@ The public **layout** (`public.vue`) wraps every storefront page:
 | `/services/[slug]` | **Service detail** | SEO-enriched deep-dive per category (web-presence, admin-portal, ui-ux-frontend, digital-marketing, booking-portal, ecommerce): deliverables, tech stack, packages, category-specific + general **FAQs**, "Ready to start?" CTA to `/quote?service=<slug>`. Emits Service + BreadcrumbList + FAQPage JSON-LD. |
 | `/projects` | **Project registry** | Filterable grid — stack pills (All/Laravel/Nuxt/Docker/Redis/MySQL/FastAPI) + status dropdown (All/Live/In progress/Planning). Fed by `GET /api/v1/projects`. |
 | `/projects/[id]` | **Project detail** | Status + featured badges, title, description, "Visit project" / "Source" links, cover image, long description, stack + tags. Fed by `GET /api/v1/projects/{slug}`. |
+| `/blog` | **Blog index** | Published posts, newest first — card grid (cover, format eyebrow, title, excerpt, date · reading time), format pills on the left (`?format=`) and a topic dropdown on the right (`?topic=`, category ∪ tags), pagination. Fed by `GET /api/v1/blog/posts`. |
+| `/blog/[slug]` | **Article** | One shared layout: format eyebrow ("GUIDE · date · read time"), title, introduction, byline, cover; then a sticky left pane of section links beside the text column — anchored sections with optional image / pull quote, closing call-to-action card, share row (LinkedIn / X / WhatsApp / copy) — and 3 related posts below. `BlogPosting` + `BreadcrumbList` JSON-LD; drafts 404. Fed by `GET /api/v1/blog/posts/{slug}`. See [BLOG.md](./BLOG.md). |
 | `/quote`, `/quote/preview`, `/quote/success` | **Quote builder** | The lead funnel — see [section 9](#9-the-quote-builder-funnel). |
 | `/partners` | **Partner program** | Referral program landing — audience cards, 3-step "how it works", **commission tiers** (5% cold / 10% warm / up to 15% closed, capped at RM1,500 per referral), terms snapshot, 8-item FAQ, CTA to `/partners/refer`. |
 | `/partners/refer` | **Refer a business** | Referral **form** (your details + business details + relationship tier + agree-to-terms) → **Web3Forms**. Success state + tier reference cards. |
@@ -318,7 +320,7 @@ The **server** is the source of truth: on submit it re-prices with `PricingEngin
 
 The admin SPA lives at `/admin`, behind `admin-auth` middleware. Auth is a **Sanctum bearer token** stored in `localStorage` as `axn_admin_token`; every request goes through `useAdminAuth().apiFetch()`. The shell (`admin.vue`) has a sidebar and a user menu showing the signed-in name/email + a "Founder" role badge and Sign-out.
 
-**Sidebar nav** (`app/data/adminNav.ts`): Dashboard · Quotations · Orders · Services · Projects · Investors · Analytics.
+**Sidebar nav** (`app/data/adminNav.ts`): Dashboard · Quotations · Orders · Services · Projects · Blog · Investors · Analytics.
 
 ### Login — `/admin/login`
 Email + password (with show/hide), "Sign in" → `POST /v1/admin/login`. On success stores the token and redirects to the dashboard (or the `?redirect=` target). Invalid creds show an inline error.
@@ -376,6 +378,9 @@ Overview with four **stat tiles**: Total quotations · New (unactioned) · Activ
 **List:** stat tiles (total / featured / live), debounced search (name/slug), **status filter** (All / Live / In progress / Soon / Planning), "New project" button. Cards show name+slug, status badge, description (clamped), first 4 tags, featured/inactive badges, Edit + Delete (confirm).
 
 **Editor — every field:** Slug* (unique) · Name* · Short description* (≤500) · Long description* · **Status*** (Live / In progress / Soon / Planning) · Sort order · Live URL · Repo URL · Cover image URL · Tags (comma-sep) · Stack (comma-sep) · **Featured** toggle · **Active** toggle. Calls `GET/POST/PUT/DELETE /v1/admin/projects[/{id}]`.
+
+### Blog — `/admin/blog` (list) + `/admin/blog/[id]` (editor)
+List with status / search filters and per-post page views. The editor (`new` or an id) is the whole writing flow: title, introduction, ordered section cards (Markdown-backed rich text with optional image URL / pull quote, move up / down, remove), a side rail for cover URL + alt, category, tags, closing CTA, SEO overrides and the slug, plus **Start from template**, **Import Markdown** and a backend-rendered **Preview**. **Publish** gates on completeness; edits to a published post go live on save; **Unpublish** pulls it back. Details + the writing walkthrough in [BLOG.md](./BLOG.md).
 
 ### Analytics — `/admin/analytics`
 **Placeholder (Phase B).** Shows a "not wired up yet" banner and four planned metric cards: Page views, Project likes, Service interest, Quote funnel. The `page_views` and `entity_likes` tables already exist; the tracking endpoints + queries are the next build.

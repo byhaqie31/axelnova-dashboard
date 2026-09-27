@@ -161,6 +161,23 @@ class OneTimePayrollTest extends TestCase
         $this->assertSame(0, PayrollEntry::count());
     }
 
+    public function test_accepts_the_collaboration_type(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->engineer()->create();
+
+        // Project collaboration — a one-off project with an engineer who has a
+        // team login. The same label mark-paid on a task records under.
+        $this->postJson('/api/v1/admin/payroll/one-time', [
+            'user_id' => $member->id,
+            'one_time_type' => 'collaboration',
+            'discretionary_myr' => 600,
+        ], $this->adminHeaders($founder))
+            ->assertCreated()
+            ->assertJsonPath('data.one_time_type', 'collaboration')
+            ->assertJsonPath('data.gross_myr', 600);
+    }
+
     public function test_rejects_an_unknown_type(): void
     {
         $founder = User::factory()->founder()->create();

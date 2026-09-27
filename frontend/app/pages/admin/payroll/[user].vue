@@ -40,6 +40,7 @@ interface PayrollEntry {
 }
 
 const oneTimeTypeLabels: Record<string, string> = {
+  collaboration: 'Project collaboration',
   signing: 'Signing bonus',
   festive: 'Festive bonus',
   performance: 'Performance bonus',
@@ -49,6 +50,14 @@ const oneTimeTypeLabels: Record<string, string> = {
 function entryLabel(e: PayrollEntry) {
   if (e.kind === 'one_time') return oneTimeTypeLabels[e.one_time_type ?? 'other'] ?? 'One-time payment'
   return fmtMonth(e.period_label)
+}
+// A one-off's breakdown. A task-only one-off (a task's Mark paid records a
+// Project collaboration with no bonus) reads as task pay + the task names,
+// never "Bonus RM 0".
+function oneTimeBreakdown(e: PayrollEntry): string {
+  const names = e.tasks.map(t => t.title).join(', ')
+  if (!e.discretionary_myr && e.task_extras_myr) return `Task pay ${fmtMyr(e.task_extras_myr)}${names ? ` · ${names}` : ''}`
+  return `Bonus ${fmtMyr(e.discretionary_myr)}${e.task_extras_myr ? ` · Extras ${fmtMyr(e.task_extras_myr)} (${e.tasks.length})` : ''}`
 }
 interface Detail {
   user: UserInfo
@@ -230,8 +239,8 @@ function roleLabel(role: string) {
                 <span v-if="e.kind === 'one_time'" class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded" :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">One-time</span>
               </p>
               <!-- One-time: bonus + optional swept extras. Monthly: allowance + extras. Legacy: none. -->
-              <p v-if="e.kind === 'one_time'" class="text-[11px] tabular-nums" style="color: var(--color-text-tertiary);">
-                Bonus {{ fmtMyr(e.discretionary_myr) }}<span v-if="e.task_extras_myr"> · Extras {{ fmtMyr(e.task_extras_myr) }} ({{ e.tasks.length }})</span> · {{ fmtMonth(e.period_label) }}
+              <p v-if="e.kind === 'one_time'" class="text-[11px] tabular-nums truncate max-w-md" style="color: var(--color-text-tertiary);">
+                {{ oneTimeBreakdown(e) }} · {{ fmtMonth(e.period_label) }}
               </p>
               <p v-else-if="!e.legacy" class="text-[11px] tabular-nums" style="color: var(--color-text-tertiary);">
                 Allowance {{ fmtMyr(e.allowance_snapshot_myr) }} · Extras {{ fmtMyr(e.task_extras_myr) }}<span v-if="e.tasks.length"> ({{ e.tasks.length }})</span>

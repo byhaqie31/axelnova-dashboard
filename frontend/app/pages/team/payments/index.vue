@@ -26,9 +26,12 @@ interface PayrollEntry {
   method: string | null
   note: string | null
   created_at: string
+  /** The task extras this entry settles — a task's Mark paid lands here as one linked task. */
+  tasks: { id: number, title: string, pay_amount_myr: number | null }[]
 }
 
 const oneTimeTypeLabels: Record<string, string> = {
+  collaboration: 'Project collaboration',
   signing: 'Signing bonus',
   festive: 'Festive bonus',
   performance: 'Performance bonus',
@@ -38,6 +41,14 @@ const oneTimeTypeLabels: Record<string, string> = {
 function entryLabel(e: PayrollEntry) {
   if (e.kind === 'one_time') return oneTimeTypeLabels[e.one_time_type ?? 'other'] ?? 'One-time payment'
   return e.period_label
+}
+// A one-off's breakdown. A task-only one-off (the founder's Mark paid on a task
+// records a Project collaboration with no bonus) reads as task pay + the task
+// names, never "Bonus RM 0".
+function oneTimeBreakdown(e: PayrollEntry): string {
+  const names = (e.tasks ?? []).map(t => t.title).join(', ')
+  if (!e.discretionary_myr && e.task_extras_myr) return `Task pay ${fmtMyr(e.task_extras_myr)}${names ? ` · ${names}` : ''}`
+  return `Bonus ${fmtMyr(e.discretionary_myr)}${e.task_extras_myr ? ` · Extras ${fmtMyr(e.task_extras_myr)}` : ''}`
 }
 interface PendingTask { id: number, title: string, pay_amount_myr: number | null, completed_at: string | null }
 
@@ -151,8 +162,8 @@ v-for="e in entries" :key="e.id" class="flex items-center justify-between gap-4 
               <span v-if="e.kind === 'one_time'" class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded" :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">One-time</span>
             </p>
             <!-- One-time: bonus + optional extras. Monthly (Task-7): allowance + extras. Legacy: none. -->
-            <p v-if="e.kind === 'one_time'" class="text-[11px] tabular-nums" :style="{ color: 'var(--color-text-secondary)' }">
-              Bonus {{ fmtMyr(e.discretionary_myr) }}<span v-if="e.task_extras_myr"> · Extras {{ fmtMyr(e.task_extras_myr) }}</span>
+            <p v-if="e.kind === 'one_time'" class="text-[11px] tabular-nums truncate" :style="{ color: 'var(--color-text-secondary)' }">
+              {{ oneTimeBreakdown(e) }}
             </p>
             <p v-else-if="!e.legacy" class="text-[11px] tabular-nums" :style="{ color: 'var(--color-text-secondary)' }">
               Allowance {{ fmtMyr(e.allowance_snapshot_myr) }} · Extras {{ fmtMyr(e.task_extras_myr) }}

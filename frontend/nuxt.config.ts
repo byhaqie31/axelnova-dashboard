@@ -11,6 +11,13 @@ function stripPublicPrefix(list: NuxtPage[]): void {
   }
 }
 
+// Public-page `swr` caching is a production behaviour. Under `nuxt dev` Nitro
+// persists the cached HTML on disk (.nuxt/cache/nitro/routes) and keeps
+// serving it across restarts, so a template edit would stay invisible for up
+// to five minutes — the rules are only emitted for builds.
+const isDev = process.env.NODE_ENV !== 'production'
+const swr = (seconds: number) => (isDev ? {} : { swr: seconds })
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
@@ -29,6 +36,8 @@ export default defineNuxtConfig({
   },
 
   sitemap: {
+    // Published blog posts come from the backend (server/api/__sitemap__/urls.ts).
+    sources: ['/api/__sitemap__/urls'],
     exclude: [
       '/admin/**',
       '/portal/**',
@@ -100,17 +109,20 @@ export default defineNuxtConfig({
     // non-server-rendered page (`injectHead().hooks.hookOnce` — unhead v2 API
     // against nuxt 4.5's unhead v3), 500-ing every hard refresh inside /admin.
     // Revisit after upgrading @nuxt/ui to >= 4.11 (unhead v3 compatible).
+    // `swr()` is a no-op in dev (see the helper above the config).
 
-    '/': { swr: 300 },
-    '/about': { swr: 300 },
-    '/company': { swr: 300 },
-    '/contact': { swr: 300 },
-    '/services': { swr: 300 },
-    '/services/**': { swr: 300 },
-    '/projects': { swr: 300 },
-    '/projects/**': { swr: 300 },
+    '/': swr(300),
+    '/about': swr(300),
+    '/company': swr(300),
+    '/contact': swr(300),
+    '/services': swr(300),
+    '/services/**': swr(300),
+    '/projects': swr(300),
+    '/projects/**': swr(300),
+    '/blog': swr(300),
+    '/blog/**': swr(300),
     // Legal copy changes on the order of never.
-    '/legal/**': { swr: 3600 },
+    '/legal/**': swr(3600),
   },
 
   app: {
@@ -146,7 +158,9 @@ export default defineNuxtConfig({
       // first and then slams over it. This runs before paint (same trick as the
       // `.dark` class) and stamps the cases that must NEVER see a loader:
       // repeat visits this session, and reduced motion. `main.css` hides
-      // `.hero-loader` on that attribute. Private mode throws on
+      // `.hero-loader` on that attribute, and HeroEpoch's fullscreen
+      // `.hero-boot` pose is gated on it too, so a same-session reload paints
+      // the settled home view. Private mode throws on
       // sessionStorage — treat that as "seen", matching HeroEpoch's default.
       script: [
         {

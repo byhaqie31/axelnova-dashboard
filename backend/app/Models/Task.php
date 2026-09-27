@@ -58,9 +58,11 @@ class Task extends Model
     }
 
     /**
-     * The payslip that settles this task's extra bonus (null = not yet on any
-     * payslip). Set at payslip generation; the per-task double-count guard is
-     * that generation only ever picks up unlinked payment_pending tasks.
+     * The payroll entry that settles this task's extra bonus (null = not yet on
+     * any). Set at payslip generation, by a one-time sweep, or by the admin's
+     * mark-paid — which records its own settled `collaboration` one-off for the
+     * assignee. The per-task double-count guard is that generation only ever
+     * picks up unlinked payment_pending tasks, and mark-paid refuses a linked one.
      */
     public function payrollEntry(): BelongsTo
     {

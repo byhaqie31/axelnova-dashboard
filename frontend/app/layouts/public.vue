@@ -2,6 +2,8 @@
 import type { ComponentPublicInstance } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import BrandMark from '~/components/shared/BrandMark.vue'
+import { NAV_FLIGHT_KEY } from '~/composables/useNavFlight'
+import { MOTION } from '~/utils/motion'
 
 const route = useRoute()
 const colorMode = useColorMode()
@@ -14,9 +16,13 @@ const navHidden = ref(false)
 // the header right after the dock handoff, since the user is scrolling down
 // at that moment. Other pages keep the normal hide/reveal behavior.
 const heroImmersive = useState('hero-immersive', () => false)
-const headerHidden = computed(() =>
-  route.path === '/' ? heroImmersive.value : (navHidden.value && !mobileOpen.value),
-)
+// While the bar is travelling between the hero pill and the top (see the nav
+// flight below) the header must stay on screen whatever the route says.
+const navFlying = ref(false)
+const headerHidden = computed(() => {
+  if (navFlying.value) return false
+  return route.path === '/' ? heroImmersive.value : (navHidden.value && !mobileOpen.value)
+})
 const headerRef = ref<HTMLElement | null>(null)
 const navCta = ref<ComponentPublicInstance | HTMLElement | null>(null)
 
@@ -26,6 +32,7 @@ const links = [
   { label: 'Home',     to: '/' },
   { label: 'About',    to: '/about' },
   { label: 'Company',  to: '/company' },
+  { label: 'Blog',     to: '/blog' },
   { label: 'Projects', to: '/projects' },
   { label: 'Services', to: '/services' },
   { label: 'Partners', to: '/partners' },
@@ -83,6 +90,137 @@ onMounted(() => {
 
 // Never hide the nav while the mobile drawer is open.
 watch(mobileOpen, (open) => { if (open) navHidden.value = false })
+
+// ── Nav flight (useNavFlight) ────────────────────────────────────────────
+// On `/` the nav is the hero's pill at the bottom of the card; everywhere else
+// it's this header at the top. Crossing between them, the header's bar travels
+// from one spot to the other (translate + width) while the page swaps
+// underneath, so the nav reads as one element that moved. Its content fades
+// out/in around the trip because the two bars hold slightly different items.
+const motion = import.meta.client ? useMotion() : null
+const headerNav = ref<HTMLElement | null>(null)
+// Drops the header's 0.5s slide for the frames where it must appear or vanish
+// in place — the handoff is a same-frame swap, not a slide.
+const navInstant = ref(false)
+let flightTl: gsap.core.Timeline | null = null
+let flightDir: 'launch' | 'land' | null = null
+// Set when a navigation to `/` leaves a page with the header on screen; the
+// hero consumes it (landOn) once it has mounted and knows where its pill sits.
+let arrivalPending = false
+let popNav = false
+
+const navContent = (nav: HTMLElement) => Array.from(nav.children)
+
+function endFlight() {
+  flightTl?.kill()
+  flightTl = null
+  flightDir = null
+  const nav = headerNav.value
+  if (!nav || !motion) return
+  motion.gsap.set(nav, { clearProps: 'transform,width' })
+  motion.gsap.set(navContent(nav), { clearProps: 'opacity' })
+}
+
+// Two frames so the class outlives the render that applies the swap.
+function releaseInstant() {
+  requestAnimationFrame(() => requestAnimationFrame(() => { navInstant.value = false }))
+}
+
+provide(NAV_FLIGHT_KEY, {
+  launchFrom(from) {
+    const nav = headerNav.value
+    if (!motion || motion.reduced || !nav) return
+    endFlight()
+    flightDir = 'launch'
+    navInstant.value = true
+    navFlying.value = true
+    // Measure once the header's hidden class is gone (same task — no paint
+    // happens before the bar is parked on the pill's spot).
+    nextTick(() => {
+      if (flightDir !== 'launch') return
+      const { gsap } = motion
+      const home = nav.getBoundingClientRect()
+      releaseInstant()
+      flightTl = gsap.timeline({
+        onComplete: () => {
+          endFlight()
+          navFlying.value = false
+        },
+      })
+      flightTl.fromTo(
+        nav,
+        { x: from.centerX - (home.left + home.width / 2), y: from.top - home.top, width: from.width },
+        { x: 0, y: 0, width: home.width, duration: MOTION.dur.slow, ease: MOTION.ease.inout },
+        0,
+      )
+      flightTl.fromTo(
+        navContent(nav),
+        { opacity: 0 },
+        { opacity: 1, duration: MOTION.dur.base, ease: MOTION.ease.out },
+        MOTION.dur.fast,
+      )
+    })
+  },
+
+  landOn(target, onLand) {
+    const nav = headerNav.value
+    const pending = arrivalPending
+    arrivalPending = false
+    if (!pending || !motion || motion.reduced || !nav) return false
+    const { gsap } = motion
+    // Continue from wherever a launch left the bar rather than snapping home.
+    flightTl?.kill()
+    flightDir = 'land'
+    navFlying.value = true
+    const now = nav.getBoundingClientRect()
+    const homeTop = now.top - Number(gsap.getProperty(nav, 'y'))
+    const homeCenter = now.left + now.width / 2 - Number(gsap.getProperty(nav, 'x'))
+    flightTl = gsap.timeline({
+      onComplete: () => {
+        // Same frame: the header vanishes in place as the pill appears.
+        navInstant.value = true
+        navFlying.value = false
+        onLand()
+        endFlight()
+        releaseInstant()
+      },
+    })
+    flightTl.to(
+      nav,
+      { x: target.centerX - homeCenter, y: target.top - homeTop, width: target.width, duration: MOTION.dur.slow, ease: MOTION.ease.inout },
+      0,
+    )
+    flightTl.to(navContent(nav), { opacity: 0, duration: MOTION.dur.fast, ease: MOTION.ease.inout }, 0)
+    return true
+  },
+
+  cancelLanding() {
+    if (flightDir !== 'land') return
+    endFlight()
+    navFlying.value = false
+  },
+})
+
+if (import.meta.client) {
+  // Registered in setup (not onMounted) so it runs before any guard the hero
+  // adds. Arrivals only fly when the landing spot is certain: back/forward
+  // restores a saved scroll position and a hash jumps to a section, so both
+  // would land the bar where the pill isn't.
+  const offAfterEach = useRouter().afterEach((to, from, failure) => {
+    const wasPop = popNav
+    popNav = false
+    if (failure) return
+    arrivalPending = to.path === '/' && from.path !== '/' && !to.hash && !wasPop
+      && (navFlying.value || !(navHidden.value && !mobileOpen.value))
+  })
+  const onPop = () => { popNav = true }
+  onMounted(() => window.addEventListener('popstate', onPop))
+  onBeforeUnmount(() => {
+    offAfterEach()
+    window.removeEventListener('popstate', onPop)
+    endFlight()
+  })
+}
 </script>
 
 <template>
@@ -91,7 +229,7 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
     <header
       ref="headerRef"
       class="fixed top-0 inset-x-0 z-50 nav-header"
-      :class="{ 'nav-header-hidden': headerHidden }"
+      :class="{ 'nav-header-hidden': headerHidden, 'nav-header-instant': navInstant }"
     >
       <!-- Iridescent gradient hairline (always visible on refresh) -->
       <div class="aurora-line" />
@@ -100,6 +238,7 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
            pill, so the homepage dock handoff reads as one continuous element. -->
       <div class="px-3 sm:px-6 pt-3">
         <nav
+          ref="headerNav"
           class="glass-nav max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between nav-bar"
           :style="{ height: scrolled ? '44px' : '48px' }"
         >
@@ -398,6 +537,9 @@ watch(mobileOpen, (open) => { if (open) navHidden.value = false })
 }
 .nav-header-hidden {
   transform: translateY(-110%);
+}
+.nav-header-instant {
+  transition: none;
 }
 .nav-bar {
   transition: height 0.3s ease;

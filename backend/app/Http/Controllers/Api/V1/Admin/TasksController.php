@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TaskResource;
+use App\Models\PayrollEntry;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -23,7 +26,9 @@ use Illuminate\Validation\Rule;
  * team member is the one who starts it. The one exception runs the other way —
  * unassigning an in_progress task drops it back to 'open' (see `update()`), the
  * admin-side mirror of the team's own release edge. Only `mark-paid` writes
- * 'paid' + paid_at, and only from payment_pending (or the completed-with-bonus edge).
+ * 'paid' + paid_at, and only from payment_pending (or the completed-with-bonus
+ * edge) — and it records the payout in payroll as a Project collaboration
+ * one-off for the assignee, so an ad-hoc task payment never bypasses the ledger.
  */
 class TasksController extends Controller
 {
@@ -105,16 +110,32 @@ class TasksController extends Controller
     }
 
     /**
-     * Release the extra-pay bonus. Only valid once the work is done and money is
-     * owed: from payment_pending (the normal path) or the completed-with-bonus
-     * edge (a bonus added after a no-pay completion). Stamps paid_at.
+     * Release the extra-pay bonus AND record it in payroll. Only valid once the
+     * work is done and money is owed: from payment_pending (the normal path) or
+     * the completed-with-bonus edge (a bonus added after a no-pay completion).
+     *
+     * The payout is written to the ledger as a SETTLED one-time payroll entry of
+     * type `collaboration` (Project collaboration) for the assignee — gross = the
+     * task's pay, kept as a task extra, discretionary 0 — so an ad-hoc task
+     * payment counts in the roster's year-to-date total, the member's payroll
+     * detail and their own Payments page exactly like a payslip-settled one.
+     * Optional body: `paid_at` (default now; also the entry's period month),
+     * `method`, `note`. The task is linked to the entry and flipped to paid in
+     * the same transaction.
      *
      * A task already LINKED to a payslip is off-limits here (422): its bonus is
      * frozen into that slip's gross, so settling the payslip is the only payout
      * path — ad-hoc mark-paid on top would double-pay the extra (Task 7 guard).
+     * An unassigned task is refused too (422): there is nobody to pay.
      */
-    public function markPaid(Task $task): JsonResponse|TaskResource
+    public function markPaid(Request $request, Task $task): JsonResponse|TaskResource
     {
+        $data = $request->validate([
+            'paid_at' => ['nullable', 'date'],
+            'method' => ['nullable', 'string', 'max:40'],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
         if ($task->payroll_entry_id !== null) {
             $period = $task->payrollEntry?->period_label ?? 'a payslip';
 
@@ -123,8 +144,8 @@ class TasksController extends Controller
             ], 422);
         }
 
-        $owesPayment = $task->status === 'payment_pending'
-            || ($task->status === 'completed' && $task->pay_amount_myr !== null);
+        $owesPayment = (int) $task->pay_amount_myr >= 1
+            && ($task->status === 'payment_pending' || $task->status === 'completed');
 
         if (! $owesPayment) {
             return response()->json([
@@ -132,26 +153,59 @@ class TasksController extends Controller
             ], 422);
         }
 
-        // The checks above cover the common cases with a friendly message, but
-        // the actual write is re-guarded as a single conditional UPDATE so two
-        // concurrent mark-paid calls (or one racing a payslip generation that
-        // links payroll_entry_id) can't both win — only the first commits; a
-        // loser affects 0 rows and gets a 422 instead of silently double-paying.
-        $affected = Task::whereKey($task->id)
-            ->whereNull('payroll_entry_id')
-            ->where(function ($query) {
-                $query->where('status', 'payment_pending')
-                    ->orWhere(function ($query) {
-                        $query->where('status', 'completed')->whereNotNull('pay_amount_myr');
-                    });
-            })
-            ->update([
-                'status' => 'paid',
-                'paid_at' => now(),
-                'completed_at' => $task->completed_at ?? now(),
+        if ($task->assignee_id === null) {
+            return response()->json([
+                'message' => 'Assign the task to a teammate first — the payment is recorded to their payroll.',
+            ], 422);
+        }
+
+        $paidAt = isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : now();
+
+        $entry = DB::transaction(function () use ($task, $data, $paidAt, $request) {
+            // The checks above cover the common cases with a friendly message, but
+            // the actual write is re-guarded as a single conditional UPDATE so two
+            // concurrent mark-paid calls (or one racing a payslip generation that
+            // links payroll_entry_id) can't both win — only the first commits; a
+            // loser affects 0 rows and gets a 422 instead of silently double-paying.
+            $affected = Task::whereKey($task->id)
+                ->whereNull('payroll_entry_id')
+                ->whereNotNull('pay_amount_myr')
+                ->whereIn('status', ['payment_pending', 'completed'])
+                ->update([
+                    'status' => 'paid',
+                    'paid_at' => $paidAt,
+                    'completed_at' => $task->completed_at ?? $paidAt,
+                ]);
+
+            if ($affected === 0) {
+                return null;
+            }
+
+            // period_label = the payment's month, so year-to-date rollups bucket
+            // it correctly; the UI labels it by one_time_type, not this.
+            $entry = PayrollEntry::create([
+                'user_id' => $task->assignee_id,
+                'kind' => PayrollEntry::KIND_ONE_TIME,
+                'period_label' => $paidAt->format('Y-m'),
+                'one_time_type' => PayrollEntry::TYPE_COLLABORATION,
+                'allowance_snapshot_myr' => null,
+                'task_extras_myr' => (int) $task->pay_amount_myr,
+                'discretionary_myr' => 0,
+                'gross_myr' => (int) $task->pay_amount_myr,
+                'paid_at' => $paidAt,
+                'method' => $data['method'] ?? null,
+                'note' => $data['note'] ?? null,
+                'created_by' => $request->user()->id,
             ]);
 
-        if ($affected === 0) {
+            // Link the task to the entry that settles it (the per-task guard the
+            // payslip paths rely on: a linked task is never swept up again).
+            Task::whereKey($task->id)->update(['payroll_entry_id' => $entry->id]);
+
+            return $entry;
+        });
+
+        if ($entry === null) {
             return response()->json([
                 'message' => 'This task changed state just now — refresh and try again.',
             ], 422);

@@ -8,6 +8,7 @@ import TaskPayBadge from '~/components/shared/primitives/TaskPayBadge.vue'
 import AdminTaskFormFields from '~/components/admin/TaskFormFields.vue'
 import AdminTaskTimeline from '~/components/admin/TaskTimeline.vue'
 import AdminTaskNotes from '~/components/admin/TaskNotes.vue'
+import AdminSelect from '~/components/admin/Select.vue'
 import { taskPriorityMeta, type TaskFormShape, type TaskRecord } from '~/data/tasks'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
@@ -149,16 +150,45 @@ async function save() {
 
 // ── Mark paid / delete — confirm-before-act (mirrors the old listing). ──────
 // A bonus already LINKED to a payslip is settled via the payslip, not here.
+// Mark paid needs an assignee: the payout is recorded to THEIR payroll as a
+// Project collaboration one-off (backend 422s a pooled task).
 function canMarkPaid(t: TaskRecord): boolean {
-  if (t.payroll_entry_id != null) return false
+  if (t.payroll_entry_id != null || t.assignee_id == null) return false
   return t.status === 'payment_pending' || (t.status === 'completed' && t.pay_amount_myr != null)
 }
 function onPayslip(t: TaskRecord): boolean {
   return t.payroll_entry_id != null && t.status === 'payment_pending'
 }
+// Paid AND on the ledger — every mark-paid lands here; the link opens the
+// assignee's payroll page where the entry sits.
+function recordedInPayroll(t: TaskRecord): boolean {
+  return t.payroll_entry_id != null && t.status === 'paid'
+}
 
 const pendingAction = ref<'mark-paid' | 'delete' | null>(null)
 const acting = ref(false)
+
+// Mark paid writes a settled payroll entry, so the dialog also captures when
+// and how it was paid (same method set as /admin/payroll) + an optional note.
+const paymentMethodOptions = [
+  { value: 'bank_transfer', label: 'Bank transfer' },
+  { value: 'duitnow', label: 'DuitNow' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'other', label: 'Other' },
+]
+const payPaidAt = ref('')
+const payMethod = ref('bank_transfer')
+const payNote = ref('')
+function todayIso() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function openMarkPaid() {
+  payPaidAt.value = todayIso()
+  payMethod.value = 'bank_transfer'
+  payNote.value = ''
+  pendingAction.value = 'mark-paid'
+}
 
 const confirmCopy = computed(() => {
   const t = task.value
@@ -166,7 +196,7 @@ const confirmCopy = computed(() => {
   return pendingAction.value === 'mark-paid'
     ? {
         title: `Mark "${t.title}" paid?`,
-        body: `This records the RM ${t.pay_amount_myr ?? 0} bonus as paid out${t.assignee_name ? ` to ${t.assignee_name}` : ''} and closes the task. It can't be undone here.`,
+        body: `This records RM ${t.pay_amount_myr ?? 0}${t.assignee_name ? ` to ${t.assignee_name}` : ''} as a Project collaboration payment in payroll and closes the task. It can't be undone here.`,
         cta: 'Mark paid',
       }
     : {
@@ -182,10 +212,13 @@ async function confirmAction() {
   acting.value = true
   try {
     if (pendingAction.value === 'mark-paid') {
-      const res = await apiFetch<{ data: TaskRecord }>(`/api/v1/admin/tasks/${t.id}/mark-paid`, { method: 'POST' })
+      const body: Record<string, unknown> = { method: payMethod.value }
+      if (payPaidAt.value) body.paid_at = payPaidAt.value
+      if (payNote.value.trim()) body.note = payNote.value.trim()
+      const res = await apiFetch<{ data: TaskRecord }>(`/api/v1/admin/tasks/${t.id}/mark-paid`, { method: 'POST', body })
       task.value = res.data
       hydrateForm(res.data)
-      toast.success('Bonus marked paid')
+      toast.success('Bonus paid', `RM ${res.data.pay_amount_myr ?? 0} recorded in ${res.data.assignee_name ?? 'the assignee'}’s payroll.`)
       pendingAction.value = null
     }
     else {
@@ -268,7 +301,7 @@ onKeyStroke('Escape', () => {
             </div>
             <button
               v-if="canMarkPaid(task)" type="button" class="btn-pill btn-pill-accent text-[13px] w-full justify-center"
-              @click="pendingAction = 'mark-paid'">
+              @click="openMarkPaid">
               <UIcon name="i-lucide-banknote" class="size-4" /> Mark paid
             </button>
             <span
@@ -277,6 +310,18 @@ onKeyStroke('Escape', () => {
               <UIcon name="i-lucide-receipt" class="size-3.5" aria-hidden="true" />
               on payslip{{ task.payroll_period_label ? ` ${task.payroll_period_label}` : '' }}
             </span>
+            <NuxtLink
+              v-else-if="recordedInPayroll(task)" :to="`/admin/payroll/${task.assignee_id}`"
+              class="inline-flex items-center gap-1 text-[12px] hover:underline"
+              :style="{ color: 'var(--color-text-tertiary)' }">
+              <UIcon name="i-lucide-receipt" class="size-3.5" aria-hidden="true" />
+              Recorded in payroll{{ task.payroll_period_label ? ` · ${task.payroll_period_label}` : '' }}
+            </NuxtLink>
+            <p
+              v-else-if="task.payment_state === 'pending' && task.assignee_id == null" class="text-[12px]"
+              :style="{ color: 'var(--color-text-tertiary)' }">
+              Assign the task to a teammate to record its payment.
+            </p>
           </div>
 
           <!-- Activity — the lifecycle log (opened → picked up → completed → paid) -->
@@ -314,7 +359,26 @@ onKeyStroke('Escape', () => {
         <div v-if="pendingAction" class="confirm-overlay" @click.self="pendingAction = null">
           <div class="confirm-card" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
             <h2 class="text-[17px] font-bold tracking-tight mb-2" style="color: var(--color-text);">{{ confirmCopy.title }}</h2>
-            <p class="text-[13px] leading-relaxed mb-6" style="color: var(--color-text-secondary);">{{ confirmCopy.body }}</p>
+            <p class="text-[13px] leading-relaxed" :class="pendingAction === 'mark-paid' ? 'mb-4' : 'mb-6'" style="color: var(--color-text-secondary);">{{ confirmCopy.body }}</p>
+
+            <!-- Mark paid: when + how it was paid, for the payroll entry -->
+            <template v-if="pendingAction === 'mark-paid'">
+              <div class="grid grid-cols-2 gap-3 mb-4">
+                <label class="block">
+                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Paid date</span>
+                  <input v-model="payPaidAt" type="date" class="contact-input mt-1 w-full">
+                </label>
+                <label class="block">
+                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Method</span>
+                  <AdminSelect v-model="payMethod" :items="paymentMethodOptions" class="mt-1 w-full" />
+                </label>
+              </div>
+              <label class="block mb-6">
+                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Note (optional)</span>
+                <input v-model="payNote" type="text" placeholder="e.g. Landing page sprint" class="contact-input mt-1 w-full">
+              </label>
+            </template>
+
             <div class="flex items-center justify-end gap-2">
               <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="acting" @click="pendingAction = null">Cancel</button>
               <button type="button" class="btn-pill btn-pill-accent text-[13px]" :disabled="acting" @click="confirmAction">

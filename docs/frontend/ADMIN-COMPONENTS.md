@@ -139,3 +139,6 @@ restores the rail. Active tile highlighted; the View more button lights up
 when the current route lives in an unpinned group. Works from both expanded
 and collapsed rail states. The mobile drawer is unaffected — it scrolls and
 always lists every group.
+
+### `components/admin/BlogSectionEditor.vue` + `pages/admin/blog/[id].vue`
+One section card of the blog editor: heading input, Nuxt UI `UEditor` in `content-type="markdown"` (so the stored value is plain Markdown the backend renders; toolbar = bold / italic / link / H3 / lists / quote / code — H2 belongs to the article layout), optional image URL + alt, optional pull quote + attribution, move up / down / remove (the parent owns the array). The editor page keeps the form as plain reactive state, tracks dirtiness against a saved snapshot for the leave guard, auto-slugs from the title while unpublished, and previews through `POST /v1/admin/blog/render` so the overlay (`PublicBlogArticle preview`) is exactly the public output. Helpers `templateSections()` / `parseMarkdownImport()` live in `data/blog.ts`. See [BLOG.md](../global/BLOG.md).

@@ -93,6 +93,24 @@ All are client-guarded, kill their tweens/triggers on unmount, and no-op
   reveals on any 4px scroll-up; never hides while the mobile drawer is open.
 - **Page transitions** (`app.vue`): GSAP JS hooks, `out-in` — leave 0.3s
   `power2.in` (opacity, y −20), enter 0.45s `power3.out` (opacity, y 24 → 0).
+- **Nav flight** (`composables/useNavFlight.ts`, run by `layouts/public.vue`,
+  fed by `HeroEpoch`): on `/` the nav is the hero's pill at the card's bottom,
+  everywhere else the header at the top — so crossing between them, the
+  header's bar travels between the two spots while the page swaps underneath.
+  **Leaving `/`** with the pill on screen (router `afterEach`, so a cancelled
+  navigation never strands it): the pill hides and the bar launches from its
+  rect up to the top, `dur.slow` / `ease.inout`, content fading in
+  (`dur.base`, from `dur.fast`). **Arriving at `/`** in settled mode from a
+  page whose header was on screen: the bar glides down to the pill's resting
+  spot (dock math at scroll 0), content fading out, then swaps to the pill in
+  one frame and the pill's content fades up (`dur.fast`); the dock trigger is
+  only created after the landing. Skipped on back/forward (a restored scroll
+  position means the pill isn't there), on hash links, when the header was
+  hidden by scroll, on first-visit intros and under reduced motion.
+  `.nav-header-instant` drops the header's 0.5s slide for the swap frames.
+  The bar tweens **`width`** as well as transform (the two bars differ by up
+  to ~100px): scaling would squash its text, and it's one fixed element —
+  the same exception the hero pill's own width scrub already takes.
 - **ProjectCard**: CSS-only hover — −4px lift + glow (existing) + diagonal sheen
   sweep (`--sheen-color`, theme-aware).
 - **Admin dashboard**: tiles stagger in on mount (y 16, 0.4s, stagger 0.08, once
