@@ -15,6 +15,22 @@ export interface BlogSection {
   quote_by: string | null
 }
 
+export type BlogFormat = 'article' | 'guide' | 'tutorial' | 'case_study' | 'opinion' | 'news'
+
+/** The editor's Format dropdown (right rail) — mirrors BlogPost::FORMATS. */
+export const blogFormatOptions: { value: BlogFormat, label: string }[] = [
+  { value: 'article', label: 'Article' },
+  { value: 'guide', label: 'Guide' },
+  { value: 'tutorial', label: 'Tutorial' },
+  { value: 'case_study', label: 'Case study' },
+  { value: 'opinion', label: 'Opinion' },
+  { value: 'news', label: 'News' },
+]
+
+export function blogFormatLabel(format: BlogFormat | string | null | undefined): string {
+  return blogFormatOptions.find(o => o.value === format)?.label ?? 'Article'
+}
+
 export interface BlogTocItem { id: string, heading: string }
 
 /** A section as the public API serves it — backend-rendered HTML + its TOC anchor. */
@@ -28,6 +44,8 @@ export interface BlogPostCard {
   slug: string
   title: string
   excerpt: string
+  /** Editorial format — the accent eyebrow on the page (article | guide | tutorial | case_study | opinion | news). */
+  format: BlogFormat
   cover_image_url: string | null
   cover_image_alt: string | null
   category: string | null
@@ -56,6 +74,7 @@ export interface BlogPostAdmin {
   slug: string
   title: string
   excerpt: string
+  format: BlogFormat
   sections: BlogSection[]
   cover_image_url: string | null
   cover_image_alt: string | null
@@ -184,8 +203,8 @@ export function parseMarkdownImport(md: string): { title: string, excerpt: strin
   return { title, excerpt, sections }
 }
 
-/** 'Sep 26, 2026' — short and unambiguous for a Malaysian audience reading in English. */
+/** '26 September 2026' — day-first, long month, unambiguous for a Malaysian audience reading in English. */
 export function fmtBlogDate(iso: string | null): string {
   if (!iso) return ''
-  return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' })
 }

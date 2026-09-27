@@ -69,7 +69,7 @@ useHead({
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 pt-16 pb-32">
+  <div class="max-w-6xl mx-auto px-6 pt-16 pb-32">
     <NuxtLink
       to="/blog"
       class="text-[13px] inline-flex items-center gap-1.5 mb-10 transition-colors hover:opacity-80"

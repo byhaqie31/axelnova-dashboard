@@ -4,7 +4,7 @@
 // preview can't navigate away from unsaved work). Section bodies are
 // backend-rendered, sanitised HTML (App\Support\BlogMarkdown) — never raw
 // Markdown and never user HTML — which is what makes the v-html safe.
-import { blogCtaDefaults, fmtBlogDate, type BlogPostPublic } from '~/data/blog'
+import { blogCtaDefaults, blogFormatLabel, fmtBlogDate, type BlogPostPublic } from '~/data/blog'
 import PublicBlogToc from '~/components/public/BlogToc.vue'
 import PublicBlogCard from '~/components/public/BlogCard.vue'
 
@@ -16,8 +16,28 @@ const cta = computed(() => ({
   label: props.post.cta_label || blogCtaDefaults.label,
   url: props.post.cta_url || blogCtaDefaults.url,
 }))
-// A TOC earns its place from three sections; shorter posts read fine without one.
-const showToc = computed(() => props.post.toc.length >= 3)
+// The left pane: section links from two sections up, plus the post's topics
+// (category first, then tags, de-duplicated) in the reference's dash style.
+const showToc = computed(() => props.post.toc.length >= 2)
+const topics = computed(() => {
+  const seen = new Set<string>()
+  return [props.post.category, ...props.post.tags]
+    .filter((t): t is string => !!t && t.trim() !== '')
+    .filter((t) => {
+      const key = t.trim().toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+})
+const showPane = computed(() => showToc.value || topics.value.length > 0)
+// "Updated …" only when the post was edited on a later day than it was published.
+const updatedLabel = computed(() => {
+  if (!props.post.updated_at || !props.post.published_at) return ''
+  const pub = new Date(props.post.published_at)
+  const upd = new Date(props.post.updated_at)
+  return upd.toDateString() !== pub.toDateString() && upd > pub ? fmtBlogDate(props.post.updated_at) : ''
+})
 
 const pageUrl = computed(() => `https://axelnovaventures.com/blog/${props.post.slug}`)
 const shareLinks = computed(() => [
@@ -37,73 +57,107 @@ async function copyLink() {
 </script>
 
 <template>
-  <article>
+  <!--
+    Two-track grid on lg+: [pane 220px] [text column ≤ 78ch], left-aligned in
+    the page container (max-w-6xl). The header spans BOTH tracks so a long
+    title gets the full width; the cover spans both too. From the first
+    section down, the LEFT track holds the sticky pane (section links +
+    topics) and the RIGHT track the text, CTA and share row — the reference
+    layout. Below lg everything stacks in one column with the pane inline
+    above the first section.
+  -->
+  <article class="lg:grid lg:grid-cols-[220px_minmax(0,78ch)] lg:gap-x-12">
     <!-- Header -->
-    <header class="max-w-[68ch] mx-auto">
-      <p class="text-[12px] tracking-wide" :style="{ color: 'var(--color-text-tertiary)' }">
-        <span v-if="post.category">{{ post.category }} · </span>{{ fmtBlogDate(post.published_at) }} · {{ post.reading_minutes }} min read
+    <header class="lg:col-span-2 min-w-0">
+      <p class="text-[12px] tracking-wide flex flex-wrap items-baseline gap-x-2" :style="{ color: 'var(--color-text-tertiary)' }">
+        <span class="font-semibold uppercase tracking-widest text-[11px]" :style="{ color: 'var(--color-accent)' }">{{ blogFormatLabel(post.format) }}</span>
+        <span>{{ fmtBlogDate(post.published_at) }} · {{ post.reading_minutes }} min read</span>
       </p>
       <h1 class="text-4xl md:text-5xl font-semibold tracking-tighter leading-[1.08] mt-3 mb-5" :style="{ color: 'var(--color-text)' }">{{ post.title }}</h1>
-      <p class="text-[19px] leading-[1.6]" :style="{ color: 'var(--color-text-secondary)' }">{{ post.excerpt }}</p>
+      <p class="text-[19px] leading-[1.6] max-w-[78ch]" :style="{ color: 'var(--color-text-secondary)' }">{{ post.excerpt }}</p>
+      <p class="text-[13px] mt-5 flex flex-wrap gap-x-6" :style="{ color: 'var(--color-text-tertiary)' }">
+        <span>By Ahmad Baihaqie, Founder</span>
+        <span v-if="updatedLabel">Updated {{ updatedLabel }}</span>
+      </p>
     </header>
 
-    <!-- Cover -->
-    <figure v-if="post.cover_image_url" class="max-w-4xl mx-auto my-10 rounded-2xl overflow-hidden border" :style="{ borderColor: 'var(--color-border)' }">
+    <!-- Rule between the header and the contents -->
+    <hr class="lg:col-span-2 border-0 border-t my-10" :style="{ borderColor: 'var(--color-border)' }" aria-hidden="true">
+
+    <!-- Cover — full width -->
+    <figure v-if="post.cover_image_url" class="w-full mb-10 lg:col-span-2 rounded-2xl overflow-hidden border" :style="{ borderColor: 'var(--color-border)' }">
       <img :src="post.cover_image_url" :alt="post.cover_image_alt ?? post.title" class="w-full aspect-[16/9] object-cover">
     </figure>
-    <div v-else class="my-10" />
 
-    <div class="max-w-5xl mx-auto lg:grid lg:grid-cols-[minmax(0,1fr)_220px] lg:gap-12">
-      <div class="max-w-[68ch] min-w-0">
-        <!-- Inline TOC (mobile / tablet) -->
-        <PublicBlogToc v-if="showToc" :items="post.toc" class="lg:hidden mb-10 rounded-2xl border p-5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }" />
+    <!-- Left pane (lg+): section links + topics, sticky -->
+    <aside v-if="showPane" class="hidden lg:block lg:col-start-1">
+      <div class="sticky top-28 space-y-8 border-t pt-5" :style="{ borderColor: 'var(--color-border)' }">
+        <PublicBlogToc v-if="showToc" :items="post.toc" />
+        <div v-if="topics.length">
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" :style="{ color: 'var(--color-text-tertiary)' }">Topics</p>
+          <ul class="space-y-2">
+            <li v-for="t in topics" :key="t" class="text-[13px] leading-snug flex items-baseline gap-2" :style="{ color: 'var(--color-text-secondary)' }">
+              <span aria-hidden="true" :style="{ color: 'var(--color-accent)' }">—</span>{{ t }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+    <div v-else class="hidden lg:block lg:col-start-1" />
 
-        <!-- Sections -->
-        <section v-for="s in post.sections" :key="s.id" class="mb-12">
-          <h2 :id="s.anchor" class="blog-section-anchor text-[26px] font-semibold tracking-tight leading-tight mb-4" :style="{ color: 'var(--color-text)' }">{{ s.heading }}</h2>
-          <div class="blog-prose" v-html="s.body_html" />
-          <figure v-if="s.image_url" class="mt-6 rounded-2xl overflow-hidden border" :style="{ borderColor: 'var(--color-border)' }">
-            <img :src="s.image_url" :alt="s.image_alt ?? s.heading" class="w-full h-auto" loading="lazy">
-            <figcaption v-if="s.image_alt" class="text-[12px] px-4 py-2" :style="{ color: 'var(--color-text-tertiary)' }">{{ s.image_alt }}</figcaption>
-          </figure>
-          <blockquote v-if="s.quote" class="mt-6 border-l-[3px] pl-5 text-[20px] leading-snug italic" :style="{ borderColor: 'var(--color-accent)', color: 'var(--color-text)' }">
-            “{{ s.quote }}”
-            <footer v-if="s.quote_by" class="text-[13px] not-italic mt-2" :style="{ color: 'var(--color-text-tertiary)' }">— {{ s.quote_by }}</footer>
-          </blockquote>
-        </section>
-
-        <!-- Closing CTA -->
-        <aside class="rounded-3xl border p-7 mt-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
-          <h2 class="text-[22px] font-semibold tracking-tight mb-2" :style="{ color: 'var(--color-text)' }">{{ cta.heading }}</h2>
-          <p class="text-[15px] leading-relaxed mb-5" :style="{ color: 'var(--color-text-secondary)' }">{{ cta.body }}</p>
-          <NuxtLink v-if="!preview" :to="cta.url" class="btn-pill btn-pill-accent text-[13px] inline-flex items-center gap-2">
-            {{ cta.label }} <UIcon name="i-lucide-arrow-right" class="size-4" />
-          </NuxtLink>
-          <span v-else class="btn-pill btn-pill-accent text-[13px] inline-flex items-center gap-2">{{ cta.label }} <UIcon name="i-lucide-arrow-right" class="size-4" /></span>
-        </aside>
-
-        <!-- Share -->
-        <div v-if="!preview" class="flex flex-wrap items-center gap-2 mt-8">
-          <span class="text-[12px] mr-1" :style="{ color: 'var(--color-text-tertiary)' }">Share</span>
-          <a v-for="l in shareLinks" :key="l.label" :href="l.href" target="_blank" rel="noopener" class="btn-table-action">
-            <UIcon :name="l.icon" class="size-3.5" />{{ l.label }}
-          </a>
-          <button type="button" class="btn-table-action" @click="copyLink">
-            <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-link'" class="size-3.5" />{{ copied ? 'Copied' : 'Copy link' }}
-          </button>
+    <!-- Body -->
+    <div class="max-w-[78ch] lg:col-start-2 min-w-0">
+      <!-- Inline pane (below lg) -->
+      <div v-if="showPane" class="lg:hidden mb-10 rounded-2xl border p-5 space-y-6" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+        <PublicBlogToc v-if="showToc" :items="post.toc" />
+        <div v-if="topics.length">
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" :style="{ color: 'var(--color-text-tertiary)' }">Topics</p>
+          <ul class="flex flex-wrap gap-x-4 gap-y-1">
+            <li v-for="t in topics" :key="t" class="text-[13px] flex items-baseline gap-1.5" :style="{ color: 'var(--color-text-secondary)' }">
+              <span aria-hidden="true" :style="{ color: 'var(--color-accent)' }">—</span>{{ t }}
+            </li>
+          </ul>
         </div>
       </div>
 
-      <!-- Sticky TOC (desktop) -->
-      <aside v-if="showToc" class="hidden lg:block">
-        <div class="sticky top-28">
-          <PublicBlogToc :items="post.toc" />
-        </div>
+      <!-- Sections -->
+      <section v-for="s in post.sections" :key="s.id" class="mb-12">
+        <h2 :id="s.anchor" class="blog-section-anchor text-[26px] font-semibold tracking-tight leading-tight mb-4" :style="{ color: 'var(--color-text)' }">{{ s.heading }}</h2>
+        <div class="blog-prose" v-html="s.body_html" />
+        <figure v-if="s.image_url" class="mt-6 rounded-2xl overflow-hidden border" :style="{ borderColor: 'var(--color-border)' }">
+          <img :src="s.image_url" :alt="s.image_alt ?? s.heading" class="w-full h-auto" loading="lazy">
+          <figcaption v-if="s.image_alt" class="text-[12px] px-4 py-2" :style="{ color: 'var(--color-text-tertiary)' }">{{ s.image_alt }}</figcaption>
+        </figure>
+        <blockquote v-if="s.quote" class="mt-6 border-l-[3px] pl-5 text-[20px] leading-snug italic" :style="{ borderColor: 'var(--color-accent)', color: 'var(--color-text)' }">
+          “{{ s.quote }}”
+          <footer v-if="s.quote_by" class="text-[13px] not-italic mt-2" :style="{ color: 'var(--color-text-tertiary)' }">— {{ s.quote_by }}</footer>
+        </blockquote>
+      </section>
+
+      <!-- Closing CTA -->
+      <aside class="rounded-3xl border p-7 mt-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+        <h2 class="text-[22px] font-semibold tracking-tight mb-2" :style="{ color: 'var(--color-text)' }">{{ cta.heading }}</h2>
+        <p class="text-[15px] leading-relaxed mb-5" :style="{ color: 'var(--color-text-secondary)' }">{{ cta.body }}</p>
+        <NuxtLink v-if="!preview" :to="cta.url" class="btn-pill btn-pill-accent text-[13px] inline-flex items-center gap-2">
+          {{ cta.label }} <UIcon name="i-lucide-arrow-right" class="size-4" />
+        </NuxtLink>
+        <span v-else class="btn-pill btn-pill-accent text-[13px] inline-flex items-center gap-2">{{ cta.label }} <UIcon name="i-lucide-arrow-right" class="size-4" /></span>
       </aside>
+
+      <!-- Share -->
+      <div v-if="!preview" class="flex flex-wrap items-center gap-2 mt-8">
+        <span class="text-[12px] mr-1" :style="{ color: 'var(--color-text-tertiary)' }">Share</span>
+        <a v-for="l in shareLinks" :key="l.label" :href="l.href" target="_blank" rel="noopener" class="btn-table-action">
+          <UIcon :name="l.icon" class="size-3.5" />{{ l.label }}
+        </a>
+        <button type="button" class="btn-table-action" @click="copyLink">
+          <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-link'" class="size-3.5" />{{ copied ? 'Copied' : 'Copy link' }}
+        </button>
+      </div>
     </div>
 
     <!-- Related -->
-    <section v-if="!preview && post.related.length" class="max-w-5xl mx-auto mt-20">
+    <section v-if="!preview && post.related.length" class="w-full mt-20 lg:col-span-2">
       <h2 class="text-[12px] uppercase tracking-[0.08em] font-semibold mb-5" :style="{ color: 'var(--color-text-tertiary)' }">More from the blog</h2>
       <div class="grid md:grid-cols-3 gap-6">
         <PublicBlogCard v-for="r in post.related" :key="r.slug" :post="r" />

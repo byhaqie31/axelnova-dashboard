@@ -8,9 +8,10 @@
 import { onKeyStroke } from '@vueuse/core'
 import PublicBlogArticle from '~/components/public/BlogArticle.vue'
 import AdminBlogSectionEditor from '~/components/admin/BlogSectionEditor.vue'
+import AdminSelect from '~/components/admin/Select.vue'
 import {
-  blogCtaDefaults, blogVoiceGuide, newSection, parseMarkdownImport, readingMinutes, slugify, templateSections,
-  type BlogPostAdmin, type BlogPostPublic, type BlogRenderedSection, type BlogSection, type BlogTocItem,
+  blogCtaDefaults, blogFormatOptions, blogVoiceGuide, newSection, parseMarkdownImport, readingMinutes, slugify, templateSections,
+  type BlogFormat, type BlogPostAdmin, type BlogPostPublic, type BlogRenderedSection, type BlogSection, type BlogTocItem,
 } from '~/data/blog'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
@@ -43,6 +44,7 @@ const form = reactive({
   cover_image_url: '',
   cover_image_alt: '',
   category: '',
+  format: 'article' as BlogFormat,
   tags: '',
   cta_heading: '',
   cta_body: '',
@@ -77,6 +79,7 @@ function hydrate(p: BlogPostAdmin) {
     cover_image_url: p.cover_image_url ?? '',
     cover_image_alt: p.cover_image_alt ?? '',
     category: p.category ?? '',
+    format: p.format ?? 'article',
     tags: p.tags.join(', '),
     cta_heading: p.cta_heading ?? '',
     cta_body: p.cta_body ?? '',
@@ -130,6 +133,7 @@ function payload() {
     cover_image_url: nullable(form.cover_image_url),
     cover_image_alt: nullable(form.cover_image_alt),
     category: nullable(form.category),
+    format: form.format,
     tags: splitTags(form.tags),
     cta_heading: nullable(form.cta_heading),
     cta_body: nullable(form.cta_body),
@@ -274,6 +278,7 @@ async function openPreview() {
       cover_image_url: nullable(form.cover_image_url),
       cover_image_alt: nullable(form.cover_image_alt),
       category: nullable(form.category),
+      format: form.format,
       tags: splitTags(form.tags),
       reading_minutes: res.reading_minutes,
       published_at: post.value?.published_at ?? new Date().toISOString(),
@@ -409,10 +414,15 @@ const statusStyle = computed(() => post.value?.status === 'published'
           </div>
 
           <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-            <h2 class="text-[11px] font-semibold uppercase tracking-widest" :style="{ color: 'var(--color-text-tertiary)' }">Category & tags</h2>
-            <input v-model="form.category" list="blog-categories" type="text" maxlength="60" placeholder="Category (e.g. Systems)" class="contact-input w-full">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest" :style="{ color: 'var(--color-text-tertiary)' }">Format, category & topics</h2>
+            <div>
+              <span class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-tertiary)' }">Format — the label before the date</span>
+              <AdminSelect v-model="form.format" :items="blogFormatOptions" class="w-full" />
+            </div>
+            <input v-model="form.category" list="blog-categories" type="text" maxlength="60" placeholder="Category (e.g. Systems) — filters the index" class="contact-input w-full">
             <datalist id="blog-categories"><option v-for="c in categories" :key="c" :value="c" /></datalist>
-            <input v-model="form.tags" type="text" placeholder="Tags, comma-separated" class="contact-input w-full">
+            <input v-model="form.tags" type="text" placeholder="Topics, comma-separated (e.g. Websites, Cloudflare)" class="contact-input w-full">
+            <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Category and topics are listed in the article's left pane.</p>
           </div>
 
           <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
@@ -481,7 +491,7 @@ const statusStyle = computed(() => post.value?.status === 'published'
             <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">Preview <span class="font-normal" :style="{ color: 'var(--color-text-tertiary)' }">· exactly what readers will see</span></p>
             <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="previewOpen = false"><UIcon name="i-lucide-x" class="size-4" /> Close</button>
           </div>
-          <div class="max-w-7xl mx-auto px-6 py-12">
+          <div class="max-w-6xl mx-auto px-6 py-12">
             <PublicBlogArticle :post="previewPost" preview />
           </div>
         </div>

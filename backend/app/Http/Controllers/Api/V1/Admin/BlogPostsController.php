@@ -10,6 +10,7 @@ use App\Support\BlogMarkdown;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -161,6 +162,7 @@ class BlogPostsController extends Controller
             'cover_image_url' => ['nullable', 'string', 'max:500', self::URL_RULE],
             'cover_image_alt' => ['nullable', 'string', 'max:160'],
             'category' => ['nullable', 'string', 'max:60'],
+            'format' => ['nullable', 'string', Rule::in(BlogPost::FORMATS)],
             'tags' => ['nullable', 'array', 'max:10'],
             'tags.*' => ['string', 'max:40'],
             'cta_heading' => ['nullable', 'string', 'max:120'],
@@ -177,6 +179,7 @@ class BlogPostsController extends Controller
         return [
             ...$data,
             'slug' => BlogPost::uniqueSlug($slugBase, $existing?->id),
+            'format' => $data['format'] ?? 'article',
             'excerpt' => trim((string) ($data['excerpt'] ?? '')),
             'sections' => $sections,
             'tags' => array_values(array_filter(array_map('trim', $data['tags'] ?? []), fn ($t) => $t !== '')),

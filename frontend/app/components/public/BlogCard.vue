@@ -2,7 +2,7 @@
 // One post in the /blog grid and the article's "More from the blog" row.
 // Cover is a plain URL (no upload flow); a soft placeholder stands in when
 // a post has none so the grid stays even.
-import { fmtBlogDate, type BlogPostCard } from '~/data/blog'
+import { blogFormatLabel, fmtBlogDate, type BlogPostCard } from '~/data/blog'
 
 defineProps<{ post: BlogPostCard }>()
 </script>
@@ -27,7 +27,8 @@ defineProps<{ post: BlogPostCard }>()
     </div>
     <div class="p-5">
       <p class="text-[12px] mb-2" :style="{ color: 'var(--color-text-tertiary)' }">
-        <span v-if="post.category">{{ post.category }} · </span>{{ fmtBlogDate(post.published_at) }} · {{ post.reading_minutes }} min read
+        <span class="font-semibold uppercase tracking-widest text-[10px]" :style="{ color: 'var(--color-accent)' }">{{ blogFormatLabel(post.format) }}</span>
+        · {{ fmtBlogDate(post.published_at) }} · {{ post.reading_minutes }} min read
       </p>
       <h3 class="text-[18px] font-semibold tracking-tight leading-snug mb-2" :style="{ color: 'var(--color-text)' }">{{ post.title }}</h3>
       <p class="text-[14px] leading-relaxed line-clamp-3" :style="{ color: 'var(--color-text-secondary)' }">{{ post.excerpt }}</p>

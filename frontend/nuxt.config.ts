@@ -11,6 +11,13 @@ function stripPublicPrefix(list: NuxtPage[]): void {
   }
 }
 
+// Public-page `swr` caching is a production behaviour. Under `nuxt dev` Nitro
+// persists the cached HTML on disk (.nuxt/cache/nitro/routes) and keeps
+// serving it across restarts, so a template edit would stay invisible for up
+// to five minutes — the rules are only emitted for builds.
+const isDev = process.env.NODE_ENV !== 'production'
+const swr = (seconds: number) => (isDev ? {} : { swr: seconds })
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
@@ -102,19 +109,20 @@ export default defineNuxtConfig({
     // non-server-rendered page (`injectHead().hooks.hookOnce` — unhead v2 API
     // against nuxt 4.5's unhead v3), 500-ing every hard refresh inside /admin.
     // Revisit after upgrading @nuxt/ui to >= 4.11 (unhead v3 compatible).
+    // `swr()` is a no-op in dev (see the helper above the config).
 
-    '/': { swr: 300 },
-    '/about': { swr: 300 },
-    '/company': { swr: 300 },
-    '/contact': { swr: 300 },
-    '/services': { swr: 300 },
-    '/services/**': { swr: 300 },
-    '/projects': { swr: 300 },
-    '/projects/**': { swr: 300 },
-    '/blog': { swr: 300 },
-    '/blog/**': { swr: 300 },
+    '/': swr(300),
+    '/about': swr(300),
+    '/company': swr(300),
+    '/contact': swr(300),
+    '/services': swr(300),
+    '/services/**': swr(300),
+    '/projects': swr(300),
+    '/projects/**': swr(300),
+    '/blog': swr(300),
+    '/blog/**': swr(300),
     // Legal copy changes on the order of never.
-    '/legal/**': { swr: 3600 },
+    '/legal/**': swr(3600),
   },
 
   app: {

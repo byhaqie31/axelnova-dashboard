@@ -27,6 +27,7 @@ class BlogPostFactory extends Factory
             'cover_image_url' => null,
             'cover_image_alt' => null,
             'category' => 'Systems',
+            'format' => 'article',
             'tags' => ['portal', 'whatsapp'],
             'reading_minutes' => 2,
             'status' => BlogPost::STATUS_DRAFT,

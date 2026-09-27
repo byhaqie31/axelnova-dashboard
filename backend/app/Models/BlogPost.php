@@ -27,6 +27,9 @@ class BlogPost extends Model
 
     public const STATUS_PUBLISHED = 'published';
 
+    /** Editorial formats — the accent eyebrow on the article page. Validated at the controller. */
+    public const FORMATS = ['article', 'guide', 'tutorial', 'case_study', 'opinion', 'news'];
+
     protected $fillable = [
         'slug',
         'title',
@@ -35,6 +38,7 @@ class BlogPost extends Model
         'cover_image_url',
         'cover_image_alt',
         'category',
+        'format',
         'tags',
         'cta_heading',
         'cta_body',
@@ -58,6 +62,7 @@ class BlogPost extends Model
 
     protected $attributes = [
         'status' => self::STATUS_DRAFT,
+        'format' => 'article',
         'tags' => '[]',
         'sections' => '[]',
     ];

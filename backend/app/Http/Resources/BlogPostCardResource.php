@@ -17,6 +17,7 @@ class BlogPostCardResource extends JsonResource
             'cover_image_url' => $this->cover_image_url,
             'cover_image_alt' => $this->cover_image_alt,
             'category' => $this->category,
+            'format' => $this->format ?? 'article',
             'tags' => $this->tags ?? [],
             'reading_minutes' => (int) $this->reading_minutes,
             'published_at' => $this->published_at?->toISOString(),

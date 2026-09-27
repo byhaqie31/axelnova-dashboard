@@ -78,7 +78,7 @@ axelnova-dashboard/
 
 | Table | Purpose |
 |-------|---------|
-| `blog_posts` | One row per article. Scalars (title, unique `slug`, `excerpt`, cover URL + alt, `category`, `tags` json, `cta_*`, `seo_*`, derived `reading_minutes`, `status` draft\|published, `published_at`) + a `sections` json column — the ordered list of `{id, heading, body_md, image_url, image_alt, quote, quote_by}`. **Markdown is the storage format**; `App\Support\BlogMarkdown` renders it to safe HTML on read (raw HTML stripped, unsafe links dropped). Images are URLs only. Soft-deletes; the slug unique index is absolute (deleted rows included), so `BlogPost::uniqueSlug` checks `withTrashed()`. Founder-authored from `/admin/blog`; only `published` rows are served publicly |
+| `blog_posts` | One row per article. Scalars (title, unique `slug`, `excerpt`, cover URL + alt, `category`, `format` — article\|guide\|tutorial\|case_study\|opinion\|news, the accent eyebrow — `tags` json, `cta_*`, `seo_*`, derived `reading_minutes`, `status` draft\|published, `published_at`) + a `sections` json column — the ordered list of `{id, heading, body_md, image_url, image_alt, quote, quote_by}`. **Markdown is the storage format**; `App\Support\BlogMarkdown` renders it to safe HTML on read (raw HTML stripped, unsafe links dropped). Images are URLs only. Soft-deletes; the slug unique index is absolute (deleted rows included), so `BlogPost::uniqueSlug` checks `withTrashed()`. Founder-authored from `/admin/blog`; only `published` rows are served publicly |
 
 ### Partner portal (portal restructure, Task 9 — type-aware referrer + investor)
 
@@ -272,7 +272,8 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 /projects             Project listing
 /projects/[id]        Project detail
 /blog                 Blog index — published posts, category pills (?category=), pagination
-/blog/[slug]          Article — one shared layout (BlogArticle), TOC, closing CTA, share row, related
+/blog/[slug]          Article — one shared layout (BlogArticle): format eyebrow + byline header, left pane
+                      (section links + topics), text column right, closing CTA, share row, related
 /services             Services & pricing
 /about                About page
 /contact              Contact form (Web3Forms)

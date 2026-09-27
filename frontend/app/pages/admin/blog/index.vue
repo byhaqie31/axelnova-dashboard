@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Catalog › Blog — every post (drafts + published), newest edited first, with
 // status / search filters and page-view counts from the analytics table.
-import { blogStatusOptions, fmtBlogDate, type BlogPostAdmin } from '~/data/blog'
+import { blogFormatLabel, blogStatusOptions, fmtBlogDate, type BlogPostAdmin } from '~/data/blog'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -116,7 +116,9 @@ const statusStyle = (s: BlogPostAdmin['status']) => s === 'published'
           <tr v-for="p in posts" :key="p.id" class="border-t" :style="{ borderColor: 'var(--color-border)' }">
             <td class="px-4 py-3 min-w-0">
               <NuxtLink :to="`/admin/blog/${p.id}`" class="font-medium block truncate max-w-[380px]" :style="{ color: 'var(--color-text)' }">{{ p.title }}</NuxtLink>
-              <p class="text-[10px] font-mono truncate max-w-[380px]" :style="{ color: 'var(--color-text-tertiary)' }">/blog/{{ p.slug }}</p>
+              <p class="text-[10px] truncate max-w-[380px]" :style="{ color: 'var(--color-text-tertiary)' }">
+                <span class="font-semibold uppercase tracking-wider" :style="{ color: 'var(--color-accent)' }">{{ blogFormatLabel(p.format) }}</span> · <span class="font-mono">/blog/{{ p.slug }}</span>
+              </p>
             </td>
             <td class="px-4 py-3">
               <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full" :style="statusStyle(p.status)">{{ p.status }}</span>

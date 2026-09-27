@@ -98,7 +98,9 @@ curl -sD - -o /dev/null -H 'X-Forwarded-For: 8.8.8.8' https://axelnovaventures.c
 
 ## Page caching
 
-Public marketing routes carry `swr` route rules in [frontend/nuxt.config.ts](./frontend/nuxt.config.ts): `/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}` at 300s, `/legal/**` at 3600s. This matters most for the homepage, which `await`s the projects API during SSR — without it every cold visitor waits on the backend before seeing anything.
+Public marketing routes carry `swr` route rules in [frontend/nuxt.config.ts](./frontend/nuxt.config.ts): `/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/blog{,/**}` at 300s, `/legal/**` at 3600s. This matters most for the homepage, which `await`s the projects API during SSR — without it every cold visitor waits on the backend before seeing anything.
+
+**Production only.** The rules go through a `swr()` helper that is a no-op under `nuxt dev`: Nitro persists the cached HTML on disk (`.nuxt/cache/nitro/routes`) and keeps serving it across dev-server restarts, which hid template edits for up to five minutes. In dev every request renders fresh; verify caching against a build, never the dev server.
 
 The emitted `Cache-Control: s-maxage=…, stale-while-revalidate` also lets Cloudflare cache the HTML at the edge, so cold arrivals are served from a nearby POP without touching the origin.
 

@@ -74,6 +74,14 @@ class PublicBlogTest extends TestCase
         $this->getJson('/api/v1/blog/posts/nope')->assertNotFound();
     }
 
+    public function test_format_is_exposed_on_cards_and_the_article(): void
+    {
+        $post = BlogPost::factory()->published()->create(['format' => 'guide']);
+
+        $this->getJson('/api/v1/blog/posts')->assertOk()->assertJsonPath('data.0.format', 'guide');
+        $this->getJson("/api/v1/blog/posts/{$post->slug}")->assertOk()->assertJsonPath('data.format', 'guide');
+    }
+
     public function test_slugs_feed_lists_published_only(): void
     {
         $pub = BlogPost::factory()->published()->create();

@@ -14,7 +14,8 @@ One table, **`blog_posts`** (soft-deletes), migration `2026_09_26_000002`:
 | `title`, `excerpt` | Title ≤ 160. The excerpt (≤ 500) is the lede on the article and the card text on the index |
 | `sections` (json) | Ordered list of `{id, heading, body_md, image_url, image_alt, quote, quote_by}`. **Markdown is the storage format.** `id` is a stable `s_xxxxxx` the editor mints (v-for key, survives reorders) |
 | `cover_image_url` / `cover_image_alt` | **URL only, no upload** — same as `projects.cover_image_url`. Absolute `http(s)://` or a root-relative path |
-| `category`, `tags` | Free-text category (the editor suggests ones already in use); ≤ 10 tags |
+| `category`, `tags` | Free-text category (the editor suggests ones already in use; it also filters the index); ≤ 10 tags. On the article both are listed as **Topics** in the left pane, category first |
+| `format` | Editorial format — `article` (default) \| `guide` \| `tutorial` \| `case_study` \| `opinion` \| `news` (`BlogPost::FORMATS`). Rendered as the accent eyebrow before the date ("GUIDE · 26 September 2026") on cards and the article; a dropdown in the editor's right rail. Migration `2026_09_26_000003` |
 | `cta_*` | Closing call to action (heading / body / label / url). Null = the defaults in `data/blog.ts` (`blogCtaDefaults`, → `/contact`) |
 | `seo_title` / `seo_description` | Fall back to title / excerpt |
 | `reading_minutes` | Derived on save: excerpt + section bodies at 200 wpm, min 1 (`BlogMarkdown::readingMinutes`) |
@@ -54,7 +55,7 @@ Tests: `backend/tests/Feature/Blog/` (model rules, public feed, admin CMS).
 
 ## Frontend
 
-- **Public:** `pages/public/blog/index.vue` (grid, category pills via `?category=`, pagination) and `pages/public/blog/[slug].vue` (SSR-awaited fetch; `usePublicSeo` + `BlogPosting` and `BreadcrumbList` JSON-LD; an unknown or draft slug throws a real 404). Shared pieces in `components/public/`: `BlogCard`, `BlogToc` (active-heading tracking via IntersectionObserver), `BlogArticle` (the one layout — header, cover, TOC sticky on desktop when ≥ 3 sections, sections with anchored H2s, in-section image / pull quote, closing CTA card, share row, related). Article body styles are `.blog-prose` in `main.css` (tokens only; see UI-STANDARDS §7).
+- **Public:** `pages/public/blog/index.vue` (grid, category pills via `?category=`, pagination) and `pages/public/blog/[slug].vue` (SSR-awaited fetch; `usePublicSeo` + `BlogPosting` and `BreadcrumbList` JSON-LD; an unknown or draft slug throws a real 404). Shared pieces in `components/public/`: `BlogCard`, `BlogToc` (active-heading tracking via IntersectionObserver), `BlogArticle` (the one layout — full-width header with the format eyebrow, byline "By Ahmad Baihaqie, Founder" + "Updated …" when edited after publishing, and cover; then a two-track body: a sticky **left pane** ("On this page" section links from 2 sections up + **Topics** in the reference's dash style) and the text column on the right with anchored H2s, in-section image / pull quote, closing CTA card and share row; related posts full-width below. The pane collapses inline above the first section below `lg`). Article body styles are `.blog-prose` in `main.css` (tokens only; see UI-STANDARDS §7).
 - **Nav:** "Blog" sits after Company in `layouts/public.vue` and its mirror in `HeroEpoch.vue` (keep in sync); the footer Explore column follows the same array.
 - **Sitemap:** `server/api/__sitemap__/urls.ts` feeds `sitemap.sources` from `/v1/blog/slugs`. **Cache:** `/blog` and `/blog/**` are `swr: 300` — a new post shows within five minutes of publishing.
 - **Analytics:** page views are tracked by path already, so `/blog/*` needs nothing new; the admin list shows per-post views.
@@ -66,7 +67,7 @@ Tests: `backend/tests/Feature/Blog/` (model rules, public feed, admin CMS).
 2. Either **Import Markdown** (paste a draft: `#` → title, the paragraphs before the first `##` → introduction, each `##` → a section) or **Start from template** (five placeholder sections in the default structure plus the default closing CTA). **Voice & structure** opens the writing guidelines.
 3. Fix the **title** and **introduction** (the hook — the counter shows length and the live reading time).
 4. Work through the **sections**: heading, body (bold / italic / link / subheading / lists / quote / code), and optionally **Add image** (URL + alt) or **Add quote**. Move up / down to reorder; Remove to drop one.
-5. In the side rail: **cover image URL + alt**, **category** (pick an existing one or type a new one) and **tags**, the **closing call to action** (blank = defaults), and **SEO** overrides if the title is long.
+5. In the side rail: **cover image URL + alt**; **format** (Article / Guide / Tutorial / Case study / Opinion / News — the label before the date), **category** (pick an existing one or type a new one) and **topics**; the **closing call to action** (blank = defaults); and **SEO** overrides if the title is long.
 6. **Preview** — rendered by the backend, so it is exactly what readers see. Close with Escape.
 7. **Save draft** as often as you like. **Publish** when it is complete (the gate needs a title, an introduction and at least one filled section). It appears at `/blog/<slug>` within five minutes.
 8. Edit any time — changes to a published post go live on save. **Unpublish** to pull it back to a draft.

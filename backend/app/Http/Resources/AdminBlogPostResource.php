@@ -23,6 +23,7 @@ class AdminBlogPostResource extends JsonResource
             'cover_image_url' => $this->cover_image_url,
             'cover_image_alt' => $this->cover_image_alt,
             'category' => $this->category,
+            'format' => $this->format ?? 'article',
             'tags' => $this->tags ?? [],
             'cta_heading' => $this->cta_heading,
             'cta_body' => $this->cta_body,

@@ -52,6 +52,24 @@ class AdminBlogPostsTest extends TestCase
         $this->assertMatchesRegularExpression('/^s_[a-z0-9]{6}$/', $res->json('data.sections.0.id'));
     }
 
+    public function test_format_defaults_to_article_and_accepts_known_values(): void
+    {
+        $headers = $this->adminHeaders();
+
+        $id = $this->postJson('/api/v1/admin/blog/posts', $this->payload(), $headers)
+            ->assertCreated()
+            ->assertJsonPath('data.format', 'article')
+            ->json('data.id');
+
+        $this->putJson("/api/v1/admin/blog/posts/{$id}", $this->payload(['format' => 'guide']), $headers)
+            ->assertOk()
+            ->assertJsonPath('data.format', 'guide');
+
+        $this->putJson("/api/v1/admin/blog/posts/{$id}", $this->payload(['format' => 'poem']), $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['format']);
+    }
+
     public function test_create_normalises_a_custom_slug_and_suffixes_a_collision(): void
     {
         BlogPost::factory()->create(['slug' => 'my-post']);
