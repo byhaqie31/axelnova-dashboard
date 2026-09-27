@@ -102,30 +102,17 @@ export const blogStatusOptions = [
   { value: 'published', label: 'Published' },
 ]
 
-/** The closing call to action the article falls back to when a post sets none. */
-export const blogCtaDefaults = {
-  heading: 'Have something like this in mind?',
-  body: 'I’m always open to a conversation about what that could look like for your business.',
-  label: 'Get in touch',
-  url: '/contact',
-}
-
-/** The founder's writing guidelines, shown collapsed in the editor. */
-export const blogVoiceGuide = {
-  voice: [
-    'Thoughtful, direct and human.',
-    'Written for Malaysian business owners and founders, in clear English.',
-    'Focus on UI/UX, digital experiences and custom systems that make things feel simpler for people.',
-    'No agency buzzwords, exaggerated claims or aggressive sales language.',
-  ],
-  structure: [
-    'Opening hook — the introduction',
-    'The problem or question',
-    'Why it matters',
-    'Two to four practical sections',
-    'Key takeaway',
-    'Gentle invitation to get in touch — the closing CTA',
-  ],
+/**
+ * The writing guide — ONE copy on the backend (config/blog.php), served by
+ * GET /v1/admin/blog/guide (App\Support\BlogGuide::base). The same voice rules
+ * reach Claude through the MCP connector, so they can't drift apart.
+ */
+export interface BlogGuide {
+  voice: string[]
+  structure: string[]
+  /** The closing CTA a post falls back to when its own cta_* are empty. */
+  cta_defaults: { heading: string, body: string, label: string, url: string }
+  formats: BlogFormat[]
 }
 
 const ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'

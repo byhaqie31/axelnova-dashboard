@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
 use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\TasksController;
 use App\Http\Controllers\Api\V1\Admin\UsersController;
+use App\Http\Controllers\Api\V1\Connector\BlogPostController as ConnectorBlogPostController;
 use App\Http\Controllers\Api\V1\Connector\CatalogController as ConnectorCatalogController;
 use App\Http\Controllers\Api\V1\Connector\QuotationDraftController as ConnectorQuotationDraftController;
 use App\Http\Controllers\Api\V1\DocumentController;
@@ -352,6 +353,7 @@ Route::middleware([
         Route::get('/blog/posts', [BlogPostsController::class, 'index'])->name('blog.index');
         Route::post('/blog/posts', [BlogPostsController::class, 'store'])->name('blog.store');
         Route::post('/blog/render', [BlogPostsController::class, 'render'])->name('blog.render');
+        Route::get('/blog/guide', [BlogPostsController::class, 'guide'])->name('blog.guide');
         Route::get('/blog/posts/{blogPost}', [BlogPostsController::class, 'show'])->name('blog.show');
         Route::put('/blog/posts/{blogPost}', [BlogPostsController::class, 'update'])->name('blog.update');
         Route::post('/blog/posts/{blogPost}/publish', [BlogPostsController::class, 'publish'])->name('blog.publish');
@@ -429,31 +431,40 @@ Route::middleware(['auth:external', 'abilities:partner'])
 
 // MCP connector — a fourth, deliberately NARROW surface for the remote MCP server
 // (mcp.axelnova.tech), which lets Claude drive the quotation pipeline from a client
-// brief. Pure Sanctum bearer tokens minted with connector abilities ONLY
-// (connector:read / connector:draft) — never `cockpit`, so a connector token is
-// rejected by every /v1/admin route (abilities:cockpit), and an admin cockpit
-// token is rejected here. Access model (v3): READ everything (list + read-back any
-// non-deleted quotation), WRITE with a lifecycle gate (create a DRAFT, update any
-// PRE-SEND quotation), DESTROY never (delete is portal-only, by hand). It still
-// CANNOT change status, send/accept a quote, or touch orders/clients/payments.
-// Routes deny by default; each ability opens exactly its own endpoints, throttled
-// (authenticated, but never unbounded).
+// brief and draft blog posts. Pure Sanctum bearer tokens minted with connector
+// abilities ONLY (connector:read / connector:draft) — never `cockpit`, so a
+// connector token is rejected by every /v1/admin route (abilities:cockpit), and an
+// admin cockpit token is rejected here. The two abilities are UNIVERSAL: they open
+// the read / draft-write routes of every module (quotations, blog, …) — there is
+// no per-module ability. Access model (v4): READ everything (any non-deleted
+// quotation or post), WRITE drafts only (create a DRAFT; update a PRE-SEND
+// quotation or a DRAFT post), DESTROY never (delete is portal-only, by hand). It
+// still CANNOT change status, send/accept a quote, publish/unpublish a post, or
+// touch orders/clients/payments. Routes deny by default; each ability opens
+// exactly its own endpoints, throttled (authenticated, but never unbounded).
 Route::middleware('auth:sanctum')
     ->prefix('v1/connector')
     ->name('connector.')
     ->group(function () {
-        // Read surface — catalog + list + read-back of ANY non-deleted quotation.
+        // Read surface — catalog + list + read-back of ANY non-deleted quotation,
+        // and the blog guide + list + read-back of ANY non-deleted post.
         // 60/min: comfortably above real chat usage, a backstop against a loop.
         Route::middleware(['abilities:connector:read', 'throttle:60,1'])->group(function () {
             Route::get('/catalog', [ConnectorCatalogController::class, 'index'])->name('catalog');
             Route::get('/quotations', [ConnectorQuotationDraftController::class, 'index'])->name('quotations.index');
             Route::get('/quotations/{reference_code}', [ConnectorQuotationDraftController::class, 'show'])->name('quotations.show');
+            Route::get('/blog/guide', [ConnectorBlogPostController::class, 'guide'])->name('blog.guide');
+            Route::get('/blog/posts', [ConnectorBlogPostController::class, 'index'])->name('blog.index');
+            Route::get('/blog/posts/{id}', [ConnectorBlogPostController::class, 'show'])->whereNumber('id')->name('blog.show');
         });
 
-        // Write surface — create a DRAFT, or update a PRE-SEND quotation. Tighter
+        // Write surface — create a DRAFT, or update a PRE-SEND quotation / a DRAFT
+        // blog post (never publish, unpublish, or delete). Tighter
         // 30/min bound (writes re-price + re-seed, so they're heavier than reads).
         Route::middleware(['abilities:connector:draft', 'throttle:30,1'])->group(function () {
             Route::post('/quotations/draft', [ConnectorQuotationDraftController::class, 'store'])->name('quotations.draft');
             Route::put('/quotations/{reference_code}', [ConnectorQuotationDraftController::class, 'update'])->name('quotations.update');
+            Route::post('/blog/posts', [ConnectorBlogPostController::class, 'store'])->name('blog.store');
+            Route::put('/blog/posts/{id}', [ConnectorBlogPostController::class, 'update'])->whereNumber('id')->name('blog.update');
         });
     });

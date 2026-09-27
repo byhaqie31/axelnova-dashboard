@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AdminBlogPostResource;
 use App\Models\BlogPost;
 use App\Models\PageView;
+use App\Services\Blog\BlogPostInput;
+use App\Support\BlogGuide;
 use App\Support\BlogMarkdown;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -24,9 +25,6 @@ use Illuminate\Validation\ValidationException;
  */
 class BlogPostsController extends Controller
 {
-    /** Absolute http(s) URL or a root-relative path — keeps javascript:/data: out of <img src>. */
-    private const URL_RULE = 'regex:#^(https?://|/[^/])#';
-
     public function index(Request $request): AnonymousResourceCollection
     {
         $request->validate([
@@ -134,12 +132,18 @@ class BlogPostsController extends Controller
         return response()->json(['message' => 'Post deleted.']);
     }
 
+    /** The writing guide (voice, structure, CTA defaults, formats) — one copy in config/blog.php. */
+    public function guide(): JsonResponse
+    {
+        return response()->json(['data' => BlogGuide::base()]);
+    }
+
     /** Preview helper — the public renderer over unsaved form state. Saves nothing. */
     public function render(Request $request): JsonResponse
     {
         $data = $request->validate([
             'excerpt' => ['nullable', 'string', 'max:500'],
-            ...$this->sectionRules(),
+            ...BlogPostInput::sectionRules(),
         ]);
 
         $post = new BlogPost(['sections' => BlogPost::normaliseSections($data['sections'] ?? [])]);
@@ -151,53 +155,9 @@ class BlogPostsController extends Controller
         ]);
     }
 
-    /** Shared create/update validation + the derived fields (slug, sections, tags, reading time). */
+    /** Shared create/update validation + derived fields — the same BlogPostInput the MCP connector saves through. */
     private function validated(Request $request, ?BlogPost $existing = null): array
     {
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:160'],
-            'slug' => ['nullable', 'string', 'max:120'],
-            'excerpt' => ['nullable', 'string', 'max:500'],
-            ...$this->sectionRules(),
-            'cover_image_url' => ['nullable', 'string', 'max:500', self::URL_RULE],
-            'cover_image_alt' => ['nullable', 'string', 'max:160'],
-            'category' => ['nullable', 'string', 'max:60'],
-            'format' => ['nullable', 'string', Rule::in(BlogPost::FORMATS)],
-            'tags' => ['nullable', 'array', 'max:10'],
-            'tags.*' => ['string', 'max:40'],
-            'cta_heading' => ['nullable', 'string', 'max:120'],
-            'cta_body' => ['nullable', 'string', 'max:500'],
-            'cta_label' => ['nullable', 'string', 'max:60'],
-            'cta_url' => ['nullable', 'string', 'max:500', self::URL_RULE],
-            'seo_title' => ['nullable', 'string', 'max:70'],
-            'seo_description' => ['nullable', 'string', 'max:160'],
-        ]);
-
-        $sections = BlogPost::normaliseSections($data['sections'] ?? []);
-        $slugBase = trim((string) ($data['slug'] ?? '')) !== '' ? $data['slug'] : $data['title'];
-
-        return [
-            ...$data,
-            'slug' => BlogPost::uniqueSlug($slugBase, $existing?->id),
-            'format' => $data['format'] ?? 'article',
-            'excerpt' => trim((string) ($data['excerpt'] ?? '')),
-            'sections' => $sections,
-            'tags' => array_values(array_filter(array_map('trim', $data['tags'] ?? []), fn ($t) => $t !== '')),
-            'reading_minutes' => BlogMarkdown::readingMinutes((string) ($data['excerpt'] ?? ''), $sections),
-        ];
-    }
-
-    private function sectionRules(): array
-    {
-        return [
-            'sections' => ['nullable', 'array', 'max:40'],
-            'sections.*.id' => ['nullable', 'string', 'max:12'],
-            'sections.*.heading' => ['required', 'string', 'max:120'],
-            'sections.*.body_md' => ['nullable', 'string', 'max:20000'],
-            'sections.*.image_url' => ['nullable', 'string', 'max:500', self::URL_RULE],
-            'sections.*.image_alt' => ['nullable', 'string', 'max:160'],
-            'sections.*.quote' => ['nullable', 'string', 'max:500'],
-            'sections.*.quote_by' => ['nullable', 'string', 'max:80'],
-        ];
+        return BlogPostInput::derive($request->validate(BlogPostInput::rules()), $existing);
     }
 }

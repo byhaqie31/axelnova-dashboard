@@ -4,17 +4,20 @@
 // preview can't navigate away from unsaved work). Section bodies are
 // backend-rendered, sanitised HTML (App\Support\BlogMarkdown) — never raw
 // Markdown and never user HTML — which is what makes the v-html safe.
-import { blogCtaDefaults, blogFormatLabel, fmtBlogDate, type BlogPostPublic } from '~/data/blog'
+import { blogFormatLabel, fmtBlogDate, type BlogPostPublic } from '~/data/blog'
 import PublicBlogToc from '~/components/public/BlogToc.vue'
 import PublicBlogCard from '~/components/public/BlogCard.vue'
 
 const props = withDefaults(defineProps<{ post: BlogPostPublic, preview?: boolean }>(), { preview: false })
 
+// The closing CTA arrives complete: the public API fills empty fields from the
+// shared defaults (config/blog.php), and the editor preview does the same from
+// the guide. No heading (a preview whose guide failed to load) = no card.
 const cta = computed(() => ({
-  heading: props.post.cta_heading || blogCtaDefaults.heading,
-  body: props.post.cta_body || blogCtaDefaults.body,
-  label: props.post.cta_label || blogCtaDefaults.label,
-  url: props.post.cta_url || blogCtaDefaults.url,
+  heading: props.post.cta_heading ?? '',
+  body: props.post.cta_body ?? '',
+  label: props.post.cta_label ?? '',
+  url: props.post.cta_url ?? '/contact',
 }))
 // The left pane: section links, from two sections up. Shorter posts read
 // fine without one.
@@ -105,7 +108,7 @@ async function copyLink() {
       </section>
 
       <!-- Closing CTA -->
-      <aside class="rounded-3xl border p-7 mt-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+      <aside v-if="cta.heading" class="rounded-3xl border p-7 mt-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
         <h2 class="text-[22px] font-semibold tracking-tight mb-2" :style="{ color: 'var(--color-text)' }">{{ cta.heading }}</h2>
         <p class="text-[15px] leading-relaxed mb-5" :style="{ color: 'var(--color-text-secondary)' }">{{ cta.body }}</p>
         <NuxtLink v-if="!preview" :to="cta.url" class="btn-pill btn-pill-accent text-[13px] inline-flex items-center gap-2">

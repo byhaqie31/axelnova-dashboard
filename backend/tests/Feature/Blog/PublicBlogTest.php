@@ -110,4 +110,22 @@ class PublicBlogTest extends TestCase
         $this->assertSame([$pub->slug], array_column($res->json('data'), 'slug'));
         $this->assertArrayHasKey('updated_at', $res->json('data.0'));
     }
+
+    public function test_the_closing_cta_falls_back_to_the_shared_defaults(): void
+    {
+        $default = BlogPost::factory()->published()->create();
+        $custom = BlogPost::factory()->published()->create(['cta_heading' => 'Planning a portal?', 'cta_url' => '/quote']);
+
+        $this->getJson("/api/v1/blog/posts/{$default->slug}")->assertOk()
+            ->assertJsonPath('data.cta_heading', config('blog.cta_defaults.heading'))
+            ->assertJsonPath('data.cta_body', config('blog.cta_defaults.body'))
+            ->assertJsonPath('data.cta_label', config('blog.cta_defaults.label'))
+            ->assertJsonPath('data.cta_url', config('blog.cta_defaults.url'));
+
+        // Each field falls back on its own — a custom heading keeps the default body.
+        $this->getJson("/api/v1/blog/posts/{$custom->slug}")->assertOk()
+            ->assertJsonPath('data.cta_heading', 'Planning a portal?')
+            ->assertJsonPath('data.cta_url', '/quote')
+            ->assertJsonPath('data.cta_body', config('blog.cta_defaults.body'));
+    }
 }

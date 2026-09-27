@@ -16,10 +16,14 @@ One table, **`blog_posts`** (soft-deletes), migration `2026_09_26_000002`:
 | `cover_image_url` / `cover_image_alt` | **URL only, no upload** — same as `projects.cover_image_url`. Absolute `http(s)://` or a root-relative path |
 | `category`, `tags` | Free-text category (the editor suggests ones already in use); ≤ 10 tags. Together they are the post's **topics** — the index's topic dropdown lists category ∪ tags and `?topic=` matches either |
 | `format` | Editorial format — `article` (default) \| `guide` \| `tutorial` \| `case_study` \| `opinion` \| `news` (`BlogPost::FORMATS`). Rendered as the accent eyebrow before the date ("GUIDE · 26 September 2026") on cards and the article; a dropdown in the editor's right rail. Migration `2026_09_26_000003` |
-| `cta_*` | Closing call to action (heading / body / label / url). Null = the defaults in `data/blog.ts` (`blogCtaDefaults`, → `/contact`) |
+| `cta_*` | Closing call to action (heading / body / label / url). Null = the shared defaults in `config/blog.php` (`cta_defaults`, → `/contact`) — the public API fills each empty field from them, so readers always get a complete CTA |
 | `seo_title` / `seo_description` | Fall back to title / excerpt |
 | `reading_minutes` | Derived on save: excerpt + section bodies at 200 wpm, min 1 (`BlogMarkdown::readingMinutes`) |
 | `status`, `published_at` | `draft` \| `published`. Drafts may be incomplete. First publish stamps `published_at`; unpublish keeps it, so a re-publish doesn't re-date the post |
+
+### The writing guide — one copy
+
+The voice rules, the default structure, and the default closing CTA live in **[`backend/config/blog.php`](../../backend/config/blog.php)** — the only copy. [`App\Support\BlogGuide`](../../backend/app/Support/BlogGuide.php) serves them to the editor (`GET /v1/admin/blog/guide` → the Voice & structure panel, CTA placeholders, and Start-from-template's CTA fill), to Claude through the MCP connector (`GET /v1/connector/blog/guide`, plus categories/tags in use and the image rules), and `PublicBlogPostResource` fills empty `cta_*` from it. Edit the file and deploy — the editor and Claude both follow the new rules.
 
 ### Markdown → safe HTML
 
@@ -51,7 +55,15 @@ POST   /posts/{post}/unpublish        Back to draft
 DELETE /posts/{post}                  Soft delete
 POST   /render                        {excerpt?, sections[]} → {sections[].body_html + anchor, toc,
                                       reading_minutes}. The editor's Preview; saves nothing
+GET    /guide                         {data: {voice, structure, cta_defaults, formats}} from config/blog.php
+
+# MCP connector (/v1/connector/blog/*, connector:read / connector:draft — see MCP-CONNECTOR.md)
+GET  /guide · GET /posts · GET /posts/{id}   Read any non-deleted post + the writing guide
+POST /posts                                  Create — always a draft; image alt text required
+PUT  /posts/{id}                             Partial update of a DRAFT; published → 422
 ```
+
+Both writers (editor and connector) save through [`App\Services\Blog\BlogPostInput`](../../backend/app/Services/Blog/BlogPostInput.php) — the editor as a full replace, the connector as a partial patch (a title change never moves the slug; reading time is recomputed from the merged post).
 
 Tests: `backend/tests/Feature/Blog/` (model rules, public feed, admin CMS).
 
@@ -74,6 +86,15 @@ Tests: `backend/tests/Feature/Blog/` (model rules, public feed, admin CMS).
 6. **Preview** — rendered by the backend, so it is exactly what readers see. Close with Escape.
 7. **Save draft** as often as you like. **Publish** when it is complete (the gate needs a title, an introduction and at least one filled section). It appears at `/blog/<slug>` within five minutes.
 8. Edit any time — changes to a published post go live on save. **Unpublish** to pull it back to a draft.
+
+## Drafting with Claude
+
+The MCP connector (see [MCP-CONNECTOR.md](./MCP-CONNECTOR.md)) lets Claude — in claude.ai or Claude Code — create and revise **drafts**; it can never publish, unpublish, delete, or edit a published post. Two modes:
+
+- **"Write a post about X, cover image `<url>`"** — Claude reads the guide and writes in your voice, following the default structure.
+- **"Here's my post, make it a draft"** (pasted text or a file) — your wording is kept verbatim; Claude only arranges it into title / introduction / sections and fills the missing pieces (alt text, format, category, tags, SEO), and tells you if it changed anything.
+
+Images are URLs you supply (Unsplash, Pexels, …); Claude always writes alt text. Claude replies with the `/admin/blog/{id}` link — open it, **Preview**, then **Publish** yourself. To have Claude revise a live post, unpublish it first (or ask for a new draft).
 
 ## Follow-ups (not built)
 

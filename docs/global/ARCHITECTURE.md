@@ -209,12 +209,19 @@ PATCH  /v1/admin/announcements/{id}  Edit title/body/audience and/or toggle `pub
 
 # MCP connector (/v1/connector/*, auth:sanctum + abilities:connector:*) — see MCP-CONNECTOR.md.
 # A fourth, isolated surface for the remote MCP server (mcp.axelnova.tech) that lets
-# Claude draft quotations. Draft-only: tokens carry connector:read/connector:draft,
-# never cockpit — so a connector token is rejected by every /v1/admin route, and each
-# endpoint opens exactly its own ability.
+# Claude draft quotations and blog posts. Draft-only: tokens carry the UNIVERSAL
+# connector:read/connector:draft abilities (every module), never cockpit — so a connector
+# token is rejected by every /v1/admin route, and each endpoint opens exactly its own ability.
 GET  /v1/connector/catalog                connector:read  — merged quote catalog (packages/modifiers/addons/rush)
+GET  /v1/connector/quotations             connector:read  — slim list of any non-deleted quotation
 POST /v1/connector/quotations/draft       connector:draft — create a DRAFT quotation (priced or bespoke)
-GET  /v1/connector/quotations/{ref}       connector:read  — read back a connector-created draft (AXNQ code)
+GET  /v1/connector/quotations/{ref}       connector:read  — read back any quotation (AXNQ code)
+PUT  /v1/connector/quotations/{ref}       connector:draft — update a PRE-SEND draft
+GET  /v1/connector/blog/guide             connector:read  — blog writing guide (voice, structure, CTA defaults, formats, …)
+GET  /v1/connector/blog/posts             connector:read  — slim list of any non-deleted post
+GET  /v1/connector/blog/posts/{id}        connector:read  — full Markdown record
+POST /v1/connector/blog/posts             connector:draft — create a post (always draft)
+PUT  /v1/connector/blog/posts/{id}        connector:draft — partial update of a DRAFT (published → 422)
 
 # Document generation (see DOCUMENT-GENERATION.md)
 POST /v1/admin/orders/{order}/documents   Sanctum — issue an invoice/receipt
@@ -253,6 +260,7 @@ POST   /v1/admin/blog/posts/{id}/publish     Cockpit — completeness gate (422)
 POST   /v1/admin/blog/posts/{id}/unpublish   Cockpit — back to draft
 DELETE /v1/admin/blog/posts/{id}     Cockpit — soft delete
 POST   /v1/admin/blog/render         Cockpit — preview renderer over unsaved form state (saves nothing)
+GET    /v1/admin/blog/guide          Cockpit — writing guide + CTA defaults (config/blog.php, shared with the connector)
 
 # Analytics (see ANALYTICS.md)
 POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)

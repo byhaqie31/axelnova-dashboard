@@ -181,4 +181,20 @@ class AdminBlogPostsTest extends TestCase
 
         $this->getJson('/api/v1/admin/blog/posts', ['Authorization' => "Bearer {$token}"])->assertForbidden();
     }
+
+    public function test_guide_serves_the_shared_voice_structure_and_cta_defaults(): void
+    {
+        $this->getJson('/api/v1/admin/blog/guide', $this->adminHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.voice', config('blog.voice'))
+            ->assertJsonPath('data.structure', config('blog.structure'))
+            ->assertJsonPath('data.cta_defaults', config('blog.cta_defaults'))
+            ->assertJsonPath('data.formats', BlogPost::FORMATS);
+    }
+
+    public function test_guide_rejects_a_connector_token(): void
+    {
+        $connector = User::factory()->founder()->create()->createToken('mcp-connector', ['connector:read', 'connector:draft'])->plainTextToken;
+        $this->getJson('/api/v1/admin/blog/guide', ['Authorization' => "Bearer {$connector}"])->assertForbidden();
+    }
 }

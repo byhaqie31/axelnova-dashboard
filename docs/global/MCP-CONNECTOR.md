@@ -1,24 +1,26 @@
-# MCP Quotation Connector
+# MCP Connector (quotations + blog)
 
-Lets Claude (claude.ai / Cowork) drive the **quotation pipeline** in `axelnova-dashboard` straight from a client brief, without giving it a login to the cockpit. Two halves:
+Lets Claude (claude.ai / Cowork / Claude Code) drive the **quotation pipeline** in `axelnova-dashboard` straight from a client brief, and **draft blog posts**, without giving it a login to the cockpit. Two halves:
 
 1. **Laravel** — a scoped `/api/v1/connector/*` route group, gated by Sanctum token *abilities*, not admin role.
-2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes the tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it). Its `CONNECTOR_VERSION` (advertised as the MCP server version in the initialize handshake) tags the contract — **v3** is read-open reads + a lifecycle-gated update.
+2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes the tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it). Its `CONNECTOR_VERSION` (advertised as the MCP server version in the initialize handshake) tags the contract — **v4** adds blog drafts to v3's read-open reads + lifecycle-gated update.
 
 ```
 Claude (claude.ai)  ──OAuth──▶  mcp.axelnova.tech  ──Bearer CONNECTOR_TOKEN──▶  /api/v1/connector/*  (Laravel)
      (MCP client)               (Worker, connector/)                            (scoped connector surface)
 ```
 
-## Guardrails — the access model (v3)
+## Guardrails — the access model (v4)
 
-**Read everything, write with a lifecycle guardrail, destroy only by hand.** The Sanctum token carries only `connector:read` + `connector:draft` (never `cockpit`), and each route opens exactly one ability:
+**Read everything, write drafts only, destroy only by hand.** The Sanctum token carries only `connector:read` + `connector:draft` (never `cockpit`), and each route opens exactly one ability.
 
-- ✅ **READ everything** — the catalog, a slim **list** of ANY non-deleted quotation, and full **read-back** of ANY non-deleted quotation (whatever created it — funnel, admin, or connector).
-- ✅ **WRITE with a gate** — create a **draft**; **update** any quotation while it is a **pre-send draft** (status `draft`). Locked once `sent` (or accepted/rejected/expired).
-- ❌ **never** — change status, send/accept a quote, create orders, touch clients/services/payments, or **delete** anything. Deletion is **portal-only, by hand** — there is no delete tool (irreversible actions stay human-only).
+**The abilities are universal, not per-module.** `connector:read` opens every module's read routes and `connector:draft` every module's draft-write routes — quotations, the blog, and any module added later. A new module adds routes under the existing abilities (no new ability, so **no token rotation** to ship it); its guardrails live in its controller.
 
-A connector token is rejected by every `/v1/admin/*` route (they demand `abilities:cockpit`); the admin cockpit token is likewise rejected by `/v1/connector/*`. **Soft-deleted quotations never surface through any connector read.** Read endpoints are throttled 60/min, writes 30/min.
+- ✅ **READ everything** — the catalog, a slim **list** of ANY non-deleted quotation, and full **read-back** of ANY non-deleted quotation (whatever created it — funnel, admin, or connector). The blog writing guide, a slim list, and the full Markdown record of ANY non-deleted blog post (draft or published).
+- ✅ **WRITE with a gate** — create a **draft** quotation; **update** any quotation while it is a **pre-send draft** (status `draft`), locked once `sent` (or accepted/rejected/expired). Create a blog post (**always** `draft`); **partially update** a post while it is a **draft**, refused once published (its edits would go live without the founder's preview).
+- ❌ **never** — change status, send/accept a quote, **publish/unpublish** a post, create orders, touch clients/services/payments, or **delete** anything. Deletion and publishing are **portal-only, by hand** — there is no delete or publish tool (irreversible and public-facing actions stay human-only).
+
+A connector token is rejected by every `/v1/admin/*` route (they demand `abilities:cockpit`); the admin cockpit token is likewise rejected by `/v1/connector/*`. **Soft-deleted quotations and posts never surface through any connector read.** Read endpoints are throttled 60/min, writes 30/min.
 
 ## Backend endpoints
 
@@ -29,10 +31,19 @@ A connector token is rejected by every `/v1/admin/*` route (they demand `abiliti
 | GET | `/v1/connector/quotations/{reference_code}` | `connector:read` | 60/min | Read back ANY non-deleted quotation by AXNQ code |
 | POST | `/v1/connector/quotations/draft` | `connector:draft` | 30/min | Create a draft quotation (contract below) |
 | PUT | `/v1/connector/quotations/{reference_code}` | `connector:draft` | 30/min | Update a PRE-SEND draft (same body as draft + `reseed_document`) |
+| GET | `/v1/connector/blog/guide` | `connector:read` | 60/min | The writing guide: voice + structure + CTA defaults (from `config/blog.php`), the two drafting modes, formats, categories/tags in use, section shape, limits, image rules |
+| GET | `/v1/connector/blog/posts` | `connector:read` | 60/min | Slim list of non-deleted posts — `status`, `q` (title), `page`/`per_page` (default 10, capped 25), newest updated first; `admin_url` + `public_url` (published only) |
+| GET | `/v1/connector/blog/posts/{id}` | `connector:read` | 60/min | Full editable record (Markdown sections with ids) + URLs |
+| POST | `/v1/connector/blog/posts` | `connector:draft` | 30/min | Create — always `draft` (`status`/`published_at` in the body are ignored). Image alt text required |
+| PUT | `/v1/connector/blog/posts/{id}` | `connector:draft` | 30/min | **Partial** update of a DRAFT — only sent fields change; slug only if `slug` is sent; `sections` replaces the list (ids kept). Published → 422 (`errors.status`) |
 
 Backend code: `app/Http/Controllers/Api/V1/Connector/{CatalogController,QuotationDraftController}.php`, `app/Http/Requests/Connector/{DraftQuotationRequest,UpdateDraftQuotationRequest,ListQuotationsRequest}.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Services/Quoting/QuotationIndexQuery.php` (the list query, shared with the admin index). Pricing is reused verbatim from [`PricingEngine`](../../backend/app/Services/Quoting/PricingEngine.php); reference codes from [`ReferenceCodeGenerator`](../../backend/app/Support/ReferenceCodeGenerator.php). See [QUOTE_BUILDER.md](./QUOTE_BUILDER.md) for the pricing model + the connector tool contract table.
 
-## The five MCP tools
+Blog code: `app/Http/Controllers/Api/V1/Connector/BlogPostController.php`, saving through the same [`BlogPostInput`](../../backend/app/Services/Blog/BlogPostInput.php) as the admin editor (partial mode + required alt text), with the guide from [`BlogGuide`](../../backend/app/Support/BlogGuide.php). Connector writes are logged as `blog_post.created` / `blog_post.updated` with `via: mcp_connector`. See [BLOG.md](./BLOG.md).
+
+## The MCP tools
+
+### Quotations
 
 | Tool | Maps to | Scope / gate | Notes |
 |---|---|---|---|
@@ -43,6 +54,18 @@ Backend code: `app/Http/Controllers/Api/V1/Connector/{CatalogController,Quotatio
 | `update_draft_quotation` | `PUT /quotations/{ref}` | write · **gate: pre-send draft** | Re-specifies + re-prices a pre-send draft. Refused 422 once sent. `reseed_document` controls document regeneration. |
 
 There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v1/admin/quotations/{id}`, soft delete, blocked 409 when an order is attached).
+
+### Blog
+
+| Tool | Maps to | Scope / gate | Notes |
+|---|---|---|---|
+| `get_blog_guide` | `GET /blog/guide` | read | **Call first** before writing or revising. |
+| `list_blog_posts` | `GET /blog/posts` | read (any) | Find a post's id. Slim rows. |
+| `get_blog_post` | `GET /blog/posts/{id}` | read (any) | Full Markdown record — read before updating. |
+| `create_blog_draft` | `POST /blog/posts` | write | Always a DRAFT. Returns `admin_url` for the founder to preview + publish. |
+| `update_blog_draft` | `PUT /blog/posts/{id}` | write · **gate: draft** | Partial patch. Refused 422 once published. |
+
+**Two drafting modes** (in both write tools' descriptions and the guide's `modes`): asked to **write** about a topic → Claude writes in the founder's voice following the guide's structure; given the founder's **own text** → Claude keeps the wording verbatim, only arranges it into title / excerpt / sections and fills the missing metadata (alt text, format, category, tags, SEO), rewrites only when asked, and reports any change. Images are **only** URLs the founder supplied (no image search). There is no publish, unpublish, or delete tool.
 
 ### Draft request contract
 
@@ -154,20 +177,24 @@ Non-deploy checks that are safe to run any time: `npm run typecheck`, `npx wrang
 1. **Settings → Connectors → Add custom connector** (Customize → Connectors).
 2. **URL:** `https://mcp.axelnova.tech/mcp`
 3. Connect → you'll be redirected to the connector login → enter `ACCESS_USERNAME` / `ACCESS_PASSWORD` → authorize.
-4. The five tools (`list_catalog`, `list_quotations`, `get_quotation`, `create_draft_quotation`, `update_draft_quotation`) appear. Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Ask it to "show pending quotes from this month" and it uses `list_quotations`; ask it to tweak a draft and it uses `update_draft_quotation`. Review everything in `/admin/quotations`.
+4. The ten tools appear — five quotation (`list_catalog`, `list_quotations`, `get_quotation`, `create_draft_quotation`, `update_draft_quotation`) and five blog (`get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft`, `update_blog_draft`). Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Ask it to "show pending quotes from this month" and it uses `list_quotations`; ask it to tweak a draft and it uses `update_draft_quotation`. Review everything in `/admin/quotations`. Ask it to "write a guide about X, cover image <url>" (or hand it your own text) and it calls `get_blog_guide`, then `create_blog_draft`; preview and publish in `/admin/blog`.
+5. After a Worker deploy that changes the tool list, refresh/reconnect the connector so claude.ai picks up the new tools.
+
+**Claude Code** gets the same tools through the synced **"claude.ai Axel Nova MCP"** connector when signed in with the same claude.ai account — authorize it once via `/mcp` (same `ACCESS_USERNAME` / `ACCESS_PASSWORD`).
 
 ## File map
 
-- Backend: `app/Http/Controllers/Api/V1/Connector/*`, `app/Http/Requests/Connector/DraftQuotationRequest.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Console/Commands/MintConnectorToken.php`, route group in [`routes/api.php`](../../backend/routes/api.php).
+- Backend: `app/Http/Controllers/Api/V1/Connector/*` (incl. `BlogPostController`), `app/Http/Requests/Connector/DraftQuotationRequest.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Services/Blog/BlogPostInput.php`, `app/Support/BlogGuide.php`, `config/blog.php`, `app/Console/Commands/MintConnectorToken.php`, route group in [`routes/api.php`](../../backend/routes/api.php).
 - Worker: `connector/src/{index,api,auth}.ts`, `connector/wrangler.toml`, `connector/package.json`, `connector/rotate-token.sh` (one-command token rotation).
-- Tests: `backend/tests/Feature/Connector/ConnectorDraftTest.php`.
+- Tests: `backend/tests/Feature/Connector/ConnectorDraftTest.php`, `backend/tests/Feature/Connector/ConnectorBlogTest.php`.
 
 ## Out of scope
 
-Still no status/accept/order tools, no delete tool (portal-only), no client-management surface, no multi-user OAuth, and no post-send "revision" concept (a sent quote is locked to the connector). In-dashboard AI UI is a separate, API-billed phase.
+Still no status/accept/order tools, no publish/unpublish tool for posts, no image search, no delete tool (portal-only), no client-management surface, no multi-user OAuth, and no post-send "revision" concept (a sent quote is locked to the connector). In-dashboard AI UI is a separate, API-billed phase.
 
 ## Version history
 
+- **v4** — blog drafts: `get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft` (always draft), `update_blog_draft` (partial, drafts only). Reuses the universal `connector:read` / `connector:draft` abilities — no token rotation needed.
 - **v3** — `list_quotations` (browse/filter), read-open `get_quotation` (any quotation, not just connector-created), `update_draft_quotation` (lifecycle-gated: pre-send drafts only, re-prices + guards the document via `reseed_document`, stamps `last_updated_via`), portal-only soft delete, read/write throttles, `CONNECTOR_VERSION` tag.
 - **v2** — canonical multi-package `form_payload`, `DocumentSeeder`, detailed proposals, project/intro.
 - **v1** — draft-only: `list_catalog`, `create_draft_quotation`, connector-scoped `get_quotation`.

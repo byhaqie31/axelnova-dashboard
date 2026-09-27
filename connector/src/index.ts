@@ -1,18 +1,22 @@
 /**
- * Axel Nova quotation MCP server (Cloudflare Worker).
+ * Axel Nova MCP server (Cloudflare Worker).
  *
  * Exposes the tools that proxy the Laravel scoped connector API so Claude can
- * drive the quotation pipeline from a client brief. The Worker holds the scoped
+ * drive the quotation pipeline from a client brief and draft blog posts. The Worker holds the scoped
  * bearer token (CONNECTOR_TOKEN) and adds it to every upstream call — Claude
  * never sees it. Access is gated by workers-oauth-provider (see auth.ts).
  *
- * Access model (v3), enforced by the Laravel token abilities (connector:read +
- * connector:draft, never cockpit):
+ * Access model (v4), enforced by the Laravel token abilities (connector:read +
+ * connector:draft, never cockpit). The two abilities are UNIVERSAL — they cover
+ * every module's read / draft-write routes; there is no per-module ability.
  *   • READ everything  — list_catalog, list_quotations, get_quotation (ANY
- *     non-deleted quotation, whatever created it).
+ *     non-deleted quotation, whatever created it); get_blog_guide,
+ *     list_blog_posts, get_blog_post (ANY non-deleted post).
  *   • WRITE with a gate — create_draft_quotation, update_draft_quotation (any
- *     quotation while it is PRE-SEND; refused once sent).
- *   • DESTROY never     — there is NO delete tool; deletion is portal-only, by hand.
+ *     quotation while it is PRE-SEND; refused once sent); create_blog_draft,
+ *     update_blog_draft (a post while it is a DRAFT; refused once published).
+ *   • DESTROY never     — there is NO delete, publish, or send tool; those are
+ *     portal-only, by hand.
  */
 
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
@@ -26,12 +30,18 @@ import { authApp } from "./auth";
  * Contract version — bump on any change to the tool surface or its semantics, so a
  * session can tell which contract it's talking to (advertised as the MCP server
  * version in the initialize handshake). v3: read-open reads + lifecycle-gated update.
+ * v4: blog drafts (guide / list / read / create / partial update of a draft).
  */
-const CONNECTOR_VERSION = "3.0.0";
+const CONNECTOR_VERSION = "4.0.0";
 
 const CATALOG_PATH = "/api/v1/connector/catalog";
 const QUOTATIONS_PATH = "/api/v1/connector/quotations";
 const DRAFT_PATH = "/api/v1/connector/quotations/draft";
+const BLOG_GUIDE_PATH = "/api/v1/connector/blog/guide";
+const BLOG_POSTS_PATH = "/api/v1/connector/blog/posts";
+
+/** Editorial formats (mirrors BlogPost::FORMATS). */
+const BLOG_FORMATS = ["article", "guide", "tutorial", "case_study", "opinion", "news"] as const;
 
 /** Every lifecycle status (mirrors Quotation::STATUSES). */
 const QUOTATION_STATUSES = ["draft", "sent", "accepted", "rejected", "expired"] as const;
@@ -177,6 +187,90 @@ const draftInputShape = {
   notes: z.string().optional().describe("Any extra free-text context for the founder."),
 } as const;
 
+/** One blog section — limits mirror BlogPostInput::sectionRules(). */
+const blogSection = z.object({
+  id: z
+    .string()
+    .max(12)
+    .optional()
+    .describe("The section's stable s_xxxxxx id. KEEP it when editing an existing section; omit it for a new one."),
+  heading: z.string().min(1).max(120).describe("Section heading — the H2 and the 'On this page' anchor."),
+  body_md: z
+    .string()
+    .max(20000)
+    .optional()
+    .describe("Section body in Markdown (bold, italic, links, ### subheadings, lists, > quotes, code). Raw HTML is stripped."),
+  image_url: z
+    .string()
+    .max(500)
+    .nullable()
+    .optional()
+    .describe("Optional in-section image. ONLY a URL the user supplied; https:// or a root-relative path."),
+  image_alt: z.string().max(160).nullable().optional().describe("Required whenever image_url is set."),
+  quote: z.string().max(500).nullable().optional().describe("Optional pull quote."),
+  quote_by: z.string().max(80).nullable().optional().describe("Optional quote attribution."),
+});
+
+/**
+ * Every writable blog field. All optional here — update_blog_draft is a partial
+ * patch; create_blog_draft overrides `title` as required.
+ */
+const blogFieldsShape = {
+  title: z.string().min(1).max(160).optional().describe("Post title, ≤ 160 characters."),
+  slug: z
+    .string()
+    .max(120)
+    .nullable()
+    .optional()
+    .describe("URL slug. Omit to generate it from the title (on create). On update, the slug only changes if you send it."),
+  excerpt: z
+    .string()
+    .max(500)
+    .nullable()
+    .optional()
+    .describe("The introduction / hook (≤ 500). Shown as the lede on the article and as the card text on the index."),
+  sections: z
+    .array(blogSection)
+    .max(40)
+    .optional()
+    .describe(
+      "The ordered body sections. On update this REPLACES the whole list — read the post first and send the full edited list, keeping each existing section's id.",
+    ),
+  cover_image_url: z
+    .string()
+    .max(500)
+    .nullable()
+    .optional()
+    .describe("Cover image. ONLY a URL the user supplied (e.g. an images.unsplash.com link) — never search for or invent one."),
+  cover_image_alt: z
+    .string()
+    .max(160)
+    .nullable()
+    .optional()
+    .describe("Required whenever there is a cover image: describe it for someone who can't see it."),
+  format: z.enum(BLOG_FORMATS).optional().describe("Editorial format — the eyebrow before the date. Default 'article'."),
+  category: z
+    .string()
+    .max(60)
+    .nullable()
+    .optional()
+    .describe("One category. Prefer one already in use (get_blog_guide.categories)."),
+  tags: z.array(z.string().max(40)).max(10).optional().describe("Up to 10 topic tags. Prefer ones already in use."),
+  cta_heading: z.string().max(120).nullable().optional().describe("Closing call to action. Leave all cta_* empty to use the defaults."),
+  cta_body: z.string().max(500).nullable().optional(),
+  cta_label: z.string().max(60).nullable().optional(),
+  cta_url: z.string().max(500).nullable().optional(),
+  seo_title: z.string().max(70).nullable().optional().describe("Only when the title is too long for search results (≤ 70)."),
+  seo_description: z.string().max(160).nullable().optional().describe("Search snippet (≤ 160). Falls back to the excerpt."),
+} as const;
+
+/** The drafting rules both blog write tools share (the two modes + image/CTA rules). */
+const BLOG_WRITING_RULES = [
+  "Two modes. (1) Asked to WRITE about a topic or brief: write in the founder's voice from get_blog_guide, following its structure — the excerpt is the hook, then 2–4 practical sections and a key takeaway.",
+  "(2) Given the user's OWN text (pasted or from a file): KEEP THEIR WORDING VERBATIM — only arrange it (first heading or line → title, text before the first section heading → excerpt, each heading → a section) and fill what is missing (image alt text, format, category, tags, SEO). Rewrite only when asked, and list any change you made in your reply.",
+  "Either way: never repeat the closing call to action inside a section (the post ends with its own CTA card); use ONLY image URLs the user supplied, and always write alt text for them.",
+].join(" ");
+
 export class AxelNovaMCP extends McpAgent<Env> {
   server = new McpServer({
     name: "axelnova-quotations",
@@ -283,6 +377,82 @@ export class AxelNovaMCP extends McpAgent<Env> {
       async ({ reference_code }) =>
         this.passthrough(
           await apiFetch(this.env, `${QUOTATIONS_PATH}/${encodeURIComponent(reference_code)}`),
+        ),
+    );
+
+    // ── Blog ────────────────────────────────────────────────────────────────
+
+    this.server.tool(
+      "get_blog_guide",
+      "Always call this FIRST before writing or revising a blog post. Returns the founder's voice and structure rules, the two drafting modes, the valid formats, the categories and tags already in use, the default closing call to action, the section shape, field limits, and the image rules.",
+      {},
+      async () => this.passthrough(await apiFetch(this.env, BLOG_GUIDE_PATH)),
+    );
+
+    this.server.tool(
+      "list_blog_posts",
+      [
+        "READ-ONLY. Browse blog posts (drafts and published), newest updated first — use this to find a post's id.",
+        "Filter by status (draft | published) and q (matches the title). Paginated: per_page defaults to 10, max 25.",
+        "Returns SLIM rows (id, title, slug, status, format, category, short excerpt, dates, admin_url, public_url when published). Call get_blog_post for the full text.",
+      ].join(" "),
+      {
+        status: z.enum(["draft", "published"]).optional().describe("Omit for both."),
+        q: z.string().max(120).optional().describe("Search term matched against the title."),
+        page: z.number().int().min(1).optional().describe("1-based page number (default 1)."),
+        per_page: z.number().int().min(1).max(25).optional().describe("Rows per page (default 10, max 25)."),
+      },
+      async (args) => {
+        const params = new URLSearchParams();
+        if (args.status) params.set("status", args.status);
+        if (args.q) params.set("q", args.q);
+        if (args.page) params.set("page", String(args.page));
+        if (args.per_page) params.set("per_page", String(args.per_page));
+        const qs = params.toString();
+        return this.passthrough(await apiFetch(this.env, qs ? `${BLOG_POSTS_PATH}?${qs}` : BLOG_POSTS_PATH));
+      },
+    );
+
+    this.server.tool(
+      "get_blog_post",
+      "Read back ANY blog post (draft or published) by its id — the full editable record in Markdown (sections with their ids, cover, format, category, tags, CTA, SEO, status) plus admin_url and public_url. Always read a post before updating it.",
+      {
+        id: z.number().int().min(1).describe("The post id (from list_blog_posts or create_blog_draft)."),
+      },
+      async ({ id }) => this.passthrough(await apiFetch(this.env, `${BLOG_POSTS_PATH}/${id}`)),
+    );
+
+    this.server.tool(
+      "create_blog_draft",
+      [
+        "Create a blog post as a DRAFT in Axel Nova. It is NEVER published — the founder previews it in the admin and publishes it by hand. Call get_blog_guide first.",
+        BLOG_WRITING_RULES,
+        "Returns the saved record with admin_url — give the founder that link to preview and publish. On a validation error, read the message (it names the field) and retry.",
+      ].join(" "),
+      {
+        ...blogFieldsShape,
+        title: z.string().min(1).max(160).describe("Post title, ≤ 160 characters. Required."),
+      },
+      async (args) =>
+        this.passthrough(await apiFetch(this.env, BLOG_POSTS_PATH, { method: "POST", body: JSON.stringify(args) })),
+    );
+
+    this.server.tool(
+      "update_blog_draft",
+      [
+        "Update a blog post that is still a DRAFT, by id. PARTIAL: send only the fields that change — everything else is kept. The slug only changes if you send slug.",
+        "sections, if sent, replaces the whole list: call get_blog_post first and send the full edited list, keeping each existing section's id.",
+        "Refused (422) once the post is published — its edits would go live without the founder's preview. Then tell the founder to unpublish it in the admin first, or offer to create a new draft instead.",
+        BLOG_WRITING_RULES,
+        "Never publishes anything.",
+      ].join(" "),
+      {
+        id: z.number().int().min(1).describe("The post id (from list_blog_posts or get_blog_post)."),
+        ...blogFieldsShape,
+      },
+      async ({ id, ...body }) =>
+        this.passthrough(
+          await apiFetch(this.env, `${BLOG_POSTS_PATH}/${id}`, { method: "PUT", body: JSON.stringify(body) }),
         ),
     );
   }

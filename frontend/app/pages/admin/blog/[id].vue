@@ -10,8 +10,8 @@ import PublicBlogArticle from '~/components/public/BlogArticle.vue'
 import AdminBlogSectionEditor from '~/components/admin/BlogSectionEditor.vue'
 import AdminSelect from '~/components/admin/Select.vue'
 import {
-  blogCtaDefaults, blogFormatOptions, blogVoiceGuide, newSection, parseMarkdownImport, readingMinutes, slugify, templateSections,
-  type BlogFormat, type BlogPostAdmin, type BlogPostPublic, type BlogRenderedSection, type BlogSection, type BlogTocItem,
+  blogFormatOptions, newSection, parseMarkdownImport, readingMinutes, slugify, templateSections,
+  type BlogFormat, type BlogGuide, type BlogPostAdmin, type BlogPostPublic, type BlogRenderedSection, type BlogSection, type BlogTocItem,
 } from '~/data/blog'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
@@ -118,9 +118,22 @@ async function fetchCategories() {
   }
   catch { /* the datalist just stays empty */ }
 }
+// The writing guide + CTA defaults — one copy on the backend (config/blog.php),
+// also what Claude writes to via the MCP connector. If it fails the editor still
+// works; the Voice panel and CTA placeholders just stay empty.
+const guide = ref<BlogGuide | null>(null)
+async function fetchGuide() {
+  try {
+    guide.value = (await apiFetch<{ data: BlogGuide }>('/api/v1/admin/blog/guide')).data
+  }
+  catch { /* optional — see above */ }
+}
+const ctaDefaults = computed(() => guide.value?.cta_defaults ?? null)
+
 onMounted(() => {
   fetchPost()
   fetchCategories()
+  fetchGuide()
 })
 watch(() => route.params.id, () => { if (!isNew.value) fetchPost() })
 
@@ -233,10 +246,13 @@ function removeSection(i: number) {
 function applyTemplate() {
   if (form.sections.length && !confirm('Replace the current sections with the template?')) return
   form.sections = templateSections()
-  if (!form.cta_heading) form.cta_heading = blogCtaDefaults.heading
-  if (!form.cta_body) form.cta_body = blogCtaDefaults.body
-  if (!form.cta_label) form.cta_label = blogCtaDefaults.label
-  if (!form.cta_url) form.cta_url = blogCtaDefaults.url
+  const d = ctaDefaults.value
+  if (d) {
+    if (!form.cta_heading) form.cta_heading = d.heading
+    if (!form.cta_body) form.cta_body = d.body
+    if (!form.cta_label) form.cta_label = d.label
+    if (!form.cta_url) form.cta_url = d.url
+  }
   toast.success('Template applied', 'Rename the headings to fit this post.')
 }
 
@@ -284,10 +300,11 @@ async function openPreview() {
       published_at: post.value?.published_at ?? new Date().toISOString(),
       sections: res.sections,
       toc: res.toc,
-      cta_heading: nullable(form.cta_heading),
-      cta_body: nullable(form.cta_body),
-      cta_label: nullable(form.cta_label),
-      cta_url: nullable(form.cta_url),
+      // Empty fields show the shared defaults, as the public API serves them.
+      cta_heading: nullable(form.cta_heading) ?? ctaDefaults.value?.heading ?? null,
+      cta_body: nullable(form.cta_body) ?? ctaDefaults.value?.body ?? null,
+      cta_label: nullable(form.cta_label) ?? ctaDefaults.value?.label ?? null,
+      cta_url: nullable(form.cta_url) ?? ctaDefaults.value?.url ?? null,
       seo_title: nullable(form.seo_title),
       seo_description: nullable(form.seo_description),
       updated_at: null,
@@ -383,11 +400,11 @@ const statusStyle = computed(() => post.value?.status === 'published'
           <div v-if="guideOpen" class="rounded-2xl border p-5 grid sm:grid-cols-2 gap-5 text-[13px]" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
             <div>
               <p class="text-[11px] font-semibold uppercase tracking-widest mb-2" :style="{ color: 'var(--color-text-tertiary)' }">Voice</p>
-              <ul class="space-y-1.5 list-disc pl-4"><li v-for="v in blogVoiceGuide.voice" :key="v">{{ v }}</li></ul>
+              <ul class="space-y-1.5 list-disc pl-4"><li v-for="v in guide?.voice ?? []" :key="v">{{ v }}</li></ul>
             </div>
             <div>
               <p class="text-[11px] font-semibold uppercase tracking-widest mb-2" :style="{ color: 'var(--color-text-tertiary)' }">Default structure</p>
-              <ol class="space-y-1.5 list-decimal pl-4"><li v-for="s in blogVoiceGuide.structure" :key="s">{{ s }}</li></ol>
+              <ol class="space-y-1.5 list-decimal pl-4"><li v-for="s in guide?.structure ?? []" :key="s">{{ s }}</li></ol>
             </div>
           </div>
 
@@ -427,11 +444,11 @@ const statusStyle = computed(() => post.value?.status === 'published'
 
           <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest" :style="{ color: 'var(--color-text-tertiary)' }">Closing call to action</h2>
-            <input v-model="form.cta_heading" type="text" maxlength="120" :placeholder="blogCtaDefaults.heading" class="contact-input w-full">
-            <textarea v-model="form.cta_body" rows="2" maxlength="500" :placeholder="blogCtaDefaults.body" class="contact-input w-full" />
+            <input v-model="form.cta_heading" type="text" maxlength="120" :placeholder="ctaDefaults?.heading" class="contact-input w-full">
+            <textarea v-model="form.cta_body" rows="2" maxlength="500" :placeholder="ctaDefaults?.body" class="contact-input w-full" />
             <div class="grid grid-cols-[1fr_1.4fr] gap-2">
-              <input v-model="form.cta_label" type="text" maxlength="60" :placeholder="blogCtaDefaults.label" class="contact-input w-full">
-              <input v-model="form.cta_url" type="text" :placeholder="blogCtaDefaults.url" class="contact-input w-full">
+              <input v-model="form.cta_label" type="text" maxlength="60" :placeholder="ctaDefaults?.label" class="contact-input w-full">
+              <input v-model="form.cta_url" type="text" :placeholder="ctaDefaults?.url" class="contact-input w-full">
             </div>
             <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Leave blank to use the defaults shown.</p>
           </div>
@@ -486,7 +503,10 @@ const statusStyle = computed(() => post.value?.status === 'published'
     <!-- Preview -->
     <Teleport to="body">
       <Transition name="confirm-fade">
-        <div v-if="previewOpen && previewPost" class="fixed inset-0 z-[80] overflow-y-auto" :style="{ background: 'var(--color-bg)' }">
+        <!-- data-lenis-prevent: Lenis owns wheel/touch scrolling for the window, so a
+             fixed overlay's own scroll area stays frozen without it (same as the admin
+             layout's scroll panes). -->
+        <div v-if="previewOpen && previewPost" data-lenis-prevent class="fixed inset-0 z-[80] overflow-y-auto overscroll-contain" :style="{ background: 'var(--color-bg)' }">
           <div class="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-6 py-3 border-b" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">Preview <span class="font-normal" :style="{ color: 'var(--color-text-tertiary)' }">· exactly what readers will see</span></p>
             <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="previewOpen = false"><UIcon name="i-lucide-x" class="size-4" /> Close</button>

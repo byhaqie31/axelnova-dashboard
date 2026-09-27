@@ -122,7 +122,7 @@ function loginPage(state: string, clientName: string, error?: string): string {
 <body>
   <main class="card">
     <h1>Axel Nova connector</h1>
-    <p class="sub">${escapeHtml(clientName)} is requesting access to draft quotations. Sign in to authorize.</p>
+    <p class="sub">${escapeHtml(clientName)} is requesting access to draft quotations and blog posts. Sign in to authorize.</p>
     ${errorBlock}
     <form method="post" action="/authorize">
       <input type="hidden" name="state" value="${escapeHtml(state)}" />
