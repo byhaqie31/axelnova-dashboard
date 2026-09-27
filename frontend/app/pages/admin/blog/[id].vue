@@ -422,7 +422,7 @@ const statusStyle = computed(() => post.value?.status === 'published'
             <input v-model="form.category" list="blog-categories" type="text" maxlength="60" placeholder="Category (e.g. Systems) — filters the index" class="contact-input w-full">
             <datalist id="blog-categories"><option v-for="c in categories" :key="c" :value="c" /></datalist>
             <input v-model="form.tags" type="text" placeholder="Topics, comma-separated (e.g. Websites, Cloudflare)" class="contact-input w-full">
-            <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Category and topics are listed in the article's left pane.</p>
+            <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">On /blog the pills filter by format and the dropdown by topic — the category counts as a topic too.</p>
           </div>
 
           <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">

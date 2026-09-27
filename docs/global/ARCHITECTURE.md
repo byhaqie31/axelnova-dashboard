@@ -242,7 +242,7 @@ GET  /v1/admin/revenue/monthly       Sanctum — booked vs collected per calenda
                                      not ride a route shared with a non-founder role.
 
 # Blog (see BLOG.md)
-GET  /v1/blog/posts                  Public  — published cards, newest first, ?category=, 12/page + categories
+GET  /v1/blog/posts                  Public  — published cards, newest first, ?format= & ?topic=, 12/page + formats/topics sets
 GET  /v1/blog/posts/{slug}           Public  — full article (rendered sections + toc + related); draft → 404
 GET  /v1/blog/slugs                  Public  — unpaginated slug feed for the frontend sitemap
 GET    /v1/admin/blog/posts          Cockpit — all posts (?status, ?q) + page-view counts
@@ -271,9 +271,9 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 /                     Portfolio home
 /projects             Project listing
 /projects/[id]        Project detail
-/blog                 Blog index — published posts, category pills (?category=), pagination
+/blog                 Blog index — published posts, format pills (?format=) + topic dropdown (?topic=), pagination
 /blog/[slug]          Article — one shared layout (BlogArticle): format eyebrow + byline header, left pane
-                      (section links + topics), text column right, closing CTA, share row, related
+                      (section links), text column right, closing CTA, share row, related
 /services             Services & pricing
 /about                About page
 /contact              Contact form (Web3Forms)

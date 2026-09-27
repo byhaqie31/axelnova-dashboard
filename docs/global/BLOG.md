@@ -14,7 +14,7 @@ One table, **`blog_posts`** (soft-deletes), migration `2026_09_26_000002`:
 | `title`, `excerpt` | Title ≤ 160. The excerpt (≤ 500) is the lede on the article and the card text on the index |
 | `sections` (json) | Ordered list of `{id, heading, body_md, image_url, image_alt, quote, quote_by}`. **Markdown is the storage format.** `id` is a stable `s_xxxxxx` the editor mints (v-for key, survives reorders) |
 | `cover_image_url` / `cover_image_alt` | **URL only, no upload** — same as `projects.cover_image_url`. Absolute `http(s)://` or a root-relative path |
-| `category`, `tags` | Free-text category (the editor suggests ones already in use; it also filters the index); ≤ 10 tags. On the article both are listed as **Topics** in the left pane, category first |
+| `category`, `tags` | Free-text category (the editor suggests ones already in use); ≤ 10 tags. Together they are the post's **topics** — the index's topic dropdown lists category ∪ tags and `?topic=` matches either |
 | `format` | Editorial format — `article` (default) \| `guide` \| `tutorial` \| `case_study` \| `opinion` \| `news` (`BlogPost::FORMATS`). Rendered as the accent eyebrow before the date ("GUIDE · 26 September 2026") on cards and the article; a dropdown in the editor's right rail. Migration `2026_09_26_000003` |
 | `cta_*` | Closing call to action (heading / body / label / url). Null = the defaults in `data/blog.ts` (`blogCtaDefaults`, → `/contact`) |
 | `seo_title` / `seo_description` | Fall back to title / excerpt |
@@ -31,8 +31,10 @@ One table, **`blog_posts`** (soft-deletes), migration `2026_09_26_000002`:
 
 ```
 # Public (no auth; the Nuxt pages sit behind swr 300s)
-GET  /v1/blog/posts?category=&page=   Published only, newest first, 12/page. Card fields +
-                                      top-level `categories: [{name, count}]`
+GET  /v1/blog/posts?format=&topic=&page=   Published only, newest first, 12/page. `format` ∈ FORMATS (422
+                                      otherwise); `topic` matches the category OR a tag, case-insensitively.
+                                      Card fields + top-level `formats: [{value, count}]` and
+                                      `topics: [{name, count}]` (category ∪ tags across published posts)
 GET  /v1/blog/posts/{slug}            Published only (draft / deleted → 404). Card fields +
                                       sections[].body_html + anchor, toc, cta_*, seo_*, related[3]
 GET  /v1/blog/slugs                   Unpaginated {slug, published_at, updated_at} — the sitemap feed
@@ -55,7 +57,8 @@ Tests: `backend/tests/Feature/Blog/` (model rules, public feed, admin CMS).
 
 ## Frontend
 
-- **Public:** `pages/public/blog/index.vue` (grid, category pills via `?category=`, pagination) and `pages/public/blog/[slug].vue` (SSR-awaited fetch; `usePublicSeo` + `BlogPosting` and `BreadcrumbList` JSON-LD; an unknown or draft slug throws a real 404). Shared pieces in `components/public/`: `BlogCard`, `BlogToc` (active-heading tracking via IntersectionObserver), `BlogArticle` (the one layout — full-width header with the format eyebrow, byline "By Ahmad Baihaqie, Founder" + "Updated …" when edited after publishing, and cover; then a two-track body: a sticky **left pane** ("On this page" section links from 2 sections up + **Topics** in the reference's dash style) and the text column on the right with anchored H2s, in-section image / pull quote, closing CTA card and share row; related posts full-width below. The pane collapses inline above the first section below `lg`). Article body styles are `.blog-prose` in `main.css` (tokens only; see UI-STANDARDS §7).
+- **Public:** `pages/public/blog/index.vue` (grid; **format pills** on the left via `?format=`, a **topic dropdown** on the right via `?topic=`; pagination) and `pages/public/blog/[slug].vue` (SSR-awaited fetch; `usePublicSeo` + `BlogPosting` and `BreadcrumbList` JSON-LD; an unknown or draft slug throws a real 404). Shared pieces in `components/public/`: `BlogCard`, `BlogToc` (active-heading tracking via IntersectionObserver), `BlogArticle` (the one layout — full-width header with the format eyebrow, byline "By Ahmad Baihaqie, Founder" + "Updated …" when edited after publishing, and cover; then a two-track body: a sticky **left pane** of "On this page" section links (from 2 sections up) and the text column on the right with anchored H2s, in-section image / pull quote, closing CTA card and share row; related posts full-width below. The pane collapses inline above the first section below `lg`). Article body styles are `.blog-prose` in `main.css` (tokens only; see UI-STANDARDS §7).
+- **Home page:** `components/public/BlogLatest.vue` shows the three newest posts below the client previews, and renders nothing while nothing is published. `/` is also `swr: 300`, so it catches up on the same five-minute window.
 - **Nav:** "Blog" sits after Company in `layouts/public.vue` and its mirror in `HeroEpoch.vue` (keep in sync); the footer Explore column follows the same array.
 - **Sitemap:** `server/api/__sitemap__/urls.ts` feeds `sitemap.sources` from `/v1/blog/slugs`. **Cache:** `/blog` and `/blog/**` are `swr: 300` — a new post shows within five minutes of publishing.
 - **Analytics:** page views are tracked by path already, so `/blog/*` needs nothing new; the admin list shows per-post views.

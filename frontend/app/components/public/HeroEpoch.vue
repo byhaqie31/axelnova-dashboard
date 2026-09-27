@@ -6,6 +6,9 @@ import { MOTION } from '~/utils/motion'
 
 // Captured at setup — Nuxt context isn't available inside timer / event callbacks.
 const motion = useMotion()
+const router = useRouter()
+// The layout's header ↔ pill handoff (useNavFlight). Null outside the public layout.
+const navFlight = useNavFlight()
 
 const heroShell   = ref<HTMLElement | null>(null)
 const heroCard    = ref<HTMLElement | null>(null)
@@ -84,6 +87,7 @@ let heroTl: gsap.core.Timeline | null = null
 let zoomTl: gsap.core.Timeline | null = null
 let dockSt: import('gsap/ScrollTrigger').ScrollTrigger | null = null
 let startEntrance: (() => void) | null = null
+let offLeave: (() => void) | null = null
 
 // Fixed design numbers for the dock math, kept in sync with the template
 // classes: h-150 card, h-12 pill, bottom-6 sm:bottom-10 pill offset,
@@ -107,11 +111,12 @@ const scrollPastIntro = () => {
   else window.scrollTo({ top: target, behavior: 'smooth' })
 }
 let safetyTimer: number | undefined
-let fontGate: number | undefined
 let loaderCap: number | undefined
 let loaderMin: number | undefined
 
-// Intro loader: fresh page loads only — client-side navs back home skip it.
+// The whole intro — loader, fullscreen boot pose, pinned zoom-out, entrance —
+// plays once per browser session. Every later visit to `/` (header "Home"
+// link, back button, reload) lands straight on the settled home view.
 const INTRO_FLAG = 'axn-hero-intro-seen'
 // Branding moment: the loader stays up at least this long even when assets
 // beat it; asset waiting itself is still capped at LOADER_CAP_MS.
@@ -161,6 +166,98 @@ onMounted(() => {
 
   heroImmersive.value = true
 
+  // Dock handoff: past the zoom, the expanded pill rides up with the page;
+  // when its top reaches the header's floating position the pill fades out
+  // and the real header (identical glass pill) takes over — reversed on the
+  // way back up. The start is pure math from the settled geometry (verified
+  // against measured positions): element-based measurement is unreliable
+  // here because the scrub's inline styles are applied whenever a refresh
+  // runs, so the pill would be measured in the wrong state. With no pin
+  // (settled view) the zoom contributes no scroll distance, hence `?? 0`.
+  const createDock = () => {
+    const ScrollTriggerRef = motion.ScrollTrigger
+
+    dockSt = ScrollTriggerRef.create({
+      start: () => {
+        const pinEnd = zoomTl?.scrollTrigger?.end ?? 0
+        const pillTopAtRest = padTopPx() + CARD_END_PX - dockBottomPx() - PILL_H_PX
+        return pinEnd + pillTopAtRest - DOCK_TOP_PX
+      },
+      end: () => ScrollTriggerRef.maxScroll(window),
+      onEnter: () => {
+        heroImmersive.value = false
+        if (heroNav.value) gsap.to(heroNav.value, { autoAlpha: 0, duration: 0.2, overwrite: 'auto' })
+      },
+      onLeaveBack: () => {
+        heroImmersive.value = true
+        if (heroNav.value) gsap.to(heroNav.value, { autoAlpha: 1, duration: 0.2, overwrite: 'auto' })
+      },
+    })
+  }
+
+  // Leaving `/` while the pill is the nav on screen: hide it and have the
+  // layout's header launch from its exact spot (useNavFlight). afterEach, so
+  // a cancelled navigation never strands the pill hidden. The pill counts as
+  // "the nav" only while it's visible — not under the loader, not docked.
+  offLeave = router.afterEach((to, from, failure) => {
+    if (failure || from.path !== '/' || to.path === '/') return
+    const nav = heroNav.value
+    if (!navFlight || !nav || !heroImmersive.value) return
+    if (Number(gsap.getProperty(nav, 'opacity')) < 0.5) return
+    const r = nav.getBoundingClientRect()
+    if (r.bottom <= 0 || r.top >= window.innerHeight) return
+    gsap.set(nav, { autoAlpha: 0 })
+    navFlight.launchFrom({ top: r.top, centerX: r.left + r.width / 2, width: r.width })
+  })
+
+  let introSeen = true
+  try { introSeen = !!sessionStorage.getItem(INTRO_FLAG) } catch { /* private mode — treat as seen */ }
+
+  if (introSeen) {
+    // Already played this session — render the settled home view: the
+    // designed card (the natural CSS layout), no pin, no zoom, no entrance.
+    // `.hero-boot` is inert here (its CSS is gated on `html:not([data-intro-
+    // seen])`, stamped pre-paint on reloads), but drop the class anyway so
+    // nothing keyed off it can apply. The SSR'd loader is already hidden by
+    // the same attribute; unmount it.
+    showLoader.value = false
+    // Keep <html> in sync with sessionStorage: the pre-paint script only sees
+    // storage as it was at page load, so a client-side nav back to `/` needs
+    // the attribute stamped here to keep the boot pose and overlay inert.
+    document.documentElement.setAttribute('data-intro-seen', '')
+    heroShell.value?.classList.remove('hero-boot')
+
+    // Arriving from a page whose header was on screen: the header glides down
+    // into the pill's resting spot, then the pill takes over and its content
+    // fades up. The spot is the same settled-geometry math as the dock, at
+    // scroll 0 (where page:finish puts us before the flight lands); both bars
+    // are centred on the viewport. The dock waits for the landing — created
+    // now, it would read the previous page's stale scroll and toggle the
+    // header mid-flight.
+    const nav = heroNav.value
+    const landing = !!nav && !!navFlight?.landOn(
+      {
+        top: padTopPx() + CARD_END_PX - dockBottomPx() - PILL_H_PX,
+        centerX: document.documentElement.clientWidth / 2,
+        width: nav.offsetWidth,
+      },
+      () => {
+        gsap.set(nav, { autoAlpha: 1 })
+        if (pillExpanded.value) {
+          gsap.fromTo(
+            pillExpanded.value,
+            { autoAlpha: 0 },
+            { autoAlpha: 1, duration: MOTION.dur.fast, ease: MOTION.ease.out, clearProps: 'opacity,visibility' },
+          )
+        }
+        createDock()
+      },
+    )
+    if (landing) gsap.set(nav, { autoAlpha: 0 })
+    else createDock()
+    return
+  }
+
   // Pinned zoom-out: the section holds for one viewport of scroll while the
   // card scrubs from fullscreen (painted by the scoped CSS below) to its
   // designed box. Function-based values + invalidateOnRefresh keep the end
@@ -172,7 +269,7 @@ onMounted(() => {
     // styles in the same tick (no paint happens in between). This is what
     // keeps the pin spacer honest: ScrollTrigger measures the reverted
     // (natural = end) state, so there's no dead gap after the marquee, and the
-    // dock trigger below measures true post-zoom positions.
+    // dock trigger measures true post-zoom positions.
     heroShell.value.classList.remove('hero-boot')
 
     zoomTl = gsap.timeline({
@@ -264,38 +361,14 @@ onMounted(() => {
     if (heroSub.value) zoomTl.from(heroSub.value, { autoAlpha: 0, duration: 0.2 }, 0.22)
     if (heroCtaWrap.value) zoomTl.from(heroCtaWrap.value, { autoAlpha: 0, duration: 0.2 }, 0.28)
 
-    // Dock handoff: past the zoom, the expanded pill rides up with the page;
-    // when its top reaches the header's floating position the pill fades out
-    // and the real header (identical glass pill) takes over — reversed on the
-    // way back up. The start is pure math from the settled geometry (verified
-    // against measured positions): element-based measurement is unreliable
-    // here because the scrub's inline styles are applied whenever a refresh
-    // runs, so the pill would be measured in the wrong state.
-    const ScrollTriggerRef = motion.ScrollTrigger
-
-    dockSt = ScrollTriggerRef.create({
-      start: () => {
-        const pinEnd = zoomTl?.scrollTrigger?.end ?? window.innerHeight
-        const pillTopAtRest = padTopPx() + CARD_END_PX - dockBottomPx() - PILL_H_PX
-        return pinEnd + pillTopAtRest - DOCK_TOP_PX
-      },
-      end: () => ScrollTriggerRef.maxScroll(window),
-      onEnter: () => {
-        heroImmersive.value = false
-        if (heroNav.value) gsap.to(heroNav.value, { autoAlpha: 0, duration: 0.2, overwrite: 'auto' })
-      },
-      onLeaveBack: () => {
-        heroImmersive.value = true
-        if (heroNav.value) gsap.to(heroNav.value, { autoAlpha: 1, duration: 0.2, overwrite: 'auto' })
-      },
-    })
+    createDock()
   }
 
   // Hide immediately so there's no flash while we wait for the font.
   gsap.set(els, { opacity: 0 })
 
   const start = () => {
-    if (heroTl) return // font-ready and the safety net can race
+    if (heroTl) return // the loader reveal and the safety net can race
 
     // Both gates wait on the webfont, and Outfit changes the headline's
     // measured width — re-evaluate the scrub's function-based values (fill
@@ -320,53 +393,32 @@ onMounted(() => {
   }
   startEntrance = start
 
-  let introSeen = true
-  try { introSeen = !!sessionStorage.getItem(INTRO_FLAG) } catch { /* private mode — skip the loader */ }
+  // First visit this session: show the loader, hold scroll, and wait on
+  // fonts + the video's first frame — hard-capped so a slow CDN never blocks
+  // the page. The entrance starts from the loader's `reveal` event.
+  try { sessionStorage.setItem(INTRO_FLAG, '1') } catch { /* ignore */ }
+  // NB: the matching `data-intro-seen` attribute is stamped in
+  // `onLoaderHidden`, NOT here — the CSS rule keyed off it hides the loader,
+  // so setting it now would kill the intro a frame after hydration.
+  motion.lenis?.stop()
 
-  if (!introSeen) {
-    // Fresh load: show the loader, hold scroll, and wait on fonts + the
-    // video's first frame — hard-capped so a slow CDN never blocks the page.
-    // The entrance starts from the loader's `reveal` event.
-    try { sessionStorage.setItem(INTRO_FLAG, '1') } catch { /* ignore */ }
-    // NB: the matching `data-intro-seen` attribute is stamped in
-    // `onLoaderHidden`, NOT here — the CSS rule keyed off it hides the loader,
-    // so setting it now would kill the intro a frame after hydration.
-    motion.lenis?.stop()
-
-    const videoReady = new Promise<void>((resolve) => {
-      const v = videoEl.value
-      if (!v || v.readyState >= 2 || v.error) return resolve()
-      v.addEventListener('loadeddata', () => resolve(), { once: true })
-      v.addEventListener('error', () => resolve(), { once: true })
-    })
-    const fontsReady = document.fonts?.ready ?? Promise.resolve()
-    const cap = new Promise<void>((resolve) => { loaderCap = window.setTimeout(resolve, LOADER_CAP_MS) })
-    const minTime = new Promise<void>((resolve) => { loaderMin = window.setTimeout(resolve, LOADER_MIN_MS) })
-    Promise.all([Promise.race([Promise.all([videoReady, fontsReady]), cap]), minTime]).then(() => {
-      clearTimeout(loaderCap)
-      loaderDone.value = true
-    })
-  }
-  else {
-    // Repeat visit this session — no loader. CSS already hid the SSR'd overlay
-    // before paint, so dropping it here is invisible. Must run before the
-    // safety timer below, which sizes its window off `showLoader`.
-    showLoader.value = false
-    // Keep <html> in sync with sessionStorage: the pre-paint script only sees
-    // storage as it was at page load, so a later client-side nav back to `/`
-    // would otherwise remount the SSR-default overlay unhidden for a frame.
-    document.documentElement.setAttribute('data-intro-seen', '')
-    // Gate on fonts as before, with a fallback if fonts.ready stalls.
-    fontGate = window.setTimeout(start, 600)
-    document.fonts?.ready.then(() => {
-      clearTimeout(fontGate)
-      start()
-    }) ?? start()
-  }
+  const videoReady = new Promise<void>((resolve) => {
+    const v = videoEl.value
+    if (!v || v.readyState >= 2 || v.error) return resolve()
+    v.addEventListener('loadeddata', () => resolve(), { once: true })
+    v.addEventListener('error', () => resolve(), { once: true })
+  })
+  const fontsReady = document.fonts?.ready ?? Promise.resolve()
+  const cap = new Promise<void>((resolve) => { loaderCap = window.setTimeout(resolve, LOADER_CAP_MS) })
+  const minTime = new Promise<void>((resolve) => { loaderMin = window.setTimeout(resolve, LOADER_MIN_MS) })
+  Promise.all([Promise.race([Promise.all([videoReady, fontsReady]), cap]), minTime]).then(() => {
+    clearTimeout(loaderCap)
+    loaderDone.value = true
+  })
 
   // Background/throttled tabs never run rAF — force-finish whatever has started
   // so nothing is stranded hidden (or scroll-locked). If the gate never fired,
-  // reveal flat. Loader path gets a longer window (cap + fade + entrance).
+  // reveal flat. The window covers the loader hold + fade + entrance.
   safetyTimer = window.setTimeout(() => {
     motion.lenis?.start()
     if (!heroTl) {
@@ -374,7 +426,7 @@ onMounted(() => {
       return
     }
     if (heroTl.progress() < 1) heroTl.progress(1)
-  }, showLoader.value ? LOADER_MIN_MS + 4000 : 3500)
+  }, LOADER_MIN_MS + 4000)
 })
 
 // The loader's fade-out has begun — release scroll and play the entrance.
@@ -394,10 +446,11 @@ const onLoaderHidden = () => {
 
 onUnmounted(() => {
   clearTimeout(safetyTimer)
-  clearTimeout(fontGate)
   clearTimeout(loaderCap)
   clearTimeout(loaderMin)
   heroImmersive.value = false // never leave the layout header hidden
+  offLeave?.()
+  navFlight?.cancelLanding()
   motion.lenis?.start()
   dockSt?.kill()
   zoomTl?.scrollTrigger?.kill()
@@ -625,7 +678,11 @@ onUnmounted(() => {
    beats the Tailwind utility classes on the same elements). onMounted removes
    .hero-boot and the `.from()` tweens recreate this exact state inline in the
    same tick — no flash. Under reduced motion the class stays on the element
-   but this media query keeps it inert, so the plain card renders. */
+   but this media query keeps it inert, so the plain card renders.
+   Every boot rule is also gated on `html:not([data-intro-seen])`: once the
+   intro has played this session the pre-paint script in nuxt.config stamps
+   that attribute, so a reload paints the settled card straight from SSR
+   instead of flashing the fullscreen pose. */
 @media (prefers-reduced-motion: no-preference) {
   /* Constant stage height — pinned elements must never change layout height
      (ScrollTrigger freezes the box at pin time). Boot and settled state alike. */
@@ -641,24 +698,24 @@ onUnmounted(() => {
   .hero-marquee-wrap {
     margin-top: min(0px, calc(39rem - 100svh));
   }
-  .hero-boot.hero-shell {
+  html:not([data-intro-seen]) .hero-boot.hero-shell {
     padding-left: 0;
     padding-right: 0;
     padding-top: 0;
   }
-  .hero-boot .hero-card {
+  html:not([data-intro-seen]) .hero-boot .hero-card {
     height: 100svh;
     max-width: none;
     border-radius: 0;
   }
-  .hero-boot .hero-pill {
+  html:not([data-intro-seen]) .hero-boot .hero-pill {
     width: 12rem;
   }
-  .hero-boot .hero-pill-collapsed {
+  html:not([data-intro-seen]) .hero-boot .hero-pill-collapsed {
     opacity: 1;
     visibility: visible;
   }
-  .hero-boot .hero-pill-expanded {
+  html:not([data-intro-seen]) .hero-boot .hero-pill-expanded {
     opacity: 0;
     visibility: hidden;
   }
@@ -667,23 +724,23 @@ onUnmounted(() => {
      pre-hydration mirror of the scrub's from() values. Corner-origin scaling
      keeps the text anchored in place; the block's drop is a separate transform
      on the wrapper. svh to match the card's own height unit. */
-  .hero-boot .hero-content {
+  html:not([data-intro-seen]) .hero-boot .hero-content {
     transform: translateY(12svh);
   }
-  .hero-boot .hero-badge {
+  html:not([data-intro-seen]) .hero-boot .hero-badge {
     transform-origin: 0 0;
     transform: scale(1.15);
   }
-  .hero-boot .epoch-headline {
+  html:not([data-intro-seen]) .hero-boot .epoch-headline {
     transform-origin: 0 0;
     transform: scale(1.15);
   }
-  .hero-boot .hero-sub,
-  .hero-boot .hero-cta {
+  html:not([data-intro-seen]) .hero-boot .hero-sub,
+  html:not([data-intro-seen]) .hero-boot .hero-cta {
     opacity: 0;
     visibility: hidden;
   }
-  .hero-boot .hero-pill {
+  html:not([data-intro-seen]) .hero-boot .hero-pill {
     opacity: 0;
     visibility: hidden;
   }
@@ -706,10 +763,10 @@ onUnmounted(() => {
   }
   /* Static approximation of the scrub's width-filling headlineScale() for the
      pre-hydration paint (phones stay at the base 1.15 so the lines fit). */
-  .hero-boot .epoch-headline {
+  html:not([data-intro-seen]) .hero-boot .epoch-headline {
     transform: scale(1.9);
   }
-  .hero-boot .hero-content {
+  html:not([data-intro-seen]) .hero-boot .hero-content {
     transform: translateY(22svh);
   }
 }

@@ -16,28 +16,46 @@ class PublicBlogTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_list_returns_published_posts_newest_first_with_categories(): void
+    public function test_list_returns_published_posts_newest_first_with_format_and_topic_sets(): void
     {
-        $old = BlogPost::factory()->published('2026-08-01 09:00:00')->create(['category' => 'Systems']);
-        $new = BlogPost::factory()->published('2026-09-01 09:00:00')->create(['category' => 'UI/UX']);
-        BlogPost::factory()->create(['category' => 'Systems']); // draft — hidden
+        $old = BlogPost::factory()->published('2026-08-01 09:00:00')->create(['category' => 'Systems', 'format' => 'guide', 'tags' => ['Websites', 'AI']]);
+        $new = BlogPost::factory()->published('2026-09-01 09:00:00')->create(['category' => 'UI/UX', 'format' => 'article', 'tags' => ['ai']]);
+        BlogPost::factory()->create(['category' => 'Systems', 'format' => 'news']); // draft — hidden
 
         $res = $this->getJson('/api/v1/blog/posts')->assertOk();
 
         $this->assertSame([$new->slug, $old->slug], array_column($res->json('data'), 'slug'));
         $this->assertArrayNotHasKey('sections', $res->json('data.0'));
-        $this->assertSame([['name' => 'Systems', 'count' => 1], ['name' => 'UI/UX', 'count' => 1]], $res->json('categories'));
         $this->assertSame(2, $res->json('meta.total'));
+        // Formats present among published posts, most used first then alphabetical.
+        $this->assertSame([['value' => 'article', 'count' => 1], ['value' => 'guide', 'count' => 1]], $res->json('formats'));
+        // Topics = category ∪ tags, de-duplicated case-insensitively, most used first then alphabetical.
+        $this->assertSame([
+            ['name' => 'AI', 'count' => 2],
+            ['name' => 'Systems', 'count' => 1],
+            ['name' => 'UI/UX', 'count' => 1],
+            ['name' => 'Websites', 'count' => 1],
+        ], $res->json('topics'));
     }
 
-    public function test_list_filters_by_category(): void
+    public function test_list_filters_by_format_and_by_topic(): void
     {
-        BlogPost::factory()->published()->create(['category' => 'Systems']);
-        $ux = BlogPost::factory()->published()->create(['category' => 'UI/UX']);
+        $guide = BlogPost::factory()->published()->create(['format' => 'guide', 'category' => 'Systems', 'tags' => ['Websites']]);
+        $article = BlogPost::factory()->published()->create(['format' => 'article', 'category' => 'UI/UX', 'tags' => ['ai']]);
 
-        $res = $this->getJson('/api/v1/blog/posts?category=UI%2FUX')->assertOk();
+        $res = $this->getJson('/api/v1/blog/posts?format=guide')->assertOk();
+        $this->assertSame([$guide->slug], array_column($res->json('data'), 'slug'));
 
-        $this->assertSame([$ux->slug], array_column($res->json('data'), 'slug'));
+        // A topic matches the category OR a tag, case-insensitively.
+        $res = $this->getJson('/api/v1/blog/posts?topic=websites')->assertOk();
+        $this->assertSame([$guide->slug], array_column($res->json('data'), 'slug'));
+        $res = $this->getJson('/api/v1/blog/posts?topic=UI%2FUX')->assertOk();
+        $this->assertSame([$article->slug], array_column($res->json('data'), 'slug'));
+        $res = $this->getJson('/api/v1/blog/posts?topic=AI&format=guide')->assertOk();
+        $this->assertSame([], $res->json('data'));
+
+        // An unknown format is a validation error, not an empty page.
+        $this->getJson('/api/v1/blog/posts?format=poem')->assertUnprocessable();
     }
 
     public function test_show_returns_rendered_sections_toc_and_related(): void

@@ -158,7 +158,9 @@ export default defineNuxtConfig({
       // first and then slams over it. This runs before paint (same trick as the
       // `.dark` class) and stamps the cases that must NEVER see a loader:
       // repeat visits this session, and reduced motion. `main.css` hides
-      // `.hero-loader` on that attribute. Private mode throws on
+      // `.hero-loader` on that attribute, and HeroEpoch's fullscreen
+      // `.hero-boot` pose is gated on it too, so a same-session reload paints
+      // the settled home view. Private mode throws on
       // sessionStorage — treat that as "seen", matching HeroEpoch's default.
       script: [
         {

@@ -16,21 +16,9 @@ const cta = computed(() => ({
   label: props.post.cta_label || blogCtaDefaults.label,
   url: props.post.cta_url || blogCtaDefaults.url,
 }))
-// The left pane: section links from two sections up, plus the post's topics
-// (category first, then tags, de-duplicated) in the reference's dash style.
+// The left pane: section links, from two sections up. Shorter posts read
+// fine without one.
 const showToc = computed(() => props.post.toc.length >= 2)
-const topics = computed(() => {
-  const seen = new Set<string>()
-  return [props.post.category, ...props.post.tags]
-    .filter((t): t is string => !!t && t.trim() !== '')
-    .filter((t) => {
-      const key = t.trim().toLowerCase()
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-})
-const showPane = computed(() => showToc.value || topics.value.length > 0)
 // "Updated …" only when the post was edited on a later day than it was published.
 const updatedLabel = computed(() => {
   if (!props.post.updated_at || !props.post.published_at) return ''
@@ -61,8 +49,8 @@ async function copyLink() {
     Two-track grid on lg+: [pane 220px] [text column ≤ 78ch], left-aligned in
     the page container (max-w-6xl). The header spans BOTH tracks so a long
     title gets the full width; the cover spans both too. From the first
-    section down, the LEFT track holds the sticky pane (section links +
-    topics) and the RIGHT track the text, CTA and share row — the reference
+    section down, the LEFT track holds the sticky section links and the RIGHT
+    track the text, CTA and share row — the reference
     layout. Below lg everything stacks in one column with the pane inline
     above the first section.
   -->
@@ -89,36 +77,18 @@ async function copyLink() {
       <img :src="post.cover_image_url" :alt="post.cover_image_alt ?? post.title" class="w-full aspect-[16/9] object-cover">
     </figure>
 
-    <!-- Left pane (lg+): section links + topics, sticky -->
-    <aside v-if="showPane" class="hidden lg:block lg:col-start-1">
-      <div class="sticky top-28 space-y-8 border-t pt-5" :style="{ borderColor: 'var(--color-border)' }">
-        <PublicBlogToc v-if="showToc" :items="post.toc" />
-        <div v-if="topics.length">
-          <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" :style="{ color: 'var(--color-text-tertiary)' }">Topics</p>
-          <ul class="space-y-2">
-            <li v-for="t in topics" :key="t" class="text-[13px] leading-snug flex items-baseline gap-2" :style="{ color: 'var(--color-text-secondary)' }">
-              <span aria-hidden="true" :style="{ color: 'var(--color-accent)' }">—</span>{{ t }}
-            </li>
-          </ul>
-        </div>
+    <!-- Left pane (lg+): section links, sticky -->
+    <aside v-if="showToc" class="hidden lg:block lg:col-start-1">
+      <div class="sticky top-28">
+        <PublicBlogToc :items="post.toc" />
       </div>
     </aside>
     <div v-else class="hidden lg:block lg:col-start-1" />
 
     <!-- Body -->
     <div class="max-w-[78ch] lg:col-start-2 min-w-0">
-      <!-- Inline pane (below lg) -->
-      <div v-if="showPane" class="lg:hidden mb-10 rounded-2xl border p-5 space-y-6" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
-        <PublicBlogToc v-if="showToc" :items="post.toc" />
-        <div v-if="topics.length">
-          <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" :style="{ color: 'var(--color-text-tertiary)' }">Topics</p>
-          <ul class="flex flex-wrap gap-x-4 gap-y-1">
-            <li v-for="t in topics" :key="t" class="text-[13px] flex items-baseline gap-1.5" :style="{ color: 'var(--color-text-secondary)' }">
-              <span aria-hidden="true" :style="{ color: 'var(--color-accent)' }">—</span>{{ t }}
-            </li>
-          </ul>
-        </div>
-      </div>
+      <!-- Inline section links (below lg) -->
+      <PublicBlogToc v-if="showToc" :items="post.toc" class="lg:hidden mb-10 rounded-2xl border p-5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }" />
 
       <!-- Sections -->
       <section v-for="s in post.sections" :key="s.id" class="mb-12">

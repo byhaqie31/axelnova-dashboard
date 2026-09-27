@@ -1,15 +1,16 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'public' })
-
 import type { ComponentPublicInstance } from 'vue'
 import type { Project } from '~/data/projects'
 import HeroEpoch from '~/components/public/HeroEpoch.vue'
 import FeaturedMockups from '~/components/public/FeaturedMockups.vue'
 import ReferralBand from '~/components/public/ReferralBand.vue'
 import TestimonialWall from '~/components/public/TestimonialWall.vue'
+import BlogLatest from '~/components/public/BlogLatest.vue'
 import FeaturedProjectsCarousel from '~/components/shared/FeaturedProjectsCarousel.vue'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import { MOTION } from '~/utils/motion'
+
+definePageMeta({ layout: 'public' })
 
 const siteUrl = 'https://axelnovaventures.com'
 const ogImage = `${siteUrl}/og-image.jpg`
@@ -190,6 +191,9 @@ useScrollReveal('.reveal')
 
       <FeaturedMockups class="reveal" />
     </section>
+
+    <!-- LATEST BLOG POSTS — renders nothing until a post is published. -->
+    <BlogLatest />
 
     <!-- PARTNER REFERRAL SHORTCUT — the inverse pitch of the closing band. -->
     <ReferralBand />
