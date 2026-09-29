@@ -26,9 +26,9 @@ defineProps<{ post: BlogPostCard }>()
       </div>
     </div>
     <div class="p-5">
-      <p class="text-[12px] mb-2" :style="{ color: 'var(--color-text-tertiary)' }">
-        <span class="font-semibold uppercase tracking-widest text-[10px]" :style="{ color: 'var(--color-accent)' }">{{ blogFormatLabel(post.format) }}</span>
-        · {{ fmtBlogDate(post.published_at) }} · {{ post.reading_minutes }} min read
+      <p class="text-[12px] mb-3 flex flex-wrap items-center gap-x-2 gap-y-1" :style="{ color: 'var(--color-text-tertiary)' }">
+        <span class="blog-format-pill text-[10px]">{{ blogFormatLabel(post.format) }}</span>
+        <span>{{ fmtBlogDate(post.published_at) }} · {{ post.reading_minutes }} min read</span>
       </p>
       <h3 class="text-[18px] font-semibold tracking-tight leading-snug mb-2" :style="{ color: 'var(--color-text)' }">{{ post.title }}</h3>
       <p class="text-[14px] leading-relaxed line-clamp-3" :style="{ color: 'var(--color-text-secondary)' }">{{ post.excerpt }}</p>

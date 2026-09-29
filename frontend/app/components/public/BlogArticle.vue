@@ -60,8 +60,8 @@ async function copyLink() {
   <article class="lg:grid lg:grid-cols-[220px_minmax(0,78ch)] lg:gap-x-12">
     <!-- Header -->
     <header class="lg:col-span-2 min-w-0">
-      <p class="text-[12px] tracking-wide flex flex-wrap items-baseline gap-x-2" :style="{ color: 'var(--color-text-tertiary)' }">
-        <span class="font-semibold uppercase tracking-widest text-[11px]" :style="{ color: 'var(--color-accent)' }">{{ blogFormatLabel(post.format) }}</span>
+      <p class="text-[12px] tracking-wide flex flex-wrap items-center gap-x-3 gap-y-1" :style="{ color: 'var(--color-text-tertiary)' }">
+        <span class="blog-format-pill text-[11px]">{{ blogFormatLabel(post.format) }}</span>
         <span>{{ fmtBlogDate(post.published_at) }} · {{ post.reading_minutes }} min read</span>
       </p>
       <h1 class="text-4xl md:text-5xl font-semibold tracking-tighter leading-[1.08] mt-3 mb-5" :style="{ color: 'var(--color-text)' }">{{ post.title }}</h1>
