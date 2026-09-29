@@ -26,6 +26,18 @@ const { data: shellRes, error: shellError } = await useFetch<{ data: Shell }>(
 const shell = computed(() => shellRes.value?.data ?? null)
 const notFound = computed(() => !!shellError.value)
 
+// The link preview a client sees when this URL is pasted into WhatsApp/email.
+// Project name only — never the client's name (docs/frontend/OG-IMAGES.md).
+const previewProject = shell.value?.project_label ?? ''
+const previewHeadline = previewProject ? `How did we do on ${previewProject}?` : 'How did we do?'
+useSeoMeta({
+  ogTitle: 'Share your feedback — Axel Nova Ventures',
+  ogDescription: `${previewHeadline} Two minutes, five questions.`,
+  twitterTitle: 'Share your feedback — Axel Nova Ventures',
+  twitterDescription: `${previewHeadline} Two minutes, five questions.`,
+})
+defineOgImage('FeedbackCard', { project: previewProject }, { alt: previewHeadline })
+
 const alreadySubmitted = ref(false)
 watchEffect(() => {
   if (shell.value?.already_submitted) alreadySubmitted.value = true

@@ -4,7 +4,6 @@ definePageMeta({ layout: 'public' })
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 const siteUrl = 'https://axelnovaventures.com'
-const ogImage = `${siteUrl}/og-image.jpg`
 const seoTitle = 'Refer a Business | Axel Nova Partner Program'
 const seoDescription = 'Introduce a business that needs a website or custom system. Learn how the Axel Nova Partner Program works and when a referral earns a commission.'
 
@@ -13,16 +12,18 @@ useSeoMeta({
   description: seoDescription,
   ogTitle: seoTitle,
   ogDescription: seoDescription,
-  ogImage,
-  ogImageWidth: 1200,
-  ogImageHeight: 630,
-  ogImageAlt: 'Axel Nova Ventures — Crafted by design. Built to last.',
   ogUrl: `${siteUrl}/partners`,
   twitterTitle: seoTitle,
   twitterDescription: seoDescription,
-  twitterImage: ogImage,
   twitterCard: 'summary_large_image',
 })
+
+// Generated link-preview card (docs/frontend/OG-IMAGES.md).
+defineOgImage('SiteCard', {
+  label: 'PARTNER PROGRAMME',
+  headline: 'Refer a business. Earn a commission.',
+  footer: ogFooter('/partners'),
+}, { alt: 'Refer a business. Earn a commission.' })
 
 useHead({
   link: [{ rel: 'canonical', href: `${siteUrl}/partners` }],

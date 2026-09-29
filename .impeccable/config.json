@@ -1,0 +1,44 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/94362-1790675499/content/card-layouts.html"
+        ],
+        "createdAt": "2026-09-29T10:05:53.046Z",
+        "reason": "claude: throwaway brainstorm mockup drawn at 50% scale of a 1200x630 OG image (10px here = 20px real); gitignored, never shipped"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/94362-1790675499/content/card-layouts.html"
+        ],
+        "createdAt": "2026-09-29T10:05:53.063Z",
+        "reason": "claude: throwaway brainstorm mockup drawn at 50% scale of a 1200x630 OG image (10px here = 20px real); gitignored, never shipped"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "frontend/app/components/OgImage/SiteCard.takumi.vue"
+        ],
+        "createdAt": "2026-09-29T10:31:14.528Z",
+        "reason": "claude: Inter is the site's documented body face (docs/frontend/UI-STANDARDS.md §3); OG cards must match the site"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "frontend/app/components/OgImage/FeedbackCard.takumi.vue"
+        ],
+        "createdAt": "2026-09-29T10:31:14.550Z",
+        "reason": "claude: Inter is the site's documented body face (docs/frontend/UI-STANDARDS.md §3); OG cards must match the site"
+      }
+    ]
+  }
+}

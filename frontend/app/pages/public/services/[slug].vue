@@ -228,7 +228,6 @@ const route = useRoute()
 const slug = computed(() => String(route.params.slug))
 
 const siteUrl = 'https://axelnovaventures.com'
-const ogImage = `${siteUrl}/og-image.jpg`
 
 const { data: apiResponse } = await useFetch<{ data: ApiCategory[] }>(
   `${useApiBase()}/api/v1/services`,
@@ -252,14 +251,8 @@ const seoTitle = computed(
 )
 // Admin-written category descriptions can run past the ~155 characters search
 // results show, so the fallback is clipped at a word boundary.
-const clip = (s: string, max = 155) => {
-  const flat = s.replace(/\s+/g, ' ').trim()
-  if (flat.length <= max) return flat
-  const cut = flat.slice(0, max - 1)
-  return `${cut.slice(0, cut.lastIndexOf(' ') > 0 ? cut.lastIndexOf(' ') : cut.length).replace(/[,;:.\s]+$/, '')}…`
-}
 const seoDescription = computed(
-  () => enrichment.value.seoDescription ?? clip(category.value!.description),
+  () => enrichment.value.seoDescription ?? clipText(category.value!.description, 155),
 )
 
 useSeoMeta({
@@ -267,16 +260,19 @@ useSeoMeta({
   description: seoDescription,
   ogTitle: seoTitle,
   ogDescription: seoDescription,
-  ogImage,
-  ogImageWidth: 1200,
-  ogImageHeight: 630,
-  ogImageAlt: 'Axel Nova Ventures — Crafted by design. Built to last.',
   ogUrl: pageUrl,
   twitterTitle: seoTitle,
   twitterDescription: seoDescription,
-  twitterImage: ogImage,
   twitterCard: 'summary_large_image',
 })
+
+// Generated link-preview card (docs/frontend/OG-IMAGES.md).
+defineOgImage('SiteCard', {
+  label: 'SERVICES',
+  headline: category.value.name,
+  subline: clipText(category.value.description, 90),
+  footer: ogFooter(`/services/${slug.value}`),
+}, { alt: category.value.name })
 
 // Category-specific FAQs first (more relevant), then the universal set.
 const allFaqs = computed<FAQ[]>(() => [

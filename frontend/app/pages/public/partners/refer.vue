@@ -18,6 +18,13 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
+// Generated link-preview card (docs/frontend/OG-IMAGES.md).
+defineOgImage('SiteCard', {
+  label: 'PARTNER PROGRAMME',
+  headline: 'Refer a business.',
+  footer: ogFooter('/partners/refer'),
+}, { alt: 'Refer a business.' })
+
 useHead({
   link: [{ rel: 'canonical', href: `${siteUrl}/partners/refer` }],
 })

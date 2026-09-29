@@ -26,8 +26,9 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     '@nuxt/ui',
     '@vueuse/nuxt',
-    '@nuxtjs/google-fonts',
+    '@nuxt/fonts',
     '@nuxtjs/sitemap',
+    'nuxt-og-image',
   ],
 
   site: {
@@ -77,13 +78,25 @@ export default defineNuxtConfig({
     },
   },
 
-  googleFonts: {
-    families: {
-      'Inter': [400, 500, 600, 700, 800], // body face
-      'Outfit': [400, 500, 600],          // display face (hero headline)
-    },
-    display: 'swap',
-    download: true,
+  // Self-hosted Google fonts (downloaded at build, served from /_fonts).
+  // `global: true` registers the @font-face rules everywhere — the OG image
+  // renderer only sees fonts declared this way (see docs/frontend/OG-IMAGES.md).
+  fonts: {
+    families: [
+      { name: 'Inter', weights: [400, 500, 600, 700, 800], global: true },  // body face
+      { name: 'Outfit', weights: [400, 500, 600], global: true },           // display face (hero headline)
+      // Apple system faces in the --font-* fallback stacks: never download.
+      { name: 'SF Pro Display', provider: 'none' },
+      { name: 'SF Pro Text', provider: 'none' },
+    ],
+    defaults: { styles: ['normal'], subsets: ['latin'] },
+  },
+
+  // Generated link-preview cards (components/OgImage/*.takumi.vue), rendered
+  // on first request and cached. NUXT_OG_IMAGE_SECRET must be set in
+  // production so signed image URLs survive rebuilds.
+  ogImage: {
+    defaults: { width: 1200, height: 630 },
   },
 
   hooks: {

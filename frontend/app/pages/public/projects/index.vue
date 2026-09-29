@@ -5,6 +5,11 @@ usePublicSeo({
   title: 'Websites & Digital Projects | Axel Nova Ventures',
   description: 'See websites, portals and digital products designed and built by Axel Nova Ventures in Kuala Lumpur. Explore selected live work and project details.',
   path: '/projects',
+  card: {
+    label: 'WORK',
+    headline: 'Selected work and products.',
+    subline: 'Live client work, products and experiments.',
+  },
 })
 
 import { onClickOutside } from '@vueuse/core'

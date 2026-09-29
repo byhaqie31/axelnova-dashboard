@@ -128,8 +128,8 @@ Larger component families get their own prefixed token group in `main.css` (ligh
 
 ## 3. Typography
 
-- **Body family:** Inter (fallback: SF Pro Display, system sans). Loaded via `@nuxtjs/google-fonts` with `display: swap`.
-- **Display family:** Outfit (`--font-display`, weights 400/500/600), used on signature headlines via the `.font-display` class — it sets the family only, so weight/tracking come from utilities (e.g. the hero headline is `font-display font-medium tracking-tight`). Falls back to Inter so headings never flash in a system face. Also downloaded via `@nuxtjs/google-fonts`.
+- **Body family:** Inter (fallback: SF Pro Display, system sans). Self-hosted via `@nuxt/fonts` (`fonts.families` in `nuxt.config.ts`, `global: true`, `display: swap`). `global` is required: the OG image renderer only sees fonts declared that way ([OG-IMAGES.md](./OG-IMAGES.md)).
+- **Display family:** Outfit (`--font-display`, weights 400/500/600), used on signature headlines via the `.font-display` class — it sets the family only, so weight/tracking come from utilities (e.g. the hero headline is `font-display font-medium tracking-tight`). Falls back to Inter so headings never flash in a system face. Also self-hosted via `@nuxt/fonts`.
 - **Feature settings:** `cv11`, `ss01`. Body letter-spacing `-0.011em`.
 - **Headings:** weight `600`, letter-spacing `-0.022em`, line-height `1.08`. `h1` tightens to `-0.045em`.
 

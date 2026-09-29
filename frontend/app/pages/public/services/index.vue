@@ -5,6 +5,11 @@ usePublicSeo({
   title: 'Web Design & Development Services in Malaysia | Axel Nova',
   description: 'Explore website design, booking portals and custom business systems for Malaysian businesses. See packages in RM and get a project estimate online.',
   path: '/services',
+  card: {
+    label: 'SERVICES',
+    headline: 'Web design and development, with clear pricing.',
+    subline: 'Packages in ringgit. Estimate in minutes.',
+  },
 })
 
 import { useApiBase } from '~/composables/useApiBase'

@@ -5,6 +5,10 @@ usePublicSeo({
   title: 'About Our Digital Studio in Kuala Lumpur | Axel Nova',
   description: 'Learn how Axel Nova Ventures approaches website design and custom business systems in Kuala Lumpur, from the first conversation to launch.',
   path: '/company',
+  card: {
+    label: 'THE STUDIO',
+    headline: 'A digital studio built around how people use technology.',
+  },
 })
 
 const stats = [
