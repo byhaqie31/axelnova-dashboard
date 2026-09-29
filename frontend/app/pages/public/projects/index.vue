@@ -2,8 +2,8 @@
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
-  title: 'Projects — Axel Nova Ventures',
-  description: 'Selected work by Axel Nova Ventures — immersive websites, SaaS platforms, and bespoke digital products designed and engineered end to end.',
+  title: 'Web Development Portfolio | Axel Nova Ventures, Malaysia',
+  description: 'Websites, web apps and business systems designed and built by Axel Nova Ventures in Kuala Lumpur. See the live projects and the stack behind each.',
   path: '/projects',
 })
 
@@ -86,6 +86,7 @@ useScrollReveal('.reveal')
 <template>
   <div class="max-w-7xl mx-auto px-6 pt-20 pb-24">
     <SectionHeader
+      as="h1"
       eyebrow="Project registry"
       title="Everything I'm building."
       subtitle="A growing index of shipped products, ongoing builds, and experiments. Filter by stack or status."

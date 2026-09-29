@@ -53,9 +53,10 @@ async function copyLink() {
     the page container (max-w-6xl). The header spans BOTH tracks so a long
     title gets the full width; the cover spans both too. From the first
     section down, the LEFT track holds the sticky section links and the RIGHT
-    track the text, CTA and share row — the reference
-    layout. Below lg everything stacks in one column with the pane inline
-    above the first section.
+    track the text, closed by a rule + the share row. The closing CTA card and
+    related posts span both tracks below (so the sticky pane stops at the share
+    row). Below lg everything stacks in one column with the pane inline above
+    the first section.
   -->
   <article class="lg:grid lg:grid-cols-[220px_minmax(0,78ch)] lg:gap-x-12">
     <!-- Header -->
@@ -108,18 +109,8 @@ async function copyLink() {
         </blockquote>
       </section>
 
-      <!-- Closing CTA -->
-      <aside v-if="cta.heading" class="rounded-3xl border p-7 mt-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
-        <h2 class="text-[22px] font-semibold tracking-tight mb-2" :style="{ color: 'var(--color-text)' }">{{ cta.heading }}</h2>
-        <p class="text-[15px] leading-relaxed mb-5" :style="{ color: 'var(--color-text-secondary)' }">{{ cta.body }}</p>
-        <NuxtLink v-if="!preview" :to="cta.url" class="btn-pill btn-pill-accent text-[13px] inline-flex items-center gap-2">
-          {{ cta.label }} <UIcon name="i-lucide-arrow-right" class="size-4" />
-        </NuxtLink>
-        <span v-else class="btn-pill btn-pill-accent text-[13px] inline-flex items-center gap-2">{{ cta.label }} <UIcon name="i-lucide-arrow-right" class="size-4" /></span>
-      </aside>
-
-      <!-- Share -->
-      <div v-if="!preview" class="flex flex-wrap items-center gap-2 mt-8">
+      <!-- Share — closes the text column, below a rule -->
+      <div v-if="!preview" class="flex flex-wrap items-center gap-2 border-t pt-6" :style="{ borderColor: 'var(--color-border)' }">
         <span class="text-[12px] mr-1" :style="{ color: 'var(--color-text-tertiary)' }">Share</span>
         <a v-for="l in shareLinks" :key="l.label" :href="l.href" target="_blank" rel="noopener" class="btn-table-action">
           <UIcon :name="l.icon" class="size-3.5" />{{ l.label }}
@@ -129,6 +120,23 @@ async function copyLink() {
         </button>
       </div>
     </div>
+
+    <!-- Closing CTA — full width under the pane + text; copy left, button right from md -->
+    <aside
+      v-if="cta.heading"
+      class="lg:col-span-2 rounded-3xl border p-7 md:p-9 md:flex md:items-center md:justify-between md:gap-10"
+      :class="preview ? '' : 'mt-12'"
+      :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }"
+    >
+      <div class="min-w-0 max-w-[62ch]">
+        <h2 class="text-[22px] font-semibold tracking-tight mb-2" :style="{ color: 'var(--color-text)' }">{{ cta.heading }}</h2>
+        <p class="text-[15px] leading-relaxed mb-5 md:mb-0" :style="{ color: 'var(--color-text-secondary)' }">{{ cta.body }}</p>
+      </div>
+      <NuxtLink v-if="!preview" :to="cta.url" class="btn-pill btn-pill-accent text-[13px] inline-flex items-center gap-2 shrink-0">
+        {{ cta.label }} <UIcon name="i-lucide-arrow-right" class="size-4" />
+      </NuxtLink>
+      <span v-else class="btn-pill btn-pill-accent text-[13px] inline-flex items-center gap-2 shrink-0">{{ cta.label }} <UIcon name="i-lucide-arrow-right" class="size-4" /></span>
+    </aside>
 
     <!-- Related -->
     <section v-if="!preview && post.related.length" class="w-full mt-20 lg:col-span-2">

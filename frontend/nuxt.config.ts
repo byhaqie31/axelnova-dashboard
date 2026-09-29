@@ -36,7 +36,8 @@ export default defineNuxtConfig({
   },
 
   sitemap: {
-    // Published blog posts come from the backend (server/api/__sitemap__/urls.ts).
+    // Published blog posts, admin-managed service categories and projects come
+    // from the backend (server/api/__sitemap__/urls.ts).
     sources: ['/api/__sitemap__/urls'],
     exclude: [
       '/admin/**',
@@ -45,6 +46,19 @@ export default defineNuxtConfig({
       '/feedback/**',
       '/quote/success',
       '/investor/**',
+      // Signed-in workspaces — noindex pages, so listing them only earns
+      // "Submitted URL marked noindex" errors in Search Console. The public
+      // /partners landing page and /partners/refer stay in.
+      '/team',
+      '/team/**',
+      '/partners/login',
+      '/partners/forgot',
+      '/partners/home',
+      '/partners/profile',
+      '/partners/documents',
+      '/partners/earnings',
+      '/partners/referrals',
+      '/partners/reports',
     ],
   },
 
@@ -137,17 +151,17 @@ export default defineNuxtConfig({
       // shared description for rankings). Keep this in sync with the studio
       // positioning, and note the OG image is og-image.jpg (no .png exists).
       meta: [
-        { name: 'description', content: 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.' },
+        { name: 'description', content: 'Axel Nova Ventures is a digital studio in Kuala Lumpur that designs and builds websites, booking portals and custom business systems for Malaysian SMEs.' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { property: 'og:title', content: 'Axel Nova Ventures' },
-        { property: 'og:description', content: 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.' },
+        { property: 'og:description', content: 'Axel Nova Ventures is a digital studio in Kuala Lumpur that designs and builds websites, booking portals and custom business systems for Malaysian SMEs.' },
         { property: 'og:type', content: 'website' },
         { property: 'og:site_name', content: 'Axel Nova Ventures' },
-        { property: 'og:locale', content: 'en_US' },
+        { property: 'og:locale', content: 'en_MY' },
         { property: 'og:image', content: 'https://axelnovaventures.com/og-image.jpg' },
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'Axel Nova Ventures' },
-        { name: 'twitter:description', content: 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.' },
+        { name: 'twitter:description', content: 'Axel Nova Ventures is a digital studio in Kuala Lumpur that designs and builds websites, booking portals and custom business systems for Malaysian SMEs.' },
         { name: 'twitter:image', content: 'https://axelnovaventures.com/og-image.jpg' },
       ],
       link: [

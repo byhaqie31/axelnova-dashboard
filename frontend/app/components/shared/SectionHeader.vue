@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { MOTION } from '~/utils/motion'
 
-defineProps<{
+withDefaults(defineProps<{
   eyebrow?: string
   title: string
   subtitle?: string
   action?: { label: string, to: string, target?: '_blank' }
-}>()
+  /** 'h1' when this is the page's main heading (one per page, for SEO). Looks identical either way. */
+  as?: 'h1' | 'h2'
+  /** Let the title run the full container width (the subtitle keeps a readable measure). */
+  wide?: boolean
+}>(), { eyebrow: undefined, subtitle: undefined, action: undefined, as: 'h2', wide: false })
 
 const ruleEl = ref<HTMLElement | null>(null)
 const motion = useMotion()
@@ -38,22 +42,26 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-12">
-    <div class="max-w-2xl">
+    <div :class="wide ? 'min-w-0' : 'max-w-2xl'">
       <p v-if="eyebrow" class="eyebrow mb-3 flex items-center gap-3">
         <span ref="ruleEl" class="section-rule" aria-hidden />
         {{ eyebrow }}
       </p>
-      <h2
+      <!-- letter-spacing is pinned inline: main.css's unlayered `h1 {}` rule
+           (-0.045em) would otherwise make a page-title h1 tighter than the h2. -->
+      <component
+        :is="as"
         class="text-4xl md:text-5xl font-semibold tracking-tight"
-        style="color: var(--color-text);"
+        style="color: var(--color-text); letter-spacing: -0.022em;"
       >
         {{ title }}
-      </h2>
+      </component>
       <!-- Slot variant for callers whose subtitle differs by viewport
            (e.g. "hover a card" on desktop vs "swipe left" on touch). -->
       <p
         v-if="subtitle || $slots.subtitle"
         class="mt-4 text-[17px] leading-relaxed"
+        :class="wide && 'max-w-3xl'"
         style="color: var(--color-text-secondary);"
       >
         <slot name="subtitle">{{ subtitle }}</slot>

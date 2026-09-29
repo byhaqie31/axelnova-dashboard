@@ -2,8 +2,8 @@
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
-  title: 'Services & Packages — Axel Nova Ventures',
-  description: 'Web design and development services by Axel Nova Ventures — from landing pages to full SaaS builds, with transparent packages and instant online estimates.',
+  title: 'Web Design & Development Services in Malaysia | Axel Nova',
+  description: 'Web design and development for Malaysian businesses, from a one-page site to a full custom system. Clear packages in RM and an instant online estimate.',
   path: '/services',
 })
 
@@ -257,9 +257,11 @@ useScrollReveal('.reveal')
 
     <!-- ── Pricing ───────────────────────────────────────────────────────────── -->
     <SectionHeader
+      as="h1"
+      wide
       eyebrow="Services"
-      title="Choose your engagement."
-      subtitle="A range of service tracks, from a landing page to a full product build. Priced transparently, delivered precisely."
+      title="Web design and development, with clear pricing."
+      subtitle="From a focused landing page to a custom business system, we design and build digital experiences for businesses across Malaysia. Explore our services, view packages in ringgit, and get an estimate in minutes."
     />
 
     <!-- Category tabs -->

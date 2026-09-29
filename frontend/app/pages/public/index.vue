@@ -14,8 +14,10 @@ definePageMeta({ layout: 'public' })
 
 const siteUrl = 'https://axelnovaventures.com'
 const ogImage = `${siteUrl}/og-image.jpg`
-const seoTitle = 'Axel Nova Ventures — Design & Engineering Studio'
-const seoDescription = 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.'
+// Front-loads what the studio does and where ("web development", "Kuala
+// Lumpur", "Malaysia") — the searches this page should rank for.
+const seoTitle = 'Web Development Studio in Kuala Lumpur | Axel Nova Ventures'
+const seoDescription = 'Axel Nova Ventures is a digital studio in Kuala Lumpur that designs and builds websites, booking portals and custom business systems for Malaysian SMEs.'
 
 useSeoMeta({
   title: seoTitle,
@@ -38,27 +40,50 @@ useHead({
   script: [
     {
       type: 'application/ld+json',
+      // ProfessionalService (a LocalBusiness subtype) rather than a bare
+      // Organization, so search engines read a local web studio serving
+      // Malaysia. Keep name / locality / phone identical to the Google
+      // Business Profile — mismatches weaken the local signal.
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
-        '@type': 'Organization',
-        name: 'Axel Nova Ventures',
-        url: siteUrl,
-        logo: `${siteUrl}/axel_nova_logo.png`,
-        description: seoDescription,
-        foundingDate: '2026',
-        founder: {
-          '@type': 'Person',
-          name: 'Ahmad Baihaqie',
-          jobTitle: 'Founder & Software Engineer',
-        },
-        address: {
-          '@type': 'PostalAddress',
-          addressLocality: 'Kuala Lumpur',
-          addressCountry: 'MY',
-        },
-        sameAs: [
-          'https://github.com/byhaqie31',
-          'https://linkedin.com/in/byhaqieyusri',
+        '@graph': [
+          {
+            '@type': 'ProfessionalService',
+            '@id': `${siteUrl}/#business`,
+            name: 'Axel Nova Ventures',
+            url: siteUrl,
+            logo: `${siteUrl}/axel_nova_logo.png`,
+            image: ogImage,
+            description: seoDescription,
+            telephone: '+60183173103',
+            email: 'baihaqie@axelnova.tech',
+            foundingDate: '2026',
+            founder: {
+              '@type': 'Person',
+              name: 'Ahmad Baihaqie',
+              jobTitle: 'Founder & Software Engineer',
+              url: `${siteUrl}/about`,
+            },
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: 'Kuala Lumpur',
+              addressCountry: 'MY',
+            },
+            areaServed: { '@type': 'Country', name: 'Malaysia' },
+            knowsAbout: ['Web development', 'Website design', 'UI/UX design', 'Custom business systems', 'Booking systems', 'E-commerce'],
+            sameAs: [
+              'https://github.com/byhaqie31',
+              'https://linkedin.com/in/byhaqieyusri',
+            ],
+          },
+          {
+            '@type': 'WebSite',
+            '@id': `${siteUrl}/#website`,
+            name: 'Axel Nova Ventures',
+            url: siteUrl,
+            inLanguage: 'en-MY',
+            publisher: { '@id': `${siteUrl}/#business` },
+          },
         ],
       }),
     },

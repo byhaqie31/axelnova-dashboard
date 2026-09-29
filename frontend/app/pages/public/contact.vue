@@ -2,8 +2,8 @@
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
-  title: 'Contact — Axel Nova Ventures',
-  description: 'Start a project with Axel Nova Ventures. Tell us about your website, SaaS platform, or product idea — every inquiry gets a personal reply.',
+  title: 'Contact a Web Developer in Kuala Lumpur | Axel Nova Ventures',
+  description: 'Planning a website or custom system? Tell me about it. Based in Kuala Lumpur, working with businesses across Malaysia. Replies within one working day.',
   path: '/contact',
 })
 
@@ -104,6 +104,7 @@ useScrollReveal('.reveal')
 <template>
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-32">
     <SectionHeader
+      as="h1"
       eyebrow="Contact"
       title="Let's connect."
       subtitle="Whether you have a project in mind, a question, or just want to say hello, I'm happy to hear from you."

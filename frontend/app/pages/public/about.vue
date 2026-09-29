@@ -2,9 +2,28 @@
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
-  title: 'About the Founder — Axel Nova Ventures',
-  description: 'The story behind Axel Nova Ventures — founded by Ahmad Baihaqie, a software engineer crafting design-led digital products from Kuala Lumpur, Malaysia.',
+  title: 'About Ahmad Baihaqie, Web Developer | Axel Nova Ventures',
+  description: 'Meet Ahmad Baihaqie, the UI/UX-focused software engineer behind Axel Nova Ventures, designing and building websites and systems from Kuala Lumpur.',
   path: '/about',
+})
+
+// The founder as a Person, tied to the homepage's ProfessionalService node.
+useHead({
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Person',
+      '@id': 'https://axelnovaventures.com/about#person',
+      name: 'Ahmad Baihaqie',
+      jobTitle: 'Founder & Software Engineer',
+      url: 'https://axelnovaventures.com/about',
+      worksFor: { '@id': 'https://axelnovaventures.com/#business' },
+      address: { '@type': 'PostalAddress', addressLocality: 'Kuala Lumpur', addressCountry: 'MY' },
+      knowsAbout: ['Web development', 'UI/UX design', 'Frontend engineering', 'Laravel', 'Nuxt'],
+      sameAs: ['https://github.com/byhaqie31', 'https://linkedin.com/in/byhaqieyusri', 'https://baihaqie.com'],
+    }),
+  }],
 })
 
 import SectionHeader from '~/components/shared/SectionHeader.vue'
@@ -145,6 +164,8 @@ useScrollReveal('.reveal')
 <template>
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-32">
     <SectionHeader
+      as="h1"
+      wide
       eyebrow="About"
       title="The builder behind the screen."
     />

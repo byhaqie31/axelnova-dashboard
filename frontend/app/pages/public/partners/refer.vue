@@ -125,6 +125,7 @@ useScrollReveal('.reveal')
 <template>
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-32">
     <SectionHeader
+      as="h1"
       eyebrow="Partner Program"
       title="Refer a business."
       subtitle="Tell us who you’re referring and how to reach them. We’ll take it from there — and credit you if it becomes a project."

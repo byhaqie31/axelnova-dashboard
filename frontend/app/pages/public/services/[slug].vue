@@ -31,6 +31,8 @@ interface Deliverable { icon: string, title: string, desc: string }
 interface Enrichment {
   seoTitle?: string
   seoDescription?: string
+  /** Keyword-led page H1 ("Website development for Malaysian businesses."). When set, heroTitle becomes the lead line under it; otherwise heroTitle is the H1. */
+  h1?: string
   heroTitle?: string
   heroSubtitle?: string
   deliverablesTitle?: string
@@ -84,8 +86,9 @@ const generalFaqs: FAQ[] = [
 // and the universal generalFaqs above.
 const enrichmentBySlug: Record<string, Enrichment> = {
   'web-presence': {
-    seoTitle: 'Web Development Services — Vue, Nuxt & Laravel | Axel Nova Ventures',
-    seoDescription: 'Custom web development for startups and SMEs in Malaysia. Vue, Nuxt, Laravel, and Tailwind. Production-grade builds with clean code, SSR-ready performance, and ongoing support.',
+    seoTitle: 'Website Development in Malaysia | Axel Nova Ventures',
+    seoDescription: 'Custom website and web app development for Malaysian startups and SMEs. Fast, mobile-first builds you fully own, with SEO basics and ongoing support.',
+    h1: 'Website development for Malaysian businesses.',
     heroTitle: 'Web apps and sites that work — and keep working.',
     heroSubtitle: 'Production-grade builds for startups and SMEs in Malaysia. Vue, Nuxt, and Laravel. Clean code, real performance, and full ownership on day one.',
     deliverablesTitle: 'What you get',
@@ -249,8 +252,16 @@ const pageUrl = computed(() => `${siteUrl}/services/${slug.value}`)
 const seoTitle = computed(
   () => enrichment.value.seoTitle ?? `${category.value!.name} | Axel Nova Ventures`,
 )
+// Admin-written category descriptions can run past the ~155 characters search
+// results show, so the fallback is clipped at a word boundary.
+const clip = (s: string, max = 155) => {
+  const flat = s.replace(/\s+/g, ' ').trim()
+  if (flat.length <= max) return flat
+  const cut = flat.slice(0, max - 1)
+  return `${cut.slice(0, cut.lastIndexOf(' ') > 0 ? cut.lastIndexOf(' ') : cut.length).replace(/[,;:.\s]+$/, '')}…`
+}
 const seoDescription = computed(
-  () => enrichment.value.seoDescription ?? category.value!.description,
+  () => enrichment.value.seoDescription ?? clip(category.value!.description),
 )
 
 useSeoMeta({
@@ -286,7 +297,8 @@ const jsonLdScripts = computed(() => {
         name: seoTitle.value,
         description: seoDescription.value,
         url: pageUrl.value,
-        provider: { '@type': 'Organization', name: 'Axel Nova Ventures', url: siteUrl },
+        // Same @id as the homepage's ProfessionalService node, so both describe one business.
+        provider: { '@type': 'ProfessionalService', '@id': `${siteUrl}/#business`, name: 'Axel Nova Ventures', url: siteUrl },
         areaServed: { '@type': 'Country', name: 'Malaysia' },
         ...(enrichment.value.audience && {
           audience: { '@type': 'Audience', audienceType: enrichment.value.audience },
@@ -341,11 +353,19 @@ useScrollReveal('.reveal')
       <span aria-hidden>←</span> Back to services
     </NuxtLink>
 
+    <!-- The page's one H1: the keyword-led `h1` when the slug has one (heroTitle
+         then leads the subtitle), else the heroTitle / category name. -->
     <SectionHeader
+      as="h1"
       :eyebrow="category.name"
-      :title="enrichment.heroTitle ?? `${category.name}.`"
+      :title="enrichment.h1 ?? enrichment.heroTitle ?? `${category.name}.`"
       :subtitle="enrichment.heroSubtitle ?? category.description"
-    />
+    >
+      <template v-if="enrichment.h1 && enrichment.heroTitle" #subtitle>
+        <span class="font-medium" style="color: var(--color-text);">{{ enrichment.heroTitle }}</span>
+        {{ enrichment.heroSubtitle ?? category.description }}
+      </template>
+    </SectionHeader>
 
     <section v-if="enrichment.deliverables?.length" class="reveal mb-24">
       <h3 class="text-2xl font-semibold tracking-tight mb-6">
