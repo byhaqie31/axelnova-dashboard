@@ -69,11 +69,15 @@ useHead({
               addressLocality: 'Kuala Lumpur',
               addressCountry: 'MY',
             },
+            // Google Business Profile listing — the CID form is the stable
+            // canonical link (the maps.app.goo.gl share link is a redirect).
+            hasMap: 'https://www.google.com/maps?cid=17165418393068257821',
             areaServed: { '@type': 'Country', name: 'Malaysia' },
             knowsAbout: ['Web development', 'Website design', 'UI/UX design', 'Custom business systems', 'Booking systems', 'E-commerce'],
             sameAs: [
               'https://github.com/byhaqie31',
               'https://linkedin.com/in/byhaqieyusri',
+              'https://www.google.com/maps?cid=17165418393068257821',
             ],
           },
           {
