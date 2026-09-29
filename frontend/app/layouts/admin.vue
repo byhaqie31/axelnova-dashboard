@@ -10,12 +10,12 @@ const appsOpen = ref(false)
 
 // Desktop sidebar collapse → icon-only rail. Cookie-backed so it's resolved during
 // SSR and the rail doesn't flash from expanded → collapsed on reload.
-const sidebarCollapsed = useCookie<boolean>('axn_admin_sidebar_collapsed', { default: () => false })
+const sidebarCollapsed = usePrefCookie<boolean>('axn_admin_sidebar_collapsed', () => false)
 
 // Per-group open/closed state, cookie-backed (SSR-resolved, no open/closed flash
 // on reload). A group is open unless it holds an explicit `false`; the group that
 // owns the active route is always forced open regardless of the stored value.
-const navGroupsOpen = useCookie<Record<string, boolean>>('axn_admin_nav_groups', { default: () => ({}) })
+const navGroupsOpen = usePrefCookie<Record<string, boolean>>('axn_admin_nav_groups', () => ({}))
 
 // One-time migration: Task 1 of the portal restructure renamed the "Business"
 // group to "Workspace". Both cookies key on the group label, so the rename
@@ -46,7 +46,7 @@ const navGroups = computed<NavGroup[]>(() => visibleAdminNav(me.value?.role))
 // The rail is customizable: Overview is mandatory, every other group can be
 // pinned/unpinned from the launchpad. Unpinned groups live only in "View
 // more". Cookie-backed like the other sidebar prefs (SSR-resolved, no flash).
-const navPinned = useCookie<Record<string, boolean>>('axn_admin_nav_pinned', { default: () => ({}) })
+const navPinned = usePrefCookie<Record<string, boolean>>('axn_admin_nav_pinned', () => ({}))
 migrateGroupLabel(navPinned)
 const isPinned = (group: NavGroup) => isGroupPinned(group, navPinned.value)
 function togglePin(group: NavGroup) {
