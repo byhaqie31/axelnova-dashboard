@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\InquiryResource;
 use App\Models\Inquiry;
+use App\Models\Quotation;
 use App\Services\Referrals\ReferralAttributionService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,10 @@ class InquiriesController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->filled('origin')) {
+            $query->where('origin', $request->origin);
         }
 
         if ($request->filled('search')) {
@@ -78,9 +83,14 @@ class InquiriesController extends Controller
             'quotation_id' => ['required', 'integer', 'exists:quotations,id'],
         ]);
 
+        // Adopt the quotation's client — inquiries only join the customer spine
+        // once quoted. Keep any existing link if the quote has no client.
+        $quotation = Quotation::findOrFail($data['quotation_id']);
+
         $inquiry->update([
-            'quotation_id' => $data['quotation_id'],
+            'quotation_id' => $quotation->id,
             'status' => 'quoted',
+            'client_id' => $quotation->client_id ?? $inquiry->client_id,
         ]);
 
         $inquiry = $inquiry->fresh();

@@ -22,6 +22,8 @@ class InquiryResource extends JsonResource
             'timeline_hint' => $this->timeline_hint,
             'message' => $this->when($detailRoute, $this->message),
             'source' => $this->source,
+            'origin' => $this->origin,
+            'subject' => $this->subject,
             'status' => $this->status,
             'quotation_id' => $this->quotation_id,
             'quotation_reference' => $this->whenLoaded('quotation', fn () => $this->quotation?->reference_code),

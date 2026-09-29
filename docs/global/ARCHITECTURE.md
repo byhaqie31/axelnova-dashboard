@@ -284,8 +284,8 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
                       (section links), text column right, closing CTA, share row, related
 /services             Services & pricing
 /about                About page
-/contact              Contact form (Web3Forms)
-/quote                Public quote builder (→ backend API)
+/contact              Contact form → POST /v1/inquiries (origin=contact) — same pipeline as /quote
+/quote                Project inquiry form → POST /v1/inquiries (origin=quote)
 /quote/success        Post-submission confirmation
 /admin/login          Admin auth
 /admin/leads          Lead list (Sanctum-protected)

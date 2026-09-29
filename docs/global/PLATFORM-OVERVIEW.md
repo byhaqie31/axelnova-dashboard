@@ -67,7 +67,7 @@ Visitor builds a quote on /quote
 | Cache/session | Database driver |
 | Email | SMTP — Mailtrap in dev, real SMTP in prod |
 | Auth | Laravel Sanctum (token-based, admin only) + a `role:admin` middleware |
-| Forms (storefront) | Web3Forms (contact + referral forms — no backend needed) |
+| Forms (storefront) | `/contact` + `/quote` → backend `POST /v1/inquiries`; partner referral form still on Web3Forms |
 | Infra/deploy | Docker, Docker Compose, GitHub Actions, GHCR images, nginx + Let's Encrypt on a Hostinger VPS |
 
 ---
@@ -278,7 +278,7 @@ The public **layout** (`public.vue`) wraps every storefront page:
 | `/` | **Home** | Hero with animated split-text headline ("I craft interfaces people actually enjoy"), "Open to freelance" badge, CTAs to `/quote` and `/services`. Count-up **stats** (7+ yrs, 3 yrs industry, 10+ projects, 2 degrees). **Selected work** grid with filter tabs (All/Laravel/Nuxt/Fintech/Live) fed by `GET /api/v1/projects`. Closing "Have a project in mind?" CTA banner. |
 | `/about` | **About** | Bio (5 paragraphs) + auto-rotating photo carousel (5 photos). **Skills grid** (Frontend / Backend / Data & Queue / Infrastructure / Tools). "My Story" + "Things I believe" sidebar. **Timeline** "Life in chapters" (2019 → Now). **Dreams & ambitions** 6-card grid. Closing note. |
 | `/company` | **Company** | Brand story. Animated logo with rotating aurora halo. "At a glance" sticky card (registration no., established 2026, HQ KL, stage). "The Name" (Axel / Nova etymology). **Vision** 3 pillars (design-first, engineering with intention, human-centered). Philosophy pull-quote. Closing CTAs to `/services` and `/about`. |
-| `/contact` | **Contact** | **Contact form** (name, email, subject pills, message) → **Web3Forms** (`api.web3forms.com/submit`). Sidebar: availability card + channel cards (WhatsApp, email, phone). Shows a success state after submit. |
+| `/contact` | **Contact** | **Contact form** (name, email, subject pills, message) → backend `POST /v1/inquiries` with `origin: contact` — lands in `/admin/inquiries` beside `/quote` inquiries. Sidebar: availability card + channel cards (WhatsApp, email, phone). Shows a success state after submit. |
 | `/services` | **Services hub** | Category **tabs** + **currency switcher** (MYR/USD/GBP/SGD with hardcoded conversion). Package cards per category (name, tagline, converted price, duration, features, CTA — featured = "Most popular"). Fed by `GET /api/v1/services`. Live **estimator** (project type, pages slider, API toggle, timeline → cost + weeks). 4-step **process**. Contact channel cards. |
 | `/services/[slug]` | **Service detail** | SEO-enriched deep-dive per category (web-presence, admin-portal, ui-ux-frontend, digital-marketing, booking-portal, ecommerce): deliverables, tech stack, packages, category-specific + general **FAQs**, "Ready to start?" CTA to `/quote?service=<slug>`. Emits Service + BreadcrumbList + FAQPage JSON-LD. |
 | `/projects` | **Project registry** | Filterable grid — stack pills (All/Laravel/Nuxt/Docker/Redis/MySQL/FastAPI) + status dropdown (All/Live/In progress/Planning). Fed by `GET /api/v1/projects`. |
@@ -292,7 +292,7 @@ The public **layout** (`public.vue`) wraps every storefront page:
 | `/investor/roofly` | **Investor brief** | `noindex`. Roofly investor materials hub — pitch deck / investment package / financial summary cards + "request a walkthrough" mailto. |
 | `/legal/privacy-policy` · `/legal/terms` · `/legal/cookies` · `/legal/disclaimer` · `/legal/refund` | **Legal** | Five PDPA-aware policy pages with cross-links and "last updated" dates. |
 
-**Storefront integrations:** Web3Forms (contact + referral, access key `a9100b0c-…`), Calendly (`calendly.com/baihaqie` discovery-call link), Ko-fi (support link). Sitemap excludes `/admin/**`, `/portal/**`, `/proposals/**`, `/quote/preview`, `/quote/success`, `/investor/**`.
+**Storefront integrations:** Web3Forms (partner referral form only, access key `a9100b0c-…`), Calendly (`calendly.com/baihaqie` discovery-call link), Ko-fi (support link). Sitemap excludes `/admin/**`, `/portal/**`, `/proposals/**`, `/quote/preview`, `/quote/success`, `/investor/**`.
 
 ---
 
@@ -455,7 +455,7 @@ All routes are under `/api`.
 | GET | `/v1/projects` | Active projects |
 | GET | `/v1/projects/{slug}` | Single project |
 | POST | `/v1/quote-requests` · `/v1/referrals` | Submit a quote / referral (throttle **8/hr/IP in prod**, 1000/min in dev) |
-| POST | `/v1/inquiries` | Submit a project inquiry (throttle **20/hr/IP in prod**, 1000/min in dev) |
+| POST | `/v1/inquiries` | Submit an inquiry from `/quote` or `/contact` (`origin` = `quote`\|`contact`, optional `subject`). Queues an auto-reply to the sender + an admin notification to `services.admin.email` (needs the queue worker). **No client row** until the inquiry is quoted — the quotation's client is stamped back onto it. Throttle **20/hr/IP in prod**, 1000/min in dev |
 | POST | `/v1/admin/login` | Login (throttle 10/min prod) → bearer token |
 
 **Admin** (`EnsureFrontendRequestsAreStateful` + `auth:sanctum` + `role:admin`)

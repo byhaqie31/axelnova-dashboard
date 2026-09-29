@@ -23,6 +23,8 @@ class Inquiry extends Model
         'timeline_hint',
         'message',
         'source',
+        'origin',
+        'subject',
         'status',
         'quotation_id',
         'ip_address',

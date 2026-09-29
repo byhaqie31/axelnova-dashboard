@@ -16,6 +16,8 @@ interface Inquiry {
   timeline_hint: string | null
   message: string
   source: string
+  origin: 'quote' | 'contact'
+  subject: string | null
   status: string
   quotation_id: number | null
   quotation_reference: string | null
@@ -141,8 +143,15 @@ class="rounded-2xl border p-6"
         <div
 class="rounded-2xl border p-6"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Project</p>
-          <div class="grid sm:grid-cols-3 gap-4">
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">
+            {{ inquiry.origin === 'contact' ? 'Contact form' : 'Project' }}
+          </p>
+          <!-- Contact-form messages carry a subject, not project hints -->
+          <div v-if="inquiry.origin === 'contact'">
+            <p class="text-[11px] mb-0.5" style="color: var(--color-text-tertiary);">Subject</p>
+            <p class="text-[13px]" style="color: var(--color-text);">{{ inquiry.subject ?? '—' }}</p>
+          </div>
+          <div v-else class="grid sm:grid-cols-3 gap-4">
             <div>
               <p class="text-[11px] mb-0.5" style="color: var(--color-text-tertiary);">Type</p>
               <p class="text-[13px]" style="color: var(--color-text);">{{ inquiry.project_type ?? '—' }}</p>

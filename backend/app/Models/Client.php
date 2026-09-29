@@ -31,8 +31,9 @@ class Client extends Model
      * what's already stored. So a sparse payload can never wipe a phone number
      * that was filled in by hand, and an explicit new company is never silently
      * dropped (the old firstOrCreate behaviour). Untrusted public intake (the
-     * funnel, inquiries) deliberately keeps firstOrCreate — anonymous input must
-     * not overwrite a curated record.
+     * funnel) deliberately keeps firstOrCreate — anonymous input must not
+     * overwrite a curated record. Inquiries create no client at all until the
+     * admin quotes them (the quotation's client is stamped back onto the inquiry).
      *
      * @param  array{name?: ?string, email: string, phone?: ?string, company?: ?string}  $fields
      */
