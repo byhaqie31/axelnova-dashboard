@@ -424,7 +424,7 @@ Sanctum personal access tokens (no expiry, manually revoked). A custom `role:adm
 |---|---|
 | `users` | name, email (unique), password, **role** (default `admin`) |
 | `pricing_configs` | version (unique), **config** (JSON), active (only one true), notes |
-| `clients` | name, email (unique), phone, company, notes, tags (JSON) · soft-deletes |
+| `clients` | name, email (unique, incl. soft-deleted rows), phone, company, notes, tags (JSON) · soft-deletes model, but the admin delete (`DELETE /v1/admin/clients/{id}`) is a **hard delete** after moving every quotation/order/payment/inquiry/feedback to a replacement client (`ClientDeleter`; 409 without one) — frees the email |
 | `quotations` | **reference_code** (unique), client_id, name/email/phone/company, **package_key**, pricing_config_id, **form_payload** (JSON), estimate_min/max_myr, **estimate_eta_value/eta_unit**, status (new/viewed/contacted/rejected/spam → accepted), ip_address, user_agent, submitted_at, viewed_at · soft-deletes |
 | `quotation_addons` | quotation_id, addon_key, addon_label, amount_myr |
 | `orders` | **order_number** (unique), quotation_id, client_id, value_min/max_myr, status (pending/in_progress/delivered/completed/cancelled), started_at, delivered_at, completed_at, notes · soft-deletes |

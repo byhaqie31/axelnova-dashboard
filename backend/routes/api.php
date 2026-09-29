@@ -177,6 +177,9 @@ Route::middleware([
         Route::post('/clients', [ClientsController::class, 'store'])->name('clients.store');
         Route::get('/clients/{client}', [ClientsController::class, 'show'])->name('clients.show');
         Route::put('/clients/{client}', [ClientsController::class, 'update'])->name('clients.update');
+        // Permanent delete — ties (quotations/orders/payments/…) must move to a
+        // replacement client first, else 409. See ClientDeleter.
+        Route::delete('/clients/{client}', [ClientsController::class, 'destroy'])->name('clients.destroy');
 
         // Dashboard landing counts — one cached request for the stat tiles.
         Route::get('/dashboard/counts', [DashboardController::class, 'counts'])->name('dashboard.counts');

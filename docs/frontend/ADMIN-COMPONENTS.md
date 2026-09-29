@@ -36,6 +36,23 @@ The admin quotation generator. Used by `pages/admin/quotations/new.vue` (create)
 - **Draft context** card (read-only, rendered only when a draft carries authoring context — chiefly a connector draft): a `created_via` badge ("Via connector"), the AI's **assumptions**, an **open-questions** pre-send checklist (checkboxes are visual-only, not persisted), and free-text **notes**.
 - Saves the **canonical multi-package payload** (`packages[]` + `rush`); the backend re-prices via `PricingEngine::calculateMulti()`, resolves `service_package_id`, and the committed **`document.items`** drive the PDF (`DocumentMapper` → `DocumentData`). Import explicitly (auto-name would be `<AdminQuotationBuilder>`).
 
+### `components/admin/ClientPicker.vue`
+
+Search-and-pick an existing client, or switch to "create a new client" fields.
+Shared by `ManageClientModal` (re-link a quotation/order) and `ClientDeleteDialog`.
+
+- **Model:** `v-model` → `ClientSelection | null` (`{ client_id }` or `{ client: { name, email, phone, company } }`, from `utils/clientSelection.ts`) — already the request-body shape the relink and client-delete endpoints accept. Validate with `clientSelectionError(sel, noSelectionMessage)` before submitting.
+- **Props:** `excludeId?` — hidden from search results (the client it's already on / the one being deleted).
+- State resets on mount, so render it only while the parent dialog is open.
+
+### `components/admin/ClientDeleteDialog.vue`
+
+Permanent client delete from the client detail page (`DELETE /v1/admin/clients/{id}`).
+
+- **Props:** `client` (with `quotations_count` / `orders_count` / `payments_count` / `inquiries_count`; renders nothing while null). **Emits:** `cancel`, `deleted(replacementId | null)`.
+- **No quotations/orders/payments:** plain confirm. **Any of those:** the founder picks a replacement with `<AdminClientPicker>` and the CTA becomes "Move N records & delete" — the backend (`ClientDeleter`) moves quotations (+ contact snapshot), orders, payments, inquiries and feedback, then hard-deletes the client so its email is reusable. Without a replacement the API returns 409 with the counts.
+- §12 confirm-card pattern; destructive CTA is danger text on a ghost pill.
+
 ### `pages/admin/orders/[id].vue` — Documents panel
 
 The order detail page carries the **invoice/receipt builder**. A "Documents"
