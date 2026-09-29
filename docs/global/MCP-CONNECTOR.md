@@ -31,7 +31,7 @@ A connector token is rejected by every `/v1/admin/*` route (they demand `abiliti
 | GET | `/v1/connector/quotations/{reference_code}` | `connector:read` | 60/min | Read back ANY non-deleted quotation by AXNQ code |
 | POST | `/v1/connector/quotations/draft` | `connector:draft` | 30/min | Create a draft quotation (contract below) |
 | PUT | `/v1/connector/quotations/{reference_code}` | `connector:draft` | 30/min | Update a PRE-SEND draft (same body as draft + `reseed_document`) |
-| GET | `/v1/connector/blog/guide` | `connector:read` | 60/min | The writing guide: voice + structure + CTA defaults (from `config/blog.php`), the two drafting modes, formats, categories/tags in use, section shape, limits, image rules |
+| GET | `/v1/connector/blog/guide` | `connector:read` | 60/min | The writing guide: voice + structure + CTA defaults (from `config/blog.php`), the two drafting modes, formats, categories/tags in use (case-deduped; a draft's category/tags are snapped to these spellings on save — `BlogTaxonomy::snap()`), section shape, limits, image rules |
 | GET | `/v1/connector/blog/posts` | `connector:read` | 60/min | Slim list of non-deleted posts — `status`, `q` (title), `page`/`per_page` (default 10, capped 25), newest updated first; `admin_url` + `public_url` (published only) |
 | GET | `/v1/connector/blog/posts/{id}` | `connector:read` | 60/min | Full editable record (Markdown sections with ids) + URLs |
 | POST | `/v1/connector/blog/posts` | `connector:draft` | 30/min | Create — always `draft` (`status`/`published_at` in the body are ignored). Image alt text required |

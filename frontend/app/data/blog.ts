@@ -116,6 +116,9 @@ export interface BlogGuide {
   /** The closing CTA a post falls back to when its own cta_* are empty. */
   cta_defaults: { heading: string, body: string, label: string, url: string }
   formats: BlogFormat[]
+  /** Categories / topics in use across non-deleted posts (case-deduped) — the editor's pickers. */
+  categories: string[]
+  tags: string[]
 }
 
 const ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'

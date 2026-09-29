@@ -192,6 +192,20 @@ class AdminBlogPostsTest extends TestCase
             ->assertJsonPath('data.formats', BlogPost::FORMATS);
     }
 
+    public function test_guide_lists_the_categories_and_topics_in_use_for_the_editor_pickers(): void
+    {
+        BlogPost::factory()->create(['category' => 'Systems', 'tags' => ['Cloudflare', 'portal']]);
+        BlogPost::factory()->published()->create(['category' => 'systems', 'tags' => ['cloudflare', 'AI']]);
+        BlogPost::factory()->create(['category' => 'Deleted cat', 'tags' => ['gone']])->delete();
+
+        // Case-insensitive de-dupe (the oldest post's spelling wins), sorted
+        // case-insensitively, drafts included, deleted posts excluded.
+        $this->getJson('/api/v1/admin/blog/guide', $this->adminHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.categories', ['Systems'])
+            ->assertJsonPath('data.tags', ['AI', 'Cloudflare', 'portal']);
+    }
+
     public function test_guide_rejects_a_connector_token(): void
     {
         $connector = User::factory()->founder()->create()->createToken('mcp-connector', ['connector:read', 'connector:draft'])->plainTextToken;

@@ -4,13 +4,15 @@ namespace App\Support;
 
 use App\Models\BlogPost;
 use App\Services\Blog\BlogPostInput;
+use App\Services\Blog\BlogTaxonomy;
 
 /**
  * The writing guide, built from config/blog.php — the one copy the admin editor
  * and Claude (MCP connector) both read, so the voice rules can't drift between
- * them. base() is what the editor needs; forConnector() adds what Claude needs
- * to write a valid draft without guessing (categories/tags in use, the section
- * shape, image rules, and the two drafting modes).
+ * them. forEditor() is base() plus the categories/topics in use (the editor's
+ * pickers); forConnector() adds what Claude needs to write a valid draft without
+ * guessing (the same in-use lists, the section shape, image rules, and the two
+ * drafting modes).
  */
 class BlogGuide
 {
@@ -25,19 +27,17 @@ class BlogGuide
         ];
     }
 
+    /** @return array<string, mixed> base() + the categories/tags in use (BlogTaxonomy) */
+    public static function forEditor(): array
+    {
+        return [...self::base(), ...BlogTaxonomy::inUse()];
+    }
+
     public static function forConnector(): array
     {
-        // Non-deleted posts only (the SoftDeletes scope) — a deleted post's
-        // category shouldn't be suggested back.
-        $posts = BlogPost::query()->get(['category', 'tags']);
-
-        $categories = $posts->pluck('category')->filter()->unique()->sort()->values()->all();
-        $tags = $posts->pluck('tags')->flatten()->filter()->unique()->sort()->values()->all();
-
         return [
             ...self::base(),
-            'categories' => $categories,
-            'tags' => $tags,
+            ...BlogTaxonomy::inUse(),
             'modes' => [
                 'write' => 'Asked to write about a topic or brief: write it in the voice above, following the structure — the excerpt is the hook, then 2–4 practical sections and a key takeaway.',
                 'structure_only' => 'Given the user\'s own text: keep their wording verbatim. Only arrange it (first heading or line → title, text before the first section heading → excerpt, each heading → a section) and fill what is missing (image alt text, format, category, tags, SEO). Rewrite only when asked, and list any change you made in your reply.',

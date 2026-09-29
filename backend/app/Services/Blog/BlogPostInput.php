@@ -92,7 +92,7 @@ class BlogPostInput
             $out['excerpt'] = trim((string) ($data['excerpt'] ?? ''));
         }
         if ($has('tags')) {
-            $out['tags'] = array_values(array_filter(array_map('trim', $data['tags'] ?? []), fn ($t) => $t !== ''));
+            $out['tags'] = BlogTaxonomy::unique($data['tags'] ?? [], sort: false);
         }
         if ($has('format')) {
             $out['format'] = $data['format'] ?? 'article';

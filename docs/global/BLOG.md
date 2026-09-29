@@ -14,7 +14,7 @@ One table, **`blog_posts`** (soft-deletes), migration `2026_09_26_000002`:
 | `title`, `excerpt` | Title ≤ 160. The excerpt (≤ 500, counting Markdown markers) is the lede on the article and the card text on the index. Stored as Markdown limited to inline `**bold**` / `*italic*`: the article gets `excerpt_html` (`BlogMarkdown::introHtml` — `<p>`/`<strong>`/`<em>` only, anything else flattened to text); cards, the SEO/OG fallback and the connector list get `excerpt` as plain text (`BlogMarkdown::plainText`). Only the admin/connector edit APIs return the raw Markdown |
 | `sections` (json) | Ordered list of `{id, heading, body_md, image_url, image_alt, quote, quote_by}`. **Markdown is the storage format.** `id` is a stable `s_xxxxxx` the editor mints (v-for key, survives reorders) |
 | `cover_image_url` / `cover_image_alt` | **URL only, no upload** — same as `projects.cover_image_url`. Absolute `http(s)://` or a root-relative path |
-| `category`, `tags` | Free-text category (the editor suggests ones already in use); ≤ 10 tags. Together they are the post's **topics** — the index's topic dropdown lists category ∪ tags and `?topic=` matches either |
+| `category`, `tags` | One category + ≤ 10 tags (the editor's "topics"). Together they are the post's **topics** — the index's topic dropdown lists category ∪ tags and `?topic=` matches either. There is **no taxonomy table**: the names in use are derived from the posts (see *Categories & topics* below) |
 | `format` | Editorial format — `article` (default) \| `guide` \| `tutorial` \| `case_study` \| `opinion` \| `news` (`BlogPost::FORMATS`). Rendered as the accent eyebrow before the date ("GUIDE · 26 September 2026") on cards and the article; a dropdown in the editor's right rail. Migration `2026_09_26_000003` |
 | `cta_*` | Closing call to action (heading / body / label / url). Null = the shared defaults in `config/blog.php` (`cta_defaults`, → `/contact`) — the public API fills each empty field from them, so readers always get a complete CTA |
 | `seo_title` / `seo_description` | Fall back to title / excerpt |
@@ -23,7 +23,17 @@ One table, **`blog_posts`** (soft-deletes), migration `2026_09_26_000002`:
 
 ### The writing guide — one copy
 
-The voice rules, the default structure, and the default closing CTA live in **[`backend/config/blog.php`](../../backend/config/blog.php)** — the only copy. [`App\Support\BlogGuide`](../../backend/app/Support/BlogGuide.php) serves them to the editor (`GET /v1/admin/blog/guide` → the Voice & structure panel, CTA placeholders, and Start-from-template's CTA fill), to Claude through the MCP connector (`GET /v1/connector/blog/guide`, plus categories/tags in use and the image rules), and `PublicBlogPostResource` fills empty `cta_*` from it. Edit the file and deploy — the editor and Claude both follow the new rules.
+The voice rules, the default structure, and the default closing CTA live in **[`backend/config/blog.php`](../../backend/config/blog.php)** — the only copy. [`App\Support\BlogGuide`](../../backend/app/Support/BlogGuide.php) serves them to the editor (`GET /v1/admin/blog/guide` → the Voice & structure panel, CTA placeholders, Start-from-template's CTA fill, and the category/topic pickers' `categories`/`tags` lists), to Claude through the MCP connector (`GET /v1/connector/blog/guide`, plus categories/tags in use and the image rules), and `PublicBlogPostResource` fills empty `cta_*` from it. Edit the file and deploy — the editor and Claude both follow the new rules.
+
+### Categories & topics — derived, no table
+
+There is no taxonomy table. [`App\Services\Blog\BlogTaxonomy`](../../backend/app/Services/Blog/BlogTaxonomy.php)`::inUse()` reads every **non-deleted** post (drafts included) and returns the distinct `categories` and `tags`, de-duplicated **case-insensitively** (the oldest post's spelling wins) and sorted. A name exists while at least one post carries it — to retire one, take it off every post; to rename one, edit each post. Adding a new name in the editor needs no extra step: it is saved on the post and appears for every other post from then on.
+
+- **Editor** — `components/admin/CreatableSelect.vue`: the category is a single-pick dropdown, topics a checkbox dropdown with chips; both search, and both offer `Add "…"` only when no existing name matches case-insensitively, so the picker itself prevents `cloudflare` beside `Cloudflare`. The server does **not** re-case editor saves — that is what lets the founder fix a name's capitalisation.
+- **Connector** — Claude has no picker, so `BlogTaxonomy::snap()` rewrites a sent `category`/`tags` to the spelling **other** posts already use (the post being saved is excluded, so a re-cased name only it carries sticks).
+- **Both** — `BlogPostInput::derive()` trims tags and drops case-insensitive duplicates within the post.
+
+If renaming everywhere or pre-creating empty topics is ever needed, a managed table can be seeded from `inUse()` without losing anything.
 
 ### Markdown → safe HTML
 
@@ -82,7 +92,7 @@ Tests: `backend/tests/Feature/Blog/` (model rules, public feed, admin CMS).
 2. Either **Import Markdown** (paste a draft: `#` → title, the paragraphs before the first `##` → introduction, each `##` → a section) or **Start from template** (five placeholder sections in the default structure plus the default closing CTA). **Voice & structure** opens the writing guidelines.
 3. Fix the **title** and **introduction** (the hook — **Bold** / *Italic* toolbar, ⌘B / ⌘I; the counter shows length and the live reading time).
 4. Work through the **sections**: heading, body (bold / italic / link / subheading / lists / quote / code), and optionally **Add image** (URL + alt) or **Add quote**. Move up / down to reorder; Remove to drop one.
-5. In the side rail: **cover image URL + alt**; **format** (Article / Guide / Tutorial / Case study / Opinion / News — the label before the date), **category** (pick an existing one or type a new one) and **topics**; the **closing call to action** (blank = defaults); and **SEO** overrides if the title is long.
+5. In the side rail: **cover image URL + alt**; **format** (Article / Guide / Tutorial / Case study / Opinion / News — the label before the date), **category** (a dropdown of the ones in use, or add a new one) and **topics** (search, tick existing ones, or add new — up to 10); the **closing call to action** (blank = defaults); and **SEO** overrides if the title is long.
 6. **Preview** — rendered by the backend, so it is exactly what readers see. Close with Escape.
 7. **Save draft** as often as you like. **Publish** when it is complete (the gate needs a title, an introduction and at least one filled section). It appears at `/blog/<slug>` within five minutes.
 8. Edit any time — changes to a published post go live on save. **Unpublish** to pull it back to a draft.
