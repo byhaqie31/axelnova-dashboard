@@ -11,7 +11,7 @@ One table, **`blog_posts`** (soft-deletes), migration `2026_09_26_000002`:
 | Column | Notes |
 |---|---|
 | `slug` (unique) | Generated from the title when blank, always normalised (`Str::slug`) and de-duplicated with `-2`, `-3`… **across all rows including soft-deleted ones** (the unique index is absolute). Editable; the editor warns when a published post's slug changes because the old URL simply 404s (no redirect table) |
-| `title`, `excerpt` | Title ≤ 160. The excerpt (≤ 500) is the lede on the article and the card text on the index |
+| `title`, `excerpt` | Title ≤ 160. The excerpt (≤ 500, counting Markdown markers) is the lede on the article and the card text on the index. Stored as Markdown limited to inline `**bold**` / `*italic*`: the article gets `excerpt_html` (`BlogMarkdown::introHtml` — `<p>`/`<strong>`/`<em>` only, anything else flattened to text); cards, the SEO/OG fallback and the connector list get `excerpt` as plain text (`BlogMarkdown::plainText`). Only the admin/connector edit APIs return the raw Markdown |
 | `sections` (json) | Ordered list of `{id, heading, body_md, image_url, image_alt, quote, quote_by}`. **Markdown is the storage format.** `id` is a stable `s_xxxxxx` the editor mints (v-for key, survives reorders) |
 | `cover_image_url` / `cover_image_alt` | **URL only, no upload** — same as `projects.cover_image_url`. Absolute `http(s)://` or a root-relative path |
 | `category`, `tags` | Free-text category (the editor suggests ones already in use); ≤ 10 tags. Together they are the post's **topics** — the index's topic dropdown lists category ∪ tags and `?topic=` matches either |
@@ -53,7 +53,7 @@ POST   /posts/{post}/publish          Completeness gate: title + excerpt + ≥1 
                                       body → 422 with field errors otherwise
 POST   /posts/{post}/unpublish        Back to draft
 DELETE /posts/{post}                  Soft delete
-POST   /render                        {excerpt?, sections[]} → {sections[].body_html + anchor, toc,
+POST   /render                        {excerpt?, sections[]} → {excerpt_html, sections[].body_html + anchor, toc,
                                       reading_minutes}. The editor's Preview; saves nothing
 GET    /guide                         {data: {voice, structure, cta_defaults, formats}} from config/blog.php
 
@@ -80,7 +80,7 @@ Tests: `backend/tests/Feature/Blog/` (model rules, public feed, admin CMS).
 
 1. Open **Admin › Catalog › Blog** and click **New post**.
 2. Either **Import Markdown** (paste a draft: `#` → title, the paragraphs before the first `##` → introduction, each `##` → a section) or **Start from template** (five placeholder sections in the default structure plus the default closing CTA). **Voice & structure** opens the writing guidelines.
-3. Fix the **title** and **introduction** (the hook — the counter shows length and the live reading time).
+3. Fix the **title** and **introduction** (the hook — **Bold** / *Italic* toolbar, ⌘B / ⌘I; the counter shows length and the live reading time).
 4. Work through the **sections**: heading, body (bold / italic / link / subheading / lists / quote / code), and optionally **Add image** (URL + alt) or **Add quote**. Move up / down to reorder; Remove to drop one.
 5. In the side rail: **cover image URL + alt**; **format** (Article / Guide / Tutorial / Case study / Opinion / News — the label before the date), **category** (pick an existing one or type a new one) and **topics**; the **closing call to action** (blank = defaults); and **SEO** overrides if the title is long.
 6. **Preview** — rendered by the backend, so it is exactly what readers see. Close with Escape.

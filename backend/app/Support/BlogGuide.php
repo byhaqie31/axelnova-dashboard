@@ -42,6 +42,7 @@ class BlogGuide
                 'write' => 'Asked to write about a topic or brief: write it in the voice above, following the structure — the excerpt is the hook, then 2–4 practical sections and a key takeaway.',
                 'structure_only' => 'Given the user\'s own text: keep their wording verbatim. Only arrange it (first heading or line → title, text before the first section heading → excerpt, each heading → a section) and fill what is missing (image alt text, format, category, tags, SEO). Rewrite only when asked, and list any change you made in your reply.',
             ],
+            'excerpt_format' => 'Markdown, inline only: **bold** and *italic* (use sparingly — one or two emphases at most). No links, headings, lists or code; they are flattened to plain text. Cards and search snippets show it unformatted.',
             'section_shape' => [
                 'id' => 'Stable s_xxxxxx id. Keep it when editing an existing section; omit it for a new one.',
                 'heading' => 'Required, ≤ 120 characters. Becomes the H2 and the "On this page" anchor.',

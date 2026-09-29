@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\BlogMarkdown;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -26,6 +27,8 @@ class PublicBlogPostResource extends BlogPostCardResource
     {
         return [
             ...parent::toArray($request),
+            // The formatted intro (bold/italic only — BlogMarkdown::introHtml).
+            'excerpt_html' => BlogMarkdown::introHtml((string) $this->excerpt),
             'sections' => array_map(fn (array $s) => [
                 'id' => $s['id'],
                 'anchor' => $s['anchor'],

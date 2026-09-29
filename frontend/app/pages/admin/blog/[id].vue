@@ -57,6 +57,13 @@ const autoSlug = ref(true)
 let savedSnapshot = JSON.stringify(form)
 const dirty = computed(() => JSON.stringify(form) !== savedSnapshot)
 const liveMinutes = computed(() => readingMinutes(form.excerpt, form.sections))
+
+// The introduction takes inline emphasis only — the backend flattens anything
+// else (BlogMarkdown::introHtml), so the toolbar doesn't offer it.
+const introToolbar = [
+  { kind: 'mark' as const, mark: 'bold' as const, icon: 'i-lucide-bold', label: 'Bold' },
+  { kind: 'mark' as const, mark: 'italic' as const, icon: 'i-lucide-italic', label: 'Italic' },
+]
 const splitTags = (s: string) => s.split(',').map(t => t.trim()).filter(Boolean)
 const nullable = (s: string) => s.trim() || null
 
@@ -283,7 +290,7 @@ async function openPreview() {
   if (previewing.value) return
   previewing.value = true
   try {
-    const res = await apiFetch<{ sections: BlogRenderedSection[], toc: BlogTocItem[], reading_minutes: number }>('/api/v1/admin/blog/render', {
+    const res = await apiFetch<{ excerpt_html: string, sections: BlogRenderedSection[], toc: BlogTocItem[], reading_minutes: number }>('/api/v1/admin/blog/render', {
       method: 'POST',
       body: { excerpt: form.excerpt, sections: form.sections.map(s => ({ ...s, heading: s.heading || 'Untitled section' })) },
     })
@@ -291,6 +298,7 @@ async function openPreview() {
       slug: form.slug || 'preview',
       title: form.title || 'Untitled post',
       excerpt: form.excerpt,
+      excerpt_html: res.excerpt_html,
       cover_image_url: nullable(form.cover_image_url),
       cover_image_alt: nullable(form.cover_image_alt),
       category: nullable(form.category),
@@ -385,9 +393,26 @@ const statusStyle = computed(() => post.value?.status === 'published'
             <div>
               <div class="flex items-baseline justify-between mb-1.5">
                 <label class="text-[11px] font-medium uppercase tracking-wider" :style="{ color: 'var(--color-text-tertiary)' }">Introduction</label>
-                <span class="text-[11px] tabular-nums" :style="{ color: 'var(--color-text-tertiary)' }">{{ form.excerpt.length }}/500 · ~{{ liveMinutes }} min read</span>
+                <!-- Counts the raw Markdown (markers included) — the same 500 the API enforces. -->
+                <span class="text-[11px] tabular-nums" :style="{ color: form.excerpt.length > 500 ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }">{{ form.excerpt.length }}/500 · ~{{ liveMinutes }} min read</span>
               </div>
-              <textarea v-model="form.excerpt" rows="3" maxlength="500" placeholder="The opening hook — two or three sentences that set up the question." class="contact-input w-full" />
+              <!-- Markdown-backed like the sections, but bold / italic only. -->
+              <UEditor
+                v-slot="{ editor }"
+                v-model="form.excerpt"
+                content-type="markdown"
+                placeholder="The opening hook — two or three sentences that set up the question."
+                class="blog-editor is-compact rounded-xl border overflow-hidden"
+                :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+              >
+                <UEditorToolbar
+                  :editor="editor"
+                  :items="introToolbar"
+                  layout="fixed"
+                  class="border-b px-2 py-1"
+                  :style="{ borderColor: 'var(--color-border)' }"
+                />
+              </UEditor>
             </div>
           </div>
 

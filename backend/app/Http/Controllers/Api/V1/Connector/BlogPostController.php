@@ -7,6 +7,7 @@ use App\Http\Resources\AdminBlogPostResource;
 use App\Models\BlogPost;
 use App\Services\Blog\BlogPostInput;
 use App\Support\BlogGuide;
+use App\Support\BlogMarkdown;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -62,7 +63,7 @@ class BlogPostController extends Controller
                 'status' => $post->status,
                 'format' => $post->format,
                 'category' => $post->category,
-                'excerpt' => Str::limit((string) $post->excerpt, 160),
+                'excerpt' => Str::limit(BlogMarkdown::plainText((string) $post->excerpt), 160),
                 'updated_at' => $post->updated_at?->toISOString(),
                 'published_at' => $post->published_at?->toISOString(),
                 ...$this->urls($post),

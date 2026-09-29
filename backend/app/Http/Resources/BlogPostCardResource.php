@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\BlogMarkdown;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -13,7 +14,10 @@ class BlogPostCardResource extends JsonResource
         return [
             'slug' => $this->slug,
             'title' => $this->title,
-            'excerpt' => $this->excerpt,
+            // Plain text — the stored intro is Markdown (inline bold/italic), and
+            // cards / the SEO fallback can't show formatting. Articles also get
+            // excerpt_html (PublicBlogPostResource).
+            'excerpt' => BlogMarkdown::plainText((string) $this->excerpt),
             'cover_image_url' => $this->cover_image_url,
             'cover_image_alt' => $this->cover_image_alt,
             'category' => $this->category,

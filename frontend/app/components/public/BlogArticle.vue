@@ -65,7 +65,8 @@ async function copyLink() {
         <span>{{ fmtBlogDate(post.published_at) }} · {{ post.reading_minutes }} min read</span>
       </p>
       <h1 class="text-4xl md:text-5xl font-semibold tracking-tighter leading-[1.08] mt-3 mb-5" :style="{ color: 'var(--color-text)' }">{{ post.title }}</h1>
-      <p class="text-[19px] leading-[1.6] max-w-[78ch]" :style="{ color: 'var(--color-text-secondary)' }">{{ post.excerpt }}</p>
+      <!-- Backend-sanitised: <p>/<strong>/<em> only (BlogMarkdown::introHtml), so v-html is safe. -->
+      <div class="blog-intro text-[19px] leading-[1.6] max-w-[78ch]" :style="{ color: 'var(--color-text-secondary)' }" v-html="post.excerpt_html" />
       <p class="text-[13px] mt-5 flex flex-wrap gap-x-6" :style="{ color: 'var(--color-text-tertiary)' }">
         <span>By Ahmad Baihaqie, Founder</span>
         <span v-if="updatedLabel">Updated {{ updatedLabel }}</span>

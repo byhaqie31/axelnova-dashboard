@@ -228,7 +228,7 @@ const blogFieldsShape = {
     .max(500)
     .nullable()
     .optional()
-    .describe("The introduction / hook (≤ 500). Shown as the lede on the article and as the card text on the index."),
+    .describe("The introduction / hook (≤ 500). Shown as the lede on the article and as the card text on the index. Inline Markdown only: **bold** and *italic*, sparingly — no links, headings or lists."),
   sections: z
     .array(blogSection)
     .max(40)

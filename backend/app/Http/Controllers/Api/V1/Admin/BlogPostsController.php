@@ -149,6 +149,7 @@ class BlogPostsController extends Controller
         $post = new BlogPost(['sections' => BlogPost::normaliseSections($data['sections'] ?? [])]);
 
         return response()->json([
+            'excerpt_html' => BlogMarkdown::introHtml((string) ($data['excerpt'] ?? '')),
             'sections' => $post->renderedSections(),
             'toc' => $post->toc(),
             'reading_minutes' => BlogMarkdown::readingMinutes((string) ($data['excerpt'] ?? ''), $post->sections),
