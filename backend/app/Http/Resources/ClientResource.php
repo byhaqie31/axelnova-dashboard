@@ -23,6 +23,7 @@ class ClientResource extends JsonResource
             'inquiries_count' => $this->whenCounted('inquiries'),
             'quotations_count' => $this->whenCounted('quotations'),
             'orders_count' => $this->whenCounted('orders'),
+            'payments_count' => $this->whenCounted('payments'),
 
             // Slim activity rows for the customer detail — purpose-built so we
             // don't drag whole quotation/order documents into this view.

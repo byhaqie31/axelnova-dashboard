@@ -1083,6 +1083,30 @@ input[type="number"] {
 .blog-toc a { color: var(--color-text-secondary); transition: color 0.15s ease; }
 .blog-toc a:hover, .blog-toc a.is-active { color: var(--color-text); }
 
+/* The article introduction — inline bold/italic only (BlogMarkdown::introHtml).
+   Bold lifts to full text colour so emphasis reads against the secondary grey. */
+.blog-intro p + p { margin-top: 0.75em; }
+.blog-intro strong { font-weight: 600; color: var(--color-text); }
+.blog-intro em { font-style: italic; }
+
+/* The post format (Guide / Article / …) on blog cards and the article header —
+   an accent-tinted pill. --color-accent-soft already swaps for dark mode. */
+.blog-format-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.625rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
 /* The admin editor's Tiptap surface — give the empty editor some body. */
 .blog-editor .ProseMirror { min-height: 160px; padding: 12px 14px; outline: none; }
+/* The introduction's editor is a short hook, not a section body. */
+.blog-editor.is-compact .ProseMirror { min-height: 84px; }
 .blog-editor .ProseMirror p.is-editor-empty:first-child::before { color: var(--color-text-tertiary); content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }

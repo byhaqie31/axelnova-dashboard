@@ -158,7 +158,13 @@ class QuotationsController extends Controller
             if (! empty($data['inquiry_id'])) {
                 $inquiry = Inquiry::find($data['inquiry_id']);
                 if ($inquiry) {
-                    $inquiry->update(['quotation_id' => $quotation->id, 'status' => 'quoted']);
+                    // Quoting is the moment an inquiry becomes a customer — the
+                    // client resolved above is stamped back onto the inquiry.
+                    $inquiry->update([
+                        'quotation_id' => $quotation->id,
+                        'status' => 'quoted',
+                        'client_id' => $client->id,
+                    ]);
                     app(ReferralAttributionService::class)->attribute($quotation, $inquiry);
                 }
             }

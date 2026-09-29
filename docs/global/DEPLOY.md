@@ -102,7 +102,21 @@ Public marketing routes carry `swr` route rules in [frontend/nuxt.config.ts](./f
 
 **Production only.** The rules go through a `swr()` helper that is a no-op under `nuxt dev`: Nitro persists the cached HTML on disk (`.nuxt/cache/nitro/routes`) and keeps serving it across dev-server restarts, which hid template edits for up to five minutes. In dev every request renders fresh; verify caching against a build, never the dev server.
 
-The emitted `Cache-Control: s-maxage=…, stale-while-revalidate` also lets Cloudflare cache the HTML at the edge, so cold arrivals are served from a nearby POP without touching the origin.
+The cache lives in the Nuxt server process (Nitro storage), **not** at Cloudflare: the emitted `Cache-Control: s-maxage=…, stale-while-revalidate` would allow edge caching, but without a Cache Rule Cloudflare doesn't cache HTML — the live site answers `cf-cache-status: DYNAMIC` (checked 2026-09-29). Adding one would need its own purge (see below).
+
+**On-demand purge (blog).** A published blog change must not wait out the 300s window, so `App\Observers\BlogPostObserver` → `App\Support\SiteCache` calls `POST /_cache/purge` on the frontend container ([server/routes/_cache/purge.post.ts](../../frontend/server/routes/_cache/purge.post.ts)) after the response — on publish, unpublish, and any edit/delete/restore of a live post (draft edits don't). It drops **every** cached page (the homepage lists the latest posts; the rest just re-render on their next visit). Guarded by a shared secret — a missing or wrong token gets a 404. If either side is unconfigured it's a no-op, and a failed call is only logged: the page catches up within the normal 300s. One-time VPS setup (secrets never go in git):
+
+```bash
+TOKEN=$(openssl rand -hex 32)
+# backend/.env
+SITE_CACHE_PURGE_URL=http://axelnova-frontend:3000/_cache/purge   # container-to-container on axelnova-shared
+SITE_CACHE_PURGE_TOKEN=$TOKEN
+# frontend/.env.production
+NUXT_CACHE_PURGE_TOKEN=$TOKEN
+# then recreate both containers so they read the new env
+```
+
+Check it from the backend container: `php artisan tinker` → `Http::withToken(config('services.site_cache.purge_token'))->post(config('services.site_cache.purge_url'))->json()` → `{"purged": N}`.
 
 **Authenticated and per-recipient routes are deliberately excluded and must stay that way** — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**`. Caching any of them would serve one visitor's page to another. Verify with `curl -I` that those return no `s-maxage`.
 

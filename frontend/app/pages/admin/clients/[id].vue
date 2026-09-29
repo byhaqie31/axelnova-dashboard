@@ -22,6 +22,7 @@ interface Client {
   inquiries_count: number
   quotations_count: number
   orders_count: number
+  payments_count: number
   inquiries: InquiryRow[]
   quotations: QuotationRow[]
   orders: OrderRow[]
@@ -31,6 +32,7 @@ const client = ref<Client | null>(null)
 const loading = ref(true)
 const error = ref('')
 const modalOpen = ref(false)
+const deleteTarget = ref<Client | null>(null)
 
 useHead(() => ({ title: client.value ? `${client.value.name} — Client` : 'Client — Admin' }))
 
@@ -53,6 +55,12 @@ onMounted(fetchClient)
 
 function onSaved(c: Partial<Client>) {
   if (client.value) Object.assign(client.value, c)
+}
+
+// Deleted — land on the client the records moved to, else back on the list.
+function onDeleted(replacementId: number | null) {
+  deleteTarget.value = null
+  navigateTo(replacementId ? `/admin/clients/${replacementId}` : '/admin/clients')
 }
 
 function fmtDate(iso?: string | null) {
@@ -208,10 +216,17 @@ v-if="client.phone"
             :href="`https://wa.me/${client.phone.replace(/\D/g, '')}`"
             target="_blank" rel="noopener"
             class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
+          <button
+            type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]"
+            :style="{ color: 'var(--color-danger)' }"
+            @click="deleteTarget = client">
+            Delete client
+          </button>
         </div>
       </div>
     </div>
 
     <ClientFormModal :open="modalOpen" :client="client" @close="modalOpen = false" @saved="onSaved" />
+    <AdminClientDeleteDialog :client="deleteTarget" @cancel="deleteTarget = null" @deleted="onDeleted" />
   </div>
 </template>

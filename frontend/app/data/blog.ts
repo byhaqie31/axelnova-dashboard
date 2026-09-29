@@ -43,6 +43,7 @@ export interface BlogRenderedSection extends BlogSection {
 export interface BlogPostCard {
   slug: string
   title: string
+  /** Plain text — the stored intro's **bold** / *italic* markers are stripped server-side. */
   excerpt: string
   /** Editorial format — the accent eyebrow on the page (article | guide | tutorial | case_study | opinion | news). */
   format: BlogFormat
@@ -56,6 +57,8 @@ export interface BlogPostCard {
 
 /** Matches PublicBlogPostResource. */
 export interface BlogPostPublic extends BlogPostCard {
+  /** The intro as sanitised HTML — <p>/<strong>/<em> only (BlogMarkdown::introHtml). */
+  excerpt_html: string
   sections: BlogRenderedSection[]
   toc: BlogTocItem[]
   cta_heading: string | null
@@ -113,6 +116,9 @@ export interface BlogGuide {
   /** The closing CTA a post falls back to when its own cta_* are empty. */
   cta_defaults: { heading: string, body: string, label: string, url: string }
   formats: BlogFormat[]
+  /** Categories / topics in use across non-deleted posts (case-deduped) — the editor's pickers. */
+  categories: string[]
+  tags: string[]
 }
 
 const ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'

@@ -8,6 +8,8 @@ use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Monthly money reporting for the founder cockpit.
@@ -122,5 +124,145 @@ class RevenueController extends Controller
                 'orders' => (int) array_sum(array_column($series, 'orders')),
             ],
         ]);
+    }
+
+    /**
+     * One month of the overview, broken down: the orders won (sales closed), the
+     * payments that landed, and a per-client roll-up. Same rules as monthly() —
+     * orders by created_at excluding cancelled, cash by paid_at over succeeded
+     * ledger rows with refunds netting out — so this page always adds up to its
+     * overview row. `{month}` is YYYY-MM; malformed or future months are 404.
+     */
+    public function month(string $month): JsonResponse
+    {
+        $start = $this->parseMonth($month);
+        $end = $start->copy()->endOfMonth();
+
+        $orders = Order::query()
+            ->with(['client:id,name,company', 'quotation.servicePackage'])
+            ->whereNot('status', 'cancelled')
+            ->whereBetween('created_at', [$start, $end])
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Refunds are negative rows and stay in the list — a bad month should
+        // read as one, not be tidied away.
+        $payments = Payment::query()
+            ->with(['client:id,name', 'order:id,order_number,created_at'])
+            ->where('status', PaymentStatus::Succeeded)
+            ->whereBetween('paid_at', [$start, $end])
+            ->orderByDesc('paid_at')
+            ->get();
+
+        $collected = round((float) $payments->sum('amount_myr'), 2);
+        $fees = round((float) $payments->sum('fee_myr'), 2);
+        $next = $start->copy()->addMonth();
+
+        return response()->json([
+            'month' => $start->format('Y-m'),
+            'label' => $start->format('M Y'),
+            'prev' => $start->copy()->subMonth()->format('Y-m'),
+            // The future isn't browsable — the current month is the last stop.
+            'next' => $next->lte(now()->startOfMonth()) ? $next->format('Y-m') : null,
+            'summary' => [
+                'orders' => $orders->count(),
+                'booked' => round((float) $orders->sum('final_amount_myr'), 2),
+                'collected' => $collected,
+                'fees' => $fees,
+                'net' => round($collected - $fees, 2),
+                'refunded' => round((float) $payments->where('amount_myr', '<', 0)->sum(fn ($p) => -$p->amount_myr), 2),
+                'payments' => $payments->count(),
+                // Still owed on THIS month's sales (cash-to-date, not just this month's).
+                'outstanding' => round((float) $orders->sum(fn (Order $o) => $o->remaining_myr), 2),
+            ],
+            'orders' => $orders->map(fn (Order $o) => [
+                'id' => $o->id,
+                'order_number' => $o->order_number,
+                'client' => $o->client ? ['id' => $o->client->id, 'name' => $o->client->name, 'company' => $o->client->company] : null,
+                'label' => $this->orderLabel($o),
+                'status' => $o->status,
+                'payment_status' => $o->payment_status,
+                'value' => round((float) $o->final_amount_myr, 2),
+                'paid' => round((float) $o->amount_paid_myr, 2),
+                'balance' => round((float) $o->remaining_myr, 2),
+                'created_at' => $o->created_at?->toISOString(),
+            ])->values(),
+            'payments' => $payments->map(fn (Payment $p) => [
+                'id' => $p->id,
+                'payment_number' => $p->payment_number,
+                'paid_at' => $p->paid_at?->toISOString(),
+                'client' => $p->client ? ['id' => $p->client->id, 'name' => $p->client->name] : null,
+                'order_id' => $p->order_id,
+                'order_number' => $p->order?->order_number,
+                // Which month the sale was won — cash often trails the deposit month.
+                'order_month' => $p->order?->created_at?->format('Y-m'),
+                'type' => $p->type,
+                'method' => $p->method,
+                'amount' => round((float) $p->amount_myr, 2),
+                'fee' => round((float) $p->fee_myr, 2),
+            ])->values(),
+            'clients' => $this->clientRollup($orders, $payments),
+        ]);
+    }
+
+    /** YYYY-MM → start of that month, or 404 for a malformed / future month. */
+    private function parseMonth(string $month): Carbon
+    {
+        abort_unless(preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month), 404);
+
+        $start = Carbon::createFromFormat('!Y-m', $month)->startOfMonth();
+        abort_if($start->gt(now()->startOfMonth()), 404);
+
+        return $start;
+    }
+
+    /**
+     * What was sold: the quote's project title when it has one, else the catalog
+     * package name — the same precedence the quotations list uses.
+     */
+    private function orderLabel(Order $order): string
+    {
+        $quotation = $order->quotation;
+        if (! $quotation) {
+            return 'Order';
+        }
+
+        $doc = is_array($quotation->document) ? $quotation->document : [];
+        $project = $doc['project'] ?? ($doc['payload']['project'] ?? null);
+
+        if (filled($project)) {
+            return (string) $project;
+        }
+
+        return $quotation->servicePackage?->name
+            ?? ($quotation->package_key ? Str::headline($quotation->package_key) : 'Custom');
+    }
+
+    /**
+     * Booked vs collected per client for the month. A client who booked nothing
+     * but paid off an older order still appears. Largest collected first.
+     *
+     * @return list<array{id: int, name: string, booked: float, collected: float, orders: int, payments: int}>
+     */
+    private function clientRollup($orders, $payments): array
+    {
+        $rows = [];
+
+        foreach ($orders as $o) {
+            $rows[$o->client_id] ??= ['id' => $o->client_id, 'name' => $o->client?->name ?? 'Unknown', 'booked' => 0.0, 'collected' => 0.0, 'orders' => 0, 'payments' => 0];
+            $rows[$o->client_id]['booked'] += (float) $o->final_amount_myr;
+            $rows[$o->client_id]['orders']++;
+        }
+
+        foreach ($payments as $p) {
+            $rows[$p->client_id] ??= ['id' => $p->client_id, 'name' => $p->client?->name ?? 'Unknown', 'booked' => 0.0, 'collected' => 0.0, 'orders' => 0, 'payments' => 0];
+            $rows[$p->client_id]['collected'] += (float) $p->amount_myr;
+            $rows[$p->client_id]['payments']++;
+        }
+
+        $rows = array_map(fn ($r) => [...$r, 'booked' => round($r['booked'], 2), 'collected' => round($r['collected'], 2)], array_values($rows));
+        usort($rows, fn ($a, $b) => [$b['collected'], $b['booked']] <=> [$a['collected'], $a['booked']]);
+
+        return $rows;
     }
 }

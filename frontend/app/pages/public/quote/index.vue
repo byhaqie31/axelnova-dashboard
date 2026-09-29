@@ -52,6 +52,7 @@ onMounted(() => {
 
 const loading = ref(false)
 const error = ref('')
+const honeypot = ref('')
 
 const canSubmit = computed(() =>
   form.name.trim().length >= 2
@@ -65,8 +66,9 @@ async function handleSubmit() {
   error.value = ''
   try {
     // Backend is the source of truth — creates the tracked inquiry row,
-    // surfaced in /admin/inquiries. Carry the referral code (?ref) so the
-    // inquiry is attributed to the referrer even across the API origin.
+    // surfaced in /admin/inquiries, and emails the auto-reply + admin heads-up.
+    // Carry the referral code (?ref) so the inquiry is attributed to the
+    // referrer even across the API origin.
     await $fetch(withRef(`${runtimeConfig.public.apiBase}/api/v1/inquiries`), {
       method: 'POST',
       headers: { Accept: 'application/json' },
@@ -79,27 +81,10 @@ async function handleSubmit() {
         budget_hint: form.budgetHint || null,
         timeline_hint: form.timelineHint || null,
         message: form.message,
+        origin: 'quote',
+        website_url: honeypot.value || null,
       },
     })
-
-    // Best-effort email ping so a new-inquiry notification still lands; non-blocking.
-    fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        access_key: 'a9100b0c-2c2b-4c5c-a381-543301ef9b17',
-        subject: 'New Project Inquiry — axelnovaventures.com',
-        from_name: form.name,
-        email: form.email,
-        name: form.name,
-        company: form.company || '—',
-        phone: form.phone || '—',
-        project_type: form.projectType || '—',
-        budget: form.budgetHint || '—',
-        timeline: form.timelineHint || '—',
-        message: form.message,
-      }),
-    }).catch(() => {})
 
     await navigateTo('/quote/success')
   }
@@ -223,7 +208,7 @@ useScrollReveal('.reveal')
         </div>
 
         <!-- Honeypot -->
-        <input type="text" name="website_url" class="hidden" tabindex="-1" autocomplete="off" />
+        <input v-model="honeypot" type="text" name="website_url" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
 
         <button type="submit" class="btn-pill btn-pill-accent w-full justify-center"
           :disabled="!canSubmit || loading"

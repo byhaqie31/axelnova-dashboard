@@ -22,6 +22,8 @@ class StoreInquiryRequest extends FormRequest
             'budget_hint' => ['nullable', 'string', 'max:100'],
             'timeline_hint' => ['nullable', 'string', 'max:100'],
             'message' => ['required', 'string', 'min:10', 'max:5000'],
+            'origin' => ['nullable', 'in:quote,contact'],
+            'subject' => ['nullable', 'string', 'max:60'],
             'website_url' => ['nullable', 'max:0'], // honeypot — must be empty
         ];
     }

@@ -11,6 +11,8 @@ interface Inquiry {
   company: string | null
   project_type: string | null
   budget_hint: string | null
+  origin: 'quote' | 'contact'
+  subject: string | null
   status: string
   created_at: string
 }
@@ -23,6 +25,7 @@ const error = ref('')
 const filters = reactive({
   search: '',
   status: typeof route.query.status === 'string' ? route.query.status : '',
+  origin: typeof route.query.origin === 'string' ? route.query.origin : '',
   page: 1,
 })
 
@@ -34,6 +37,19 @@ const statusOptions = [
   { value: 'archived', label: 'Archived' },
 ]
 
+// Both public forms feed this one list — /quote (project brief) and /contact.
+const originOptions = [
+  { value: '', label: 'All' },
+  { value: 'quote', label: 'Quote form' },
+  { value: 'contact', label: 'Contact form' },
+]
+const originLabels: Record<string, string> = { quote: 'Quote form', contact: 'Contact form' }
+
+// Contact rows carry a subject instead of a project type.
+function topic(q: Inquiry) {
+  return (q.origin === 'contact' ? q.subject : q.project_type) ?? '—'
+}
+
 async function fetchInquiries() {
   loading.value = true
   error.value = ''
@@ -41,6 +57,7 @@ async function fetchInquiries() {
     const params = new URLSearchParams()
     if (filters.search) params.set('search', filters.search)
     if (filters.status) params.set('status', filters.status)
+    if (filters.origin) params.set('origin', filters.origin)
     params.set('page', String(filters.page))
 
     const res = await apiFetch<{ data: Inquiry[]; meta: any }>(`/api/v1/admin/inquiries?${params}`)
@@ -63,7 +80,7 @@ watch(() => filters.search, () => {
   searchTimer = setTimeout(() => { filters.page = 1; fetchInquiries() }, 400)
 })
 
-watch(() => filters.status, () => {
+watch(() => [filters.status, filters.origin], () => {
   if (filters.page !== 1) filters.page = 1
   else fetchInquiries()
 })
@@ -81,14 +98,15 @@ function fmtDate(iso: string) {
     <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
       <div>
         <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Inquiries</h1>
-        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Project inquiries from the public site. Open one and <span style="color: var(--color-text);">Build quotation</span> to price it.</p>
+        <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Everything sent through the public quote and contact forms. Open one and <span style="color: var(--color-text);">Build quotation</span> to price it.</p>
       </div>
     </div>
 
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, company…" />
-      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" class="ml-auto" />
+      <AdminStatusFilter v-model="filters.origin" :options="originOptions" label="Form" class="ml-auto" />
+      <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" />
     </div>
 
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
@@ -106,7 +124,7 @@ function fmtDate(iso: string) {
         <thead>
           <tr>
             <th
-v-for="h in ['Name', 'Project type', 'Budget', 'Status', 'Submitted']" :key="h"
+v-for="h in ['Name', 'Topic', 'Budget', 'Status', 'Submitted']" :key="h"
               class="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">
               {{ h }}
             </th>
@@ -122,7 +140,8 @@ v-for="q in inquiries" :key="q.id"
               <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ q.email }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <span class="text-[13px]" style="color: var(--color-text-secondary);">{{ q.project_type ?? '—' }}</span>
+              <p class="text-[13px]" style="color: var(--color-text-secondary);">{{ topic(q) }}</p>
+              <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ originLabels[q.origin] }}</p>
             </td>
             <td class="px-4 py-3.5">
               <span class="text-[12px]" style="color: var(--color-text-secondary);">{{ q.budget_hint ?? '—' }}</span>
@@ -155,7 +174,7 @@ v-for="q in inquiries" :key="q.id"
         </div>
         <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
         <div class="pt-2 border-t flex items-center justify-between gap-3" :style="{ borderColor: 'var(--color-border)' }">
-          <p class="text-[13px]" :style="{ color: 'var(--color-text-secondary)' }">{{ q.project_type ?? '—' }}</p>
+          <p class="text-[13px]" :style="{ color: 'var(--color-text-secondary)' }">{{ topic(q) }} <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">· {{ originLabels[q.origin] }}</span></p>
           <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(q.created_at) }}</p>
         </div>
       </button>

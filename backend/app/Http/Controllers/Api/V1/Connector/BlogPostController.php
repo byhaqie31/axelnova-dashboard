@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AdminBlogPostResource;
 use App\Models\BlogPost;
 use App\Services\Blog\BlogPostInput;
+use App\Services\Blog\BlogTaxonomy;
 use App\Support\BlogGuide;
+use App\Support\BlogMarkdown;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -22,9 +24,11 @@ use Illuminate\Validation\ValidationException;
  *     published post's edits would go live without the founder's preview.
  *   • NEVER publish, unpublish, or delete — those stay in the admin, by hand.
  *
- * Saves go through the same BlogPostInput as the admin editor. Unlike the
- * editor, an image here must carry alt text (checked against the merged post
- * for the cover, so swapping a URL keeps the stored alt).
+ * Saves go through the same BlogPostInput as the admin editor. A category or
+ * tag is first snapped to the spelling other posts already use (BlogTaxonomy),
+ * since Claude has no picker to choose from. Unlike the editor, an image here
+ * must carry alt text (checked against the merged post for the cover, so
+ * swapping a URL keeps the stored alt).
  */
 class BlogPostController extends Controller
 {
@@ -62,7 +66,7 @@ class BlogPostController extends Controller
                 'status' => $post->status,
                 'format' => $post->format,
                 'category' => $post->category,
-                'excerpt' => Str::limit((string) $post->excerpt, 160),
+                'excerpt' => Str::limit(BlogMarkdown::plainText((string) $post->excerpt), 160),
                 'updated_at' => $post->updated_at?->toISOString(),
                 'published_at' => $post->published_at?->toISOString(),
                 ...$this->urls($post),
@@ -88,7 +92,7 @@ class BlogPostController extends Controller
         $this->assertCoverAlt($data);
 
         $post = BlogPost::create([
-            ...BlogPostInput::derive($data),
+            ...BlogPostInput::derive(BlogTaxonomy::snap($data)),
             'status' => BlogPost::STATUS_DRAFT,
             'published_at' => null,
             'created_by' => $request->user()->id,
@@ -113,7 +117,7 @@ class BlogPostController extends Controller
         $data = $request->validate(BlogPostInput::rules(partial: true, requireAlt: true));
         $this->assertCoverAlt($data, $post);
 
-        $post->update([...BlogPostInput::derive($data, $post, partial: true), 'updated_by' => $request->user()->id]);
+        $post->update([...BlogPostInput::derive(BlogTaxonomy::snap($data, $post->id), $post, partial: true), 'updated_by' => $request->user()->id]);
         $post->logActivity('blog_post.updated', ['title' => $post->title, 'via' => 'mcp_connector']);
 
         return response()->json(['data' => $this->record($post->fresh())]);

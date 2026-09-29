@@ -103,6 +103,22 @@ class ConnectorBlogTest extends TestCase
             ->assertJsonStructure(['modes' => ['write', 'structure_only'], 'section_shape', 'image_rules', 'limits']);
     }
 
+    public function test_create_and_update_snap_category_and_tags_to_the_spelling_already_in_use(): void
+    {
+        BlogPost::factory()->create(['category' => 'Systems', 'tags' => ['Cloudflare', 'AI']]);
+
+        $id = $this->postJson('/api/v1/connector/blog/posts', $this->payload(['category' => 'systems', 'tags' => ['cloudflare', 'ai', 'Brand New']]), $this->tokenHeader())
+            ->assertCreated()
+            ->assertJsonPath('data.category', 'Systems')
+            ->assertJsonPath('data.tags', ['Cloudflare', 'AI', 'Brand New'])
+            ->json('data.id');
+
+        $this->putJson("/api/v1/connector/blog/posts/{$id}", ['category' => 'SYSTEMS', 'tags' => ['brand new', 'CLOUDFLARE']], $this->tokenHeader())
+            ->assertOk()
+            ->assertJsonPath('data.category', 'Systems')
+            ->assertJsonPath('data.tags', ['brand new', 'Cloudflare']);
+    }
+
     // ── List / show ─────────────────────────────────────────────────────────
 
     public function test_list_is_slim_newest_first_filterable_and_hides_deleted_posts(): void

@@ -29,6 +29,10 @@ class InquiryReceivedMail extends Mailable implements ShouldQueue
             markdown: 'mail.inquiry-received',
             with: [
                 'inquiry' => $this->inquiry,
+                // Quote-copy ("tailored quote") only fits project intent — a contact
+                // "General question" / "Feedback" gets a plain acknowledgement.
+                'isProject' => $this->inquiry->origin !== 'contact'
+                    || $this->inquiry->subject === 'Project inquiry',
                 'whatsappUrl' => config('services.admin.whatsapp_url')
                     .'?text='.rawurlencode("Hi Qie, I'd like to chat about my project."),
             ],

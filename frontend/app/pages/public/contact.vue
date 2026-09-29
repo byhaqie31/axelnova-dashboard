@@ -61,30 +61,39 @@ const channels = [
   },
 ]
 
+const runtimeConfig = useRuntimeConfig()
+const { withRef } = useReferralAttribution()
+const honeypot = ref('')
+
 const handleSubmit = async () => {
+  if (form.message.trim().length < 10) {
+    error.value = 'Please add a little more detail — at least 10 characters.'
+    return
+  }
   loading.value = true
   error.value = ''
   try {
-    const res = await fetch('https://api.web3forms.com/submit', {
+    // Same pipeline as /quote — lands in /admin/inquiries (origin 'contact'),
+    // and the backend emails both an auto-reply and the admin heads-up.
+    await $fetch(withRef(`${runtimeConfig.public.apiBase}/api/v1/inquiries`), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        access_key: 'a9100b0c-2c2b-4c5c-a381-543301ef9b17',
+      headers: { Accept: 'application/json' },
+      body: {
         name: form.name,
         email: form.email,
-        subject: `${form.subject} — axelnovaventures.com`,
+        origin: 'contact',
+        subject: form.subject,
         message: form.message,
-      }),
+        website_url: honeypot.value || null,
+      },
     })
-    const result = await res.json()
-    if (result.success) {
-      submitted.value = true
-    } else {
-      error.value = 'Something went wrong. Please try again or email me directly.'
-    }
-  } catch {
-    error.value = 'Network error. Please check your connection and try again.'
-  } finally {
+    submitted.value = true
+  }
+  catch (e: any) {
+    const errs = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
+    error.value = errs || e?.data?.message || 'Something went wrong. Please try again, or email baihaqie@axelnova.tech directly.'
+  }
+  finally {
     loading.value = false
   }
 }
@@ -121,7 +130,7 @@ useScrollReveal('.reveal')
             <div>
               <p class="text-[20px] font-semibold tracking-tight mb-2" style="color: var(--color-text);">Message sent.</p>
               <p class="text-[14px] leading-relaxed" style="color: var(--color-text-secondary);">
-                Your email client should have opened. I'll reply within one working day.
+                A confirmation is on its way to your inbox. I'll reply within one working day.
               </p>
             </div>
             <button
@@ -139,6 +148,9 @@ useScrollReveal('.reveal')
           class="space-y-5"
           @submit.prevent="handleSubmit"
         >
+          <!-- Honeypot — bots fill it, the API rejects any value -->
+          <input v-model="honeypot" type="text" name="website_url" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
           <div class="grid sm:grid-cols-2 gap-5">
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Name</label>
@@ -192,6 +204,8 @@ useScrollReveal('.reveal')
               rows="7"
               placeholder="Tell me about your project, idea, or question..."
               required
+              minlength="10"
+              maxlength="5000"
               class="contact-input resize-none"
               :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
             />

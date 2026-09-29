@@ -45,7 +45,7 @@ const form = reactive({
   cover_image_alt: '',
   category: '',
   format: 'article' as BlogFormat,
-  tags: '',
+  tags: [] as string[],
   cta_heading: '',
   cta_body: '',
   cta_label: '',
@@ -57,7 +57,13 @@ const autoSlug = ref(true)
 let savedSnapshot = JSON.stringify(form)
 const dirty = computed(() => JSON.stringify(form) !== savedSnapshot)
 const liveMinutes = computed(() => readingMinutes(form.excerpt, form.sections))
-const splitTags = (s: string) => s.split(',').map(t => t.trim()).filter(Boolean)
+
+// The introduction takes inline emphasis only — the backend flattens anything
+// else (BlogMarkdown::introHtml), so the toolbar doesn't offer it.
+const introToolbar = [
+  { kind: 'mark' as const, mark: 'bold' as const, icon: 'i-lucide-bold', label: 'Bold' },
+  { kind: 'mark' as const, mark: 'italic' as const, icon: 'i-lucide-italic', label: 'Italic' },
+]
 const nullable = (s: string) => s.trim() || null
 
 // Auto-slug follows the title until the founder edits the slug by hand, and
@@ -80,7 +86,7 @@ function hydrate(p: BlogPostAdmin) {
     cover_image_alt: p.cover_image_alt ?? '',
     category: p.category ?? '',
     format: p.format ?? 'article',
-    tags: p.tags.join(', '),
+    tags: [...p.tags],
     cta_heading: p.cta_heading ?? '',
     cta_body: p.cta_body ?? '',
     cta_label: p.cta_label ?? '',
@@ -109,18 +115,10 @@ async function fetchPost() {
   }
 }
 
-// Category suggestions — whatever is already in use across posts.
-const categories = ref<string[]>([])
-async function fetchCategories() {
-  try {
-    const res = await apiFetch<{ data: BlogPostAdmin[] }>('/api/v1/admin/blog/posts?page=1')
-    categories.value = [...new Set(res.data.map(p => p.category).filter((c): c is string => !!c))]
-  }
-  catch { /* the datalist just stays empty */ }
-}
 // The writing guide + CTA defaults — one copy on the backend (config/blog.php),
-// also what Claude writes to via the MCP connector. If it fails the editor still
-// works; the Voice panel and CTA placeholders just stay empty.
+// also what Claude writes to via the MCP connector — plus the categories/topics
+// in use for the pickers. If it fails the editor still works; the Voice panel,
+// CTA placeholders and picker lists just stay empty (typing a new name still works).
 const guide = ref<BlogGuide | null>(null)
 async function fetchGuide() {
   try {
@@ -132,7 +130,6 @@ const ctaDefaults = computed(() => guide.value?.cta_defaults ?? null)
 
 onMounted(() => {
   fetchPost()
-  fetchCategories()
   fetchGuide()
 })
 watch(() => route.params.id, () => { if (!isNew.value) fetchPost() })
@@ -147,7 +144,7 @@ function payload() {
     cover_image_alt: nullable(form.cover_image_alt),
     category: nullable(form.category),
     format: form.format,
-    tags: splitTags(form.tags),
+    tags: form.tags,
     cta_heading: nullable(form.cta_heading),
     cta_body: nullable(form.cta_body),
     cta_label: nullable(form.cta_label),
@@ -283,7 +280,7 @@ async function openPreview() {
   if (previewing.value) return
   previewing.value = true
   try {
-    const res = await apiFetch<{ sections: BlogRenderedSection[], toc: BlogTocItem[], reading_minutes: number }>('/api/v1/admin/blog/render', {
+    const res = await apiFetch<{ excerpt_html: string, sections: BlogRenderedSection[], toc: BlogTocItem[], reading_minutes: number }>('/api/v1/admin/blog/render', {
       method: 'POST',
       body: { excerpt: form.excerpt, sections: form.sections.map(s => ({ ...s, heading: s.heading || 'Untitled section' })) },
     })
@@ -291,11 +288,12 @@ async function openPreview() {
       slug: form.slug || 'preview',
       title: form.title || 'Untitled post',
       excerpt: form.excerpt,
+      excerpt_html: res.excerpt_html,
       cover_image_url: nullable(form.cover_image_url),
       cover_image_alt: nullable(form.cover_image_alt),
       category: nullable(form.category),
       format: form.format,
-      tags: splitTags(form.tags),
+      tags: form.tags,
       reading_minutes: res.reading_minutes,
       published_at: post.value?.published_at ?? new Date().toISOString(),
       sections: res.sections,
@@ -385,9 +383,26 @@ const statusStyle = computed(() => post.value?.status === 'published'
             <div>
               <div class="flex items-baseline justify-between mb-1.5">
                 <label class="text-[11px] font-medium uppercase tracking-wider" :style="{ color: 'var(--color-text-tertiary)' }">Introduction</label>
-                <span class="text-[11px] tabular-nums" :style="{ color: 'var(--color-text-tertiary)' }">{{ form.excerpt.length }}/500 · ~{{ liveMinutes }} min read</span>
+                <!-- Counts the raw Markdown (markers included) — the same 500 the API enforces. -->
+                <span class="text-[11px] tabular-nums" :style="{ color: form.excerpt.length > 500 ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }">{{ form.excerpt.length }}/500 · ~{{ liveMinutes }} min read</span>
               </div>
-              <textarea v-model="form.excerpt" rows="3" maxlength="500" placeholder="The opening hook — two or three sentences that set up the question." class="contact-input w-full" />
+              <!-- Markdown-backed like the sections, but bold / italic only. -->
+              <UEditor
+                v-slot="{ editor }"
+                v-model="form.excerpt"
+                content-type="markdown"
+                placeholder="The opening hook — two or three sentences that set up the question."
+                class="blog-editor is-compact rounded-xl border overflow-hidden"
+                :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+              >
+                <UEditorToolbar
+                  :editor="editor"
+                  :items="introToolbar"
+                  layout="fixed"
+                  class="border-b px-2 py-1"
+                  :style="{ borderColor: 'var(--color-border)' }"
+                />
+              </UEditor>
             </div>
           </div>
 
@@ -436,9 +451,14 @@ const statusStyle = computed(() => post.value?.status === 'published'
               <span class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-tertiary)' }">Format — the label before the date</span>
               <AdminSelect v-model="form.format" :items="blogFormatOptions" class="w-full" />
             </div>
-            <input v-model="form.category" list="blog-categories" type="text" maxlength="60" placeholder="Category (e.g. Systems) — filters the index" class="contact-input w-full">
-            <datalist id="blog-categories"><option v-for="c in categories" :key="c" :value="c" /></datalist>
-            <input v-model="form.tags" type="text" placeholder="Topics, comma-separated (e.g. Websites, Cloudflare)" class="contact-input w-full">
+            <div>
+              <span class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-tertiary)' }">Category — pick one or add a new one</span>
+              <AdminCreatableSelect v-model="form.category" :items="guide?.categories ?? []" :max-length="60" noun="category" placeholder="Choose a category (e.g. Systems)" />
+            </div>
+            <div>
+              <span class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-tertiary)' }">Topics — tick existing ones or add new</span>
+              <AdminCreatableSelect v-model="form.tags" :items="guide?.tags ?? []" multiple :max="10" :max-length="40" noun="topic" placeholder="Choose topics (e.g. Websites, Cloudflare)" />
+            </div>
             <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">On /blog the pills filter by format and the dropdown by topic — the category counts as a topic too.</p>
           </div>
 

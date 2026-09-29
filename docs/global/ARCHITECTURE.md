@@ -234,6 +234,7 @@ GET  /v1/documents/{token}                Public  — token-gated document data 
 
 # Revenue reporting (derived — no table of its own)
 GET  /v1/admin/revenue/monthly       Sanctum — booked vs collected per calendar month
+GET  /v1/admin/revenue/monthly/{YYYY-MM}  Sanctum — one month broken down: orders won, payments landed (tagged with the order's month), per-client roll-up; same rules as /monthly so it sums to its row. 404 for malformed/future months
                                      (?months=6|12|24, anything else falls back to 12).
                                      BOOKED = Σ orders.final_amount_myr of non-cancelled orders
                                      created that month (what we sold); COLLECTED = signed Σ over
@@ -272,7 +273,7 @@ GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer �
 
 ## Frontend routes
 
-Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
+Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. A live blog change purges the cache on demand (`BlogPostObserver` → `SiteCache` → Nuxt `POST /_cache/purge`). See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
 
 
 ```
@@ -284,8 +285,8 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
                       (section links), text column right, closing CTA, share row, related
 /services             Services & pricing
 /about                About page
-/contact              Contact form (Web3Forms)
-/quote                Public quote builder (→ backend API)
+/contact              Contact form → POST /v1/inquiries (origin=contact) — same pipeline as /quote
+/quote                Project inquiry form → POST /v1/inquiries (origin=quote)
 /quote/success        Post-submission confirmation
 /admin/login          Admin auth
 /admin/leads          Lead list (Sanctum-protected)
@@ -298,6 +299,7 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
                       detail carries pay/duration/payment status + Mark paid/Delete, and is read-only once
                       the task is in progress or beyond
 /admin/revenue        Revenue — monthly booked-vs-collected reporting (6/12/24-month window).
+/admin/revenue/[month]  One month's breakdown (e.g. /admin/revenue/2026-07) — opened by clicking a month row or chart bar; prev/next stepper.
                       Totals row (booked / collected / net of fees / fees), a grouped bar chart
                       (one shared MYR axis — never a second scale), and a table of exact figures.
                       Read-only and fully derived from `payments` + `orders`; adds no table

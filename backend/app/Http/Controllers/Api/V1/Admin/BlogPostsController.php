@@ -132,10 +132,10 @@ class BlogPostsController extends Controller
         return response()->json(['message' => 'Post deleted.']);
     }
 
-    /** The writing guide (voice, structure, CTA defaults, formats) — one copy in config/blog.php. */
+    /** The writing guide (voice, structure, CTA defaults, formats — config/blog.php) + the categories/topics in use for the pickers. */
     public function guide(): JsonResponse
     {
-        return response()->json(['data' => BlogGuide::base()]);
+        return response()->json(['data' => BlogGuide::forEditor()]);
     }
 
     /** Preview helper — the public renderer over unsaved form state. Saves nothing. */
@@ -149,6 +149,7 @@ class BlogPostsController extends Controller
         $post = new BlogPost(['sections' => BlogPost::normaliseSections($data['sections'] ?? [])]);
 
         return response()->json([
+            'excerpt_html' => BlogMarkdown::introHtml((string) ($data['excerpt'] ?? '')),
             'sections' => $post->renderedSections(),
             'toc' => $post->toc(),
             'reading_minutes' => BlogMarkdown::readingMinutes((string) ($data['excerpt'] ?? ''), $post->sections),

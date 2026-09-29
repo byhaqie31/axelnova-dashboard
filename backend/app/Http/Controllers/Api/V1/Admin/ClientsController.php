@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\DeleteClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Models\Client;
+use App\Services\Clients\ClientDeleter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\Rule;
@@ -44,7 +47,7 @@ class ClientsController extends Controller
             'inquiries' => fn ($q) => $q->latest(),
             'quotations' => fn ($q) => $q->latest('submitted_at'),
             'orders' => fn ($q) => $q->latest(),
-        ])->loadCount(['inquiries', 'quotations', 'orders']);
+        ])->loadCount(['inquiries', 'quotations', 'orders', 'payments']);
 
         return new ClientResource($client);
     }
@@ -59,6 +62,31 @@ class ClientsController extends Controller
         $client->update($this->validated($request, $client));
 
         return new ClientResource($client);
+    }
+
+    /**
+     * Permanent delete. A client tied to any quotation/order/payment needs a
+     * replacement (client_id, or client{} to create one) — its ties move there
+     * first; without one this is a 409 carrying the counts. See ClientDeleter.
+     */
+    public function destroy(DeleteClientRequest $request, Client $client, ClientDeleter $deleter): JsonResponse
+    {
+        $replacement = $request->replacement();
+
+        if (! $replacement && $deleter->hasBlockers($client)) {
+            return response()->json([
+                'message' => "{$client->name} still has quotations, orders or payments. Choose a client to move them to before deleting.",
+                'counts' => $deleter->blockers($client),
+            ], 409);
+        }
+
+        $result = $deleter->delete($client, $replacement);
+
+        return response()->json([
+            'message' => "Client {$client->name} deleted.",
+            'replacement_id' => $result['replacement_id'],
+            'moved' => $result['moved'],
+        ]);
     }
 
     private function validated(Request $request, ?Client $client = null): array

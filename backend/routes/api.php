@@ -177,6 +177,9 @@ Route::middleware([
         Route::post('/clients', [ClientsController::class, 'store'])->name('clients.store');
         Route::get('/clients/{client}', [ClientsController::class, 'show'])->name('clients.show');
         Route::put('/clients/{client}', [ClientsController::class, 'update'])->name('clients.update');
+        // Permanent delete — ties (quotations/orders/payments/…) must move to a
+        // replacement client first, else 409. See ClientDeleter.
+        Route::delete('/clients/{client}', [ClientsController::class, 'destroy'])->name('clients.destroy');
 
         // Dashboard landing counts — one cached request for the stat tiles.
         Route::get('/dashboard/counts', [DashboardController::class, 'counts'])->name('dashboard.counts');
@@ -276,6 +279,9 @@ Route::middleware([
         // Monthly money reporting — booked (orders won) vs collected (ledger
         // cash), derived only. Founder-only by virtue of the cockpit group.
         Route::get('/revenue/monthly', [RevenueController::class, 'monthly'])->name('revenue.monthly');
+        // One month broken down — orders won, payments landed, per-client roll-up.
+        Route::get('/revenue/monthly/{month}', [RevenueController::class, 'month'])
+            ->where('month', '\d{4}-\d{2}')->name('revenue.month');
 
         // Partner referrals
         Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInquiryRequest;
+use App\Mail\InquiryAdminNotificationMail;
 use App\Mail\InquiryReceivedMail;
-use App\Models\Client;
 use App\Models\Inquiry;
 use App\Models\Referrer;
 use Illuminate\Http\JsonResponse;
@@ -15,15 +15,9 @@ class InquiryController extends Controller
 {
     public function store(StoreInquiryRequest $request): JsonResponse
     {
-        // Every inquiry lands under a customer — matched by email, created if new.
-        $client = Client::firstOrCreate(
-            ['email' => $request->input('email')],
-            [
-                'name' => $request->input('name'),
-                'phone' => $request->input('phone'),
-                'company' => $request->input('company'),
-            ],
-        );
+        // No client row yet — /quote and /contact both land here, and most contact
+        // messages never become business. The client is created when the admin
+        // quotes the inquiry (QuotationsController@store / linkQuotation stamp it back).
 
         // Attribution: the axn_ref cookie carries the first-touch referrer code
         // (functional cookie, set only after consent); if consent was declined the
@@ -32,7 +26,6 @@ class InquiryController extends Controller
         $referrer = $this->resolveReferrer($request);
 
         $inquiry = Inquiry::create([
-            'client_id' => $client->id,
             'referral_partner_id' => $referrer?->id,
             'name' => $request->input('name'),
             'email' => $request->input('email'),
@@ -43,6 +36,8 @@ class InquiryController extends Controller
             'timeline_hint' => $request->input('timeline_hint'),
             'message' => $request->input('message'),
             'source' => $referrer ? 'referral' : 'web',
+            'origin' => $request->input('origin', 'quote'),
+            'subject' => $request->input('subject'),
             'status' => 'new',
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
@@ -50,6 +45,10 @@ class InquiryController extends Controller
 
         // Queued acknowledgement back to the person who inquired.
         Mail::to($inquiry->email, $inquiry->name)->send(new InquiryReceivedMail($inquiry));
+        // Queued heads-up to the admin inbox (replaces the old browser-side Web3Forms ping).
+        // Delayed like NotifyAdminJob so the two sends don't hit the SMTP per-second cap.
+        Mail::to(config('services.admin.email'))
+            ->later(now()->addSeconds(10), new InquiryAdminNotificationMail($inquiry));
 
         return response()->json([
             'data' => ['id' => $inquiry->id],

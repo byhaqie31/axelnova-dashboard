@@ -55,6 +55,9 @@ export default defineNuxtConfig({
   // NUXT_API_BASE (private) and NUXT_PUBLIC_API_BASE (public).
   runtimeConfig: {
     apiBase: 'http://backend:8003',
+    // Shared secret for POST /_cache/purge (server/routes/_cache/purge.post.ts),
+    // set via NUXT_CACHE_PURGE_TOKEN. Empty → the route 404s (dev, CI).
+    cachePurgeToken: '',
     public: {
       apiBase: 'http://localhost:8003',
     },

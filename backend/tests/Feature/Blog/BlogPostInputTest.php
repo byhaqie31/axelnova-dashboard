@@ -83,4 +83,11 @@ class BlogPostInputTest extends TestCase
         // The editor's rules stay as they were — alt optional.
         $this->assertTrue(Validator::make(['title' => 'T', 'sections' => [$section]], BlogPostInput::rules())->passes());
     }
+
+    public function test_tags_are_trimmed_and_de_duplicated_case_insensitively_keeping_the_first(): void
+    {
+        $out = BlogPostInput::derive(['title' => 'T', 'tags' => [' Cloudflare ', 'cloudflare', '', 'AI']]);
+
+        $this->assertSame(['Cloudflare', 'AI'], $out['tags']);
+    }
 }

@@ -11,10 +11,10 @@ const profileOpen = ref(false)
 // Desktop sidebar collapse → icon-only rail. Cookie-backed so it's resolved during
 // SSR and the rail doesn't flash from expanded → collapsed on reload. Separate key
 // from the admin shell so the two surfaces remember their own state.
-const sidebarCollapsed = useCookie<boolean>('axn_team_sidebar_collapsed', { default: () => false })
+const sidebarCollapsed = usePrefCookie<boolean>('axn_team_sidebar_collapsed', () => false)
 
 // Per-group open/closed state, cookie-backed (SSR-resolved, no open/closed flash).
-const navGroupsOpen = useCookie<Record<string, boolean>>('axn_team_nav_groups', { default: () => ({}) })
+const navGroupsOpen = usePrefCookie<Record<string, boolean>>('axn_team_nav_groups', () => ({}))
 
 const route = useRoute()
 const { logout } = useTeamAuth()

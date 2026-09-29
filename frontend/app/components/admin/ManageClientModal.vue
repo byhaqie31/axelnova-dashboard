@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ClientSelection } from '~/utils/clientSelection'
+
 /**
  * Correct a mis-matched client on an Order or Quotation. Two modes:
  *  • Edit details — fix the linked client's name/email/phone/company (writes to
@@ -49,14 +51,8 @@ const error = ref('')
 // Edit-details form (seeds from the current client).
 const form = reactive({ name: '', email: '', phone: '', company: '' })
 
-// Change-client state — search & pick an existing client, or create a new one.
-const search = ref('')
-const results = ref<ClientLite[]>([])
-const searching = ref(false)
-const selectedId = ref<number | null>(null)
-const creatingNew = ref(false)
-const newClient = reactive({ name: '', email: '', phone: '', company: '' })
-let searchTimer: ReturnType<typeof setTimeout> | undefined
+// Change-client target — from <AdminClientPicker> (search & pick, or create new).
+const selection = ref<ClientSelection | null>(null)
 
 watch(() => props.open, (open) => {
   if (!open) return
@@ -69,39 +65,7 @@ watch(() => props.open, (open) => {
   form.email = c?.email ?? ''
   form.phone = c?.phone ?? ''
   form.company = c?.company ?? ''
-  search.value = ''
-  results.value = []
-  selectedId.value = null
-  creatingNew.value = false
-  newClient.name = ''
-  newClient.email = ''
-  newClient.phone = ''
-  newClient.company = ''
 })
-
-watch(search, (q) => {
-  clearTimeout(searchTimer)
-  selectedId.value = null
-  if (!q.trim()) { results.value = []; return }
-  searchTimer = setTimeout(runSearch, 250)
-})
-
-async function runSearch() {
-  searching.value = true
-  try {
-    const res = await apiFetch<{ data: ClientLite[] }>(
-      `/api/v1/admin/clients?search=${encodeURIComponent(search.value.trim())}`,
-    )
-    // Don't offer the client it's already on as a "change" target.
-    results.value = res.data.filter(c => c.id !== props.client?.id)
-  }
-  catch {
-    results.value = []
-  }
-  finally {
-    searching.value = false
-  }
-}
 
 onKeyStroke('Escape', () => { if (props.open) emit('close') })
 
@@ -136,27 +100,10 @@ async function submitEdit() {
 }
 
 async function submitRelink() {
-  let body: Record<string, unknown>
-  if (creatingNew.value) {
-    if (newClient.name.trim().length < 2 || !newClient.email.includes('@')) {
-      error.value = 'A name and a valid email are required for the new client.'
-      return
-    }
-    body = {
-      client: {
-        name: newClient.name.trim(),
-        email: newClient.email.trim(),
-        phone: newClient.phone.trim() || null,
-        company: newClient.company.trim() || null,
-      },
-    }
-  }
-  else {
-    if (!selectedId.value) {
-      error.value = 'Pick a client to re-link to, or create a new one.'
-      return
-    }
-    body = { client_id: selectedId.value }
+  const invalid = clientSelectionError(selection.value, 'Pick a client to re-link to, or create a new one.')
+  if (invalid) {
+    error.value = invalid
+    return
   }
 
   saving.value = true
@@ -165,7 +112,7 @@ async function submitRelink() {
     const path = props.context === 'order'
       ? `/api/v1/admin/orders/${props.recordId}/client`
       : `/api/v1/admin/quotations/${props.recordId}/client`
-    const res = await apiFetch<any>(path, { method: 'POST', body })
+    const res = await apiFetch<any>(path, { method: 'POST', body: selection.value! })
     const record = res.order ?? res.data
     if (res.linked_existing) {
       toast.success('Linked to existing client', `${record.name} was already in your clients — linked, not duplicated.`)
@@ -273,68 +220,8 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
 
         <!-- Change client -->
         <form v-else class="space-y-4" @submit.prevent="submitRelink">
-          <template v-if="!creatingNew">
-            <div class="space-y-1.5">
-              <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Search clients</label>
-              <input v-model="search" type="text" placeholder="Name, email or company…" class="contact-input w-full" :style="fieldStyle">
-            </div>
-
-            <div v-if="searching" class="text-[12px] py-2" style="color: var(--color-text-tertiary);">Searching…</div>
-            <div v-else-if="search.trim() && !results.length" class="text-[12px] py-2" style="color: var(--color-text-tertiary);">
-              No other clients match “{{ search.trim() }}”.
-            </div>
-            <div v-else-if="results.length" class="space-y-1.5 max-h-56 overflow-y-auto">
-              <button
-                v-for="c in results" :key="c.id" type="button"
-                class="w-full text-left rounded-xl border p-3 transition-colors"
-                :style="selectedId === c.id
-                  ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)' }
-                  : { borderColor: 'var(--color-border)' }"
-                @click="selectedId = c.id">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-[13px] font-semibold" style="color: var(--color-text);">{{ c.name }}</span>
-                  <UIcon v-if="selectedId === c.id" name="i-lucide-check" class="size-4 shrink-0" :style="{ color: 'var(--color-accent)' }" />
-                </div>
-                <p class="text-[11px] mt-0.5" style="color: var(--color-text-tertiary);">
-                  {{ c.email }}<span v-if="c.company"> · {{ c.company }}</span>
-                </p>
-              </button>
-            </div>
-
-            <button type="button" class="text-[12px] font-medium inline-flex items-center gap-1.5" :style="{ color: 'var(--color-accent)' }" @click="creatingNew = true">
-              <UIcon name="i-lucide-plus" class="size-3.5" /> Create a new client instead
-            </button>
-          </template>
-
-          <template v-else>
-            <div class="flex items-center justify-between">
-              <p class="text-[12px] font-medium" style="color: var(--color-text-secondary);">New client</p>
-              <button type="button" class="text-[12px]" :style="{ color: 'var(--color-text-tertiary)' }" @click="creatingNew = false">
-                ← Back to search
-              </button>
-            </div>
-            <div class="grid sm:grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Name *</label>
-                <input v-model="newClient.name" type="text" class="contact-input w-full" :style="fieldStyle">
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email *</label>
-                <input v-model="newClient.email" type="email" class="contact-input w-full" :style="fieldStyle">
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Phone</label>
-                <input v-model="newClient.phone" type="tel" class="contact-input w-full" :style="fieldStyle">
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Company</label>
-                <input v-model="newClient.company" type="text" class="contact-input w-full" :style="fieldStyle">
-              </div>
-            </div>
-            <p class="text-[11px]" style="color: var(--color-text-tertiary);">
-              If that email already exists, we’ll link to that client instead of creating a duplicate.
-            </p>
-          </template>
+          <!-- Don't offer the client it's already on as a "change" target. -->
+          <AdminClientPicker v-model="selection" :exclude-id="client?.id" />
 
           <p class="text-[11px] rounded-lg p-2.5" :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">
             <UIcon name="i-lucide-info" class="size-3 inline align-[-1px] mr-1" />

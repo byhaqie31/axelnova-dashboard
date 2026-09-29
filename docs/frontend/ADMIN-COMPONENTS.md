@@ -36,6 +36,23 @@ The admin quotation generator. Used by `pages/admin/quotations/new.vue` (create)
 - **Draft context** card (read-only, rendered only when a draft carries authoring context — chiefly a connector draft): a `created_via` badge ("Via connector"), the AI's **assumptions**, an **open-questions** pre-send checklist (checkboxes are visual-only, not persisted), and free-text **notes**.
 - Saves the **canonical multi-package payload** (`packages[]` + `rush`); the backend re-prices via `PricingEngine::calculateMulti()`, resolves `service_package_id`, and the committed **`document.items`** drive the PDF (`DocumentMapper` → `DocumentData`). Import explicitly (auto-name would be `<AdminQuotationBuilder>`).
 
+### `components/admin/ClientPicker.vue`
+
+Search-and-pick an existing client, or switch to "create a new client" fields.
+Shared by `ManageClientModal` (re-link a quotation/order) and `ClientDeleteDialog`.
+
+- **Model:** `v-model` → `ClientSelection | null` (`{ client_id }` or `{ client: { name, email, phone, company } }`, from `utils/clientSelection.ts`) — already the request-body shape the relink and client-delete endpoints accept. Validate with `clientSelectionError(sel, noSelectionMessage)` before submitting.
+- **Props:** `excludeId?` — hidden from search results (the client it's already on / the one being deleted).
+- State resets on mount, so render it only while the parent dialog is open.
+
+### `components/admin/ClientDeleteDialog.vue`
+
+Permanent client delete from the client detail page (`DELETE /v1/admin/clients/{id}`).
+
+- **Props:** `client` (with `quotations_count` / `orders_count` / `payments_count` / `inquiries_count`; renders nothing while null). **Emits:** `cancel`, `deleted(replacementId | null)`.
+- **No quotations/orders/payments:** plain confirm. **Any of those:** the founder picks a replacement with `<AdminClientPicker>` and the CTA becomes "Move N records & delete" — the backend (`ClientDeleter`) moves quotations (+ contact snapshot), orders, payments, inquiries and feedback, then hard-deletes the client so its email is reusable. Without a replacement the API returns 409 with the counts.
+- §12 confirm-card pattern; destructive CTA is danger text on a ghost pill.
+
 ### `pages/admin/orders/[id].vue` — Documents panel
 
 The order detail page carries the **invoice/receipt builder**. A "Documents"
@@ -139,6 +156,9 @@ restores the rail. Active tile highlighted; the View more button lights up
 when the current route lives in an unpinned group. Works from both expanded
 and collapsed rail states. The mobile drawer is unaffected — it scrolls and
 always lists every group.
+
+### `components/admin/CreatableSelect.vue`
+Searchable dropdown over a list of existing names that can also add a new one — the blog editor's **category** (single: `v-model` is a string, `''` = none) and **topics** (`multiple`: `v-model` is a `string[]`, checkbox rows, picked names as removable chips, `max` caps the count and greys out unticked rows). Props: `items` (the existing names), `maxLength` (the search/add input — match the backend field max), `noun` ("topic" → `Add "…"`, `3 / 10 topics`), `placeholder`. Names match **case-insensitively**: typing `cloudflare` when `Cloudflare` exists highlights the existing one instead of offering a duplicate, and a just-added name stays in the list via the model until the post is saved. Keyboard: ↑/↓ move, Enter picks (the exact match, else the Add row), Esc closes, Backspace on an empty search removes the last chip. Same token-styled popover as `AdminSelect`.
 
 ### `components/admin/BlogSectionEditor.vue` + `pages/admin/blog/[id].vue`
 One section card of the blog editor: heading input, Nuxt UI `UEditor` in `content-type="markdown"` (so the stored value is plain Markdown the backend renders; toolbar = bold / italic / link / H3 / lists / quote / code — H2 belongs to the article layout), optional image URL + alt, optional pull quote + attribution, move up / down / remove (the parent owns the array). The editor page keeps the form as plain reactive state, tracks dirtiness against a saved snapshot for the leave guard, auto-slugs from the title while unpublished, and previews through `POST /v1/admin/blog/render` so the overlay (`PublicBlogArticle preview`) is exactly the public output. Helpers `templateSections()` / `parseMarkdownImport()` live in `data/blog.ts`. See [BLOG.md](../global/BLOG.md).
