@@ -2,35 +2,34 @@
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
-  title: 'Our Studio — Axel Nova Ventures',
-  description: 'How Axel Nova Ventures works: design-first thinking, intentional engineering, and human-centered digital products — from first sketch to production.',
+  title: 'About Our Digital Studio in Kuala Lumpur | Axel Nova',
+  description: 'Learn how Axel Nova Ventures approaches website design and custom business systems in Kuala Lumpur, from the first conversation to launch.',
   path: '/company',
 })
 
 const stats = [
-  { label: 'Registered Name', value: 'Axel Nova Ventures' },
-  { label: 'Registration No.', value: '202603119899 (CA0420977-U)' },
+  { label: 'Registered name', value: 'Axel Nova Ventures' },
+  { label: 'Registration number', value: '202603119899 (CA0420977-U)' },
   { label: 'Established', value: '2026' },
-  { label: 'Headquarters', value: 'Kuala Lumpur, Malaysia' },
-  { label: 'Focus', value: 'Design & Technology' },
-  { label: 'Stage', value: 'Early — building boldly' },
+  { label: 'Based in', value: 'Kuala Lumpur, Malaysia' },
+  { label: 'Focus', value: 'Websites and custom business systems' },
 ]
 
 const pillars = [
   {
     icon: 'i-lucide-layers',
-    title: 'Design-first thinking',
-    description: 'Every system begins with understanding the person who will use it — not the technical constraints.',
+    title: 'Start with the user.',
+    description: 'Understand the task, the context and where people get stuck.',
   },
   {
     icon: 'i-lucide-cpu',
-    title: 'Engineering with intention',
-    description: 'Clean, scalable systems that don\'t just work — they endure.',
+    title: 'Build for real use.',
+    description: 'Choose the technology and level of complexity the project needs.',
   },
   {
     icon: 'i-lucide-heart',
-    title: 'Human-centered by default',
-    description: 'Technology built around how people actually live, think, and feel.',
+    title: 'Make it maintainable.',
+    description: 'Leave clients with clear handover materials and a system they can keep using.',
   },
 ]
 
@@ -48,12 +47,13 @@ useScrollReveal('.reveal')
           class="text-[clamp(34px,5vw,68px)] font-semibold tracking-tighter leading-[1.06] mb-8 max-w-4xl"
           style="color: var(--color-text);"
         >
-          Technology should not only<br class="hidden sm:block" />
-          function well —<span class="text-gradient"> it should feel meaningful.</span>
+          A digital studio built around<br class="hidden sm:block" />
+          <span class="text-gradient">how people use technology.</span>
         </h1>
         <p class="text-[17px] leading-relaxed max-w-lg" style="color: var(--color-text-secondary);">
-          Built in Malaysia. Designed for the world. A company shaped by design, systems thinking,
-          and a quiet refusal to build anything ordinary.
+          Axel Nova Ventures is based in Kuala Lumpur and works with businesses across Malaysia. The
+          studio designs and builds websites and custom systems with clear interfaces, practical
+          features and room to grow.
         </p>
       </div>
 
@@ -76,17 +76,23 @@ useScrollReveal('.reveal')
         <div class="space-y-5">
           <p class="eyebrow mb-2">Origin</p>
           <h2 class="text-3xl font-semibold tracking-tight mb-8" style="color: var(--color-text);">
-            Born from a simple belief.
+            How Axel Nova Ventures began
           </h2>
           <p class="text-[17px] leading-[1.65]" style="color: var(--color-text);">
-            Axel Nova Ventures was born from a simple belief: technology should not only function well —
-            it should feel meaningful.
+            Axel Nova Ventures began with a personal decision: Qie wanted to give his work in design and
+            software a home of its own. In 2026, he registered the venture in Kuala Lumpur and began
+            building it as a design-led digital studio.
           </p>
           <p class="text-[17px] leading-[1.65]" style="color: var(--color-text-secondary);">
-            Built by Qie, a UI/UX-focused software engineer from Malaysia, the company reflects a journey
-            shaped by design, systems thinking, travel, and constant self-evolution. Years spent building
-            fintech platforms and digital experiences revealed one thing clearly: most systems are created
-            to work, but very few are created to truly connect with people.
+            From the start, the focus has been practical: websites that help businesses present
+            themselves clearly, and custom systems designed around the way their teams work. The studio
+            takes each project from an early idea through design and development, choosing the approach
+            and technology to fit the need.
+          </p>
+          <p class="text-[17px] leading-[1.65]" style="color: var(--color-text-secondary);">
+            The company is still young. Client work is its foundation, while the longer ambition is to
+            create original products and ventures under the Axel Nova name. Each project helps define
+            what the company will become.
           </p>
           <p class="text-[20px] font-semibold tracking-tight pt-2" style="color: var(--color-text);">
             Axel Nova Ventures exists to bridge that gap.
@@ -122,7 +128,7 @@ useScrollReveal('.reveal')
     <section class="mb-32 reveal">
       <p class="eyebrow mb-2">The Name</p>
       <h2 class="text-3xl font-semibold tracking-tight mb-10" style="color: var(--color-text);">
-        Every word carries a meaning.
+        The story behind the name
       </h2>
 
       <div class="grid md:grid-cols-2 gap-5 mb-5">
@@ -138,11 +144,10 @@ useScrollReveal('.reveal')
           >A</span>
           <p class="eyebrow mb-5">Axel</p>
           <p class="text-[24px] font-semibold tracking-tight leading-snug mb-4" style="color: var(--color-text);">
-            Movement. Structure.<br>Forward momentum.
+            Axel draws from &ldquo;axis&rdquo;, the point around which things move.
           </p>
           <p class="text-[15px] leading-relaxed" style="color: var(--color-text-secondary);">
-            The unseen core that keeps things turning — steady, intentional, and always in motion.
-            An axis isn't visible, but everything revolves around it.
+            It reflects the structure that keeps a system working as it grows.
           </p>
         </div>
 
@@ -158,11 +163,10 @@ useScrollReveal('.reveal')
           >N</span>
           <p class="eyebrow mb-5">Nova</p>
           <p class="text-[24px] font-semibold tracking-tight leading-snug mb-4" style="color: var(--color-text);">
-            New beginnings.<br>Expansion. Transformation.
+            Nova evokes a new beginning and the energy behind change.
           </p>
           <p class="text-[15px] leading-relaxed" style="color: var(--color-text-secondary);">
-            A nova is a star releasing tremendous energy — a moment of brilliant change. It represents the
-            drive to start fresh, grow boldly, and transform continuously.
+            It reflects the urge to keep learning and building.
           </p>
         </div>
       </div>
@@ -174,8 +178,8 @@ useScrollReveal('.reveal')
       >
         <UIcon name="i-lucide-sparkles" class="size-4 mt-0.5 shrink-0" style="color: var(--color-accent);" />
         <p class="text-[15px] leading-relaxed" style="color: var(--color-text);">
-          Together, <strong>Axel Nova</strong> reflects a mindset of continuous growth — building better
-          systems, better experiences, and ultimately, a better life.
+          <strong>Axel Nova</strong> brings those ideas together: strong foundations and the freedom to
+          move forward.
         </p>
       </div>
     </section>
@@ -184,13 +188,12 @@ useScrollReveal('.reveal')
     <section class="mb-32 reveal">
       <p class="eyebrow mb-2">Vision</p>
       <h2 class="text-3xl font-semibold tracking-tight mb-5" style="color: var(--color-text);">
-        More than a digital company.
+        Where the studio is heading
       </h2>
       <p class="text-[17px] leading-[1.65] max-w-2xl mb-14" style="color: var(--color-text-secondary);">
-        Axel Nova Ventures is intended to become a long-term platform for ideas, products, and ventures
-        that combine technology, design, and human experience. From software and digital platforms to future
-        creative and business ventures — built with the belief that meaningful products should feel effortless,
-        intentional, and timeless.
+        Axel Nova Ventures began with client work in design and software. Over time, I want it to become
+        a home for useful products and new ventures. The common thread is simple: build things that solve
+        real problems and feel clear to use.
       </p>
 
       <div class="grid sm:grid-cols-3 gap-5">
@@ -226,18 +229,12 @@ useScrollReveal('.reveal')
       <div class="grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
         <div class="space-y-5 text-[16px] leading-[1.7]" style="color: var(--color-text-secondary);">
           <p>
-            Traveling across different cities, cultures, airports, hotels, and unfamiliar environments shaped
-            the way Qie sees the world. Every journey reinforced the same idea: great experiences are never
-            accidental.
+            Travel has made Qie pay attention to how people move through unfamiliar places. A clear sign,
+            a timely message or a simple check-in can change the whole experience.
           </p>
           <p>
-            They are carefully designed, emotionally aware, and thoughtfully executed. That same philosophy
-            now carries into every product and system built under Axel Nova Ventures.
-          </p>
-          <p>
-            At its core, the company represents a quiet refusal to live an average life — building with intention,
-            creating things that matter, exploring beyond comfort zones, and proving that technology can still
-            feel human in a world increasingly driven by automation and speed.
+            The same idea applies to software: the useful details are often the ones people barely notice
+            when they work well.
           </p>
         </div>
 
@@ -247,11 +244,7 @@ useScrollReveal('.reveal')
           style="border-color: var(--color-accent);"
         >
           <p class="text-[21px] font-semibold tracking-tight leading-snug" style="color: var(--color-text);">
-            "Great experiences are never accidental — they are carefully designed, emotionally aware,
-            and thoughtfully executed."
-          </p>
-          <p class="mt-5 text-[13px] font-medium" style="color: var(--color-text-tertiary);">
-            The philosophy behind every build.
+            &ldquo;The best interface helps someone get on with what they came to do.&rdquo;
           </p>
         </blockquote>
       </div>
@@ -263,22 +256,22 @@ useScrollReveal('.reveal')
         class="rounded-3xl border px-8 py-20 text-center"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
       >
-        <p class="eyebrow mb-8">A larger vision</p>
+        <p class="eyebrow mb-8">Looking ahead</p>
         <p
           class="text-[clamp(26px,4vw,48px)] font-semibold tracking-tighter leading-tight max-w-3xl mx-auto mb-3"
           style="color: var(--color-text);"
         >
-          Axel Nova Ventures is not just a business.
+          This is a young studio
         </p>
         <p class="text-[clamp(26px,4vw,48px)] font-semibold tracking-tighter leading-tight max-w-3xl mx-auto text-gradient">
-          It is the beginning of a larger vision.
+          with a long view.
         </p>
         <p class="mt-7 text-[16px] leading-relaxed max-w-md mx-auto" style="color: var(--color-text-secondary);">
-          One that grows together with the person building it.
+          Client work today shapes the products and team Axel Nova Ventures hopes to build next.
         </p>
         <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
           <NuxtLink to="/services" class="btn-pill btn-pill-accent">
-            Work with us →
+            Explore the services →
           </NuxtLink>
           <NuxtLink to="/about" class="btn-pill btn-pill-ghost">
             Meet Qie

@@ -2,8 +2,8 @@
 definePageMeta({ layout: 'public' })
 
 const siteUrl = 'https://axelnovaventures.com'
-const seoTitle = 'Request a Quote — Axel Nova Ventures'
-const seoDescription = 'Tell me about your project and I\'ll put together a tailored quote. Share your goals, budget, and timeline — no commitment required.'
+const seoTitle = 'Request a Website or System Quote | Axel Nova Ventures'
+const seoDescription = 'Tell Axel Nova Ventures about your website, portal or custom system. Share your goals and scope to receive a tailored proposal.'
 
 useSeoMeta({
   title: seoTitle,
@@ -110,8 +110,8 @@ useScrollReveal('.reveal')
         Tell me about your project.
       </h1>
       <p class="text-[16px] leading-relaxed max-w-xl" style="color: var(--color-text-secondary);">
-        Share a few details and I'll put together a tailored quote — scope, timeline, and pricing.
-        No commitment required.
+        Share what you want to build, who will use it and when you hope to launch. I will review the
+        details and suggest a scope and price.
       </p>
     </div>
 
@@ -218,7 +218,7 @@ useScrollReveal('.reveal')
 
         <p v-if="error" class="text-[12px] text-center" style="color: var(--color-danger);">{{ error }}</p>
         <p class="text-[11px] text-center" style="color: var(--color-text-tertiary);">
-          I'll review your details and reply with a tailored quote, usually within 1–2 business days.
+          I will review your enquiry and reply with the next step.
         </p>
       </form>
 
@@ -229,15 +229,15 @@ useScrollReveal('.reveal')
           <ol class="space-y-2.5">
             <li class="text-[13px] leading-relaxed flex gap-2.5" style="color: var(--color-text-secondary);">
               <span class="font-semibold tabular-nums" style="color: var(--color-text);">1.</span>
-              I review your details and put together a tailored quote — scope, timeline, and pricing.
+              I review your brief and clarify anything that affects the scope.
             </li>
             <li class="text-[13px] leading-relaxed flex gap-2.5" style="color: var(--color-text-secondary);">
               <span class="font-semibold tabular-nums" style="color: var(--color-text);">2.</span>
-              You receive it by email to review at your own pace. No pressure.
+              Then I send a proposal covering the work, timeline and price.
             </li>
             <li class="text-[13px] leading-relaxed flex gap-2.5" style="color: var(--color-text-secondary);">
               <span class="font-semibold tabular-nums" style="color: var(--color-text);">3.</span>
-              If it's a fit, we book a short call to finalise scope and get started.
+              If it looks right, we can discuss the details before you decide.
             </li>
           </ol>
         </div>
@@ -245,7 +245,7 @@ useScrollReveal('.reveal')
         <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-medium uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Not sure what you need?</p>
           <p class="text-[13px] leading-relaxed mb-4" style="color: var(--color-text-secondary);">
-            Browse the <NuxtLink to="/services" style="color: var(--color-accent);">services</NuxtLink> to see what's possible, or just describe your idea above — I'll help you shape it.
+            If the idea is still taking shape, describe the problem you want to solve. I can help you work out which <NuxtLink to="/services" style="color: var(--color-accent);">service</NuxtLink> fits.
           </p>
           <a href="https://wa.me/60183173103?text=Hi%20Qie%2C%20I%27d%20like%20to%20chat%20about%20my%20project." target="_blank" rel="noopener" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">
             Chat on WhatsApp →

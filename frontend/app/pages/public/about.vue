@@ -2,12 +2,33 @@
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
-  title: 'About the Founder — Axel Nova Ventures',
-  description: 'The story behind Axel Nova Ventures — founded by Ahmad Baihaqie, a software engineer crafting design-led digital products from Kuala Lumpur, Malaysia.',
+  title: 'About Ahmad Baihaqie (Qie) | Axel Nova Ventures',
+  description: 'Meet Ahmad Baihaqie, known as Qie, the Kuala Lumpur software engineer behind Axel Nova Ventures. His work spans UI/UX, frontend and fintech systems.',
   path: '/about',
 })
 
+// The founder as a Person, tied to the homepage's ProfessionalService node.
+useHead({
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Person',
+      '@id': 'https://axelnovaventures.com/about#person',
+      name: 'Ahmad Baihaqie',
+      alternateName: 'Qie',
+      jobTitle: 'Founder & Software Engineer',
+      url: 'https://axelnovaventures.com/about',
+      worksFor: { '@id': 'https://axelnovaventures.com/#business' },
+      address: { '@type': 'PostalAddress', addressLocality: 'Kuala Lumpur', addressCountry: 'MY' },
+      knowsAbout: ['Web development', 'UI/UX design', 'Frontend engineering', 'Laravel', 'Nuxt'],
+      sameAs: ['https://github.com/byhaqie31', 'https://linkedin.com/in/byhaqieyusri', 'https://baihaqie.com'],
+    }),
+  }],
+})
+
 import SectionHeader from '~/components/shared/SectionHeader.vue'
+import { usePublicSeo } from '~/composables/usePublicSeo'
 
 const photos = [
   '/baihaqie.png',
@@ -15,6 +36,7 @@ const photos = [
   '/baihaqie3.png',
   '/baihaqie4.png',
   '/baihaqie5.png',
+  '/baihaqie6.png',
 ]
 const photoIndex = ref(0)
 const isPaused = ref(false)
@@ -62,46 +84,38 @@ const skills = [
 ]
 
 const beliefs = [
-  'Design is thinking made visible.',
   'Good products respect the people who use them.',
-  'The best engineers understand people, not just systems.',
-  'Curiosity is the only sustainable competitive advantage.',
 ]
 
 const timeline = [
   {
     year: '2019',
-    chapter: 'The Beginning',
-    title: 'Foundation at Universiti Malaya',
-    description: 'Chose an unconventional path — Islamic Studies and Information Technology. Not despite the breadth, but because of it. Faith and technology were never opposites in my mind.',
+    title: 'Finding my direction.',
+    description: 'I chose Islamic Studies and Information Technology at Universiti Malaya, a combination that let me study systems and people together.',
     isCurrent: false,
   },
   {
     year: '2020',
-    chapter: 'First Real Work',
-    title: 'Designing for Real People',
-    description: 'Started at a print shop in Johor — designing brochures and fixing computers for ordinary people with real problems. Learned that the gap between a design and the person it serves is the most important gap to close.',
+    title: 'First real work.',
+    description: 'At a print shop in Johor, I learned to solve everyday problems for customers and explain the result clearly.',
     isCurrent: false,
   },
   {
     year: '2023',
-    chapter: 'Graduating',
-    title: 'First Class. Two Worlds.',
-    description: 'Graduated with First Class Honours. The degree wasn\'t just a credential — it was proof that bridging two disciplines creates something neither alone can.',
+    title: 'Graduating.',
+    description: 'I completed my degree with First Class Honours and moved into software engineering.',
     isCurrent: false,
   },
   {
     year: '2023',
-    chapter: 'Into Fintech',
-    title: 'Building Systems That Can\'t Fail',
-    description: 'Joined Fiuu — payments infrastructure moving real money for real merchants. Learned what it means to build UI where errors carry real consequences. Every pixel has weight.',
+    title: 'Building payment experiences.',
+    description: 'At Fiuu, I worked on interfaces where accuracy and clarity matter to merchants and their customers.',
     isCurrent: false,
   },
   {
     year: 'Now',
-    chapter: 'In Progress',
-    title: 'Researching. Building. Becoming.',
-    description: 'Postgraduate research on AI and people at UPM. Building axelnova as a space to explore what I actually believe about technology. Still asking more questions than I can answer.',
+    title: 'Research and building.',
+    description: 'I\'m pursuing postgraduate research on AI and workplace change while building Axel Nova Ventures.',
     isCurrent: true,
   },
 ]
@@ -109,33 +123,33 @@ const timeline = [
 const dreams = [
   {
     icon: 'i-lucide-globe',
-    title: 'A product that outlasts me',
-    description: 'Build something people rely on — not because they have to, but because it genuinely improves how they live or work. A product with a soul.',
+    title: 'Build a product people rely on.',
+    description: 'I want to create something useful enough to become part of someone\'s daily work or life.',
   },
   {
     icon: 'i-lucide-plane',
-    title: 'See the world with intention',
-    description: '50 countries before I turn 40. Not tourism — immersion. Every place I visit reshapes how I think and what I build.',
+    title: 'Visit 50 countries before 40.',
+    description: 'I want to learn from the places I visit, beyond the usual landmarks.',
   },
   {
     icon: 'i-lucide-book-open',
-    title: 'Write something worth keeping',
-    description: 'A book. A body of essays. Thinking that survives the screen and lasts beyond the moment it was written.',
+    title: 'Write a book.',
+    description: 'I want to give my ideas the time and care they need beyond a short post.',
   },
   {
     icon: 'i-lucide-users',
-    title: 'Lead a team worth following',
-    description: 'Build an organisation where craft is valued, people grow, and the work actually matters. Culture is a product too.',
+    title: 'Lead a strong team.',
+    description: 'I want to build a workplace where people can do careful work and keep learning.',
   },
   {
     icon: 'i-lucide-brain',
-    title: 'Understand AI before it defines us',
-    description: 'I want to understand what happens to human identity when machines become collaborators — and help shape that answer before someone else does.',
+    title: 'Understand AI\'s effect on work.',
+    description: 'My research asks how people adapt when AI becomes part of their everyday tasks.',
   },
   {
     icon: 'i-lucide-star',
-    title: 'A life built on intention',
-    description: 'Not defined by titles or metrics — by the quality of the work, the depth of the relationships, and the spaces I choose to inhabit.',
+    title: 'Make room for a full life.',
+    description: 'Work matters to me, and so do relationships, travel and time to think.',
   },
 ]
 
@@ -145,38 +159,37 @@ useScrollReveal('.reveal')
 <template>
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-32">
     <SectionHeader
+      as="h1"
+      wide
       eyebrow="About"
-      title="The builder behind the screen."
+      title="The builder behind Axel Nova."
     />
 
     <!-- Bio -->
     <section class="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-16 mb-32 reveal">
       <div class="space-y-5 text-[17px] leading-[1.65]" style="color: var(--color-text);">
         <p>
-          I'm <strong>Qie</strong>, a UI/UX-focused software engineer building products where
-          design clarity meets real-world functionality.
+          I'm <strong>Ahmad Baihaqie</strong>. Most people call me <strong>Qie</strong>.
+          I'm a UI/UX-focused software engineer in Kuala Lumpur, working across interface design,
+          frontend development and digital products.
         </p>
         <p style="color: var(--color-text-secondary);">
-          I specialise in transforming complex systems into intuitive digital experiences, especially
-          within fintech platforms, admin systems, and scalable web applications. My work sits between
-          interface design, frontend engineering, and system thinking, allowing me to bridge user needs
-          with technical execution in a seamless and thoughtful way.
+          In fintech, I've worked on payment experiences where a confusing screen or an unclear error
+          message has real consequences. That work shaped how I approach every project: understand the
+          task first, then make each step clear to the person using it.
         </p>
         <p style="color: var(--color-text-secondary);">
-          I care deeply about how things feel in use. Every interaction, every flow, and every detail
-          matters. To me, great products should feel effortless, almost invisible.
+          I enjoy the point where design decisions meet working software. I can explore an idea in
+          Figma, build it in code and see how it behaves on a real device.
         </p>
         <p style="color: var(--color-text-secondary);">
-          I'm constantly exploring the relationship between AI, human-centered technology, and digital
-          experiences.
-          <span style="color: var(--color-text);" class="font-medium">axelnova</span>
-          is where I shape those ideas into something meaningful, both functionally and emotionally.
+          I'm also studying how people adapt to AI at work.
+          <span style="color: var(--color-text);" class="font-medium">Axel Nova Ventures</span>
+          gives me a place to apply that curiosity to useful products and client projects.
         </p>
         <p style="color: var(--color-text-secondary);">
-          Outside of work, I'm drawn to growth, travel, and experiences that challenge perspective.
-          I'm driven by the belief that life shouldn't be lived on autopilot. I want to build meaningful
-          things, experience the world fully, and continuously evolve into a better version of myself
-          through both the work I create and the life I choose to live.
+          Outside work, I travel whenever I can. Airports, hotels and unfamiliar cities have made me
+          notice the small details that turn a complicated journey into an easy one.
         </p>
 
         <div class="pt-3 flex flex-wrap items-center gap-3">
@@ -306,24 +319,18 @@ useScrollReveal('.reveal')
       <div class="grid lg:grid-cols-[1fr_320px] gap-10 lg:gap-16">
         <div class="space-y-5 text-[17px] leading-[1.65]" style="color: var(--color-text-secondary);">
           <p>
-            I grew up with a quiet obsession — how do things work, and how could they work better?
-            That curiosity led me to an unconventional degree:
+            My route into software began with
             <span style="color: var(--color-text);" class="font-medium">Islamic Studies and Information Technology</span>
-            at Universiti Malaya. Not the obvious path for a software engineer. The best decision I ever made.
+            at Universiti Malaya. The mix taught me to question how a system works and whom it serves.
           </p>
           <p>
-            That combination gave me something most engineers don't have — a framework for thinking about the
-            human side of technology. Jurisprudence taught me to reason carefully under uncertainty.
-            Islamic philosophy taught me that knowledge is service. Those ideas still show up in how I build today.
-          </p>
-          <p>
-            My first real job wasn't at a tech company. It was a print shop in Johor — designing brochures
-            and fixing computers for people with real, ordinary problems. I learned there that the gap between
-            a design and the person it serves is the most important gap to close.
+            My first job was at a print shop in Johor, designing brochures and fixing computers. People
+            arrived with practical problems and needed a clear answer. I still think about that when I
+            design a screen or build a workflow.
           </p>
           <p style="color: var(--color-text);" class="font-medium">
-            Everything since has been about closing that gap. Building things that don't just work,
-            but feel like they were made for the person using them.
+            Since then, I've brought that same attention to fintech platforms and other digital products.
+            The details matter because someone depends on them to get something done.
           </p>
         </div>
 
@@ -333,7 +340,7 @@ useScrollReveal('.reveal')
             class="text-[11px] font-medium uppercase tracking-widest mb-5"
             style="color: var(--color-text-tertiary);"
           >
-            Things I believe
+            What I believe
           </p>
           <div class="space-y-2.5">
             <div
@@ -389,9 +396,6 @@ useScrollReveal('.reveal')
                 In progress
               </span>
             </div>
-            <p class="text-[11px] font-medium uppercase tracking-wider mb-1.5" style="color: var(--color-accent);">
-              {{ item.chapter }}
-            </p>
             <p class="text-[18px] font-semibold tracking-tight mb-2" style="color: var(--color-text);">
               {{ item.title }}
             </p>
@@ -437,8 +441,8 @@ useScrollReveal('.reveal')
     <section class="reveal">
       <h3 class="text-3xl font-semibold tracking-tight mb-6">A note.</h3>
       <p class="text-[17px] leading-[1.6] max-w-2xl" style="color: var(--color-text-secondary);">
-        I build things that hold up — under real load, real deadlines, and real users.
-        Not everything I make is finished. But everything I start, I care about.
+        I build for real people, real deadlines and real constraints. Each project teaches me
+        something I carry into the next.
       </p>
     </section>
   </div>

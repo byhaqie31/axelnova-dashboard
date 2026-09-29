@@ -4,8 +4,8 @@ definePageMeta({ layout: 'public' })
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 const siteUrl = 'https://axelnovaventures.com'
-const seoTitle = 'Refer a Business — Axel Nova Partner Program'
-const seoDescription = 'Refer a business to Axel Nova and earn up to 15% when the project closes. Takes two minutes — no cost, no commitment.'
+const seoTitle = 'Refer a Business | Axel Nova Ventures'
+const seoDescription = 'Submit a business referral to Axel Nova Ventures. Share the contact and project details so we can review the opportunity and follow up.'
 
 useSeoMeta({
   title: seoTitle,
@@ -125,9 +125,10 @@ useScrollReveal('.reveal')
 <template>
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-32">
     <SectionHeader
+      as="h1"
       eyebrow="Partner Program"
       title="Refer a business."
-      subtitle="Tell us who you’re referring and how to reach them. We’ll take it from there — and credit you if it becomes a project."
+      subtitle="Tell us who you’re referring, how to reach them and what they need. We will review the details and confirm whether the referral qualifies."
     />
 
     <div class="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-16 reveal">
@@ -320,7 +321,7 @@ useScrollReveal('.reveal')
                 </button>
               </div>
               <p class="text-[12px] leading-relaxed pt-1" style="color: var(--color-text-tertiary);">
-                This helps us set expectations — your commission tier is confirmed once we’ve spoken to them.
+                This helps us understand the introduction. We confirm the applicable commission tier after reviewing the referral.
               </p>
             </div>
 
@@ -367,7 +368,7 @@ useScrollReveal('.reveal')
           </p>
 
           <p class="text-[12px] text-center" style="color: var(--color-text-tertiary);">
-            Bank details for payouts are collected separately, only once a referral becomes a paid project.
+            We request payout details separately if a referral becomes eligible for commission.
           </p>
         </form>
       </div>
@@ -412,15 +413,15 @@ useScrollReveal('.reveal')
           <ol class="space-y-2.5">
             <li class="text-[13px] leading-relaxed flex gap-2.5" style="color: var(--color-text-secondary);">
               <span class="font-semibold tabular-nums" style="color: var(--color-text);">1.</span>
-              We reach out to the business you referred, usually within 3 business days.
+              We review the referral.
             </li>
             <li class="text-[13px] leading-relaxed flex gap-2.5" style="color: var(--color-text-secondary);">
               <span class="font-semibold tabular-nums" style="color: var(--color-text);">2.</span>
-              We scope and deliver the project — you stay in the loop throughout.
+              We contact the business and keep you updated.
             </li>
             <li class="text-[13px] leading-relaxed flex gap-2.5" style="color: var(--color-text-secondary);">
               <span class="font-semibold tabular-nums" style="color: var(--color-text);">3.</span>
-              When it’s signed and paid, your commission is paid within 14 working days.
+              Any commission is calculated and paid under the Partner Program terms.
             </li>
           </ol>
         </div>

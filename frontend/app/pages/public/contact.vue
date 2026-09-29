@@ -2,8 +2,8 @@
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
-  title: 'Contact — Axel Nova Ventures',
-  description: 'Start a project with Axel Nova Ventures. Tell us about your website, SaaS platform, or product idea — every inquiry gets a personal reply.',
+  title: 'Contact Axel Nova Ventures | Web Design in Kuala Lumpur',
+  description: 'Planning a website, booking portal or custom system? Contact Qie at Axel Nova Ventures in Kuala Lumpur to discuss your project.',
   path: '/contact',
 })
 
@@ -104,9 +104,10 @@ useScrollReveal('.reveal')
 <template>
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-32">
     <SectionHeader
+      as="h1"
       eyebrow="Contact"
-      title="Let's connect."
-      subtitle="Whether you have a project in mind, a question, or just want to say hello, I'm happy to hear from you."
+      title="Let's talk about your project."
+      subtitle="Tell me what you're working on and what help you need. A short outline is enough to get the conversation started."
     />
 
     <!-- Main grid -->
@@ -236,11 +237,10 @@ useScrollReveal('.reveal')
         >
           <div class="flex items-center gap-2.5 mb-3">
             <span class="contact-avail-dot" aria-hidden />
-            <p class="text-[13px] font-medium" style="color: var(--color-text);">Available for selected collaborations</p>
+            <p class="text-[13px] font-medium" style="color: var(--color-text);">Taking enquiries for new projects</p>
           </div>
           <p class="text-[13px] leading-relaxed" style="color: var(--color-text-secondary);">
-            Based in Kuala Lumpur, Malaysia. Open to remote and global projects.
-            Typically replies within <span style="color: var(--color-text);" class="font-medium">one working day</span>.
+            Based in Kuala Lumpur and working with clients across Malaysia and beyond.
           </p>
         </div>
 
@@ -281,7 +281,7 @@ useScrollReveal('.reveal')
         >
           <UIcon name="i-fluent-info-24-regular" class="size-4 mt-0.5 shrink-0" style="color: var(--color-text-tertiary);" />
           <p class="text-[12px] leading-relaxed" style="color: var(--color-text-secondary);">
-            For project enquiries, sharing a brief or scope document helps us get started faster.
+            For project enquiries, a brief or a few examples of what you need will help me give you a useful reply.
           </p>
         </div>
       </div>

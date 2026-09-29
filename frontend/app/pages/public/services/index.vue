@@ -2,8 +2,8 @@
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
-  title: 'Services & Packages — Axel Nova Ventures',
-  description: 'Web design and development services by Axel Nova Ventures — from landing pages to full SaaS builds, with transparent packages and instant online estimates.',
+  title: 'Web Design & Development Services in Malaysia | Axel Nova',
+  description: 'Explore website design, booking portals and custom business systems for Malaysian businesses. See packages in RM and get a project estimate online.',
   path: '/services',
 })
 
@@ -204,10 +204,10 @@ const urgencyOptions = [
 
 // ── Process + contact ─────────────────────────────────────────────────────────
 const processSteps = [
-  { n: 1, title: 'Discovery', desc: 'Scope, goals, success metrics.' },
-  { n: 2, title: 'Design',    desc: 'Figma flows + component system.' },
-  { n: 3, title: 'Build',     desc: 'Vue/Nuxt build, API integration, QA.' },
-  { n: 4, title: 'Handover',  desc: 'Walkthrough, docs, support.' },
+  { n: 1, title: 'Discovery', desc: 'We discuss what you need, who will use it and what success looks like.' },
+  { n: 2, title: 'Design',    desc: 'I map the key screens and show you how the experience will work.' },
+  { n: 3, title: 'Build',     desc: 'I develop the agreed features, connect any required tools and test the result.' },
+  { n: 4, title: 'Handover',  desc: 'I walk you through the finished project and provide the agreed files and support.' },
 ]
 
 const contactChannels = [
@@ -215,7 +215,7 @@ const contactChannels = [
     id: 'whatsapp',
     label: 'WhatsApp',
     value: '+60 18-317 3103',
-    helper: 'Fastest for quick questions and project chats.',
+    helper: 'Works well for a quick question.',
     href: 'https://wa.me/60183173103?text=Hi%20Qie%2C%20I%27d%20like%20to%20discuss%20a%20project.',
     target: '_blank',
     icon: 'i-fluent-chat-24-regular',
@@ -227,7 +227,7 @@ const contactChannels = [
     id: 'email',
     label: 'Email',
     value: 'baihaqie@axelnova.tech',
-    helper: 'Best for briefs, scope docs, and longer conversations.',
+    helper: 'Better for a brief or a longer discussion.',
     href: 'mailto:baihaqie@axelnova.tech?subject=Project%20enquiry%20—%20axelnovaventures.com',
     target: '_self',
     icon: 'i-fluent-mail-24-regular',
@@ -239,7 +239,7 @@ const contactChannels = [
     id: 'call',
     label: 'Call',
     value: '+60 18-317 3103',
-    helper: 'For urgent or complex scope, book a quick voice call.',
+    helper: 'If the scope needs a conversation, we can arrange a call.',
     href: 'tel:+60183173103',
     target: '_self',
     icon: 'i-fluent-call-24-regular',
@@ -257,9 +257,11 @@ useScrollReveal('.reveal')
 
     <!-- ── Pricing ───────────────────────────────────────────────────────────── -->
     <SectionHeader
+      as="h1"
+      wide
       eyebrow="Services"
-      title="Choose your engagement."
-      subtitle="A range of service tracks, from a landing page to a full product build. Priced transparently, delivered precisely."
+      title="Web design and development, with clear pricing."
+      subtitle="From a focused landing page to a custom business system, I design and build digital experiences for businesses across Malaysia. Explore the services, compare packages in ringgit and get an initial estimate in minutes."
     />
 
     <!-- Category tabs -->
@@ -470,7 +472,7 @@ useScrollReveal('.reveal')
       <SectionHeader
         eyebrow="Estimator"
         title="Estimate your project."
-        subtitle="Adjust the inputs and watch ballpark cost and timeline update live."
+        subtitle="Adjust the details to see an initial cost and timeline estimate."
       />
 
       <div class="grid lg:grid-cols-2 gap-6">
@@ -569,7 +571,7 @@ useScrollReveal('.reveal')
       </div>
 
       <p class="text-[12px] mt-4" style="color: var(--color-text-secondary);">
-        Rough estimate. Final scope is agreed in writing before any work begins.
+        The final price and scope are confirmed in a written proposal.
       </p>
     </section>
 
@@ -608,7 +610,7 @@ useScrollReveal('.reveal')
       <SectionHeader
         eyebrow="Contact"
         title="Let's talk."
-        subtitle="Pick the channel that suits you. I usually reply within a working day."
+        subtitle="Choose the easiest way to reach me."
       />
 
       <div class="grid gap-5 md:grid-cols-3">

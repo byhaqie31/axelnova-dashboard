@@ -27,8 +27,9 @@ return [
 
     // Nuxt page-cache purge (frontend/server/routes/_cache/purge.post.ts) —
     // App\Support\SiteCache calls it when a published blog post changes. Both
-    // unset → no-op (dev, CI). Prod: container-to-container, e.g.
-    // http://axelnova-frontend:3000/_cache/purge; token = NUXT_CACHE_PURGE_TOKEN.
+    // unset → no-op (dev, CI). Prod (backend/.env.production): container-to-
+    // container http://axelnova-frontend:3000/_cache/purge; token = the
+    // frontend's NUXT_CACHE_PURGE_TOKEN.
     'site_cache' => [
         'purge_url' => env('SITE_CACHE_PURGE_URL'),
         'purge_token' => env('SITE_CACHE_PURGE_TOKEN'),

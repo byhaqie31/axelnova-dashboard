@@ -14,8 +14,10 @@ definePageMeta({ layout: 'public' })
 
 const siteUrl = 'https://axelnovaventures.com'
 const ogImage = `${siteUrl}/og-image.jpg`
-const seoTitle = 'Axel Nova Ventures — Design & Engineering Studio'
-const seoDescription = 'Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS platforms, and bespoke digital products.'
+// Front-loads what the studio does and where ("web development", "Kuala
+// Lumpur", "Malaysia") — the searches this page should rank for.
+const seoTitle = 'Web Design & Development in Kuala Lumpur | Axel Nova'
+const seoDescription = 'Axel Nova Ventures designs and builds websites, booking portals and custom business systems in Kuala Lumpur for businesses across Malaysia.'
 
 useSeoMeta({
   title: seoTitle,
@@ -38,27 +40,50 @@ useHead({
   script: [
     {
       type: 'application/ld+json',
+      // ProfessionalService (a LocalBusiness subtype) rather than a bare
+      // Organization, so search engines read a local web studio serving
+      // Malaysia. Keep name / locality / phone identical to the Google
+      // Business Profile — mismatches weaken the local signal.
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
-        '@type': 'Organization',
-        name: 'Axel Nova Ventures',
-        url: siteUrl,
-        logo: `${siteUrl}/axel_nova_logo.png`,
-        description: seoDescription,
-        foundingDate: '2026',
-        founder: {
-          '@type': 'Person',
-          name: 'Ahmad Baihaqie',
-          jobTitle: 'Founder & Software Engineer',
-        },
-        address: {
-          '@type': 'PostalAddress',
-          addressLocality: 'Kuala Lumpur',
-          addressCountry: 'MY',
-        },
-        sameAs: [
-          'https://github.com/byhaqie31',
-          'https://linkedin.com/in/byhaqieyusri',
+        '@graph': [
+          {
+            '@type': 'ProfessionalService',
+            '@id': `${siteUrl}/#business`,
+            name: 'Axel Nova Ventures',
+            url: siteUrl,
+            logo: `${siteUrl}/axel_nova_logo.png`,
+            image: ogImage,
+            description: seoDescription,
+            telephone: '+60183173103',
+            email: 'baihaqie@axelnova.tech',
+            foundingDate: '2026',
+            founder: {
+              '@type': 'Person',
+              name: 'Ahmad Baihaqie',
+              jobTitle: 'Founder & Software Engineer',
+              url: `${siteUrl}/about`,
+            },
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: 'Kuala Lumpur',
+              addressCountry: 'MY',
+            },
+            areaServed: { '@type': 'Country', name: 'Malaysia' },
+            knowsAbout: ['Web development', 'Website design', 'UI/UX design', 'Custom business systems', 'Booking systems', 'E-commerce'],
+            sameAs: [
+              'https://github.com/byhaqie31',
+              'https://linkedin.com/in/byhaqieyusri',
+            ],
+          },
+          {
+            '@type': 'WebSite',
+            '@id': `${siteUrl}/#website`,
+            name: 'Axel Nova Ventures',
+            url: siteUrl,
+            inLanguage: 'en-MY',
+            publisher: { '@id': `${siteUrl}/#business` },
+          },
         ],
       }),
     },
@@ -106,11 +131,11 @@ const projects = computed<Project[]>(() => {
 
 const featuredProjects = computed(() => projects.value.filter(p => p.featured))
 
+// Commercial facts only — keep each one current and supportable.
 const stats = [
   { value: 7,  suffix: '+', label: 'Years building' },
   { value: 3,  suffix: '',  label: 'Years in industry' },
   { value: 10, suffix: '+', label: 'Projects shipped' },
-  { value: 2,  suffix: '',  label: 'Degrees pursuing' },
 ]
 
 const bandCta = ref<ComponentPublicInstance | HTMLElement | null>(null)
@@ -131,16 +156,12 @@ useScrollReveal('.reveal')
 
     <!-- STATS — vivid "hero blue" band; white numerals + light dividers. -->
     <section :style="{ background: 'var(--stat-band-bg)' }">
-      <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4">
+      <div class="max-w-7xl mx-auto grid grid-cols-3">
         <div
           v-for="(s, i) in stats"
           :key="s.label"
-          class="stat-cell px-6 py-14 text-center"
-          :style="{
-            borderRight: i < stats.length - 1 ? '1px solid var(--stat-band-divider)' : 'none',
-            borderBottom: i < 2 ? '1px solid var(--stat-band-divider)' : 'none'
-          }"
-          :class="{ 'md:border-b-0!': true }"
+          class="stat-cell px-3 sm:px-6 py-14 text-center"
+          :style="{ borderRight: i < stats.length - 1 ? '1px solid var(--stat-band-divider)' : 'none' }"
         >
           <div class="text-4xl md:text-5xl font-semibold tracking-tight tabular-nums" :style="{ color: 'var(--stat-band-fg)' }">
             <span :ref="el => { statEls[i] = el as HTMLElement | null }">{{ s.value }}</span>{{ s.suffix }}
@@ -161,8 +182,8 @@ useScrollReveal('.reveal')
       >
         <!-- Hover doesn't exist on touch — tell mobile users to swipe instead. -->
         <template #subtitle>
-          <span class="hidden sm:inline">A few live builds — hover a card to visit the real site.</span>
-          <span class="sm:hidden">A few live builds — swipe left to see more, tap a card to visit the real site.</span>
+          <span class="hidden sm:inline">Explore selected projects and visit the live sites to see how they work.</span>
+          <span class="sm:hidden">Swipe to explore projects, then tap a card to visit the live site.</span>
         </template>
       </SectionHeader>
 
@@ -185,7 +206,7 @@ useScrollReveal('.reveal')
       <SectionHeader
         eyebrow="Client previews"
         title="Featured mockups."
-        subtitle="Live prototypes built for clients — click a card for an instant in-page preview."
+        subtitle="Explore working prototypes and open a preview without leaving this page."
         :action="{ label: 'View all', to: 'https://axelnova.my/', target: '_blank' }"
       />
 
@@ -210,15 +231,15 @@ useScrollReveal('.reveal')
             Have a project in mind?
           </p>
           <p class="mt-3 text-[17px] max-w-lg mx-auto" :style="{ color: 'var(--color-text-secondary)' }">
-            Let's design something premium together. Fintech, SaaS, or a product that needs senior craft.
+            Tell me what you're planning, whether it's a new website, a booking flow or a system your team needs every day. I'll help you work out the next step.
           </p>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-3">
           <NuxtLink ref="bandCta" to="/quote" class="btn-pill btn-pill-primary">
-            <span class="magnetic-label">Get Inquiry</span>
+            <span class="magnetic-label">Request a quote</span>
           </NuxtLink>
           <NuxtLink to="/contact" class="btn-pill btn-pill-ghost">
-            Let's talk
+            Discuss a project
           </NuxtLink>
         </div>
       </div>

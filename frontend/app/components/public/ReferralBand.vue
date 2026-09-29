@@ -9,18 +9,18 @@
 const steps = [
   {
     icon: 'i-lucide-send',
-    title: 'Send the intro',
-    desc: 'Tell us who they are and what they need — it takes about two minutes.',
+    title: 'Make the introduction.',
+    desc: 'Share who the business is and what they need.',
   },
   {
     icon: 'i-lucide-hammer',
-    title: 'We do the building',
-    desc: 'We reach out, scope, and deliver to a senior standard. You stay in the loop.',
+    title: 'We discuss the project.',
+    desc: 'Axel Nova contacts them, agrees on scope and keeps you updated.',
   },
   {
     icon: 'i-lucide-banknote',
-    title: 'You collect the commission',
-    desc: 'Once the project is signed and paid, your cut lands within 14 working days.',
+    title: 'Receive your commission.',
+    desc: 'Eligible commissions are paid under the Partner Program terms after the client pays.',
   },
 ]
 </script>
@@ -64,9 +64,9 @@ const steps = [
         </h2>
 
         <p class="mt-4 max-w-xl text-[16px] leading-relaxed" style="color: var(--color-text-secondary);">
-          You probably know a business owner who keeps saying they need a website,
-          a system, an app. Make the introduction — we scope, build, and deliver,
-          and you earn a commission when the project closes.
+          Know a business that needs a website or custom system? Introduce them to
+          Axel Nova Ventures. If the referral becomes a paid project, you may earn a
+          commission under the Partner Program terms.
         </p>
 
         <div class="mt-8 flex flex-wrap items-center gap-3">

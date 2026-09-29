@@ -5,7 +5,9 @@
 import PublicBlogArticle from '~/components/public/BlogArticle.vue'
 import type { BlogPostPublic } from '~/data/blog'
 
-definePageMeta({ layout: 'public' })
+// footerGap: false — the article ends on its CTA card, so it keeps a modest
+// pb-16 of its own instead of the layout's mt-32 stacked on top of it.
+definePageMeta({ layout: 'public', footerGap: false })
 
 const route = useRoute()
 const slug = computed(() => route.params.slug as string)
@@ -23,11 +25,22 @@ if (!post.value) {
 
 const siteUrl = 'https://axelnovaventures.com'
 const pageUrl = `${siteUrl}/blog/${slug.value}`
+// Search results show ~60 title / ~155 description characters. A post with no
+// SEO overrides would otherwise send its whole introduction as the description,
+// so the fallback is clipped at a word boundary, and the brand suffix is only
+// added while the title still fits.
+const clip = (s: string, max = 155) => {
+  const flat = s.replace(/\s+/g, ' ').trim()
+  if (flat.length <= max) return flat
+  const cut = flat.slice(0, max - 1)
+  return `${cut.slice(0, cut.lastIndexOf(' ') > 0 ? cut.lastIndexOf(' ') : cut.length).replace(/[,;:.\s]+$/, '')}…`
+}
 const seoTitle = post.value.seo_title || post.value.title
-const seoDescription = post.value.seo_description || post.value.excerpt
+const seoDescription = post.value.seo_description || clip(post.value.excerpt)
+const fullTitle = seoTitle.length <= 38 ? `${seoTitle} — Axel Nova Ventures` : seoTitle
 
 usePublicSeo({
-  title: `${seoTitle} — Axel Nova Ventures`,
+  title: fullTitle,
   description: seoDescription,
   path: `/blog/${slug.value}`,
   image: post.value.cover_image_url ?? undefined,
@@ -69,7 +82,7 @@ useHead({
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto px-6 pt-16 pb-32">
+  <div class="max-w-6xl mx-auto px-6 pt-16 pb-16">
     <NuxtLink
       to="/blog"
       class="text-[13px] inline-flex items-center gap-1.5 mb-10 transition-colors hover:opacity-80"

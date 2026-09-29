@@ -274,9 +274,10 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 
 ### `SectionHeader`
 - `eyebrow` (uppercase gradient)
-- `title` (h2)
+- `title` (h2; `as="h1"` when it is the page's main heading — one per page, see [SEO.md](./SEO.md))
 - `subtitle` (optional)
 - `action` (link with chevron, gap grows on hover)
+- `wide` (optional) — the title runs the full container width instead of `max-w-2xl`; the subtitle keeps a `max-w-3xl` measure. Used by the `/services` and `/about` page titles.
 
 ### `ProjectCard`
 - 24px padding, 16px radius, `bg-elevated` + hairline border.

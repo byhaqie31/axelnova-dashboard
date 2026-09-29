@@ -529,7 +529,7 @@ onUnmounted(() => {
           :style="{ borderColor: 'var(--color-border)', background: 'var(--nav-bg-scrolled)' }"
         >
           <span class="size-1.5 rounded-full" style="background: var(--grad-iridescent);" />
-          <span class="eyebrow">Design &amp; engineering studio</span>
+          <span class="eyebrow">Web design and development studio in Kuala Lumpur</span>
         </div>
 
         <!-- Base 34px keeps the two lines inside the card at 375px; the spec's
@@ -550,13 +550,12 @@ onUnmounted(() => {
           class="hero-sub mt-5 max-w-[52ch] text-[14px] md:text-[15px] leading-relaxed"
           style="color: var(--hero-fg-muted);"
         >
-          Axel Nova Ventures is a design-led digital studio creating immersive websites, SaaS
-          platforms, and bespoke digital products.
-          <!-- Second sentence is desktop-only — on phones the description ends
-               at "products." to keep the hero copy tight. -->
+          Axel Nova Ventures is a Kuala Lumpur digital studio. I design and build websites,
+          booking portals and custom systems for businesses across Malaysia.
+          <!-- Last sentence is desktop-only to keep the phone hero tight. It stays
+               in the SSR HTML either way, so crawlers read the full lede. -->
           <span class="hidden md:inline">
-            Every solution is custom-designed and engineered around your needs, using the
-            right combination of Vue, Nuxt, Laravel, GSAP, and Three.js.
+            Every project starts with the people who will use it and the job it needs to do.
           </span>
         </p>
 

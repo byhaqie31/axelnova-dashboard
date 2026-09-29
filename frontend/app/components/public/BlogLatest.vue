@@ -24,7 +24,7 @@ const { data: posts } = await useFetch(
     <SectionHeader
       eyebrow="From the blog"
       title="Latest notes."
-      subtitle="Thoughts on interfaces, systems and the decisions behind them — written for business owners and founders."
+      subtitle="Notes on website design, business systems and the choices behind a useful interface."
       :action="{ label: 'View all', to: '/blog' }"
     />
 

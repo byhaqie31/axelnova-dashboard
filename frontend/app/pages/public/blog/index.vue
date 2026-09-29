@@ -11,8 +11,8 @@ import { blogFormatLabel, type BlogPostCard } from '~/data/blog'
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
-  title: 'Blog — Axel Nova Ventures',
-  description: 'Notes on UI/UX, custom systems and the everyday tech decisions Malaysian business owners and founders run into.',
+  title: 'Websites, UX & Business Systems Blog | Axel Nova',
+  description: 'Practical notes from Axel Nova Ventures on websites, UI/UX and custom systems for business owners in Malaysia.',
   path: '/blog',
 })
 
@@ -70,9 +70,10 @@ useScrollReveal('.reveal')
 <template>
   <div class="max-w-7xl mx-auto px-6 pt-20 pb-24">
     <SectionHeader
+      as="h1"
       eyebrow="Blog"
       title="Notes from the workbench."
-      subtitle="Thoughts on interfaces, systems and the decisions behind them — written for business owners and founders."
+      subtitle="Clear explanations of website decisions, interface design and business systems, drawn from the work behind each build."
     />
 
     <!-- Filters: format pills (left) · topic dropdown (right) -->

@@ -48,6 +48,16 @@ const socials = [
 
 const isActive = (to: string) => to === '/' ? route.path === '/' : route.path.startsWith(to)
 
+// Footer "Services" column — the service categories managed in the admin, each
+// linking to its /services/{slug} page. Links on every page are how crawlers
+// find those pages (the /services tabs only link the active one). If the API
+// is down the column falls back to a single "All services" link.
+const { data: footerServices } = await useFetch(`${useApiBase()}/api/v1/services`, {
+  key: 'footer-services',
+  transform: (res: { data: { slug: string, name: string }[] }) => res.data.map(c => ({ label: c.name, to: `/services/${c.slug}` })),
+  default: () => [] as { label: string, to: string }[],
+})
+
 const toggleDark = () => {
   colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
 }
@@ -397,8 +407,10 @@ if (import.meta.client) {
     </main>
 
     <!-- The home page ends in a full-bleed colour band that should meet the footer;
-         every other page keeps the breathing room above it. -->
-    <footer class="relative" :class="{ 'mt-32': route.path !== '/' }" :style="{ background: 'var(--footer-bg)' }">
+         every other page keeps the breathing room above it — unless it sets
+         `definePageMeta({ footerGap: false })` and owns its bottom spacing
+         (blog articles, which end on the CTA card). -->
+    <footer class="relative" :class="{ 'mt-32': route.path !== '/' && route.meta.footerGap !== false }" :style="{ background: 'var(--footer-bg)' }">
       <div class="border-t" :style="{ borderColor: 'var(--color-border)' }">
         <div class="max-w-7xl mx-auto px-6 pt-12 pb-8">
 
@@ -411,7 +423,7 @@ if (import.meta.client) {
                 <BrandMark />
               </div>
               <p class="text-[13px] leading-relaxed mb-5 max-w-xs" style="color: var(--color-text-secondary);">
-                Building thoughtful digital experiences through design, systems, and technology.
+                Websites and business systems for Malaysian companies, designed and built in Kuala Lumpur.
               </p>
 
               <!-- SSM card -->
@@ -434,7 +446,7 @@ if (import.meta.client) {
               <div class="flex items-center justify-start gap-2">
                 <span class="footer-avail-dot" aria-hidden />
                 <span class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
-                  Available for selected collaborations
+                  Taking enquiries for new projects
                 </span>
               </div>
             </div>
@@ -459,11 +471,8 @@ if (import.meta.client) {
             <div class="text-left">
               <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Services</p>
               <div class="flex flex-col items-start gap-2.5">
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">UI/UX Design</NuxtLink>
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Frontend Engineering</NuxtLink>
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Product Design</NuxtLink>
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">System Architecture</NuxtLink>
-                <NuxtLink to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Consultation</NuxtLink>
+                <NuxtLink v-for="s in footerServices" :key="s.to" :to="s.to" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">{{ s.label }}</NuxtLink>
+                <NuxtLink v-if="!footerServices.length" to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">All services</NuxtLink>
               </div>
             </div>
 
