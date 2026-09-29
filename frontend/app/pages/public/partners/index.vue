@@ -222,9 +222,9 @@ useScrollReveal('.reveal')
         class="mt-7 max-w-2xl text-[19px] leading-normal"
         style="color: var(--color-text-secondary);"
       >
-        Know a business that needs a website or custom system? Make an introduction to Axel Nova
-        Ventures. We discuss the project, agree on scope and keep you updated. Eligible referrals earn
-        a commission once the project is paid.
+        Know a business that needs a website or custom system?<br>
+        Make an introduction to Axel Nova Ventures. We discuss the project, agree on scope and keep
+        you updated. Eligible referrals earn a commission once the project is paid.
       </p>
 
       <div ref="heroCtas" class="mt-9 flex flex-wrap items-center justify-center gap-3">
