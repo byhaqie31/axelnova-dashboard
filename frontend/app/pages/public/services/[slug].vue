@@ -31,9 +31,8 @@ interface Deliverable { icon: string, title: string, desc: string }
 interface Enrichment {
   seoTitle?: string
   seoDescription?: string
-  /** Keyword-led page H1 ("Website development for Malaysian businesses."). When set, heroTitle becomes the lead line under it; otherwise heroTitle is the H1. */
+  /** The page H1 — a plain service name ("Website development for Malaysian businesses."). Falls back to the admin category name. */
   h1?: string
-  heroTitle?: string
   heroSubtitle?: string
   deliverablesTitle?: string
   deliverables?: Deliverable[]
@@ -89,8 +88,7 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     seoTitle: 'Website Development in Malaysia | Axel Nova Ventures',
     seoDescription: 'Custom website and web app development for Malaysian startups and SMEs. Fast, mobile-first builds you fully own, with SEO basics and ongoing support.',
     h1: 'Website development for Malaysian businesses.',
-    heroTitle: 'Web apps and sites that work — and keep working.',
-    heroSubtitle: 'Production-grade builds for startups and SMEs in Malaysia. Vue, Nuxt, and Laravel. Clean code, real performance, and full ownership on day one.',
+    heroSubtitle: 'From a landing page to a larger website or web app, I build around what your customers need to find and do. The scope, integrations and handover are agreed before development starts.',
     deliverablesTitle: 'What you get',
     deliverables: [
       { icon: 'i-lucide-layout', title: 'Marketing sites', desc: 'High-performance landing pages and multi-page sites with CMS integration.' },
@@ -110,10 +108,10 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     audience: 'Startups and SMEs',
   },
   'admin-portal': {
-    seoTitle: 'Admin Portal & Dashboard Development | Axel Nova Ventures',
+    seoTitle: 'Custom Admin Portals & Dashboards | Axel Nova',
     seoDescription: 'Custom admin panels, SaaS dashboards, and internal tools. Role-based access, real-time data, and clean UX. Built in Vue + Nuxt with Laravel APIs.',
-    heroTitle: 'Admin dashboards your team will actually use.',
-    heroSubtitle: 'Custom admin panels, internal tools, and SaaS dashboards. Built for operators who measure productivity in clicks saved.',
+    h1: 'Custom admin portals for the way your team works.',
+    heroSubtitle: 'Bring the tasks your team repeats into one clear workspace, with the access levels, data views and integrations your process needs.',
     deliverablesTitle: 'Core capabilities',
     deliverables: [
       { icon: 'i-lucide-users', title: 'Role-based access', desc: 'Granular permissions per user, team, or resource. Built on Laravel Sanctum with audit logging.' },
@@ -133,10 +131,10 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     audience: 'SaaS, Fintech, and Internal Tools teams',
   },
   'ui-ux-frontend': {
-    seoTitle: 'UI/UX Design Services — Product & Interface Design | Axel Nova Ventures',
+    seoTitle: 'UI/UX Design & Frontend Development | Axel Nova',
     seoDescription: 'UI/UX design for SaaS, fintech, and web products. User research, wireframes, interactive Figma prototypes, and design systems — by a designer who also ships the code.',
-    heroTitle: 'Design that ships — because the designer codes too.',
-    heroSubtitle: 'Product, interface, and interaction design for SaaS and fintech. From research to design system to dev handover, by one person who\'s owned both sides.',
+    h1: 'UI/UX design that can be built and used.',
+    heroSubtitle: 'I design interfaces and build frontend experiences for web products. You get clear user flows, reusable components and a practical path from design to working software.',
     deliverablesTitle: 'What\'s included',
     deliverables: [
       { icon: 'i-lucide-search', title: 'UX research', desc: 'Stakeholder interviews, competitor audits, usability testing — grounded decisions instead of guesses.' },
@@ -156,10 +154,10 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     audience: 'SaaS and fintech product teams',
   },
   'digital-marketing': {
-    seoTitle: 'Digital Marketing & Creative Design — Posters, Campaigns & Brand Kits | Axel Nova Ventures',
+    seoTitle: 'Digital Campaign & Creative Design in Malaysia | Axel Nova',
     seoDescription: 'Premium social campaigns, e-flyers, event collateral, and brand refresh kits for Malaysian SMEs. EN + BM copywriting. Festive season ready. Print + digital delivered.',
-    heroTitle: 'Creative that looks premium on every channel.',
-    heroSubtitle: 'From single social posts to full festive campaigns and brand refresh kits. Designed for Malaysian SMEs that want to look serious — without paying agency retainer prices.',
+    h1: 'Creative design for Malaysian businesses.',
+    heroSubtitle: 'From a social campaign to event materials or a brand refresh, I create assets that work across the channels and formats you actually use.',
     deliverablesTitle: 'What you get',
     deliverables: [
       { icon: 'i-lucide-megaphone', title: 'Social campaigns', desc: 'Hero creative + adapted assets for FB, IG, WhatsApp, and email. EN + BM copywriting included.' },
@@ -173,16 +171,16 @@ const enrichmentBySlug: Record<string, Enrichment> = {
       { q: 'Do you write in Bahasa Malaysia and English?', a: 'Yes. Every campaign includes EN + BM copywriting by default. For trilingual campaigns (BM / EN / 中文), I bring in a native Mandarin copywriter — costed separately and transparently.' },
       { q: 'Can you handle festive campaigns (Raya, CNY, Deepavali)?', a: 'Yes — festive launches are my busiest period. Book 3–4 weeks ahead. I deliver a hero design plus 5+ adapted assets per festive campaign as standard.' },
       { q: 'Do I get print-ready files?', a: 'Yes. Every design comes with print-ready PDF / CMYK files plus digital exports (RGB JPG / PNG). Vendor specs included so your printer or e-backdrop supplier can run it directly.' },
-      { q: 'What if I need ongoing content every month?', a: 'That\'s the Monthly Content Retainer — 8–12 social posts, 2 e-flyers, and 1 campaign concept per month, with content calendar planning. Cheaper than in-house, more reliable than freelancers.' },
+      { q: 'What if I need ongoing content every month?', a: 'That\'s the Monthly Content Retainer — 8–12 social posts, 2 e-flyers, and 1 campaign concept per month, with content calendar planning.' },
     ],
     serviceType: 'Digital Marketing & Creative Design',
     audience: 'SMEs, hotels, clinics, salons, and growing Malaysian brands',
   },
   'booking-portal': {
-    seoTitle: 'Online Booking System — Hotels, Salons & Homestays Malaysia | Axel Nova Ventures',
+    seoTitle: 'Online Booking Systems in Malaysia | Axel Nova',
     seoDescription: 'Custom online booking and customer portals for Malaysian hotels, homestays, clinics, salons, and tuition centres. Calendar engine, Billplz / ToyyibPay payment, WhatsApp confirmations.',
-    heroTitle: 'Stop managing bookings in WhatsApp.',
-    heroSubtitle: 'Booking systems built for Malaysian homestays, salons, clinics, and tuition centres. Customers book 24/7, pay online, and get auto-confirmations — while you sleep.',
+    h1: 'Online booking systems for Malaysian businesses.',
+    heroSubtitle: 'Let customers check availability and request or make a booking online. We define the right payment, reminder and management features for your business before the build.',
     deliverablesTitle: 'Core capabilities',
     deliverables: [
       { icon: 'i-lucide-calendar-check', title: 'Smart booking engine', desc: 'Calendar with availability, lead time, blackout dates, and double-booking prevention. Mobile-first by default.' },
@@ -202,10 +200,10 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     audience: 'Malaysian hotels, homestays, clinics, salons, and tuition centres',
   },
   'ecommerce': {
-    seoTitle: 'E-commerce Development — DTC Storefronts for Malaysian Brands | Axel Nova Ventures',
+    seoTitle: 'E-commerce Websites for Malaysian Brands | Axel Nova',
     seoDescription: 'Direct-to-consumer storefronts with FPX, e-wallets (GrabPay, TNG, Boost), and card checkout via Billplz / ToyyibPay / Stripe. Own your customer, ditch the marketplace margins.',
-    heroTitle: 'Own your storefront. Own your customer.',
-    heroSubtitle: 'Direct-to-consumer e-commerce for Malaysian brands tired of marketplace fees and platform restrictions. Your domain, your checkout, your customer data — start to finish.',
+    h1: 'E-commerce websites built around your business.',
+    heroSubtitle: 'Sell through a storefront that reflects your brand and gives customers a clear path from product to checkout. Payments, stock and delivery integrations depend on your agreed scope.',
     deliverablesTitle: 'What you get',
     deliverables: [
       { icon: 'i-lucide-shopping-bag', title: 'Branded storefront', desc: 'Mobile-first product catalogue with variants, bundles, and category navigation. Fast, SEO-friendly, and brand-aligned.' },
@@ -217,7 +215,7 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     stack: ['Vue 3', 'Nuxt 4', 'Laravel 11', 'Billplz', 'ToyyibPay', 'Stripe', 'EasyParcel', 'MySQL', 'Redis', 'Tailwind CSS'],
     faqs: [
       { q: 'Can I accept FPX and Malaysian e-wallets?', a: 'Yes — FPX, GrabPay, TNG, Boost, and ShopeePay via Billplz or ToyyibPay. International cards via Stripe. Every storefront supports the full Malaysian payment stack from day one.' },
-      { q: 'Is this better than selling on Shopee / Lazada?', a: 'Different, not better-or-worse. Marketplaces give you traffic but take 5–15% per transaction and own the customer relationship. Your own storefront builds brand, owns customer data, and has no marketplace fees. Most successful brands run both in parallel.' },
+      { q: 'Is this better than selling on Shopee / Lazada?', a: 'Different, not better-or-worse. Marketplaces give you traffic but charge fees and own the customer relationship. Your own storefront builds brand, owns customer data, and has no marketplace fees. Most successful brands run both in parallel.' },
       { q: 'Can you integrate with my existing inventory or accounting system?', a: 'Yes. I\'ve integrated with Xero, AutoCount, SQL Account, and custom ERPs. Storefront Pro and Custom plans cover real-time stock sync, automatic invoicing, and accounting export.' },
       { q: 'What about subscriptions or B2B pricing?', a: 'The Custom Commerce plan covers subscriptions, recurring billing, B2B tiers, bulk pricing, and net-30 terms. Scope agreed on call — these are common for skincare, supplement, and wholesale brands.' },
     ],
@@ -353,19 +351,13 @@ useScrollReveal('.reveal')
       <span aria-hidden>←</span> Back to services
     </NuxtLink>
 
-    <!-- The page's one H1: the keyword-led `h1` when the slug has one (heroTitle
-         then leads the subtitle), else the heroTitle / category name. -->
+    <!-- The page's one H1: the plain service name from `h1`, else the admin category name. -->
     <SectionHeader
       as="h1"
       :eyebrow="category.name"
-      :title="enrichment.h1 ?? enrichment.heroTitle ?? `${category.name}.`"
+      :title="enrichment.h1 ?? `${category.name}.`"
       :subtitle="enrichment.heroSubtitle ?? category.description"
-    >
-      <template v-if="enrichment.h1 && enrichment.heroTitle" #subtitle>
-        <span class="font-medium" style="color: var(--color-text);">{{ enrichment.heroTitle }}</span>
-        {{ enrichment.heroSubtitle ?? category.description }}
-      </template>
-    </SectionHeader>
+    />
 
     <section v-if="enrichment.deliverables?.length" class="reveal mb-24">
       <h3 class="text-2xl font-semibold tracking-tight mb-6">

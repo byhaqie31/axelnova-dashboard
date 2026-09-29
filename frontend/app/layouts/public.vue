@@ -423,7 +423,7 @@ if (import.meta.client) {
                 <BrandMark />
               </div>
               <p class="text-[13px] leading-relaxed mb-5 max-w-xs" style="color: var(--color-text-secondary);">
-                Building thoughtful digital experiences through design, systems, and technology.
+                Websites and business systems for Malaysian companies, designed and built in Kuala Lumpur.
               </p>
 
               <!-- SSM card -->
@@ -446,7 +446,7 @@ if (import.meta.client) {
               <div class="flex items-center justify-start gap-2">
                 <span class="footer-avail-dot" aria-hidden />
                 <span class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
-                  Available for selected collaborations
+                  Taking enquiries for new projects
                 </span>
               </div>
             </div>

@@ -5,8 +5,8 @@ import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 const siteUrl = 'https://axelnovaventures.com'
 const ogImage = `${siteUrl}/og-image.jpg`
-const seoTitle = 'Partner Program — Axel Nova Ventures'
-const seoDescription = 'Refer a business to Axel Nova and earn up to 15% when the project closes. A professional referral program for property agents, freelancers, consultants, and agencies.'
+const seoTitle = 'Refer a Business | Axel Nova Partner Program'
+const seoDescription = 'Introduce a business that needs a website or custom system. Learn how the Axel Nova Partner Program works and when a referral earns a commission.'
 
 useSeoMeta({
   title: seoTitle,
@@ -42,47 +42,47 @@ const audience = [
   {
     icon: 'i-fluent-building-24-regular',
     label: 'Property agents',
-    desc: 'You meet owners and developers who need a serious digital presence.',
+    desc: 'You meet owners and developers who need a website or digital service.',
   },
   {
     icon: 'i-fluent-design-ideas-24-regular',
-    label: 'Freelancers & designers',
-    desc: 'You take on work that needs senior frontend or full builds you don’t cover.',
+    label: 'Freelancers and designers',
+    desc: 'You know clients whose project needs development beyond your scope.',
   },
   {
     icon: 'i-fluent-briefcase-24-regular',
     label: 'Consultants & accountants',
-    desc: 'Your SME clients keep asking who builds their software and tools.',
+    desc: 'Your clients sometimes need help with a website or internal system.',
   },
   {
     icon: 'i-fluent-people-team-24-regular',
     label: 'Agencies & studios',
-    desc: 'You have overflow or out-of-scope projects worth handing off.',
+    desc: 'You have a project or part of a project you would rather refer.',
   },
   {
     icon: 'i-fluent-megaphone-24-regular',
     label: 'Creators & community builders',
-    desc: 'Your audience includes founders and business owners who need to ship.',
+    desc: 'Your audience includes people building businesses and products.',
   },
   {
     icon: 'i-fluent-wallet-24-regular',
-    label: 'Anyone wanting a side income',
-    desc: 'You know business owners in your circle — turn an introduction into income on the side.',
+    label: 'Personal contacts',
+    desc: 'You know a business owner who could use the service.',
   },
 ]
 
 const steps = [
   {
-    title: 'Refer a business',
-    desc: 'Tell us who they are and what they need. It takes about two minutes.',
+    title: 'Refer a business.',
+    desc: 'Share their contact details and what they need, with their permission.',
   },
   {
-    title: 'We take it from there',
-    desc: 'We reach out, scope the project, and deliver to a senior standard. You stay in the loop.',
+    title: 'We take it from there.',
+    desc: 'Axel Nova contacts the business, discusses scope and keeps you informed.',
   },
   {
-    title: 'You get paid',
-    desc: 'When the project is signed and paid, your commission is paid within 14 working days.',
+    title: 'You get paid.',
+    desc: 'If the referral qualifies and the client pays, the commission follows the Partner Program terms.',
   },
 ]
 
@@ -214,7 +214,7 @@ useScrollReveal('.reveal')
         style="font-size: clamp(48px, 8vw, 104px);"
       >
         <span ref="heroLine1" class="block">Refer a business.</span>
-        <span ref="heroLine2" class="block text-gradient">Earn up to 15%*.</span>
+        <span ref="heroLine2" class="block text-gradient">Earn a commission.</span>
       </h1>
 
       <p
@@ -222,8 +222,9 @@ useScrollReveal('.reveal')
         class="mt-7 max-w-2xl text-[19px] leading-normal"
         style="color: var(--color-text-secondary);"
       >
-        Know a company or property owner who needs design-led software? Refer them to Axel Nova.
-        We scope, build, and deliver — you earn a commission when the project closes.
+        Know a business that needs a website or custom system? Make an introduction to Axel Nova
+        Ventures. We discuss the project, agree on scope and keep you updated. Eligible referrals earn
+        a commission once the project is paid.
       </p>
 
       <div ref="heroCtas" class="mt-9 flex flex-wrap items-center justify-center gap-3">
@@ -249,8 +250,8 @@ useScrollReveal('.reveal')
     <section class="max-w-7xl mx-auto px-6 py-32 reveal">
       <SectionHeader
         eyebrow="Who it’s for"
-        title="Built for people with the right rooms."
-        subtitle="You don’t need to be technical — you just need to know a business that’s ready to build."
+        title="Who can refer a business?"
+        subtitle="You do not need technical knowledge. If you know a business with a real project in mind, you can make an introduction."
       />
 
       <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -285,7 +286,7 @@ useScrollReveal('.reveal')
       <div class="max-w-7xl mx-auto px-6 py-32">
         <SectionHeader
           eyebrow="How it works"
-          title="Three steps, no friction."
+          title="How the referral works"
         />
 
         <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -311,8 +312,8 @@ useScrollReveal('.reveal')
     <section class="max-w-7xl mx-auto px-6 py-32 reveal">
       <SectionHeader
         eyebrow="Commission"
-        title="The more you bring, the more you earn."
-        subtitle="Three tiers, based on how far you carry the referral. Commission is paid on the final project value."
+        title="Referral commission"
+        subtitle="The rate depends on whether you share a contact, make a personal introduction or bring a project already discussed with the client."
       />
 
       <div class="grid gap-5 lg:grid-cols-3">
@@ -363,12 +364,12 @@ useScrollReveal('.reveal')
         <div class="max-w-2xl">
           <p class="eyebrow mb-3">What you’re referring</p>
           <h2 class="text-3xl md:text-4xl font-semibold tracking-tight mb-4" style="color: var(--color-text);">
-            Design-led software, built to a senior standard.
+            What you can refer
           </h2>
           <p class="text-[16px] leading-relaxed" style="color: var(--color-text-secondary);">
-            Axel Nova builds UI/UX design, frontend engineering, and full product builds for fintech,
-            SaaS, and bespoke web. Premium work the business can be proud of — and that reflects well
-            on you for making the introduction.
+            Axel Nova Ventures designs and builds websites, interfaces, booking portals and custom
+            business systems. If you are unsure whether a project fits, send a short description and we
+            can discuss it.
           </p>
         </div>
         <div class="flex flex-wrap gap-3 shrink-0">
@@ -386,7 +387,7 @@ useScrollReveal('.reveal')
     <section class="max-w-7xl mx-auto px-6 py-32 reveal">
       <SectionHeader
         eyebrow="The fine print, briefly"
-        title="Fair terms, clearly stated."
+        title="The key terms"
         subtitle="The essentials below. Full terms are shared when a referral progresses to a project."
       />
 
@@ -471,10 +472,10 @@ useScrollReveal('.reveal')
       <div class="max-w-7xl mx-auto px-6 py-24 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
         <div>
           <p class="text-3xl md:text-5xl font-semibold tracking-tight">
-            Know a business that needs to build?
+            Know a business with a project in mind?
           </p>
           <p class="mt-3 text-[17px] max-w-lg" style="color: var(--color-text-secondary);">
-            Refer them in two minutes — we’ll take it from there.
+            Make an introduction and we will explain the next steps.
           </p>
         </div>
         <NuxtLink to="/partners/refer" class="btn-pill btn-pill-accent shrink-0">

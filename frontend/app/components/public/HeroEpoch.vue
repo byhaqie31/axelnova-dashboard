@@ -529,7 +529,7 @@ onUnmounted(() => {
           :style="{ borderColor: 'var(--color-border)', background: 'var(--nav-bg-scrolled)' }"
         >
           <span class="size-1.5 rounded-full" style="background: var(--grad-iridescent);" />
-          <span class="eyebrow">Web design &amp; development studio · Kuala Lumpur</span>
+          <span class="eyebrow">Web design and development studio in Kuala Lumpur</span>
         </div>
 
         <!-- Base 34px keeps the two lines inside the card at 375px; the spec's
@@ -550,13 +550,12 @@ onUnmounted(() => {
           class="hero-sub mt-5 max-w-[52ch] text-[14px] md:text-[15px] leading-relaxed"
           style="color: var(--hero-fg-muted);"
         >
-          Axel Nova Ventures is a web design and development studio in Kuala Lumpur.
-          <!-- Second sentence is desktop-only — on phones the description ends
-               at "Kuala Lumpur." to keep the hero copy tight. It stays in the
-               SSR HTML either way, so crawlers read the full lede. -->
+          Axel Nova Ventures is a Kuala Lumpur digital studio. I design and build websites,
+          booking portals and custom systems for businesses across Malaysia.
+          <!-- Last sentence is desktop-only to keep the phone hero tight. It stays
+               in the SSR HTML either way, so crawlers read the full lede. -->
           <span class="hidden md:inline">
-            I design and build websites, customer portals and custom systems for businesses
-            across Malaysia: clear to use, quick to load, and fully yours once it's live.
+            Every project starts with the people who will use it and the job it needs to do.
           </span>
         </p>
 
