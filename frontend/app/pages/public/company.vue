@@ -51,7 +51,9 @@ useScrollReveal('.reveal')
           class="text-[clamp(34px,5vw,68px)] font-semibold tracking-tighter leading-[1.06] mb-8 max-w-4xl"
           style="color: var(--color-text);"
         >
-          A digital studio built around<br class="hidden sm:block" />
+          <!-- The space before <br> is load-bearing: below sm the break is hidden,
+               and Vue drops the newline between <br> and <span>. -->
+          A digital studio built around <br class="hidden sm:block" />
           <span class="text-gradient">how people use technology.</span>
         </h1>
         <p class="text-[17px] leading-relaxed max-w-lg" style="color: var(--color-text-secondary);">

@@ -350,11 +350,14 @@ onMounted(() => {
         0,
       )
     }
+    // Anchor matches the copy's alignment: top-centre on phones (centred
+    // column), top-left from md. Mirrored in the .hero-boot CSS below.
+    const copyOrigin = () => (window.innerWidth >= 768 ? '0% 0%' : '50% 0%')
     if (heroBadge.value) {
-      zoomTl.from(heroBadge.value, { scale: 1.15, transformOrigin: '0% 0%' }, 0)
+      zoomTl.from(heroBadge.value, { scale: 1.15, transformOrigin: copyOrigin }, 0)
     }
     if (heroHeadline.value) {
-      zoomTl.from(heroHeadline.value, { scale: headlineScale, transformOrigin: '0% 0%' }, 0)
+      zoomTl.from(heroHeadline.value, { scale: headlineScale, transformOrigin: copyOrigin }, 0)
     }
     // Description and CTA don't exist in the opening pose — they fade in
     // mid-zoom, already sitting in their final spots.
@@ -521,7 +524,7 @@ onUnmounted(() => {
       <!-- Text content -->
       <div
         ref="heroContent"
-        class="hero-content relative z-20 flex-1 px-6 sm:px-10 md:px-16 pt-12 md:pt-16 flex flex-col items-start"
+        class="hero-content relative z-20 flex-1 px-6 sm:px-10 md:px-16 pt-12 md:pt-16 flex flex-col items-center text-center md:items-start md:text-left"
       >
         <div
           ref="heroBadge"
@@ -529,7 +532,11 @@ onUnmounted(() => {
           :style="{ borderColor: 'var(--color-border)', background: 'var(--nav-bg-scrolled)' }"
         >
           <span class="size-1.5 rounded-full" style="background: var(--grad-iridescent);" />
-          <span class="eyebrow">Web design and development studio in Kuala Lumpur</span>
+          <!-- The opening pose draws this badge at scale(1.15), so on phones
+               its text must stay ≲26 chars or the badge wraps to full width
+               and the scale pushes it past the card edges. -->
+          <span class="eyebrow sm:hidden">Web design · Kuala Lumpur</span>
+          <span class="eyebrow hidden sm:inline">Web design and development studio in Kuala Lumpur</span>
         </div>
 
         <!-- Base 34px keeps the two lines inside the card at 375px; the spec's
@@ -545,18 +552,16 @@ onUnmounted(() => {
           Crafted by design.<br>Built to last.
         </h1>
 
+        <!-- Desktop-only: the phone hero is badge, headline and CTA. It stays in
+             the SSR HTML either way, so crawlers still read the full lede. -->
         <p
           ref="heroSub"
-          class="hero-sub mt-5 max-w-[52ch] text-[14px] md:text-[15px] leading-relaxed"
+          class="hero-sub hidden md:block mt-5 max-w-[52ch] text-[15px] leading-relaxed"
           style="color: var(--hero-fg-muted);"
         >
           Axel Nova Ventures is a Kuala Lumpur digital studio. I design and build websites,
           booking portals and custom systems for businesses across Malaysia.
-          <!-- Last sentence is desktop-only to keep the phone hero tight. It stays
-               in the SSR HTML either way, so crawlers read the full lede. -->
-          <span class="hidden md:inline">
-            Every project starts with the people who will use it and the job it needs to do.
-          </span>
+          Every project starts with the people who will use it and the job it needs to do.
         </p>
 
         <div ref="heroCtaWrap" class="hero-cta mt-7">
@@ -720,18 +725,19 @@ onUnmounted(() => {
   }
   /* Boot copy pose: eyebrow + headline big, sat low toward the optical centre
      of the fullscreen card, no description, no CTA, no navbar — the
-     pre-hydration mirror of the scrub's from() values. Corner-origin scaling
-     keeps the text anchored in place; the block's drop is a separate transform
+     pre-hydration mirror of the scrub's from() values. Scaling from the
+     copy's own anchor (top-centre on phones, top-left from md) keeps the text
+     in place; the block's drop is a separate transform
      on the wrapper. svh to match the card's own height unit. */
   html:not([data-intro-seen]) .hero-boot .hero-content {
     transform: translateY(12svh);
   }
   html:not([data-intro-seen]) .hero-boot .hero-badge {
-    transform-origin: 0 0;
+    transform-origin: 50% 0;
     transform: scale(1.15);
   }
   html:not([data-intro-seen]) .hero-boot .epoch-headline {
-    transform-origin: 0 0;
+    transform-origin: 50% 0;
     transform: scale(1.15);
   }
   html:not([data-intro-seen]) .hero-boot .hero-sub,
@@ -762,7 +768,11 @@ onUnmounted(() => {
   }
   /* Static approximation of the scrub's width-filling headlineScale() for the
      pre-hydration paint (phones stay at the base 1.15 so the lines fit). */
+  html:not([data-intro-seen]) .hero-boot .hero-badge {
+    transform-origin: 0 0;
+  }
   html:not([data-intro-seen]) .hero-boot .epoch-headline {
+    transform-origin: 0 0;
     transform: scale(1.9);
   }
   html:not([data-intro-seen]) .hero-boot .hero-content {

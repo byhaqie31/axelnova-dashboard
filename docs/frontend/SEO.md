@@ -1,6 +1,6 @@
 # SEO — public site
 
-How the public site (axelnovaventures.com) is set up for search, and the rules new pages follow. Target searches: **web development / website developer / digital studio** in **Kuala Lumpur / Malaysia**. Last audited 2026-09-29; copy rewritten from [SITE-COPY-REVIEW.md](./SITE-COPY-REVIEW.md) the same day.
+How the public site (axelnovaventures.com) is set up for search, and the rules new pages follow. Target searches: **web development / website developer / digital studio** in **Kuala Lumpur / Malaysia**. Last audited 2026-09-29; copy rewritten the same day. The current copy is in [SITE-COPY.md](./SITE-COPY.md).
 
 ## Per-page rules
 
