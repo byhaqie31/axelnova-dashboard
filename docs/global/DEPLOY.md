@@ -129,6 +129,25 @@ docker exec axelnova-backend php -r 'echo file_get_contents(getenv("SITE_CACHE_P
 
 To rotate the token, re-run the block above. To turn the purge off, delete those lines (or restore the `.bak` files) and recreate — pages fall back to the 300s window.
 
+## OG image secret
+
+Generated link-preview cards ([docs/frontend/OG-IMAGES.md](../frontend/OG-IMAGES.md)) are served from signed `/_og/…` URLs. The signing key is `NUXT_OG_IMAGE_SECRET`. If it's unset, the module generates a new key on every build, so each deploy would 403 every preview image already cached by WhatsApp, Facebook or LinkedIn. One-time VPS setup (run from `~/axelnova-dashboard`, **before** the first deploy that ships the cards):
+
+```bash
+cp frontend/.env.production frontend/.env.production.bak.$(date +%F)
+sed -i '/^NUXT_OG_IMAGE_SECRET=/d' frontend/.env.production
+printf '\nNUXT_OG_IMAGE_SECRET=%s\n' "$(openssl rand -hex 32)" >> frontend/.env.production
+
+# env_file changes need a recreate, not a restart
+docker compose -f docker-compose.prod.ghcr.yml up -d --force-recreate --no-deps frontend
+```
+
+Check it: expect `200` and `content-type: image/png`.
+
+```bash
+curl -sI "$(curl -s https://axelnovaventures.com/services | grep -o 'property="og:image" content="[^"]*"' | cut -d'"' -f4)"
+``` Rotating the secret breaks already-shared preview images until each page is re-scraped, so only rotate if it leaks.
+
 **Authenticated and per-recipient routes are deliberately excluded and must stay that way** — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**`. Caching any of them would serve one visitor's page to another. Verify with `curl -I` that those return no `s-maxage`.
 
 ## Common ops

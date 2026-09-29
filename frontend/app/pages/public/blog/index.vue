@@ -14,6 +14,10 @@ usePublicSeo({
   title: 'Websites, UX & Business Systems Blog | Axel Nova',
   description: 'Practical notes from Axel Nova Ventures on websites, UI/UX and custom systems for business owners in Malaysia.',
   path: '/blog',
+  card: {
+    label: 'BLOG',
+    headline: 'Notes from the workbench.',
+  },
 })
 
 interface ListResponse {

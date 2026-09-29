@@ -3,7 +3,7 @@
 // real title, description, Open Graph card and BlogPosting JSON-LD; a draft or
 // unknown slug throws a real 404 (the backend only serves published posts).
 import PublicBlogArticle from '~/components/public/BlogArticle.vue'
-import type { BlogPostPublic } from '~/data/blog'
+import { blogFormatLabel, type BlogPostPublic } from '~/data/blog'
 
 // footerGap: false — the article ends on its CTA card, so it keeps a modest
 // pb-16 of its own instead of the layout's mt-32 stacked on top of it.
@@ -44,6 +44,7 @@ usePublicSeo({
   description: seoDescription,
   path: `/blog/${slug.value}`,
   image: post.value.cover_image_url ?? undefined,
+  card: { label: blogFormatLabel(post.value.format).toUpperCase(), headline: post.value.title },
 })
 
 useHead({

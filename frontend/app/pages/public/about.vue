@@ -5,6 +5,11 @@ usePublicSeo({
   title: 'About Ahmad Baihaqie (Qie) | Axel Nova Ventures',
   description: 'Meet Ahmad Baihaqie, known as Qie, the Kuala Lumpur software engineer behind Axel Nova Ventures. His work spans UI/UX, frontend and fintech systems.',
   path: '/about',
+  card: {
+    label: 'ABOUT',
+    headline: 'The builder behind Axel Nova.',
+    subline: 'Founder & software engineer, Kuala Lumpur.',
+  },
 })
 
 // The founder as a Person, tied to the homepage's ProfessionalService node.

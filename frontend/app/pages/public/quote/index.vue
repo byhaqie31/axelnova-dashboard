@@ -17,6 +17,14 @@ useSeoMeta({
 })
 useHead({ link: [{ rel: 'canonical', href: `${siteUrl}/quote` }] })
 
+// Generated link-preview card (docs/frontend/OG-IMAGES.md).
+defineOgImage('SiteCard', {
+  label: 'GET AN ESTIMATE',
+  headline: 'Tell me about your project.',
+  subline: 'A cost and timeline estimate in minutes.',
+  footer: ogFooter('/quote'),
+}, { alt: 'Tell me about your project.' })
+
 const runtimeConfig = useRuntimeConfig()
 const route = useRoute()
 const { withRef } = useReferralAttribution()

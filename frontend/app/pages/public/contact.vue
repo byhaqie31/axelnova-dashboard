@@ -5,6 +5,11 @@ usePublicSeo({
   title: 'Contact Axel Nova Ventures | Web Design in Kuala Lumpur',
   description: 'Planning a website, booking portal or custom system? Contact Qie at Axel Nova Ventures in Kuala Lumpur to discuss your project.',
   path: '/contact',
+  card: {
+    label: 'CONTACT',
+    headline: 'Let\'s talk about your project.',
+    subline: 'WhatsApp, email or a short brief.',
+  },
 })
 
 import SectionHeader from '~/components/shared/SectionHeader.vue'

@@ -44,7 +44,14 @@ usePublicSeo({
   description: project.value?.description
     || 'See websites, portals and digital products designed and built by Axel Nova Ventures in Kuala Lumpur. Explore selected live work and project details.',
   path: `/projects/${slug.value}`,
-  image: project.value?.cover_image_url ?? undefined,
+  card: project.value
+    ? {
+        label: 'PROJECT',
+        headline: project.value.name,
+        subline: clipText(project.value.description, 90),
+        image: project.value.cover_image_url ?? undefined,
+      }
+    : { label: 'WORK', headline: 'Selected work and products.' },
 })
 
 const statusMeta = (status: ApiProject['status']) => {

@@ -60,7 +60,7 @@ Visitor builds a quote on /quote
 |-------|-----------|
 | Frontend | Nuxt 4, Vue 3, TypeScript, `@nuxt/ui` v4, Tailwind CSS v4 |
 | Motion | GSAP (+ SplitText), Lenis smooth-scroll, VueUse |
-| Fonts | Inter (self-hosted via `@nuxtjs/google-fonts`, `download: true`) |
+| Fonts | Inter + Outfit (self-hosted via `@nuxt/fonts`) |
 | Backend | Laravel 11, PHP 8.4 |
 | Database | MySQL 8 (shared via `axelnova-infra`) |
 | Queue | Laravel **database** queue |
