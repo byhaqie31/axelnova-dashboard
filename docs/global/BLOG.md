@@ -44,7 +44,7 @@ If renaming everywhere or pre-creating empty topics is ever needed, a managed ta
 ## Endpoints
 
 ```
-# Public (no auth; the Nuxt pages sit behind swr 300s)
+# Public (no auth; the Nuxt pages sit behind swr 300s, purged on every live change — see Frontend → Cache)
 GET  /v1/blog/posts?format=&topic=&page=   Published only, newest first, 12/page. `format` ∈ FORMATS (422
                                       otherwise); `topic` matches the category OR a tag, case-insensitively.
                                       Card fields + top-level `formats: [{value, count}]` and
@@ -80,9 +80,9 @@ Tests: `backend/tests/Feature/Blog/` (model rules, public feed, admin CMS).
 ## Frontend
 
 - **Public:** `pages/public/blog/index.vue` (grid; **format pills** on the left via `?format=`, a **topic dropdown** on the right via `?topic=`; pagination) and `pages/public/blog/[slug].vue` (SSR-awaited fetch; `usePublicSeo` + `BlogPosting` and `BreadcrumbList` JSON-LD; an unknown or draft slug throws a real 404). Shared pieces in `components/public/`: `BlogCard`, `BlogToc` (active-heading tracking via IntersectionObserver), `BlogArticle` (the one layout — full-width header with the format eyebrow, byline "By Ahmad Baihaqie, Founder" + "Updated …" when edited after publishing, and cover; then a two-track body: a sticky **left pane** of "On this page" section links (from 2 sections up) and the text column on the right with anchored H2s, in-section image / pull quote, closing CTA card and share row; related posts full-width below. The pane collapses inline above the first section below `lg`). Article body styles are `.blog-prose` in `main.css` (tokens only; see UI-STANDARDS §7).
-- **Home page:** `components/public/BlogLatest.vue` shows the three newest posts below the client previews, and renders nothing while nothing is published. `/` is also `swr: 300`, so it catches up on the same five-minute window.
+- **Home page:** `components/public/BlogLatest.vue` shows the three newest posts below the client previews, and renders nothing while nothing is published. `/` is also `swr: 300` and is cleared by the same purge, so it updates on the next visit.
 - **Nav:** "Blog" sits after Company in `layouts/public.vue` and its mirror in `HeroEpoch.vue` (keep in sync); the footer Explore column follows the same array.
-- **Sitemap:** `server/api/__sitemap__/urls.ts` feeds `sitemap.sources` from `/v1/blog/slugs`. **Cache:** `/blog` and `/blog/**` are `swr: 300` — a new post shows within five minutes of publishing.
+- **Sitemap:** `server/api/__sitemap__/urls.ts` feeds `sitemap.sources` from `/v1/blog/slugs`. **Cache:** `/blog` and `/blog/**` are `swr: 300` for speed, but `BlogPostObserver` purges the Nuxt page cache (`SiteCache` → `POST /_cache/purge`) on publish, unpublish, and any edit/delete of a live post — so a change shows on the **next visit**. If the purge isn't configured or fails, it falls back to the five-minute window. Setup: [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
 - **Analytics:** page views are tracked by path already, so `/blog/*` needs nothing new; the admin list shows per-post views.
 - **Admin:** `pages/admin/blog/index.vue` (table + filters) and `pages/admin/blog/[id].vue` (`new` or an id), with `components/admin/BlogSectionEditor.vue` per section. Types, template, the Markdown importer, the reading-time estimate and the voice guide live in `data/blog.ts`.
 
@@ -94,7 +94,7 @@ Tests: `backend/tests/Feature/Blog/` (model rules, public feed, admin CMS).
 4. Work through the **sections**: heading, body (bold / italic / link / subheading / lists / quote / code), and optionally **Add image** (URL + alt) or **Add quote**. Move up / down to reorder; Remove to drop one.
 5. In the side rail: **cover image URL + alt**; **format** (Article / Guide / Tutorial / Case study / Opinion / News — the label before the date), **category** (a dropdown of the ones in use, or add a new one) and **topics** (search, tick existing ones, or add new — up to 10); the **closing call to action** (blank = defaults); and **SEO** overrides if the title is long.
 6. **Preview** — rendered by the backend, so it is exactly what readers see. Close with Escape.
-7. **Save draft** as often as you like. **Publish** when it is complete (the gate needs a title, an introduction and at least one filled section). It appears at `/blog/<slug>` within five minutes.
+7. **Save draft** as often as you like. **Publish** when it is complete (the gate needs a title, an introduction and at least one filled section). It appears at `/blog/<slug>` straight away (and on the home page and `/blog` list).
 8. Edit any time — changes to a published post go live on save. **Unpublish** to pull it back to a draft.
 
 ## Drafting with Claude

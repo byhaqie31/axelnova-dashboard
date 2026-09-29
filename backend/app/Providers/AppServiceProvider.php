@@ -3,12 +3,15 @@
 namespace App\Providers;
 
 use App\Console\Commands\MintConnectorToken;
+use App\Models\BlogPost;
 use App\Models\Feedback;
 use App\Models\Payment;
 use App\Models\PersonalAccessToken as AppPersonalAccessToken;
 use App\Models\User;
+use App\Observers\BlogPostObserver;
 use App\Observers\FeedbackObserver;
 use App\Observers\PaymentObserver;
+use App\Support\SiteCache;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -20,7 +23,11 @@ use Symfony\Component\HttpFoundation\IpUtils;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        // One per request, so several blog changes in a request purge once.
+        $this->app->scoped(SiteCache::class);
+    }
 
     public function boot(): void
     {
@@ -40,6 +47,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Testimonial-wall cache invalidation (public_testimonials_v1).
         Feedback::observe(FeedbackObserver::class);
+
+        // Public page-cache purge — a published blog change shows instantly.
+        BlogPost::observe(BlogPostObserver::class);
 
         // The global Sanctum cap (SANCTUM_EXPIRATION_MINUTES, 12h default) exists
         // so a leaked admin *login* token can't live forever — but it would also

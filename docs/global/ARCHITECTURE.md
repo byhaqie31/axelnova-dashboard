@@ -273,7 +273,7 @@ GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer �
 
 ## Frontend routes
 
-Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
+Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. A live blog change purges the cache on demand (`BlogPostObserver` → `SiteCache` → Nuxt `POST /_cache/purge`). See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
 
 
 ```
