@@ -234,6 +234,7 @@ GET  /v1/documents/{token}                Public  — token-gated document data 
 
 # Revenue reporting (derived — no table of its own)
 GET  /v1/admin/revenue/monthly       Sanctum — booked vs collected per calendar month
+GET  /v1/admin/revenue/monthly/{YYYY-MM}  Sanctum — one month broken down: orders won, payments landed (tagged with the order's month), per-client roll-up; same rules as /monthly so it sums to its row. 404 for malformed/future months
                                      (?months=6|12|24, anything else falls back to 12).
                                      BOOKED = Σ orders.final_amount_myr of non-cancelled orders
                                      created that month (what we sold); COLLECTED = signed Σ over
@@ -298,6 +299,7 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
                       detail carries pay/duration/payment status + Mark paid/Delete, and is read-only once
                       the task is in progress or beyond
 /admin/revenue        Revenue — monthly booked-vs-collected reporting (6/12/24-month window).
+/admin/revenue/[month]  One month's breakdown (e.g. /admin/revenue/2026-07) — opened by clicking a month row or chart bar; prev/next stepper.
                       Totals row (booked / collected / net of fees / fees), a grouped bar chart
                       (one shared MYR axis — never a second scale), and a table of exact figures.
                       Read-only and fully derived from `payments` + `orders`; adds no table

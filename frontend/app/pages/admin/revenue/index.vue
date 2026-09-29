@@ -73,6 +73,11 @@ function barHeight(value: number): string {
   return `${Math.max(2, (value / scaleMax.value) * 100)}%`
 }
 
+// Every month drills into its own breakdown page.
+function openMonth(month: string) {
+  navigateTo(`/admin/revenue/${month}`)
+}
+
 const hasData = computed(() => series.value.some(r => r.booked > 0 || r.collected > 0))
 
 // The table reads newest-first — the month you want is almost always the latest.
@@ -196,9 +201,10 @@ const tiles = computed(() => [
           <div
             v-for="(row, i) in series"
             :key="row.month"
-            class="flex-1 h-full flex items-end justify-center gap-[2px] relative"
+            class="flex-1 h-full flex items-end justify-center gap-[2px] relative cursor-pointer"
             @mouseenter="hovered = i"
             @mouseleave="hovered = null"
+            @click="openMonth(row.month)"
           >
             <div
               class="w-1/2 max-w-[18px] rounded-t-[4px] transition-[height] duration-300"
@@ -268,12 +274,23 @@ const tiles = computed(() => [
             <tr
               v-for="{ row, index } in tableRows"
               :key="row.month"
-              class="border-b last:border-0 transition-colors"
+              class="border-b last:border-0 transition-colors cursor-pointer outline-none focus-visible:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)', background: hovered === index ? 'var(--color-bg-secondary)' : 'transparent' }"
+              tabindex="0"
+              :aria-label="`Open ${row.label} breakdown`"
               @mouseenter="hovered = index"
               @mouseleave="hovered = null"
+              @click="openMonth(row.month)"
+              @keydown.enter="openMonth(row.month)"
             >
-              <td class="px-5 py-3 font-medium" style="color: var(--color-text);">{{ row.label }}</td>
+              <td class="px-5 py-3 font-medium" style="color: var(--color-text);">
+                <span class="inline-flex items-center gap-1.5">
+                  {{ row.label }}
+                  <UIcon
+                    name="i-lucide-chevron-right" class="size-3.5 transition-opacity"
+                    :style="{ color: 'var(--color-text-tertiary)', opacity: hovered === index ? 1 : 0 }" />
+                </span>
+              </td>
               <td class="px-5 py-3 text-right tabular-nums" style="color: var(--color-text);">{{ myrExact.format(row.booked) }}</td>
               <td class="px-5 py-3 text-right tabular-nums" style="color: var(--color-text);">{{ myrExact.format(row.collected) }}</td>
               <td
@@ -291,7 +308,7 @@ const tiles = computed(() => [
     <p class="text-[11px] mt-4 leading-relaxed" style="color: var(--color-text-tertiary);">
       <strong style="color: var(--color-text-secondary);">Booked</strong> is the contracted value of orders won in a month.
       <strong style="color: var(--color-text-secondary);">Collected</strong> is cash received that month from the payments ledger, with refunds netted off.
-      With deposit terms the two rarely land in the same month, so a gap is normal.
+      With deposit terms the two rarely land in the same month, so a gap is normal. Click a month for its orders, payments and clients.
     </p>
   </div>
 </template>

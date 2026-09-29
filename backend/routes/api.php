@@ -279,6 +279,9 @@ Route::middleware([
         // Monthly money reporting — booked (orders won) vs collected (ledger
         // cash), derived only. Founder-only by virtue of the cockpit group.
         Route::get('/revenue/monthly', [RevenueController::class, 'monthly'])->name('revenue.monthly');
+        // One month broken down — orders won, payments landed, per-client roll-up.
+        Route::get('/revenue/monthly/{month}', [RevenueController::class, 'month'])
+            ->where('month', '\d{4}-\d{2}')->name('revenue.month');
 
         // Partner referrals
         Route::get('/referrals', [ReferralsController::class, 'index'])->name('referrals.index');
