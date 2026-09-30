@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // /blog — published posts, newest first. Two filters, both query params so
 // the swr cache keys per combination and the URL is shareable: the pill row
-// filters by FORMAT (guide / article / …) and the dropdown on the right by
-// TOPIC (category ∪ tags). Fed by GET /api/v1/blog/posts; see BLOG.md.
+// (a dropdown on mobile) filters by FORMAT (guide / article / …) and the
+// dropdown on the right by TOPIC (category ∪ tags). Fed by GET /api/v1/blog/posts; see BLOG.md.
 import { onClickOutside } from '@vueuse/core'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import PublicBlogCard from '~/components/public/BlogCard.vue'
@@ -68,6 +68,15 @@ function selectTopic(t: string) {
   navigateTo({ path: '/blog', query: queryFor(format.value, t) })
 }
 
+// Format dropdown — mobile only; the pill row replaces it from md up.
+const formatOpen = ref(false)
+const formatRef = ref<HTMLElement | null>(null)
+onClickOutside(formatRef, () => { formatOpen.value = false })
+function selectFormat(f: string) {
+  formatOpen.value = false
+  navigateTo({ path: '/blog', query: queryFor(f, topic.value) })
+}
+
 useScrollReveal('.reveal')
 </script>
 
@@ -80,9 +89,45 @@ useScrollReveal('.reveal')
       subtitle="Clear explanations of website decisions, interface design and business systems, drawn from the work behind each build."
     />
 
-    <!-- Filters: format pills (left) · topic dropdown (right) -->
-    <div v-if="formats.length || topics.length" class="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row mb-12">
-      <div class="flex items-center gap-2 flex-wrap">
+    <!-- Filters: mobile = format dropdown (left) · topic dropdown (right), equal halves;
+         md+ = format pills (left) · topic dropdown (right) -->
+    <div v-if="formats.length || topics.length" class="grid grid-cols-2 gap-3 mb-10 md:flex md:items-center md:justify-between md:gap-4 md:mb-12">
+      <div ref="formatRef" class="relative min-w-0 md:hidden">
+        <button
+          type="button"
+          class="w-full flex items-center gap-2 text-[13px] pl-4 pr-3 py-2 rounded-full border transition-colors"
+          :style="{ borderColor: 'var(--color-border-strong)', background: 'var(--color-bg-elevated)', color: 'var(--color-text)' }"
+          :aria-expanded="formatOpen"
+          aria-haspopup="listbox"
+          @click="formatOpen = !formatOpen"
+        >
+          <span class="text-[11px] uppercase tracking-wider shrink-0" :style="{ color: 'var(--color-text-tertiary)' }">Format</span>
+          <span class="truncate">{{ format ? blogFormatLabel(format) : 'All' }}</span>
+          <UIcon name="i-lucide-chevron-down" class="size-3.5 ml-auto shrink-0 transition-transform" :class="{ 'rotate-180': formatOpen }" />
+        </button>
+        <Transition name="confirm-fade">
+          <ul
+            v-if="formatOpen"
+            role="listbox"
+            class="absolute left-0 mt-2 w-full min-w-[200px] max-h-[60vh] overflow-y-auto rounded-2xl border py-2 z-20"
+            :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }"
+          >
+            <li>
+              <button type="button" role="option" :aria-selected="!format" class="w-full text-left text-[13px] px-4 py-2 flex items-center gap-2 hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-text)' }" @click="selectFormat('')">
+                <UIcon name="i-lucide-check" class="size-3.5" :class="{ invisible: format }" /> All formats
+              </button>
+            </li>
+            <li v-for="f in formats" :key="f.value">
+              <button type="button" role="option" :aria-selected="format === f.value" class="w-full text-left text-[13px] px-4 py-2 flex items-center gap-2 hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-text)' }" @click="selectFormat(f.value)">
+                <UIcon name="i-lucide-check" class="size-3.5" :class="{ invisible: format !== f.value }" /> {{ blogFormatLabel(f.value) }}
+                <span class="ml-auto text-[11px] tabular-nums" :style="{ color: 'var(--color-text-tertiary)' }">{{ f.count }}</span>
+              </button>
+            </li>
+          </ul>
+        </Transition>
+      </div>
+
+      <div class="hidden md:flex items-center gap-2 flex-wrap">
         <NuxtLink :to="{ path: '/blog', query: queryFor('', topic) }" class="text-[13px] px-4 py-1.5 rounded-full border transition-all duration-200" :style="pillStyle(!format)">All</NuxtLink>
         <NuxtLink
           v-for="f in formats" :key="f.value"
@@ -94,32 +139,34 @@ useScrollReveal('.reveal')
         </NuxtLink>
       </div>
 
-      <div v-if="topics.length" ref="topicRef" class="relative shrink-0">
+      <div v-if="topics.length" ref="topicRef" class="relative min-w-0 md:shrink-0">
         <button
           type="button"
-          class="inline-flex items-center gap-2 text-[13px] px-4 py-1.5 rounded-full border transition-colors"
+          class="w-full md:w-auto flex md:inline-flex items-center gap-2 text-[13px] pl-4 pr-3 py-2 md:px-4 md:py-1.5 rounded-full border transition-colors"
           :style="{ borderColor: 'var(--color-border-strong)', background: 'var(--color-bg-elevated)', color: 'var(--color-text)' }"
           :aria-expanded="topicOpen"
+          aria-haspopup="listbox"
           @click="topicOpen = !topicOpen"
         >
-          <span class="text-[11px] uppercase tracking-wider" :style="{ color: 'var(--color-text-tertiary)' }">Topic</span>
-          {{ topic || 'All topics' }}
-          <UIcon name="i-lucide-chevron-down" class="size-3.5 transition-transform" :class="{ 'rotate-180': topicOpen }" />
+          <span class="text-[11px] uppercase tracking-wider shrink-0" :style="{ color: 'var(--color-text-tertiary)' }">Topic</span>
+          <span class="truncate">{{ topic || 'All topics' }}</span>
+          <UIcon name="i-lucide-chevron-down" class="size-3.5 ml-auto md:ml-0 shrink-0 transition-transform" :class="{ 'rotate-180': topicOpen }" />
         </button>
         <Transition name="confirm-fade">
           <ul
             v-if="topicOpen"
-            class="absolute right-0 mt-2 min-w-[220px] rounded-2xl border py-2 z-20"
+            role="listbox"
+            class="absolute right-0 mt-2 w-full md:w-auto min-w-[220px] max-h-[60vh] overflow-y-auto rounded-2xl border py-2 z-20"
             :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }"
           >
             <li>
-              <button type="button" class="w-full text-left text-[13px] px-4 py-2 flex items-center gap-2 hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-text)' }" @click="selectTopic('')">
+              <button type="button" role="option" :aria-selected="!topic" class="w-full text-left text-[13px] px-4 py-2 flex items-center gap-2 hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-text)' }" @click="selectTopic('')">
                 <UIcon name="i-lucide-check" class="size-3.5" :class="{ invisible: topic }" /> All topics
               </button>
             </li>
             <li v-for="t in topics" :key="t.name">
-              <button type="button" class="w-full text-left text-[13px] px-4 py-2 flex items-center gap-2 hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-text)' }" @click="selectTopic(t.name)">
-                <UIcon name="i-lucide-check" class="size-3.5" :class="{ invisible: topic !== t.name }" /> {{ t.name }}
+              <button type="button" role="option" :aria-selected="topic === t.name" class="w-full text-left text-[13px] px-4 py-2 flex items-center gap-2 hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-text)' }" @click="selectTopic(t.name)">
+                <UIcon name="i-lucide-check" class="size-3.5 shrink-0" :class="{ invisible: topic !== t.name }" /> {{ t.name }}
                 <span class="ml-auto text-[11px] tabular-nums" :style="{ color: 'var(--color-text-tertiary)' }">{{ t.count }}</span>
               </button>
             </li>
