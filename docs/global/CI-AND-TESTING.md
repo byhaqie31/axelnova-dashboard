@@ -77,7 +77,7 @@ single files — after editing them on the host, `docker compose up -d --force-r
 
 ## Dependency audits
 
-- **Backend**: `composer audit` fails CI on any new advisory. Three Laravel 11
+- **Backend**: `composer audit` fails CI on any new advisory. Four Laravel 11
   framework advisories that are only fixed in **Laravel 12** are acknowledged in
   `composer.json` → `config.audit.ignore`, each with a re-check note. Remove those
   entries when the L12 upgrade lands.
