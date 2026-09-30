@@ -101,6 +101,14 @@ export default defineNuxtConfig({
 
   hooks: {
     'pages:extend': stripPublicPrefix,
+    // nuxt-og-image stubs `playwright-core` with a mock in production builds
+    // (its browser renderer is off — we only use takumi). That mock shadows
+    // the real package our document PDF renderer (server/utils/pdf/pdf.ts)
+    // imports, leaving `chromium` undefined → every PDF 500s. Drop the stub
+    // so Nitro resolves the real module again. Dev builds never stub it.
+    'nitro:config'(nitroConfig) {
+      delete nitroConfig.virtual?.['playwright-core']
+    },
   },
 
   // Baseline security headers on every SSR/asset response. SAMEORIGIN (not
