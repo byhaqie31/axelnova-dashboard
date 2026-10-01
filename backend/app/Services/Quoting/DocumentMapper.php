@@ -13,11 +13,18 @@ use App\Models\Quotation;
  */
 class DocumentMapper
 {
-    /** Studio details on every document. */
+    /**
+     * Studio details on every document.
+     *
+     * `reg` KEEPS IN SYNC with `STUDIO_IDENTITY` in
+     * frontend/server/utils/pdf/template.ts — the letterhead renders from that
+     * constant (never from this frozen copy), so older payloads with the old
+     * "Reg. …" wording still print the current SSM line.
+     */
     private const STUDIO = [
         'name' => 'Axel Nova Ventures',
         'tagline' => 'simple, effortless, human.',
-        'reg' => 'Reg. 202603119899 (CA0420977-U)',
+        'reg' => 'SSM Registration: 202603119899 (CA0420977-U)',
         'email' => 'baihaqie@axelnova.tech',
         'site' => 'axelnovaventures.com',
         'designedBy' => 'Designed by Qie / Axel Nova Ventures',
@@ -158,7 +165,9 @@ class DocumentMapper
      * caller (DocumentIssuer) freezes the returned array as the document payload.
      *
      * `$input` keys: number, issued, layout, amountPaid, paymentRef,
-     * paymentMethod, statusLabel, notes, payload (full override).
+     * paymentMethod, statusLabel, notes, payload (full override), and the
+     * amount-invoice display options showSummary, showRemaining, billingTitle,
+     * billingLabel, billingText, scopeTitle, scopeItems.
      */
     public static function forOrder(Order $order, string $type, array $input = []): array
     {
@@ -259,12 +268,7 @@ class DocumentMapper
                     : ($amountPaid ? 'Deposit received' : 'Issued')),
             'currency' => 'RM',
             'studio' => self::STUDIO,
-            'client' => array_filter([
-                'name' => $quotation?->name ?: $quotation?->company ?: 'Client',
-                'attn' => $doc['client']['attn'] ?? null,
-                'address' => $doc['client']['address'] ?? null,
-                'email' => $quotation?->email,
-            ]),
+            'client' => self::orderClient($quotation, $doc),
             'project' => $doc['project'] ?? ($quotation ? self::defaultProject($quotation) : 'Project'),
             'subtitle' => $doc['subtitle']
                 ?? ($quotation?->reference_code ? "Ref {$quotation->reference_code}" : null),
@@ -285,6 +289,8 @@ class DocumentMapper
         $agreed = round((float) $order->final_amount_myr, 2);
 
         $rows = [];
+        // Invoice-only display options (set in the invoice branch below).
+        $display = $billingFor = $scope = null;
 
         if ($type === 'receipt') {
             if ($agreed > 0 && abs($agreed - $amount) > 0.009) {
@@ -339,7 +345,7 @@ class DocumentMapper
             // What's still owed on the agreed total once this bill is settled.
             $remaining = $agreed > 0 ? round(max($agreed - $paid - $net, 0), 2) : 0.0;
             if ($remaining > 0.009) {
-                $rows[] = ['label' => 'Remaining after this payment', 'price' => $remaining, 'priceMuted' => true];
+                $rows[] = ['label' => 'Remaining after this payment', 'price' => $remaining, 'priceMuted' => true, 'role' => 'remaining'];
             }
 
             $panels = [array_filter([
@@ -357,9 +363,21 @@ class DocumentMapper
                     'label' => 'Balance after this payment',
                     'value' => $remaining,
                     'note' => 'Remaining on the agreed project total.',
+                    'role' => 'balance',
                 ];
             }
             $status = $input['statusLabel'] ?? "{$billLabel} invoice";
+
+            // Per-invoice display options. These only HIDE at render time — the
+            // summary rows and panels above are always built in full, because
+            // DocumentIssuer::payloadTotal() derives amount_total (and so the
+            // payments ledger's paid status) from them.
+            $display = [
+                'summary' => self::flag($input['showSummary'] ?? null),
+                'remaining' => self::flag($input['showRemaining'] ?? null),
+            ];
+            $billingFor = self::billingFor($input);
+            $scope = self::scope($input);
         }
 
         return array_filter([
@@ -370,18 +388,74 @@ class DocumentMapper
             'status' => $status,
             'currency' => 'RM',
             'studio' => self::STUDIO,
-            'client' => array_filter([
-                'name' => $quotation?->name ?: $quotation?->company ?: 'Client',
-                'attn' => $doc['client']['attn'] ?? null,
-                'address' => $doc['client']['address'] ?? null,
-                'email' => $quotation?->email,
-            ]),
+            'client' => self::orderClient($quotation, $doc),
             'project' => $doc['project'] ?? ($quotation ? self::defaultProject($quotation) : 'Project'),
             'subtitle' => $doc['subtitle'] ?? ($quotation?->reference_code ? "Ref {$quotation->reference_code}" : null),
             'summary' => ['rows' => $rows],
             'panels' => $panels,
+            'display' => $display,
+            'billingFor' => $billingFor,
+            'scope' => $scope,
             'notes' => self::noteLines($input['notes'] ?? null),
         ], fn ($v) => $v !== null && $v !== []);
+    }
+
+    /** A display switch: absent/null means shown; only an explicit false hides. */
+    private static function flag(mixed $value): bool
+    {
+        return $value === null ? true : filter_var($value, FILTER_VALIDATE_BOOL);
+    }
+
+    /**
+     * "What this payment covers" — the right half of the accent amount panel.
+     * Only rendered when a title is set; the label defaults in the template.
+     */
+    private static function billingFor(array $input): ?array
+    {
+        $title = trim((string) ($input['billingTitle'] ?? ''));
+        if ($title === '') {
+            return null;
+        }
+
+        return array_filter([
+            'title' => $title,
+            'label' => trim((string) ($input['billingLabel'] ?? '')),
+            'text' => trim((string) ($input['billingText'] ?? '')),
+        ], fn ($v) => $v !== '');
+    }
+
+    /** Scope bullets after the panels — blank lines dropped, none left = no section. */
+    private static function scope(array $input): ?array
+    {
+        $items = array_values(array_filter(
+            array_map(fn ($item) => trim((string) $item), (array) ($input['scopeItems'] ?? [])),
+            fn ($item) => $item !== '',
+        ));
+        if (! $items) {
+            return null;
+        }
+
+        return array_filter([
+            'title' => trim((string) ($input['scopeTitle'] ?? '')),
+            'items' => $items,
+        ], fn ($v) => $v !== '');
+    }
+
+    /**
+     * The Bill-to identity on invoices/receipts. Company prints on its own line
+     * under the email — only when it isn't already the display name.
+     */
+    private static function orderClient(?Quotation $quotation, array $doc): array
+    {
+        $name = $quotation?->name ?: $quotation?->company ?: 'Client';
+
+        return array_filter([
+            'name' => $name,
+            'company' => $quotation?->company && $quotation->company !== $name ? $quotation->company : null,
+            'attn' => $doc['client']['attn'] ?? null,
+            'address' => $doc['client']['address'] ?? null,
+            'email' => $quotation?->email,
+        ]);
     }
 
     /**

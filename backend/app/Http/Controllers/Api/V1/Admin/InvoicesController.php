@@ -73,7 +73,8 @@ class InvoicesController extends Controller
     /**
      * Re-edit an issued invoice in place (same AXNI number). Paid and void
      * invoices are fully read-only; a partially-paid issued invoice locks its
-     * amount-bearing fields — only notes / due date may change.
+     * amount-bearing fields — only notes, due date and the display options
+     * (layout, not money) may change.
      */
     public function update(Request $request, Invoice $invoice): InvoiceResource
     {
@@ -94,17 +95,18 @@ class InvoicesController extends Controller
             'promoType' => ['nullable', 'in:amount,percent'],
             'promoValue' => ['nullable', 'numeric', 'min:0'],
             'dueAt' => ['nullable', 'date'],
+            ...DocumentIssuer::DISPLAY_RULES,
         ]);
 
         if ($invoice->amountsLocked()) {
             $offending = collect($data)
-                ->except(['notes', 'dueAt'])
+                ->except(['notes', 'dueAt', ...DocumentIssuer::DISPLAY_KEYS])
                 ->filter(fn ($v) => $v !== null)
                 ->keys();
 
             if ($offending->isNotEmpty()) {
                 throw ValidationException::withMessages([
-                    'amount' => 'Payments are recorded against this invoice — amounts are locked. Only notes and due date can change.',
+                    'amount' => 'Payments are recorded against this invoice — amounts are locked. Only notes, due date and display options can change.',
                 ]);
             }
         }
