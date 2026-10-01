@@ -248,10 +248,10 @@ const statusLabels: Record<string, string> = {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <NuxtLink
-to="/admin/referrals?view=referrals" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/referrals?view=referrals" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 transition-opacity hover:opacity-70 active:opacity-60"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All referrals
     </NuxtLink>
@@ -259,17 +259,17 @@ to="/admin/referrals?view=referrals" class="inline-flex items-center gap-2 text-
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
     <p v-else-if="error" style="color: var(--color-danger);">{{ error }}</p>
 
-    <div v-else-if="referral" class="grid lg:grid-cols-[1fr_300px] gap-8 items-start">
+    <div v-else-if="referral" class="grid lg:grid-cols-[1fr_300px] gap-8 max-md:gap-5 items-start">
 
-      <div class="space-y-6">
+      <div class="space-y-6 max-md:space-y-4 max-md:min-w-0">
 
         <!-- Header -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
+          <div class="flex items-start justify-between flex-wrap gap-4 max-md:gap-3 mb-5 max-md:mb-4">
             <div>
-              <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ referral.referrer_name }}</p>
+              <p class="text-[22px] max-md:text-[20px] font-bold tracking-tight max-md:wrap-break-word" style="color: var(--color-text);">{{ referral.referrer_name }}</p>
               <p class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">referred <span style="color: var(--color-text);">{{ referral.business_name }}</span></p>
             </div>
             <AdminStatusPill :status="referral.status" size="md" />
@@ -296,9 +296,9 @@ class="rounded-2xl border p-6"
 
         <!-- Commission (once there's an anchored order) -->
         <div
-v-if="referral.anchor_order_id" class="rounded-2xl border p-6"
+v-if="referral.anchor_order_id" class="rounded-2xl border p-6 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <div class="flex items-center justify-between gap-3 mb-5">
+          <div class="flex items-center justify-between gap-3 max-md:gap-2 max-md:flex-wrap mb-5">
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Commission</p>
             <span
 v-if="referral.commission_email_sent_at" class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -340,12 +340,12 @@ v-if="referral.commission_email_sent_at" class="inline-flex items-center gap-1 t
             <NuxtLink :to="`/admin/orders/${referral.anchor_order_id}`" class="underline" :style="{ color: 'var(--color-accent)' }">{{ referral.anchor_order_number ?? `#${referral.anchor_order_id}` }}</NuxtLink>.
           </p>
 
-          <div class="pt-5 mt-5 border-t flex items-center gap-3" style="border-color: var(--color-border);">
+          <div class="pt-5 mt-5 border-t flex items-center gap-3 max-md:flex-col max-md:items-stretch max-md:pt-4 max-md:mt-4" style="border-color: var(--color-border);">
             <p v-if="referral.status !== 'converted'" class="text-[11px]" style="color: var(--color-text-tertiary);">
               Available once the referral converts (deposit collected).
             </p>
             <button
-type="button" class="btn-pill btn-pill-accent text-[13px] ml-auto shrink-0"
+type="button" class="btn-pill btn-pill-accent text-[13px] ml-auto shrink-0 max-md:ml-0 max-md:w-full"
               :class="{ 'opacity-50': commissionSending || referral.status !== 'converted' }"
               :disabled="commissionSending || referral.status !== 'converted'"
               @click="sendCommissionEmail">
@@ -357,13 +357,13 @@ type="button" class="btn-pill btn-pill-accent text-[13px] ml-auto shrink-0"
 
         <!-- Referrer contact -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Referrer</p>
           <div class="grid sm:grid-cols-2 gap-4">
             <div>
               <p class="text-[11px] mb-0.5" style="color: var(--color-text-tertiary);">Email</p>
-              <a :href="`mailto:${referral.referrer_email}`" class="text-[13px] font-medium" style="color: var(--color-accent);">{{ referral.referrer_email }}</a>
+              <a :href="`mailto:${referral.referrer_email}`" class="text-[13px] font-medium max-md:wrap-anywhere" style="color: var(--color-accent);">{{ referral.referrer_email }}</a>
             </div>
             <div v-if="referral.referrer_phone">
               <p class="text-[11px] mb-0.5" style="color: var(--color-text-tertiary);">Phone</p>
@@ -374,7 +374,7 @@ class="rounded-2xl border p-6"
 
         <!-- Business -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Business referred</p>
           <div class="grid sm:grid-cols-2 gap-4">
@@ -388,7 +388,7 @@ class="rounded-2xl border p-6"
             </div>
             <div v-if="referral.business_email">
               <p class="text-[11px] mb-0.5" style="color: var(--color-text-tertiary);">Email</p>
-              <a :href="`mailto:${referral.business_email}`" class="text-[13px] font-medium" style="color: var(--color-accent);">{{ referral.business_email }}</a>
+              <a :href="`mailto:${referral.business_email}`" class="text-[13px] font-medium max-md:wrap-anywhere" style="color: var(--color-accent);">{{ referral.business_email }}</a>
             </div>
             <div v-if="referral.business_phone">
               <p class="text-[11px] mb-0.5" style="color: var(--color-text-tertiary);">Phone</p>
@@ -399,7 +399,7 @@ class="rounded-2xl border p-6"
 
         <!-- Notes -->
         <div
-v-if="referral.notes" class="rounded-2xl border p-6"
+v-if="referral.notes" class="rounded-2xl border p-6 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Notes</p>
           <p class="text-[13px] leading-relaxed whitespace-pre-line" style="color: var(--color-text);">{{ referral.notes }}</p>
@@ -408,11 +408,11 @@ v-if="referral.notes" class="rounded-2xl border p-6"
       </div>
 
       <!-- Sidebar -->
-      <div class="lg:sticky lg:top-20 space-y-4">
+      <div class="lg:sticky lg:top-20 space-y-4 max-md:min-w-0">
 
         <!-- Status -->
         <div
-class="rounded-2xl border p-5"
+class="rounded-2xl border p-5 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Update status</p>
           <div class="flex flex-wrap gap-2">
@@ -437,7 +437,7 @@ v-for="s in statusOptions" :key="s" type="button"
 
         <!-- Quotation anchor -->
         <div
-class="rounded-2xl border p-5 space-y-3"
+class="rounded-2xl border p-5 max-md:p-4 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Quotation anchor</p>
 
@@ -487,7 +487,7 @@ v-if="referral.linked_order_id" :to="`/admin/orders/${referral.linked_order_id}`
 
         <!-- Actions -->
         <div
-class="rounded-2xl border p-5 space-y-3"
+class="rounded-2xl border p-5 max-md:p-4 space-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Actions</p>
 
@@ -701,6 +701,17 @@ type="button" class="btn-pill btn-pill-accent w-full justify-center"
   border-width: 1px;
   padding: 24px;
 }
+/* Mobile only (<768px) — desktop untouched. */
+@media (max-width: 767.98px) {
+  /* 16px inputs stop iOS focus-zoom. */
+  .contact-input { font-size: 16px; }
+  .drawer-close { width: 40px; height: 40px; }
+  .drawer-item { padding: 12px 14px; }
+  .drawer-foot { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+  .confirm-overlay { padding: 16px; }
+  .confirm-card { padding: 20px; }
+}
+
 .confirm-fade-enter-active,
 .confirm-fade-leave-active {
   transition: opacity 0.2s ease;

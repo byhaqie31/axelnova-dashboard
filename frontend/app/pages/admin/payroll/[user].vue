@@ -171,8 +171,8 @@ function roleLabel(role: string) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink to="/admin/payroll" class="inline-flex items-center gap-1.5 text-[13px] mb-6 transition-colors hover:opacity-80" style="color: var(--color-text-secondary);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <NuxtLink to="/admin/payroll" class="inline-flex items-center gap-1.5 text-[13px] mb-6 max-md:mb-5 transition-colors hover:opacity-80 active:opacity-60" style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All payroll
     </NuxtLink>
 
@@ -185,20 +185,20 @@ function roleLabel(role: string) {
 
     <template v-else>
       <!-- Header -->
-      <div class="flex items-start justify-between gap-4 flex-wrap mb-8">
-        <div class="flex items-center gap-3">
+      <div class="flex items-start justify-between gap-4 flex-wrap mb-6 md:mb-8">
+        <div class="flex items-center gap-3 max-md:min-w-0">
           <span class="size-12 rounded-2xl inline-flex items-center justify-center text-[18px] font-bold shrink-0" :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">
             {{ detail.user.name.charAt(0).toUpperCase() }}
           </span>
-          <div>
-            <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">{{ detail.user.name }}</h1>
+          <div class="max-md:min-w-0">
+            <h1 class="text-[24px] font-bold tracking-tight max-md:wrap-break-word" style="color: var(--color-text);">{{ detail.user.name }}</h1>
             <p class="text-[13px] mt-0.5" style="color: var(--color-text-secondary);">
               {{ roleLabel(detail.user.role) }} · Allowance {{ fmtMyr(detail.user.monthly_allowance_myr) }}
             </p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <NuxtLink :to="`/admin/users/${detail.user.id}`" class="btn-pill btn-pill-ghost text-[13px]">
+        <div class="flex items-center gap-2 max-md:w-full">
+          <NuxtLink :to="`/admin/users/${detail.user.id}`" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1">
             <UIcon name="i-lucide-user" class="size-4" /> Profile
           </NuxtLink>
           <label v-if="detail.years.length" class="block">
@@ -216,12 +216,12 @@ function roleLabel(role: string) {
 
       <template v-else>
         <!-- Yearly tiles -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 max-md:mb-6">
           <div v-for="t in tiles" :key="t.key" class="rounded-2xl border p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <span class="size-9 rounded-xl inline-flex items-center justify-center mb-3" :style="{ background: t.bg, color: t.fg }">
               <UIcon name="i-lucide-banknote" class="size-[18px]" />
             </span>
-            <p class="text-[22px] sm:text-[24px] font-bold tracking-tight tabular-nums" style="color: var(--color-text);">{{ t.value }}</p>
+            <p class="text-[22px] sm:text-[24px] max-sm:text-[19px] font-bold tracking-tight tabular-nums" style="color: var(--color-text);">{{ t.value }}</p>
             <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">{{ t.label }} · {{ selectedYear }}</p>
           </div>
         </div>
@@ -232,9 +232,9 @@ function roleLabel(role: string) {
           <p class="text-[13px]" style="color: var(--color-text-secondary);">No payslips in {{ selectedYear }}.</p>
         </div>
         <div v-else class="rounded-2xl border divide-y" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
-          <div v-for="e in entriesForYear" :key="e.id" class="flex items-center justify-between gap-3 px-4 py-3.5">
+          <div v-for="e in entriesForYear" :key="e.id" class="flex items-center justify-between gap-3 px-4 py-3.5 max-md:flex-col max-md:items-stretch max-md:gap-2.5">
             <div class="min-w-0">
-              <p class="text-[13px] font-semibold flex items-center gap-1.5" style="color: var(--color-text);">
+              <p class="text-[13px] font-semibold flex items-center gap-1.5 max-md:flex-wrap" style="color: var(--color-text);">
                 {{ entryLabel(e) }}
                 <span v-if="e.kind === 'one_time'" class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded" :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">One-time</span>
               </p>
@@ -247,8 +247,8 @@ function roleLabel(role: string) {
               </p>
               <p v-if="e.note" class="text-[11px] truncate max-w-80" style="color: var(--color-text-tertiary);">{{ e.note }}</p>
             </div>
-            <div class="flex items-center gap-3 shrink-0">
-              <span class="text-[14px] font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyr(e.gross_myr) }}</span>
+            <div class="flex items-center gap-3 shrink-0 max-md:gap-2 max-md:flex-wrap">
+              <span class="text-[14px] font-semibold tabular-nums max-md:mr-auto" style="color: var(--color-text);">{{ fmtMyr(e.gross_myr) }}</span>
               <span
                 class="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-medium whitespace-nowrap"
                 :style="e.settled
@@ -257,7 +257,7 @@ function roleLabel(role: string) {
                 <span class="size-1.5 rounded-full" :style="{ background: e.settled ? 'var(--color-success)' : 'var(--color-warning)' }" aria-hidden="true" />
                 {{ e.settled ? `Paid ${fmtDate(e.paid_at)}` : 'Pending' }}
               </span>
-              <button v-if="!e.settled" type="button" class="btn-table-action is-accent" @click="openSettle(e)">
+              <button v-if="!e.settled" type="button" class="btn-table-action is-accent max-md:h-9! max-md:px-3.5!" @click="openSettle(e)">
                 <UIcon name="i-lucide-check" class="size-3.5" />Settle
               </button>
             </div>
@@ -322,6 +322,12 @@ function roleLabel(role: string) {
 .confirm-fade-enter-from,
 .confirm-fade-leave-to {
   opacity: 0;
+}
+/* Mobile only (<768px) — desktop untouched. */
+@media (max-width: 767.98px) {
+  .confirm-overlay { padding: 16px; }
+  .confirm-card { padding: 20px; }
+  .standard-pill { padding: 0.5rem 0.875rem; font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .confirm-fade-enter-active,

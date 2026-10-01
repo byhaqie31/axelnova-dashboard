@@ -252,9 +252,9 @@ function fmtMyr(amount: string | number) {
   <div class="space-y-5">
     <!-- Order money context -->
     <div
-      class="rounded-2xl border p-5 grid grid-cols-3 gap-4"
+      class="rounded-2xl border p-5 grid grid-cols-3 max-md:grid-cols-2 gap-4 max-md:gap-x-3"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-      <div>
+      <div class="max-md:col-span-2">
         <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Agreed total</p>
         <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ fmtMyr(order.final_amount_myr) }}</p>
       </div>
@@ -269,7 +269,7 @@ function fmtMyr(amount: string | number) {
     </div>
 
     <div
-      class="rounded-2xl border p-6 space-y-5"
+      class="rounded-2xl border p-6 max-md:p-5 space-y-5"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <p
         v-if="amountsLocked"
@@ -335,21 +335,21 @@ function fmtMyr(amount: string | number) {
       <div class="pt-4 border-t space-y-3" style="border-color: var(--color-border);">
         <p class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Display</p>
         <div class="grid sm:grid-cols-2 gap-3">
-          <label class="flex items-center gap-2.5 cursor-pointer select-none">
+          <label class="flex items-center gap-2.5 cursor-pointer select-none max-md:py-1">
             <input v-model="form.showSummary" type="checkbox" class="size-4 shrink-0" style="accent-color: var(--color-accent);">
             <span class="text-[13px]" style="color: var(--color-text);">Show summary <span style="color: var(--color-text-tertiary);">(agreed total, paid to date)</span></span>
           </label>
-          <label class="flex items-center gap-2.5 cursor-pointer select-none">
+          <label class="flex items-center gap-2.5 cursor-pointer select-none max-md:py-1">
             <input v-model="form.showRemaining" type="checkbox" class="size-4 shrink-0" style="accent-color: var(--color-accent);">
             <span class="text-[13px]" style="color: var(--color-text);">Show remaining balance</span>
           </label>
         </div>
 
-        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+        <label class="flex items-center gap-2.5 cursor-pointer select-none max-md:py-1">
           <input v-model="form.describeBilling" type="checkbox" class="size-4 shrink-0" style="accent-color: var(--color-accent);">
           <span class="text-[13px]" style="color: var(--color-text);">Describe what this payment covers</span>
         </label>
-        <div v-if="form.describeBilling" class="grid sm:grid-cols-2 gap-3 pl-6">
+        <div v-if="form.describeBilling" class="grid sm:grid-cols-2 gap-3 pl-6 max-md:pl-3">
           <label class="block">
             <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Title</span>
             <input v-model="form.billingTitle" type="text" maxlength="80" placeholder="e.g. Deposit on signing and mobilisation" class="contact-input mt-1 w-full">
@@ -364,11 +364,11 @@ function fmtMyr(amount: string | number) {
           </label>
         </div>
 
-        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+        <label class="flex items-center gap-2.5 cursor-pointer select-none max-md:py-1">
           <input v-model="form.addScope" type="checkbox" class="size-4 shrink-0" style="accent-color: var(--color-accent);">
           <span class="text-[13px]" style="color: var(--color-text);">Add scope bullets</span>
         </label>
-        <div v-if="form.addScope" class="space-y-3 pl-6">
+        <div v-if="form.addScope" class="space-y-3 pl-6 max-md:pl-3">
           <label class="block">
             <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Section title</span>
             <input v-model="form.scopeTitle" type="text" maxlength="60" placeholder="Scope covered" class="contact-input mt-1 w-full">
@@ -385,7 +385,7 @@ function fmtMyr(amount: string | number) {
 
       <!-- Live total — mirrors the PDF summary: agreed total and paid-to-date
            frame the type-labelled bill, with the balance remaining after it. -->
-      <div class="rounded-xl border p-3 text-[12px] space-y-1.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+      <div class="live-total rounded-xl border p-3 text-[12px] max-md:text-[13px] space-y-1.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <div v-if="agreedTotal > 0" class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">Agreed project total</span>
           <span class="tabular-nums" style="color: var(--color-text);">{{ fmtMyr(agreedTotal) }}</span>
@@ -430,3 +430,15 @@ function fmtMyr(amount: string | number) {
     </div>
   </div>
 </template>
+
+<style scoped>
+@media (max-width: 767.98px) {
+  /* ≥16px form text stops iOS Safari zooming the page on focus. */
+  input:not([type='checkbox'], [type='radio']),
+  textarea,
+  :deep(input:not([type='checkbox'], [type='radio'])) { font-size: 16px; }
+  /* Live total: long discount/promo labels wrap; amounts never split. */
+  .live-total > div { gap: 12px; }
+  .live-total > div > span:last-child { white-space: nowrap; }
+}
+</style>

@@ -13,17 +13,17 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 max-md:space-y-4">
     <!-- Hero -->
-    <div v-if="p.project || p.intro" class="rounded-2xl border p-6" :style="cardStyle">
+    <div v-if="p.project || p.intro" class="rounded-2xl border p-6 max-md:p-5" :style="cardStyle">
       <p v-if="p.project" class="text-[11px] font-semibold uppercase tracking-widest mb-2" style="color: var(--color-accent);">Prepared for</p>
-      <h2 v-if="p.project" class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ p.project }}</h2>
+      <h2 v-if="p.project" class="text-[22px] max-md:text-[20px] font-bold tracking-tight" style="color: var(--color-text);">{{ p.project }}</h2>
       <p v-if="p.subtitle" class="text-[14px] mt-1" style="color: var(--color-text-secondary);">{{ p.subtitle }}</p>
       <p v-if="p.intro" class="text-[13px] leading-relaxed mt-3" style="color: var(--color-text-secondary);">{{ p.intro }}</p>
     </div>
 
     <!-- Scope sections -->
-    <div v-for="(s, si) in p.sections" :key="`sec-${si}`" class="rounded-2xl border p-6" :style="cardStyle">
+    <div v-for="(s, si) in p.sections" :key="`sec-${si}`" class="rounded-2xl border p-6 max-md:p-5" :style="cardStyle">
       <div class="flex items-center gap-2.5 mb-4">
         <span class="size-2 rounded-sm shrink-0" style="background: var(--color-accent);" />
         <p class="text-[15px] font-semibold tracking-tight" style="color: var(--color-text);">{{ s.title }}</p>
@@ -47,7 +47,7 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
     </div>
 
     <!-- What's included -->
-    <div v-if="p.included?.length" class="rounded-2xl border p-6 space-y-5" :style="cardStyle">
+    <div v-if="p.included?.length" class="rounded-2xl border p-6 max-md:p-5 space-y-5" :style="cardStyle">
       <div v-for="(g, gi) in p.included" :key="`inc-${gi}`">
         <p v-if="g.eyebrow" class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-accent);">{{ g.eyebrow }}</p>
         <ul class="grid gap-2" :class="g.columns === 2 ? 'sm:grid-cols-2' : ''">
@@ -61,7 +61,7 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
     </div>
 
     <!-- Option cards -->
-    <div v-if="p.options?.cards?.length" class="rounded-2xl border p-6" :style="cardStyle">
+    <div v-if="p.options?.cards?.length" class="rounded-2xl border p-6 max-md:p-5" :style="cardStyle">
       <p class="text-[15px] font-semibold tracking-tight mb-4" style="color: var(--color-text);">{{ p.options.title || 'Package options' }}</p>
       <div class="grid sm:grid-cols-2 gap-3">
         <div
@@ -70,7 +70,7 @@ v-for="(c, ci) in p.options.cards" :key="`opt-${ci}`" class="rounded-xl border p
           <p class="text-[11px] font-semibold uppercase tracking-wider" :style="{ color: c.accent ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }">{{ c.badge }}</p>
           <p class="text-[14px] font-semibold mt-1.5" style="color: var(--color-text);">{{ c.title }}</p>
           <p v-if="c.sub" class="text-[12px] mt-1 leading-snug" style="color: var(--color-text-secondary);">{{ c.sub }}</p>
-          <div class="flex items-baseline gap-2 mt-3">
+          <div class="flex items-baseline gap-2 mt-3 max-md:flex-wrap max-md:gap-x-2 max-md:gap-y-0.5">
             <span v-if="c.priceWas != null" class="text-[12px] line-through tabular-nums" style="color: var(--color-text-tertiary);">{{ fmtRm(c.priceWas) }}</span>
             <span class="text-[18px] font-bold tabular-nums" :style="{ color: c.accent ? 'var(--color-accent)' : 'var(--color-text)' }">{{ fmtRm(c.price) }}</span>
             <span v-if="c.priceNote" class="text-[11px]" style="color: var(--color-text-tertiary);">{{ c.priceNote }}</span>
@@ -80,7 +80,7 @@ v-for="(c, ci) in p.options.cards" :key="`opt-${ci}`" class="rounded-xl border p
     </div>
 
     <!-- Care plan -->
-    <div v-if="p.care?.rows?.length" class="rounded-2xl border p-6" :style="cardStyle">
+    <div v-if="p.care?.rows?.length" class="rounded-2xl border p-6 max-md:p-5" :style="cardStyle">
       <p class="text-[15px] font-semibold tracking-tight mb-1" style="color: var(--color-text);">{{ p.care.title || 'Care & support' }}</p>
       <p v-if="p.care.intro" class="text-[13px] leading-relaxed mb-3 mt-2" style="color: var(--color-text-secondary);">{{ p.care.intro }}</p>
       <div class="divide-y mt-3" style="border-color: var(--color-border);">
@@ -98,7 +98,7 @@ v-for="(c, ci) in p.options.cards" :key="`opt-${ci}`" class="rounded-xl border p
     </div>
 
     <!-- Summary + deposit/balance -->
-    <div v-if="p.summary?.rows?.length || p.panels?.length" class="rounded-2xl border p-6" :style="cardStyle">
+    <div v-if="p.summary?.rows?.length || p.panels?.length" class="rounded-2xl border p-6 max-md:p-5" :style="cardStyle">
       <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Summary</p>
       <div v-if="p.summary?.rows?.length" class="divide-y" style="border-color: var(--color-border);">
         <div
@@ -122,7 +122,7 @@ v-for="(pl, pi) in p.panels" :key="pi" class="rounded-xl border p-4"
     </div>
 
     <!-- Payment terms -->
-    <div v-if="p.paymentTerms?.items?.length" class="rounded-2xl border p-6" :style="cardStyle">
+    <div v-if="p.paymentTerms?.items?.length" class="rounded-2xl border p-6 max-md:p-5" :style="cardStyle">
       <p class="text-[15px] font-semibold tracking-tight mb-4" style="color: var(--color-text);">{{ p.paymentTerms.title || 'Payment terms' }}</p>
       <ul class="space-y-2">
         <li v-for="(t, ti) in p.paymentTerms.items" :key="ti" class="flex items-start gap-2 text-[13px]" style="color: var(--color-text-secondary);">

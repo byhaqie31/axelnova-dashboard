@@ -25,7 +25,7 @@ function clearAll() {
       :aria-expanded="open"
       aria-haspopup="dialog"
       aria-label="Filters"
-      class="inline-flex items-center gap-2 h-9 px-3.5 rounded-full border transition-all duration-200"
+      class="relative inline-flex items-center justify-center gap-2 h-9 px-3.5 max-md:size-10 max-md:px-0 rounded-full border transition-all duration-200"
       :style="{
         borderColor: open || active ? 'var(--color-accent)' : 'var(--color-border-strong)',
         background: open || active ? 'var(--color-accent-soft)' : 'var(--color-bg-elevated)',
@@ -35,10 +35,10 @@ function clearAll() {
       @click="open = !open"
     >
       <UIcon name="i-lucide-sliders-horizontal" class="size-4" />
-      <span class="text-[12px]">Filters</span>
+      <span class="text-[12px] max-md:sr-only">Filters</span>
       <span
         v-if="active"
-        class="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold leading-none"
+        class="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold leading-none max-md:absolute max-md:-top-1 max-md:-right-1"
         :style="{ background: 'var(--color-accent)', color: '#fff' }"
       >{{ activeCount }}</span>
     </button>
@@ -47,7 +47,7 @@ function clearAll() {
       <div
         v-if="open"
         role="dialog"
-        class="absolute left-0 top-full mt-1.5 w-72 rounded-xl border p-3.5 z-40"
+        class="absolute left-0 max-md:left-auto max-md:right-0 top-full mt-1.5 w-72 max-md:max-w-[calc(100vw-2rem)] rounded-xl border p-3.5 z-40"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }"
       >
         <div class="space-y-4">
@@ -55,7 +55,7 @@ function clearAll() {
         </div>
         <div v-if="active" class="pt-3 mt-3 border-t" :style="{ borderColor: 'var(--color-border)' }">
           <button
-type="button" class="text-[12px] font-medium transition-opacity hover:opacity-70"
+type="button" class="text-[12px] font-medium transition-opacity hover:opacity-70 max-md:py-2 max-md:text-[13px]"
             :style="{ color: 'var(--color-accent)' }" @click="clearAll">
             Clear filters
           </button>

@@ -97,10 +97,10 @@ const statusLabels: Record<string, string> = { new: 'New', reviewing: 'Reviewing
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <NuxtLink
-to="/admin/inquiries" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/inquiries" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 max-md:py-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All inquiries
     </NuxtLink>
@@ -108,25 +108,25 @@ to="/admin/inquiries" class="inline-flex items-center gap-2 text-[13px] mb-8 tra
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
     <p v-else-if="error" style="color: var(--color-danger);">{{ error }}</p>
 
-    <div v-else-if="inquiry" class="grid lg:grid-cols-[1fr_300px] gap-8 items-start">
+    <div v-else-if="inquiry" class="grid lg:grid-cols-[1fr_300px] gap-8 max-md:gap-5 items-start">
 
-      <div class="space-y-6">
+      <div class="space-y-6 max-md:space-y-4 max-md:min-w-0">
 
         <!-- Header -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
-            <div>
-              <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ inquiry.name }}</p>
+          <div class="flex items-start justify-between flex-wrap gap-4 max-md:gap-3 max-md:flex-nowrap mb-5">
+            <div class="max-md:min-w-0">
+              <p class="text-[22px] max-md:text-[20px] font-bold tracking-tight max-md:break-words" style="color: var(--color-text);">{{ inquiry.name }}</p>
               <p v-if="inquiry.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ inquiry.company }}</p>
             </div>
-            <AdminStatusPill :status="inquiry.status" size="md" />
+            <AdminStatusPill :status="inquiry.status" size="md" class="max-md:shrink-0" />
           </div>
           <div class="grid sm:grid-cols-3 gap-4 pt-4 border-t" style="border-color: var(--color-border);">
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Email</p>
-              <a :href="`mailto:${inquiry.email}`" class="text-[13px] font-medium" style="color: var(--color-accent);">{{ inquiry.email }}</a>
+              <a :href="`mailto:${inquiry.email}`" class="text-[13px] font-medium max-md:break-all" style="color: var(--color-accent);">{{ inquiry.email }}</a>
             </div>
             <div v-if="inquiry.phone">
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Phone</p>
@@ -141,7 +141,7 @@ class="rounded-2xl border p-6"
 
         <!-- Project hints -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">
             {{ inquiry.origin === 'contact' ? 'Contact form' : 'Project' }}
@@ -169,10 +169,10 @@ class="rounded-2xl border p-6"
 
         <!-- Message -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Details</p>
-          <p class="text-[14px] leading-relaxed whitespace-pre-line" style="color: var(--color-text);">{{ inquiry.message }}</p>
+          <p class="text-[14px] leading-relaxed whitespace-pre-line max-md:break-words" style="color: var(--color-text);">{{ inquiry.message }}</p>
         </div>
 
       </div>
@@ -228,7 +228,7 @@ class="rounded-2xl border p-5"
           <div class="flex flex-wrap gap-2">
             <button
 v-for="s in statusOptions" :key="s" type="button"
-              class="status-pill status-pill-button"
+              class="status-pill status-pill-button max-md:text-[12px]! max-md:px-3! max-md:py-1.5!"
               :class="{ 'opacity-50': statusLoading }"
               :data-status="inquiry.status === s ? s : ''"
               :data-active="inquiry.status === s"

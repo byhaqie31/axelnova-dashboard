@@ -47,16 +47,16 @@ const toolbarItems = [
 
 <template>
   <div class="rounded-2xl border p-4 sm:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-    <div class="flex items-center gap-2 mb-3">
+    <div class="flex items-center gap-2 mb-3 max-md:mb-3.5">
       <span class="text-[11px] font-semibold uppercase tracking-widest" :style="{ color: 'var(--color-text-tertiary)' }">Section {{ index + 1 }}</span>
-      <div class="ml-auto flex items-center gap-1">
-        <button type="button" class="btn-table-action" :disabled="index === 0" aria-label="Move up" @click="emit('move-up')">
+      <div class="ml-auto flex items-center gap-1 max-md:gap-1.5">
+        <button type="button" class="btn-table-action max-md:size-9! max-md:p-0!" :disabled="index === 0" aria-label="Move up" @click="emit('move-up')">
           <UIcon name="i-lucide-chevron-up" class="size-3.5" />
         </button>
-        <button type="button" class="btn-table-action" :disabled="index === count - 1" aria-label="Move down" @click="emit('move-down')">
+        <button type="button" class="btn-table-action max-md:size-9! max-md:p-0!" :disabled="index === count - 1" aria-label="Move down" @click="emit('move-down')">
           <UIcon name="i-lucide-chevron-down" class="size-3.5" />
         </button>
-        <button type="button" class="btn-table-action is-danger" @click="emit('remove')">
+        <button type="button" class="btn-table-action is-danger max-md:h-9! max-md:px-3!" @click="emit('remove')">
           <UIcon name="i-lucide-trash-2" class="size-3.5" />Remove
         </button>
       </div>
@@ -86,10 +86,10 @@ const toolbarItems = [
     </UEditor>
 
     <div class="flex flex-wrap gap-2 mt-3">
-      <button v-if="!showImage" type="button" class="btn-table-action" @click="showImage = true">
+      <button v-if="!showImage" type="button" class="btn-table-action max-md:h-9! max-md:px-3!" @click="showImage = true">
         <UIcon name="i-lucide-image" class="size-3.5" />Add image
       </button>
-      <button v-if="!showQuote" type="button" class="btn-table-action" @click="showQuote = true">
+      <button v-if="!showQuote" type="button" class="btn-table-action max-md:h-9! max-md:px-3!" @click="showQuote = true">
         <UIcon name="i-lucide-quote" class="size-3.5" />Add quote
       </button>
     </div>
@@ -117,3 +117,11 @@ const toolbarItems = [
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Mobile only (<768px) — desktop untouched. 16px inputs + editor stop iOS focus-zoom. */
+@media (max-width: 767.98px) {
+  .contact-input { font-size: 16px; }
+  .blog-editor :deep(.ProseMirror) { font-size: 16px; }
+}
+</style>

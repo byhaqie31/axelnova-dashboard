@@ -346,12 +346,12 @@ watch(activeView, (view) => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Referrals</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Referrals</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           <template v-if="activeView === 'referrers'">
             Approve new referrers and manage passcodes. Approving emails a one-time passcode — it's never shown here.
@@ -450,22 +450,25 @@ v-for="h in ['Partner', 'Code', 'Tier', 'Referrals', 'Status', 'Last login', 'Ac
         <div
           v-for="p in partners"
           :key="p.id"
-          class="rounded-xl border p-4 cursor-pointer"
+          class="rounded-xl border p-4 cursor-pointer transition-colors active:bg-(--color-bg-secondary)"
           :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
           @click="openSlideover(p)"
         >
           <div class="flex items-start justify-between gap-3 mb-1.5">
-            <span class="text-[13px] font-semibold leading-tight" style="color: var(--color-text);">{{ p.name }}</span>
-            <StatusPill :status="p.status" type="referral_partner" />
+            <span class="text-[13px] font-semibold leading-tight min-w-0 break-words" style="color: var(--color-text);">{{ p.name }}</span>
+            <StatusPill :status="p.status" type="referral_partner" class="shrink-0" />
           </div>
-          <p class="text-[11px] mb-3" style="color: var(--color-text-tertiary);">{{ p.email }}</p>
+          <p class="text-[11px] truncate" style="color: var(--color-text-tertiary);">{{ p.email }}</p>
+          <p class="mt-1 mb-3">
+            <span class="text-[11px] font-mono px-1.5 py-0.5 rounded break-all" :style="{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }">{{ p.code }}</span>
+          </p>
           <div class="pt-2 border-t flex items-center justify-between gap-3" :style="{ borderColor: 'var(--color-border)' }">
-            <p class="text-[13px] font-semibold" style="color: var(--color-text);">
+            <p class="text-[13px] font-semibold min-w-0" style="color: var(--color-text);">
               {{ tierLabels[p.relationship_tier] }} <span style="color: var(--color-accent);">· {{ p.commission_pct }}%</span>
               <span class="text-[12px] font-normal ml-2" style="color: var(--color-text-secondary);">{{ p.referrals_count }} referrals</span>
             </p>
-            <button v-if="p.status === 'pending'" type="button" class="btn-pill btn-pill-accent text-[12px]" @click.stop="askAction(p, 'approve')">Approve</button>
-            <button v-else-if="p.status === 'active'" type="button" class="btn-pill btn-pill-ghost text-[12px]" @click.stop="askAction(p, 'reset')">Reset</button>
+            <button v-if="p.status === 'pending'" type="button" class="btn-pill btn-pill-accent text-[12px] shrink-0 h-10! px-4!" @click.stop="askAction(p, 'approve')">Approve</button>
+            <button v-else-if="p.status === 'active'" type="button" class="btn-pill btn-pill-ghost text-[12px] shrink-0 h-10! px-4!" @click.stop="askAction(p, 'reset')">Reset</button>
           </div>
         </div>
       </div>
@@ -540,21 +543,21 @@ v-for="r in referrals" :key="r.id"
           v-for="r in referrals"
           :key="r.id"
           type="button"
-          class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+          class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
           :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
           @click="navigateTo(`/admin/referrals/${r.id}`)"
         >
           <div class="flex items-start justify-between gap-3 mb-2">
-            <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ r.referrer_name }}</span>
-            <StatusPill :status="r.status" type="referral" />
+            <span class="text-[13px] font-semibold leading-tight min-w-0 break-words" :style="{ color: 'var(--color-text)' }">{{ r.referrer_name }}</span>
+            <StatusPill :status="r.status" type="referral" class="shrink-0" />
           </div>
-          <p class="text-[13px] leading-tight" :style="{ color: 'var(--color-text-secondary)' }">{{ r.business_name }}</p>
-          <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ r.referrer_email }}</p>
+          <p class="text-[13px] leading-tight break-words" :style="{ color: 'var(--color-text-secondary)' }">{{ r.business_name }}</p>
+          <p class="text-[11px] mb-3 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ r.referrer_email }}</p>
           <div class="pt-2 border-t flex items-center justify-between gap-3" :style="{ borderColor: 'var(--color-border)' }">
             <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
               {{ tierLabels[r.relationship_tier] }} <span :style="{ color: 'var(--color-accent)' }">· {{ r.commission_tier_pct }}%</span>
             </p>
-            <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(r.created_at) }}</p>
+            <p class="text-[11px] shrink-0" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(r.created_at) }}</p>
           </div>
         </button>
       </div>
@@ -645,7 +648,7 @@ v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-
                     v-for="r in partnerDetail.referrals"
                     :key="r.id"
                     type="button"
-                    class="w-full text-left rounded-xl border p-3.5 transition-colors hover:bg-(--color-bg-secondary)"
+                    class="w-full text-left rounded-xl border p-3.5 transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)"
                     :style="{ borderColor: 'var(--color-border)' }"
                     @click="navigateTo(`/admin/referrals/${r.id}`)"
                   >
@@ -811,6 +814,16 @@ v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-
   .slideover-leave-active .slideover-panel {
     transition: none;
   }
+}
+
+/* Mobile (<768px): the tab track spans the row with equal, taller tabs; the
+   slideover close button gets a 40px hit area. Desktop unchanged. */
+@media (max-width: 767.98px) {
+  .tab-track { display: flex; }
+  .tab-pill { flex: 1 1 0%; justify-content: center; padding: 0.625rem 0.75rem; }
+  .slideover-head { padding: 16px; }
+  .slideover-body { padding: 16px; }
+  .slideover-close { width: 40px; height: 40px; margin: -4px -4px 0 0; }
 }
 
 .confirm-overlay {

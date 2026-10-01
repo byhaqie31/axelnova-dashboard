@@ -40,7 +40,7 @@ const totalFields = computed(() => groups.value.reduce((n, g) => n + g.fields.le
 <template>
   <div
     v-if="groups.length"
-    :class="variant === 'card' ? 'rounded-2xl border p-6' : 'mt-4 pt-4 border-t'"
+    :class="variant === 'card' ? 'rounded-2xl border p-6 max-md:p-5' : 'mt-4 pt-4 border-t'"
     :style="variant === 'card'
       ? { background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }
       : { borderColor: 'var(--color-border)' }"
@@ -71,7 +71,7 @@ const totalFields = computed(() => groups.value.reduce((n, g) => n + g.fields.le
         <div
 v-for="field in group.fields" :key="field.key"
           class="flex items-center justify-between gap-3 py-2.5 border-b" :style="{ borderColor: 'var(--color-border)' }">
-          <span class="text-[12.5px]" style="color: var(--color-text-secondary);">{{ field.label }}</span>
+          <span class="text-[12.5px] max-md:min-w-0" style="color: var(--color-text-secondary);">{{ field.label }}</span>
 
           <span
 v-if="field.kind === 'bool'" class="inline-flex items-center gap-1 rounded-full pl-1.5 pr-2 py-0.5 text-[11px] font-semibold shrink-0"
@@ -82,7 +82,7 @@ v-if="field.kind === 'bool'" class="inline-flex items-center gap-1 rounded-full 
             {{ field.value }}
           </span>
           <span v-else-if="field.kind === 'number'" class="text-[14px] font-semibold tabular-nums shrink-0" style="color: var(--color-text);">{{ field.value }}</span>
-          <span v-else class="text-[13px] text-right" style="color: var(--color-text);">{{ field.value }}</span>
+          <span v-else class="text-[13px] text-right max-md:min-w-0 max-md:wrap-anywhere" style="color: var(--color-text);">{{ field.value }}</span>
         </div>
       </div>
     </div>

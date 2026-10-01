@@ -49,7 +49,7 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="admin-login-screen min-h-screen flex items-center justify-center px-6 py-12">
+  <div class="admin-login-screen min-h-screen max-md:min-h-dvh flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
     <!-- Full-bleed ambient video behind the glass card, shown unscrimmed. -->
     <VideoBackground src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_102933_4e8f73b5-775a-4179-b2fb-472f59063dcd.mp4" />
 
@@ -58,13 +58,13 @@ async function handleLogin() {
       <div class="admin-login-glow" aria-hidden="true" />
 
       <!-- One liquid-glass panel holds the entire sign-in -->
-      <div class="glass-card relative rounded-4xl px-8 pt-10 pb-7 sm:px-10 sm:pt-12 sm:pb-8">
+      <div class="glass-card relative rounded-4xl px-6 pt-9 pb-7 sm:px-10 sm:pt-12 sm:pb-8">
         <div class="relative space-y-6">
           <!-- Logo beside the title -->
           <div class="space-y-4">
             <div class="flex items-center justify-center gap-3">
               <BrandMark variant="mark-only" class="admin-brand" />
-              <h1 class="text-[26px] font-bold tracking-tight text-gradient">Admin portal</h1>
+              <h1 class="text-[24px] sm:text-[26px] font-bold tracking-tight text-gradient">Admin portal</h1>
             </div>
             <p class="text-[13px] text-center" style="color: var(--color-text-secondary);">
               Sign in to manage projects, quotations and orders.
@@ -217,5 +217,19 @@ type="button" class="pw-toggle" :aria-label="showPassword ? 'Hide password' : 'S
 }
 .admin-login-back:hover {
   color: var(--color-text);
+}
+
+/* Phone: 16px inputs stop iOS focus-zoom (.contact-input is 14px, unlayered),
+   and the eye toggle / back link get finger-sized hit areas. */
+@media (max-width: 767.98px) {
+  .contact-input { font-size: 16px; }
+  .pw-toggle {
+    right: 4px;
+    width: 40px;
+    height: 40px;
+  }
+  .pw-toggle:active { color: var(--color-text); }
+  .admin-login-back { padding: 8px 0; }
+  .admin-login-back:active { color: var(--color-text); }
 }
 </style>

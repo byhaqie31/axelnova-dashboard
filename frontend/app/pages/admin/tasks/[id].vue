@@ -241,8 +241,8 @@ onKeyStroke('Escape', () => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink to="/admin/tasks" class="inline-flex items-center gap-1.5 text-[13px] mb-6 transition-colors hover:opacity-80" style="color: var(--color-text-secondary);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <NuxtLink to="/admin/tasks" class="inline-flex items-center gap-1.5 text-[13px] mb-6 max-md:mb-5 transition-colors hover:opacity-80 active:opacity-60" style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All tasks
     </NuxtLink>
 
@@ -257,7 +257,7 @@ onKeyStroke('Escape', () => {
       <!-- Header -->
       <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
         <div class="min-w-0">
-          <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">{{ task.title }}</h1>
+          <h1 class="text-[24px] font-bold tracking-tight max-md:text-[22px] max-md:leading-tight max-md:wrap-break-word" style="color: var(--color-text);">{{ task.title }}</h1>
           <div class="flex items-center gap-1.5 flex-wrap mt-2">
             <StatusPill :status="workStatus" type="task" />
             <span
@@ -279,21 +279,21 @@ onKeyStroke('Escape', () => {
       </div>
 
       <!-- Two-column: the editable shape on the left, payment/lifecycle + actions in a side rail. -->
-      <div class="grid lg:grid-cols-[1fr_320px] gap-8 items-start">
+      <div class="grid lg:grid-cols-[1fr_320px] gap-8 max-md:gap-5 items-start">
         <!-- Main: fields (read-only when locked) -->
-        <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="rounded-2xl border p-6 max-md:p-4 max-md:min-w-0" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <AdminTaskFormFields v-model="form" :assignee-items="assigneeItems" :disabled="locked" />
           <div v-if="!locked" class="mt-6">
-            <button type="button" class="btn-pill btn-pill-primary text-[13px]" :disabled="saving" @click="save">
+            <button type="button" class="btn-pill btn-pill-primary text-[13px] max-md:w-full" :disabled="saving" @click="save">
               {{ saving ? 'Saving…' : 'Save changes' }}
             </button>
           </div>
         </div>
 
         <!-- Side rail (sticky) -->
-        <div class="lg:sticky lg:top-20 space-y-4">
+        <div class="lg:sticky lg:top-20 space-y-4 max-md:min-w-0">
           <!-- Payment -->
-          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="rounded-2xl border p-5 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Payment</h2>
             <div class="flex items-center gap-2 mb-3">
               <TaskPayBadge v-if="task.payment_state !== 'none'" :state="task.payment_state" :amount="task.pay_amount_myr" />
@@ -325,13 +325,13 @@ onKeyStroke('Escape', () => {
           </div>
 
           <!-- Activity — the lifecycle log (opened → picked up → completed → paid) -->
-          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="rounded-2xl border p-5 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Activity</h2>
             <AdminTaskTimeline :task="task" />
           </div>
 
           <!-- Details -->
-          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="rounded-2xl border p-5 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Details</h2>
             <div>
               <p class="text-[11px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Assignee</p>
@@ -340,13 +340,13 @@ onKeyStroke('Escape', () => {
           </div>
 
           <!-- Comments — the team's completion note + any status-change updates -->
-          <div v-if="task.notes" class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div v-if="task.notes" class="rounded-2xl border p-5 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Comments</h2>
             <AdminTaskNotes :notes="task.notes" />
           </div>
 
           <!-- Delete -->
-          <button type="button" class="btn-pill btn-pill-danger text-[13px] w-full justify-center" @click="pendingAction = 'delete'">
+          <button type="button" class="btn-pill btn-pill-danger text-[13px] w-full justify-center max-md:mt-2" @click="pendingAction = 'delete'">
             <UIcon name="i-lucide-trash-2" class="size-4" /> Delete task
           </button>
         </div>
@@ -363,7 +363,7 @@ onKeyStroke('Escape', () => {
 
             <!-- Mark paid: when + how it was paid, for the payroll entry -->
             <template v-if="pendingAction === 'mark-paid'">
-              <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="grid grid-cols-2 max-md:grid-cols-1 gap-3 mb-4">
                 <label class="block">
                   <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Paid date</span>
                   <input v-model="payPaidAt" type="date" class="contact-input mt-1 w-full">
@@ -418,6 +418,13 @@ onKeyStroke('Escape', () => {
 .confirm-fade-enter-from,
 .confirm-fade-leave-to {
   opacity: 0;
+}
+/* Mobile only (<768px) — desktop untouched. */
+@media (max-width: 767.98px) {
+  /* 16px inputs stop iOS focus-zoom. */
+  .contact-input { font-size: 16px; }
+  .confirm-overlay { padding: 16px; }
+  .confirm-card { padding: 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .confirm-fade-enter-active,

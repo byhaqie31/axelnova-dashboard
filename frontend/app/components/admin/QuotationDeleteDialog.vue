@@ -26,19 +26,19 @@ const emit = defineEmits<{ cancel: [], confirm: [] }>()
               <UIcon name="i-lucide-arrow-up-right" class="size-3.5" /> View order {{ blocked.order_number }}
             </NuxtLink>
             <div class="flex items-center justify-end">
-              <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="emit('cancel')">Close</button>
+              <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1" @click="emit('cancel')">Close</button>
             </div>
           </template>
 
           <!-- Confirm delete. -->
           <template v-else>
-            <h2 class="text-[17px] font-bold tracking-tight mb-2" style="color: var(--color-text);">Delete quotation {{ target.reference_code }}?</h2>
+            <h2 class="text-[17px] font-bold tracking-tight mb-2 max-md:break-words" style="color: var(--color-text);">Delete quotation {{ target.reference_code }}?</h2>
             <p class="text-[13px] leading-relaxed mb-6" style="color: var(--color-text-secondary);">
               This removes the quotation for <span class="font-medium" :style="{ color: 'var(--color-text)' }">{{ target.name }}</span> from every list, and unlinks any inquiry or referral tied to it. It’s a soft delete — recoverable from the database.
             </p>
             <div class="flex items-center justify-end gap-2">
-              <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="deleting" @click="emit('cancel')">Cancel</button>
-              <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :style="{ color: 'var(--color-danger)' }" :disabled="deleting" @click="emit('confirm')">
+              <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1" :disabled="deleting" @click="emit('cancel')">Cancel</button>
+              <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1" :style="{ color: 'var(--color-danger)' }" :disabled="deleting" @click="emit('confirm')">
                 {{ deleting ? 'Deleting…' : 'Delete quotation' }}
               </button>
             </div>
@@ -48,3 +48,20 @@ const emit = defineEmits<{ cancel: [], confirm: [] }>()
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+/* Mobile: the dialog becomes a bottom sheet — full width, anchored to the
+   bottom edge, scrolls internally, clears the home indicator. Desktop keeps
+   the shared centered .confirm-card from main.css. */
+@media (max-width: 767.98px) {
+  .confirm-overlay { align-items: flex-end; padding: 12px 0 0; }
+  .confirm-card {
+    max-width: none;
+    max-height: 90dvh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    border-bottom-width: 0;
+    padding: 20px 20px max(20px, env(safe-area-inset-bottom));
+  }
+}
+</style>

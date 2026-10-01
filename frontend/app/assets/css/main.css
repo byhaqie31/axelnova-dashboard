@@ -1017,6 +1017,16 @@ h1 { letter-spacing: -0.045em; }
   box-shadow: var(--shadow-glow);
 }
 
+/* Admin on phones: 16px inputs so iOS Safari doesn't zoom the page on focus.
+   Scoped to the admin shell; desktop keeps 14px. */
+@media (max-width: 767.98px) {
+  .admin-shell .contact-input,
+  .admin-shell textarea,
+  .admin-shell select {
+    font-size: 16px;
+  }
+}
+
 /* Number inputs: strip the browser spinner (up/down arrows) — never wanted in
    this UI. Pair type="number" with inputmode="numeric" for the numeric keypad. */
 input[type="number"]::-webkit-outer-spin-button,

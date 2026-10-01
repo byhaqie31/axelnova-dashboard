@@ -119,9 +119,9 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <NuxtLink
-      to="/admin/revenue" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+      to="/admin/revenue" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 transition-opacity hover:opacity-70 active:opacity-60"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> Revenue
     </NuxtLink>
@@ -131,12 +131,12 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
 
     <template v-else-if="detail">
       <!-- Header + month stepper -->
-      <div class="flex items-end justify-between gap-4 flex-wrap mb-8">
+      <div class="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-8">
         <div>
-          <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">{{ detail.label }}</h1>
+          <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">{{ detail.label }}</h1>
           <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Sales closed, cash received, and who it came from.</p>
         </div>
-        <div class="flex gap-1.5">
+        <div class="flex gap-1.5 max-md:w-full max-md:gap-2 max-md:*:flex-1">
           <NuxtLink
             :to="`/admin/revenue/${detail.prev}`" class="btn-pill btn-pill-ghost text-[12px] gap-1"
             :aria-label="`Previous month`">
@@ -151,13 +151,13 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
       </div>
 
       <!-- Summary -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4" :class="{ 'opacity-60': loading }">
-        <section v-for="t in tiles" :key="t.key" class="rounded-2xl border p-5" :style="cardStyle">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 max-md:gap-3 mb-4" :class="{ 'opacity-60': loading }">
+        <section v-for="t in tiles" :key="t.key" class="rounded-2xl border p-5 max-md:p-4 max-md:min-w-0" :style="cardStyle">
           <div class="flex items-center gap-1.5 mb-1">
             <span v-if="t.swatch" class="size-2 rounded-[2px] shrink-0" :style="{ background: t.swatch }" />
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">{{ t.label }}</p>
           </div>
-          <p class="text-[24px] font-bold tracking-tight tabular-nums leading-none" style="color: var(--color-text);">{{ t.value }}</p>
+          <p class="text-[24px] max-sm:text-[17px] font-bold tracking-tight tabular-nums leading-none max-md:wrap-anywhere" style="color: var(--color-text);">{{ t.value }}</p>
           <p class="text-[11px] mt-2" style="color: var(--color-text-secondary);">{{ t.hint }}</p>
         </section>
       </div>
@@ -217,13 +217,13 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
             <div class="md:hidden space-y-2.5">
               <NuxtLink
                 v-for="o in detail.orders" :key="o.id" :to="`/admin/orders/${o.id}`"
-                class="block rounded-xl border p-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+                class="block rounded-xl border p-4 transition-opacity active:opacity-70" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
                 <div class="flex items-start justify-between gap-3 mb-1">
-                  <span class="text-[13px] font-mono font-semibold" style="color: var(--color-text);">{{ o.order_number }}</span>
+                  <span class="text-[13px] font-mono font-semibold min-w-0 break-all" style="color: var(--color-text);">{{ o.order_number }}</span>
                   <AdminStatusPill :status="o.status" />
                 </div>
                 <p class="text-[12px] mb-3" style="color: var(--color-text-secondary);">{{ o.client?.name ?? '—' }} · {{ o.label }}</p>
-                <div class="pt-2 border-t flex items-center justify-between text-[12px] tabular-nums" :style="{ borderColor: 'var(--color-border)' }">
+                <div class="pt-2 border-t flex items-center justify-between gap-3 text-[12px] tabular-nums" :style="{ borderColor: 'var(--color-border)' }">
                   <span style="color: var(--color-text);">{{ myrExact.format(o.value) }}</span>
                   <span :style="{ color: o.balance > 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }">
                     {{ o.balance > 0 ? `${myrExact.format(o.balance)} owed` : 'Paid' }}
@@ -284,11 +284,11 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
             <div class="md:hidden space-y-2.5">
               <NuxtLink
                 v-for="p in detail.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
-                class="block rounded-xl border p-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+                class="block rounded-xl border p-4 transition-opacity active:opacity-70" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
                 <div class="flex items-start justify-between gap-3 mb-1">
-                  <span class="text-[13px] font-semibold" style="color: var(--color-text);">{{ p.client?.name ?? '—' }}</span>
+                  <span class="text-[13px] font-semibold min-w-0 wrap-break-word" style="color: var(--color-text);">{{ p.client?.name ?? '—' }}</span>
                   <span
-                    class="text-[13px] font-semibold tabular-nums"
+                    class="text-[13px] font-semibold tabular-nums shrink-0"
                     :style="{ color: p.amount < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">{{ myrExact.format(p.amount) }}</span>
                 </div>
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">
@@ -304,7 +304,7 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">
             By client ({{ detail.clients.length }})
           </p>
-          <div class="admin-table-card">
+          <div class="hidden md:block admin-table-card">
             <div class="overflow-x-auto">
               <table class="w-full text-left">
                 <thead>
@@ -326,6 +326,27 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
                 </tbody>
               </table>
             </div>
+          </div>
+          <!-- Mobile: cards -->
+          <div class="md:hidden space-y-2.5">
+            <NuxtLink
+              v-for="c in detail.clients" :key="c.id" :to="`/admin/clients/${c.id}`"
+              class="block rounded-xl border p-4 transition-opacity active:opacity-70" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+              <div class="flex items-start justify-between gap-3 mb-3">
+                <span class="text-[13px] font-semibold min-w-0 wrap-break-word" style="color: var(--color-text);">{{ c.name }}</span>
+                <span class="text-[11px] shrink-0 tabular-nums" style="color: var(--color-text-tertiary);">{{ c.orders }} {{ c.orders === 1 ? 'order' : 'orders' }}</span>
+              </div>
+              <div class="pt-2 border-t grid grid-cols-2 gap-3 text-[12px] tabular-nums" :style="{ borderColor: 'var(--color-border)' }">
+                <div>
+                  <p class="text-[11px]" style="color: var(--color-text-tertiary);">Booked</p>
+                  <p class="font-medium" style="color: var(--color-text);">{{ myrExact.format(c.booked) }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[11px]" style="color: var(--color-text-tertiary);">Collected</p>
+                  <p class="font-medium" style="color: var(--color-text);">{{ myrExact.format(c.collected) }}</p>
+                </div>
+              </div>
+            </NuxtLink>
           </div>
         </section>
       </div>

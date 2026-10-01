@@ -237,9 +237,9 @@ const tiles = computed<StatTile[]>(() => [
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <div class="mb-8">
-      <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Dashboard</h1>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <div class="mb-6 md:mb-8">
+      <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Dashboard</h1>
       <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Fresh inquiries, orders, and traffic at a glance.</p>
     </div>
 
@@ -248,25 +248,35 @@ const tiles = computed<StatTile[]>(() => [
     <!-- Orders overview — headline money card -->
     <NuxtLink
       to="/admin/orders"
-      class="orders-hero group block rounded-2xl border p-6 sm:p-8 mb-8"
+      class="orders-hero group block rounded-2xl border p-5 sm:p-8 mb-6 md:mb-8"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }"
     >
-      <div class="flex items-start justify-between gap-4 mb-6">
+      <div class="flex items-start justify-between gap-4 mb-5 sm:mb-6">
         <p class="text-[11px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Orders overview</p>
         <span class="inline-flex items-center gap-1 text-[12px] font-medium shrink-0" :style="{ color: 'var(--color-accent)' }">
           View orders
           <UIcon name="i-lucide-arrow-right" class="size-3.5 transition-transform group-hover:translate-x-0.5" />
         </span>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+      <!-- Phone: headline Revenue full-width, Collected / Pending side by side
+           beneath it. sm+ keeps the original three-column row. -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-8">
         <div
           v-for="(s, idx) in ordersSummary"
           :key="s.key"
-          :class="{ 'sm:border-l sm:pl-8': idx > 0 }"
+          class="max-sm:min-w-0"
+          :class="[
+            idx === 0 ? 'max-sm:col-span-2 max-sm:pb-4 max-sm:border-b' : '',
+            { 'sm:border-l sm:pl-8': idx > 0 },
+          ]"
           :style="{ borderColor: 'var(--color-border)' }"
         >
           <p class="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-tertiary);">{{ s.label }}</p>
-          <p class="text-[30px] sm:text-[34px] font-bold tracking-tight tabular-nums" :style="{ color: s.color }">
+          <p
+            class="text-[30px] sm:text-[34px] font-bold tracking-tight tabular-nums"
+            :class="idx > 0 ? 'max-sm:text-[20px] max-sm:leading-tight' : ''"
+            :style="{ color: s.color }"
+          >
             <span v-if="loading || !s.ready" class="opacity-40">—</span>
             <span v-else>{{ fmtMoney(s.value) }}</span>
           </p>
@@ -276,17 +286,17 @@ const tiles = computed<StatTile[]>(() => [
     </NuxtLink>
 
     <!-- Stat tiles -->
-    <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-10">
+    <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8 md:mb-10">
       <NuxtLink
         v-for="tile in tiles"
         :key="tile.label"
         :to="tile.to"
-        class="stat-tile group relative rounded-2xl border p-5"
+        class="stat-tile group relative rounded-2xl border p-4 md:p-5"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
       >
         <!-- Hover-revealed view button, top-right — doesn't disturb the resting card -->
         <span
-          class="view-btn absolute top-5 right-5 inline-flex items-center justify-center size-8 rounded-lg"
+          class="view-btn absolute top-4 right-4 md:top-5 md:right-5 inline-flex items-center justify-center size-8 rounded-lg"
           :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }"
           :title="tile.cta"
           aria-hidden="true"
@@ -301,7 +311,7 @@ const tiles = computed<StatTile[]>(() => [
           <UIcon :name="tile.icon" class="size-4" />
         </div>
         <p class="text-[11px] font-semibold uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">{{ tile.label }}</p>
-        <p class="text-[28px] font-bold tracking-tight tabular-nums" style="color: var(--color-text);">
+        <p class="text-[24px] md:text-[28px] font-bold tracking-tight tabular-nums" style="color: var(--color-text);">
           <span v-if="loading && !tile.pending" class="opacity-50">—</span>
           <span v-else>{{ tile.value }}</span>
         </p>
@@ -326,7 +336,7 @@ const tiles = computed<StatTile[]>(() => [
           v-for="r in ranges"
           :key="r.value"
           type="button"
-          class="px-3 py-1 rounded-full text-[12px] font-medium transition-colors"
+          class="px-3 py-1 max-md:py-1.5 rounded-full text-[12px] font-medium transition-colors"
           :style="range === r.value
             ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
             : { color: 'var(--color-text-secondary)', background: 'transparent' }"
@@ -395,18 +405,18 @@ v-for="h in ['Name', 'Project type', 'Status', 'Received']" :key="h"
         v-for="i in recentInquiries"
         :key="i.id"
         type="button"
-        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="navigateTo(`/admin/inquiries/${i.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-1">
-          <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ i.name }}</p>
+          <p class="text-[13px] font-medium leading-tight min-w-0 break-words" :style="{ color: 'var(--color-text)' }">{{ i.name }}</p>
           <AdminStatusPill :status="i.status" />
         </div>
-        <p class="text-[11px] mb-2" :style="{ color: 'var(--color-text-tertiary)' }">{{ i.email }}</p>
+        <p class="text-[11px] mb-2 break-all" :style="{ color: 'var(--color-text-tertiary)' }">{{ i.email }}</p>
         <div class="flex items-center justify-between gap-3 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <p class="text-[13px]" :style="{ color: 'var(--color-text-secondary)' }">{{ i.project_type ?? '—' }}</p>
-          <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(i.created_at) }}</p>
+          <p class="text-[13px] min-w-0 truncate" :style="{ color: 'var(--color-text-secondary)' }">{{ i.project_type ?? '—' }}</p>
+          <p class="text-[11px] shrink-0" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(i.created_at) }}</p>
         </div>
       </button>
     </div>

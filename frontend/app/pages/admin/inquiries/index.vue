@@ -92,18 +92,18 @@ function fmtDate(iso: string) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Inquiries</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Inquiries</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Everything sent through the public quote and contact forms. Open one and <span style="color: var(--color-text);">Build quotation</span> to price it.</p>
       </div>
     </div>
 
     <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-3 mb-6">
+    <div class="flex flex-wrap items-center max-md:justify-end gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, company…" />
       <AdminStatusFilter v-model="filters.origin" :options="originOptions" label="Form" class="ml-auto" />
       <AdminStatusFilter v-model="filters.status" :options="statusOptions" :total="meta?.total ?? null" />
@@ -164,18 +164,18 @@ v-for="q in inquiries" :key="q.id"
         v-for="q in inquiries"
         :key="q.id"
         type="button"
-        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="navigateTo(`/admin/inquiries/${q.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-2">
-          <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ q.name }}</span>
-          <AdminStatusPill :status="q.status" />
+          <span class="text-[13px] font-semibold leading-tight min-w-0 break-words" :style="{ color: 'var(--color-text)' }">{{ q.name }}</span>
+          <AdminStatusPill :status="q.status" class="shrink-0" />
         </div>
-        <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
+        <p class="text-[11px] mb-3 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
         <div class="pt-2 border-t flex items-center justify-between gap-3" :style="{ borderColor: 'var(--color-border)' }">
-          <p class="text-[13px]" :style="{ color: 'var(--color-text-secondary)' }">{{ topic(q) }} <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">· {{ originLabels[q.origin] }}</span></p>
-          <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(q.created_at) }}</p>
+          <p class="text-[13px] min-w-0" :style="{ color: 'var(--color-text-secondary)' }">{{ topic(q) }} <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">· {{ originLabels[q.origin] }}</span></p>
+          <p class="text-[11px] shrink-0" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(q.created_at) }}</p>
         </div>
       </button>
     </div>

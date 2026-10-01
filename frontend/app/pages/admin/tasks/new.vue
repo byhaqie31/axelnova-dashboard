@@ -76,17 +76,17 @@ async function create() {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink to="/admin/tasks" class="inline-flex items-center gap-1.5 text-[13px] mb-6 transition-colors hover:opacity-80" style="color: var(--color-text-secondary);">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <NuxtLink to="/admin/tasks" class="inline-flex items-center gap-1.5 text-[13px] mb-6 max-md:mb-5 transition-colors hover:opacity-80 active:opacity-60" style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All tasks
     </NuxtLink>
 
     <h1 class="text-[24px] font-bold tracking-tight mb-1" style="color: var(--color-text);">New task</h1>
-    <p class="text-[13px] mb-8" style="color: var(--color-text-secondary);">Assign it now or leave it in the pick-up pool.</p>
+    <p class="text-[13px] mb-8 max-md:mb-6" style="color: var(--color-text-secondary);">Assign it now or leave it in the pick-up pool.</p>
 
     <AdminTaskFormFields v-model="form" :assignee-items="assigneeItems" />
 
-    <div class="flex items-center gap-2 mt-8">
+    <div class="flex items-center gap-2 mt-8 max-md:mt-6 max-md:*:flex-1">
       <button type="button" class="btn-pill btn-pill-primary text-[13px]" :disabled="saving" @click="create">
         {{ saving ? 'Creating…' : 'Create task' }}
       </button>

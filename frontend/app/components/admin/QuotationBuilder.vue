@@ -761,12 +761,12 @@ async function revert() {
 </script>
 
 <template>
-  <div class="grid lg:grid-cols-[1fr_320px] gap-8 items-start">
+  <div class="grid lg:grid-cols-[1fr_320px] gap-8 max-md:gap-5 items-start">
 
-    <div class="space-y-8">
+    <div class="space-y-8 max-md:space-y-5 max-md:min-w-0">
 
       <!-- Client -->
-      <section class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+      <section class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <div class="flex items-center justify-between mb-4">
           <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Client</p>
           <div class="flex gap-1.5">
@@ -786,13 +786,13 @@ type="button" class="standard-pill" :style="client.mode === 'new'
         <!-- Existing: search / selected -->
         <div v-if="client.mode === 'search'">
           <div
-v-if="client.client_id" class="flex items-center justify-between rounded-xl border px-4 py-3"
+v-if="client.client_id" class="flex items-center justify-between max-md:gap-3 rounded-xl border px-4 max-md:px-3.5 py-3"
             :style="{ borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">
-            <div>
+            <div class="max-md:min-w-0">
               <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ client.name }}</p>
-              <p class="text-[12px]" style="color: var(--color-text-secondary);">{{ client.email }}<span v-if="client.company"> · {{ client.company }}</span></p>
+              <p class="text-[12px] max-md:wrap-anywhere" style="color: var(--color-text-secondary);">{{ client.email }}<span v-if="client.company"> · {{ client.company }}</span></p>
             </div>
-            <button type="button" class="text-[12px]" style="color: var(--color-accent);" @click="clearClient">Change</button>
+            <button type="button" class="text-[12px] max-md:shrink-0 max-md:text-[13px] max-md:font-medium max-md:py-2 max-md:active:opacity-60" style="color: var(--color-accent);" @click="clearClient">Change</button>
           </div>
           <div v-else class="relative">
             <input
@@ -803,9 +803,9 @@ id="qb-client" v-model="clientSearch" type="text" placeholder="Search clients by
 v-if="clientResults.length" class="absolute z-20 left-0 right-0 mt-1.5 rounded-xl border p-1 max-h-60 overflow-y-auto"
               :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }">
               <li v-for="c in clientResults" :key="c.id">
-                <button type="button" class="w-full text-left px-2.5 py-2 rounded-md transition-colors hover:bg-(--color-bg-secondary)" @click="pickClient(c)">
+                <button type="button" class="w-full text-left px-2.5 py-2 max-md:py-2.5 rounded-md transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)" @click="pickClient(c)">
                   <span class="text-[13px] font-medium" style="color: var(--color-text);">{{ c.name }}</span>
-                  <span class="text-[12px] ml-2" style="color: var(--color-text-tertiary);">{{ c.email }}</span>
+                  <span class="text-[12px] ml-2 max-md:ml-0 max-md:block max-md:wrap-anywhere" style="color: var(--color-text-tertiary);">{{ c.email }}</span>
                 </button>
               </li>
             </ul>
@@ -837,7 +837,7 @@ v-if="clientResults.length" class="absolute z-20 left-0 right-0 mt-1.5 rounded-x
       </section>
 
       <!-- Draft context (connector provenance / assumptions / open questions) -->
-      <section v-if="draftContext" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+      <section v-if="draftContext" class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
           <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Draft context</p>
           <div class="flex items-center gap-2 flex-wrap justify-end">
@@ -899,7 +899,7 @@ v-if="draftContext.editedViaConnector"
              picker. Its scope IS the line items below; there are no catalog
              scope-fields/add-ons for custom work. -->
         <div
-v-if="showCustomCard" class="rounded-2xl border p-6"
+v-if="showCustomCard" class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between mb-5">
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Custom package</p>
@@ -920,7 +920,7 @@ v-model="doc.project" type="text" placeholder="e.g. Custom e-commerce build"
             <p class="text-[11px]" style="color: var(--color-text-tertiary);">Outside the catalog — this names the quote (its project title); it’s priced by the line items below.</p>
           </div>
           <button
-type="button" class="mt-4 inline-flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-70"
+type="button" class="mt-4 max-md:mt-2 max-md:py-2 inline-flex items-center gap-1.5 text-[12px] max-md:text-[13px] font-medium transition-opacity hover:opacity-70 max-md:active:opacity-60"
             :style="{ color: 'var(--color-accent)' }" @click="showCatalogPicker = true">
             <UIcon name="i-lucide-package" class="size-3.5" /> Use a catalog package instead
           </button>
@@ -929,13 +929,13 @@ type="button" class="mt-4 inline-flex items-center gap-1.5 text-[12px] font-medi
         <template v-else>
           <!-- Reveal the picker on a custom quote for conversion — offer a way back. -->
           <button
-v-if="isCustom" type="button" class="inline-flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-70"
+v-if="isCustom" type="button" class="inline-flex items-center gap-1.5 text-[12px] max-md:text-[13px] max-md:py-2 font-medium transition-opacity hover:opacity-70 max-md:active:opacity-60"
             :style="{ color: 'var(--color-text-secondary)' }" @click="showCatalogPicker = false">
             <UIcon name="i-lucide-arrow-left" class="size-3.5" /> Back to custom
           </button>
 
           <div
-v-for="(pkg, i) in packages" :key="i" class="rounded-2xl border p-6"
+v-for="(pkg, i) in packages" :key="i" class="rounded-2xl border p-6 max-md:p-5"
             :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <div class="flex items-center justify-between mb-5">
               <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">
@@ -943,7 +943,7 @@ v-for="(pkg, i) in packages" :key="i" class="rounded-2xl border p-6"
               </p>
               <button
 v-if="packages.length > 1" type="button"
-                class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary)"
+                class="inline-flex items-center gap-1.5 h-8 max-md:h-10 max-md:-mr-2.5 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)"
                 :style="{ color: 'var(--color-danger)' }" @click="removePackage(i)">
                 <UIcon name="i-lucide-trash-2" class="size-3.5" /> Remove
               </button>
@@ -955,7 +955,7 @@ v-if="packages.length > 1" type="button"
 
           <button
 type="button"
-            class="w-full rounded-2xl border border-dashed px-4 py-3.5 text-[13px] font-medium transition-colors hover:bg-(--color-bg-secondary) flex items-center justify-center gap-2"
+            class="w-full rounded-2xl border border-dashed px-4 py-3.5 text-[13px] font-medium transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary) flex items-center justify-center gap-2"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
             @click="addPackage">
             <UIcon name="i-lucide-plus" class="size-4" /> Add another package
@@ -968,7 +968,7 @@ type="button"
               <span class="rush-track" :class="{ active: rush }" />
               <span>
                 <span class="text-[13px] font-medium" style="color: var(--color-text);">Rush delivery</span>
-                <span class="text-[12px] ml-2" style="color: var(--color-text-tertiary);">(+20%, week/month timelines reduced ~30%)</span>
+                <span class="text-[12px] ml-2 max-md:ml-0 max-md:block max-md:mt-0.5" style="color: var(--color-text-tertiary);">(+20%, week/month timelines reduced ~30%)</span>
               </span>
             </label>
           </div>
@@ -976,10 +976,10 @@ type="button"
       </section>
 
       <!-- Quotation document -->
-      <section class="rounded-2xl border p-6 space-y-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <div class="flex items-center justify-between">
+      <section class="rounded-2xl border p-6 max-md:p-5 space-y-6 max-md:space-y-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="flex items-center justify-between max-md:flex-col max-md:items-stretch max-md:gap-3">
           <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Quotation document</p>
-          <button type="button" class="btn-pill btn-pill-ghost text-[12px]" :disabled="!hasPackages || seeding" @click="seedItems()">
+          <button type="button" class="btn-pill btn-pill-ghost text-[12px] max-md:w-full" :disabled="!hasPackages || seeding" @click="seedItems()">
             {{ seeding ? 'Seeding…' : 'Seed line items from scope' }}
           </button>
         </div>
@@ -1002,7 +1002,7 @@ type="button"
         <div>
           <div class="flex items-center justify-between mb-2">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Line items</label>
-            <button type="button" class="text-[12px]" style="color: var(--color-accent);" @click="addItem">+ Add line</button>
+            <button type="button" class="text-[12px] max-md:text-[13px] max-md:font-medium max-md:min-h-10 max-md:px-2 max-md:-mr-2 max-md:active:opacity-60" style="color: var(--color-accent);" @click="addItem">+ Add line</button>
           </div>
           <div v-if="!doc.items.length" class="rounded-xl border border-dashed px-4 py-6 text-center text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }">
             No line items yet. Click <strong>Seed line items from scope</strong> or <strong>+ Add line</strong>.
@@ -1014,16 +1014,16 @@ type="button"
               <p v-if="errors.items[i]" class="text-[11px] mt-1" style="color: var(--color-danger);">{{ errors.items[i] }}</p>
             </div>
             <input v-model="it.desc" type="text" placeholder="Description (optional)" class="contact-input w-full text-[12px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-elevated)' }" >
-            <div class="flex flex-wrap items-end gap-x-2 gap-y-3">
-              <div class="w-16">
+            <div class="flex flex-wrap items-end gap-x-2 gap-y-3 max-md:grid max-md:grid-cols-[5rem_1fr]">
+              <div class="w-16 max-md:w-auto">
                 <span class="line-label">Qty</span>
                 <input v-model.number="it.qty" type="number" min="0" step="0.5" class="contact-input w-full text-[13px] text-center" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
               </div>
-              <div class="flex-1 min-w-20">
+              <div class="flex-1 min-w-20 max-md:col-span-2 max-md:order-first">
                 <span class="line-label">Unit</span>
                 <input v-model="it.unit" type="text" placeholder="project, page, hr…" class="contact-input w-full text-[13px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
               </div>
-              <div class="w-32">
+              <div class="w-32 max-md:w-auto">
                 <span class="line-label">Rate</span>
                 <div class="relative">
                   <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none" style="color: var(--color-text-tertiary);">RM</span>
@@ -1033,7 +1033,7 @@ type="button"
             </div>
             <!-- Footer: delete on the left, line total on the right -->
             <div class="flex items-center justify-between gap-3 pt-2.5 mt-0.5 border-t" :style="{ borderColor: 'var(--color-border)' }">
-              <button type="button" class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove line" @click="removeItem(i)">
+              <button type="button" class="inline-flex items-center gap-1.5 h-8 max-md:h-10 max-md:-ml-2.5 px-2.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove line" @click="removeItem(i)">
                 <UIcon name="i-lucide-trash-2" class="size-4" />
                 Remove
               </button>
@@ -1055,29 +1055,29 @@ type="button"
           <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
             Valid until <span class="font-normal" style="color: var(--color-text-tertiary);">(optional)</span>
           </label>
-          <input v-model="validUntil" type="date" class="contact-input w-full sm:w-56" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
+          <input v-model="validUntil" type="date" class="contact-input w-full sm:w-56 max-md:min-w-0" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
           <p class="text-[11px]" style="color: var(--color-text-tertiary);">Leave blank to default to {{ config?.valid_for_days ?? 30 }} days after sending.</p>
         </div>
       </section>
 
       <!-- Detailed proposal (optional inline upgrade) -->
-      <section v-if="!detailed" class="rounded-2xl border border-dashed p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" :style="{ borderColor: 'var(--color-border)' }">
+      <section v-if="!detailed" class="rounded-2xl border border-dashed p-6 max-md:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" :style="{ borderColor: 'var(--color-border)' }">
         <div>
           <p class="text-[13px] font-semibold" style="color: var(--color-text);">Want a richer proposal?</p>
           <p class="text-[12px] mt-0.5 max-w-md" style="color: var(--color-text-secondary);">Add “What's included”, option cards, and a care plan. Your line items become the scope. Remove it anytime to keep the quote standard.</p>
         </div>
-        <button type="button" class="btn-pill btn-pill-warning shrink-0 gap-1.5 text-[13px]" @click="enableDetailed">
+        <button type="button" class="btn-pill btn-pill-warning shrink-0 gap-1.5 text-[13px] max-sm:w-full" @click="enableDetailed">
           Expand to detailed
           <UIcon name="i-lucide-arrow-down" class="size-3.5" />
         </button>
       </section>
-      <section v-else class="rounded-2xl border p-6 space-y-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <div class="flex items-start justify-between gap-3">
+      <section v-else class="rounded-2xl border p-6 max-md:p-5 space-y-6 max-md:space-y-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="flex items-start justify-between gap-3 max-md:flex-col max-md:gap-1">
           <div>
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Detailed proposal</p>
             <p class="text-[12px] mt-1 max-w-md" style="color: var(--color-text-secondary);">Optional blocks added to the client PDF. Saving with these makes it a detailed proposal; the line items above are the scope.</p>
           </div>
-          <button type="button" class="inline-flex items-center gap-1.5 text-[12px] font-medium shrink-0 transition-opacity hover:opacity-70" :style="{ color: 'var(--color-danger)' }" @click="disableDetailed">
+          <button type="button" class="inline-flex items-center gap-1.5 text-[12px] max-md:text-[13px] max-md:py-2 font-medium shrink-0 transition-opacity hover:opacity-70 max-md:active:opacity-60" :style="{ color: 'var(--color-danger)' }" @click="disableDetailed">
             <UIcon name="i-lucide-trash-2" class="size-3.5" /> Remove (keep standard)
           </button>
         </div>
@@ -1090,7 +1090,7 @@ type="button"
       <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Estimate (guide)</p>
         <div v-if="headlineEstimate">
-          <p class="text-[26px] font-bold tracking-tight leading-none mb-1" style="color: var(--color-text);">
+          <p class="text-[26px] max-md:text-[22px] font-bold tracking-tight leading-none max-md:leading-tight mb-1" style="color: var(--color-text);">
             {{ fmtMyr(headlineEstimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ fmtMyr(headlineEstimate.maxMyr) }}
           </p>
           <p class="text-[12px]" style="color: var(--color-text-secondary);">
@@ -1137,10 +1137,10 @@ type="button"
             <div
 v-if="sendMenuOpen" class="absolute left-0 right-0 mt-2 z-20 rounded-xl border p-1.5 space-y-1"
               :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }">
-              <button type="button" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text);" @click="deliver('email')">
+              <button type="button" class="w-full flex items-center gap-2 px-3 py-2 max-md:py-3 rounded-lg text-[13px] transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)" style="color: var(--color-text);" @click="deliver('email')">
                 <UIcon name="i-lucide-mail" class="size-4" /> Email to client
               </button>
-              <button type="button" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text);" @click="deliver('download')">
+              <button type="button" class="w-full flex items-center gap-2 px-3 py-2 max-md:py-3 rounded-lg text-[13px] transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)" style="color: var(--color-text);" @click="deliver('download')">
                 <UIcon name="i-lucide-download" class="size-4" /> Download PDF
               </button>
             </div>
@@ -1224,5 +1224,14 @@ id="qb-commission-pct" v-model.number="commissionPct" type="number" min="5" max=
 
 .rush-track.active::after {
   transform: translateX(16px);
+}
+
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus
+   (covers the nested scope-field / detailed-proposal inputs too). */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox'], [type='radio']),
+  textarea,
+  :deep(input:not([type='checkbox'], [type='radio'])),
+  :deep(textarea) { font-size: 16px; }
 }
 </style>

@@ -68,15 +68,15 @@ const statusStyle = (s: BlogPostAdmin['status']) => s === 'published'
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <div class="flex items-start justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Blog</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Blog</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           {{ meta?.total ?? posts.length }} total · {{ publishedCount }} published · {{ draftCount }} drafts on this page
         </p>
       </div>
-      <NuxtLink to="/admin/blog/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5">
+      <NuxtLink to="/admin/blog/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5 max-md:w-full">
         <UIcon name="i-lucide-plus" class="size-3.5" />
         New post
       </NuxtLink>
@@ -99,7 +99,7 @@ const statusStyle = (s: BlogPostAdmin['status']) => s === 'published'
       <NuxtLink to="/admin/blog/new" class="btn-pill btn-pill-accent text-[12px]">+ New post</NuxtLink>
     </div>
 
-    <div v-else class="rounded-2xl border overflow-x-auto" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+    <div v-else class="hidden md:block rounded-2xl border overflow-x-auto" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
       <table class="w-full text-[13px] min-w-[760px]">
         <thead>
           <tr class="text-left text-[11px] uppercase tracking-wider" :style="{ color: 'var(--color-text-tertiary)' }">
@@ -137,6 +137,38 @@ const statusStyle = (s: BlogPostAdmin['status']) => s === 'published'
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Mobile: cards — same data and actions as the table rows. -->
+    <div v-if="!loading && posts.length" class="md:hidden space-y-2.5">
+      <div
+        v-for="p in posts"
+        :key="p.id"
+        class="rounded-xl border p-4"
+        :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+      >
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <span class="text-[11px] font-semibold uppercase tracking-wider" :style="{ color: 'var(--color-accent)' }">{{ blogFormatLabel(p.format) }}</span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0" :style="statusStyle(p.status)">{{ p.status }}</span>
+        </div>
+        <NuxtLink
+          :to="`/admin/blog/${p.id}`"
+          class="block text-[14px] font-semibold leading-snug break-words active:opacity-70"
+          :style="{ color: 'var(--color-text)' }"
+        >{{ p.title }}</NuxtLink>
+        <p class="text-[11px] font-mono mt-0.5 mb-3 break-all" :style="{ color: 'var(--color-text-tertiary)' }">/blog/{{ p.slug }}</p>
+        <div class="pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
+          <div class="flex items-center justify-between gap-3 text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">
+            <span class="min-w-0 truncate">{{ p.category ?? 'Uncategorised' }}<template v-if="p.status === 'published'"> · {{ fmtBlogDate(p.published_at) }}</template></span>
+            <span class="tabular-nums shrink-0">{{ p.reading_minutes }} min · {{ p.views ?? 0 }} views</span>
+          </div>
+          <div class="flex items-center gap-2 mt-3">
+            <NuxtLink :to="`/admin/blog/${p.id}`" class="btn-table-action flex-1 h-9!"><UIcon name="i-lucide-pencil" class="size-3.5" />Edit</NuxtLink>
+            <a v-if="p.status === 'published'" :href="`/blog/${p.slug}`" target="_blank" rel="noopener" class="btn-table-action flex-1 h-9!"><UIcon name="i-lucide-external-link" class="size-3.5" />View</a>
+            <button type="button" class="btn-table-action is-danger flex-1 h-9!" @click="deletePost(p)"><UIcon name="i-lucide-trash-2" class="size-3.5" />Delete</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-if="meta && meta.last_page > 1" class="flex items-center justify-center gap-2 mt-6">

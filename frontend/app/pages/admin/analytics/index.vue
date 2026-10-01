@@ -152,18 +152,18 @@ const planned = [
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <div class="flex items-end justify-between gap-4 flex-wrap mb-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <div class="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-8">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Analytics</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Analytics</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Traffic, engagement, and conversion signals.</p>
       </div>
-      <div class="flex gap-1.5 flex-wrap">
+      <div class="flex gap-1.5 flex-wrap max-md:w-full max-md:flex-nowrap">
         <button
           v-for="r in RANGES"
           :key="r.key"
           type="button"
-          class="standard-pill"
+          class="standard-pill max-md:flex-1 max-md:justify-center max-md:min-h-9"
           :style="range === r.key
             ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
             : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
@@ -178,18 +178,18 @@ const planned = [
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
     <!-- Page views -->
-    <section class="rounded-2xl border p-6 mb-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
-      <div class="flex items-start justify-between gap-6 flex-wrap mb-6">
+    <section class="rounded-2xl border p-4 md:p-6 mb-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+      <div class="flex items-start justify-between gap-4 md:gap-6 flex-wrap mb-5 md:mb-6">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Page views</p>
-          <p class="text-[34px] font-bold tracking-tight tabular-nums leading-none" style="color: var(--color-text);">
+          <p class="text-[28px] md:text-[34px] font-bold tracking-tight tabular-nums leading-none" style="color: var(--color-text);">
             <span v-if="loading" class="opacity-40">—</span>
             <span v-else>{{ data?.views.total.toLocaleString() ?? 0 }}</span>
           </p>
         </div>
         <div class="text-right">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Unique visitors</p>
-          <p class="text-[34px] font-bold tracking-tight tabular-nums leading-none" style="color: var(--color-text);">
+          <p class="text-[28px] md:text-[34px] font-bold tracking-tight tabular-nums leading-none" style="color: var(--color-text);">
             <span v-if="loading" class="opacity-40">—</span>
             <span v-else>{{ data?.views.unique.toLocaleString() ?? 0 }}</span>
           </p>
@@ -267,8 +267,8 @@ const planned = [
     </section>
 
     <!-- Top paths + referrers -->
-    <div v-if="!loading && hasViews" class="grid md:grid-cols-2 gap-4 mb-10">
-      <section class="rounded-2xl border p-6" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+    <div v-if="!loading && hasViews" class="grid md:grid-cols-2 gap-4 mb-8 md:mb-10">
+      <section class="rounded-2xl border p-4 md:p-6" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Top pages</p>
         <div v-if="!data?.topPaths.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No data.</div>
         <ul v-else class="space-y-2.5">
@@ -279,7 +279,7 @@ const planned = [
         </ul>
       </section>
 
-      <section class="rounded-2xl border p-6" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+      <section class="rounded-2xl border p-4 md:p-6" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Top referrers</p>
         <div v-if="!mergedReferrers.length" class="text-[13px]" style="color: var(--color-text-tertiary);">Mostly direct — no referrers recorded.</div>
         <ul v-else class="space-y-2.5">
@@ -292,7 +292,7 @@ const planned = [
     </div>
 
     <!-- Most-liked projects -->
-    <section v-if="!loading" class="rounded-2xl border p-6 mb-10" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+    <section v-if="!loading" class="rounded-2xl border p-4 md:p-6 mb-8 md:mb-10" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
       <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Most-liked projects</p>
       <div v-if="!data?.topLikedProjects.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No project likes yet.</div>
       <ul v-else class="space-y-2.5">
@@ -308,11 +308,11 @@ const planned = [
 
     <!-- Coming in later Phase B slices -->
     <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Coming next</p>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
       <div
         v-for="m in planned"
         :key="m.label"
-        class="rounded-2xl border p-5"
+        class="rounded-2xl border p-4 md:p-5"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
       >
         <div class="flex items-start justify-between mb-3">

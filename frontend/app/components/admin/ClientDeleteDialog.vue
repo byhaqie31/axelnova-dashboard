@@ -122,9 +122,9 @@ async function confirmDelete() {
 
           <p v-if="error" class="text-[12px] mt-4" style="color: var(--color-danger);">{{ error }}</p>
 
-          <div class="flex items-center justify-end gap-2 mt-6">
-            <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="deleting" @click="emit('cancel')">Cancel</button>
-            <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :style="{ color: 'var(--color-danger)' }" :disabled="deleting" @click="confirmDelete">
+          <div class="flex items-center justify-end gap-2 mt-6 max-md:flex-col-reverse max-md:items-stretch">
+            <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:w-full" :disabled="deleting" @click="emit('cancel')">Cancel</button>
+            <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:w-full" :style="{ color: 'var(--color-danger)' }" :disabled="deleting" @click="confirmDelete">
               {{ deleting ? 'Deleting…' : tieCount ? `Move ${plural(tieCount, 'record')} & delete` : 'Delete client' }}
             </button>
           </div>
@@ -133,3 +133,20 @@ async function confirmDelete() {
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+/* Mobile: the dialog becomes a bottom sheet — full width, anchored to the
+   bottom edge, scrolls internally, clears the home indicator. Desktop keeps
+   the shared centered .confirm-card from main.css. */
+@media (max-width: 767.98px) {
+  .confirm-overlay { align-items: flex-end; padding: 12px 0 0; }
+  .confirm-card {
+    max-width: none;
+    max-height: 90dvh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    border-bottom-width: 0;
+    padding: 20px 20px max(20px, env(safe-area-inset-bottom));
+  }
+}
+</style>

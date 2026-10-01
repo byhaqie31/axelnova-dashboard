@@ -138,10 +138,10 @@ function fmtMyr(amount: string | number) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <NuxtLink
 :to="orderId ? `/admin/orders/${orderId}` : '/admin/payments'"
-      class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70" :style="{ color: 'var(--color-text-secondary)' }">
+      class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 max-md:py-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60" :style="{ color: 'var(--color-text-secondary)' }">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> {{ orderId ? 'Back to order' : 'All payments' }}
     </NuxtLink>
 
@@ -150,13 +150,13 @@ function fmtMyr(amount: string | number) {
 
     <template v-else-if="order">
       <h1 class="text-[24px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Record payment</h1>
-      <p class="text-[14px] mb-8" style="color: var(--color-text-secondary);">
+      <p class="text-[14px] mb-8 max-md:mb-6" style="color: var(--color-text-secondary);">
         For order <span class="font-mono" style="color: var(--color-accent);">{{ order.order_number }}</span> · {{ order.name ?? '—' }}
         <span v-if="Number(order.remaining_myr) > 0"> · {{ fmtMyr(order.remaining_myr) }} remaining</span>
       </p>
 
       <div
-class="rounded-2xl border p-6 space-y-5"
+class="rounded-2xl border p-6 max-md:p-5 space-y-5"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <div class="grid sm:grid-cols-2 gap-3">
           <label class="block">
@@ -173,7 +173,7 @@ class="rounded-2xl border p-6 space-y-5"
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Method</span>
           <div class="flex flex-wrap gap-1.5 mt-1.5">
             <button
-v-for="m in methodOptions" :key="m.value" type="button" class="standard-pill"
+v-for="m in methodOptions" :key="m.value" type="button" class="standard-pill max-md:min-h-9"
               :style="form.method === m.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}"
               @click="form.method = m.value">{{ m.label }}</button>
           </div>
@@ -206,3 +206,11 @@ type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]
     </template>
   </div>
 </template>
+
+<style scoped>
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']),
+  :deep(input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'])) { font-size: 16px; }
+}
+</style>

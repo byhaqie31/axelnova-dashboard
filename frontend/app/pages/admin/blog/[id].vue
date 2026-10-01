@@ -336,8 +336,8 @@ const statusStyle = computed(() => post.value?.status === 'published'
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink to="/admin/blog" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70" style="color: var(--color-text-secondary);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <NuxtLink to="/admin/blog" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 transition-opacity hover:opacity-70 active:opacity-60" style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All posts
     </NuxtLink>
 
@@ -348,21 +348,21 @@ const statusStyle = computed(() => post.value?.status === 'published'
       <!-- Header + actions -->
       <div class="flex items-start justify-between flex-wrap gap-4 mb-6">
         <div class="flex items-center gap-3 flex-wrap">
-          <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">{{ isNew ? 'New post' : 'Edit post' }}</h1>
+          <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">{{ isNew ? 'New post' : 'Edit post' }}</h1>
           <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full" :style="statusStyle">{{ post?.status ?? 'draft' }}</span>
           <span v-if="dirty" class="text-[11px]" :style="{ color: 'var(--color-warning)' }">Unsaved changes</span>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap max-md:grid max-md:grid-cols-2 max-md:w-full max-md:*:w-full max-md:*:px-3!">
           <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="previewing" @click="openPreview">
             <UIcon name="i-lucide-eye" class="size-4" /> {{ previewing ? 'Rendering…' : 'Preview' }}
           </button>
           <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="saving || acting" @click="save">
             <UIcon name="i-lucide-save" class="size-4" /> {{ saving ? 'Saving…' : post?.status === 'published' ? 'Save changes' : 'Save draft' }}
           </button>
-          <button v-if="post?.status === 'published'" type="button" class="btn-pill btn-pill-warning text-[13px]" :disabled="saving || acting" @click="unpublish">
+          <button v-if="post?.status === 'published'" type="button" class="btn-pill btn-pill-warning text-[13px] max-md:col-span-2" :disabled="saving || acting" @click="unpublish">
             <UIcon name="i-lucide-eye-off" class="size-4" /> Unpublish
           </button>
-          <button v-else type="button" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving || acting" @click="publish">
+          <button v-else type="button" class="btn-pill btn-pill-accent text-[13px] max-md:col-span-2" :disabled="saving || acting" @click="publish">
             <UIcon name="i-lucide-send" class="size-4" /> {{ acting ? 'Publishing…' : 'Publish' }}
           </button>
         </div>
@@ -372,16 +372,16 @@ const statusStyle = computed(() => post.value?.status === 'published'
         <li v-for="(msg, i) in errorList" :key="i">{{ msg }}</li>
       </ul>
 
-      <div class="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+      <div class="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 max-md:gap-5 items-start">
         <!-- Main column -->
         <div class="space-y-5 min-w-0">
-          <div class="rounded-2xl border p-5 space-y-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="rounded-2xl border p-5 max-md:p-4 space-y-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <div>
               <label class="text-[11px] font-medium uppercase tracking-wider block mb-1.5" :style="{ color: 'var(--color-text-tertiary)' }">Title</label>
               <input v-model="form.title" type="text" maxlength="160" placeholder="Still Managing Enquiries Through WhatsApp?" class="contact-input w-full text-[20px] font-semibold">
             </div>
             <div>
-              <div class="flex items-baseline justify-between mb-1.5">
+              <div class="flex items-baseline justify-between mb-1.5 max-md:gap-2">
                 <label class="text-[11px] font-medium uppercase tracking-wider" :style="{ color: 'var(--color-text-tertiary)' }">Introduction</label>
                 <!-- Counts the raw Markdown (markers included) — the same 500 the API enforces. -->
                 <span class="text-[11px] tabular-nums" :style="{ color: form.excerpt.length > 500 ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }">{{ form.excerpt.length }}/500 · ~{{ liveMinutes }} min read</span>
@@ -408,11 +408,11 @@ const statusStyle = computed(() => post.value?.status === 'published'
 
           <!-- Helpers -->
           <div class="flex flex-wrap items-center gap-2">
-            <button type="button" class="btn-table-action" @click="applyTemplate"><UIcon name="i-lucide-layout-template" class="size-3.5" />Start from template</button>
-            <button type="button" class="btn-table-action" @click="importOpen = true"><UIcon name="i-lucide-clipboard-paste" class="size-3.5" />Import Markdown</button>
-            <button type="button" class="btn-table-action" @click="guideOpen = !guideOpen"><UIcon name="i-lucide-book-open" class="size-3.5" />Voice & structure</button>
+            <button type="button" class="btn-table-action max-md:h-9! max-md:px-3!" @click="applyTemplate"><UIcon name="i-lucide-layout-template" class="size-3.5" />Start from template</button>
+            <button type="button" class="btn-table-action max-md:h-9! max-md:px-3!" @click="importOpen = true"><UIcon name="i-lucide-clipboard-paste" class="size-3.5" />Import Markdown</button>
+            <button type="button" class="btn-table-action max-md:h-9! max-md:px-3!" @click="guideOpen = !guideOpen"><UIcon name="i-lucide-book-open" class="size-3.5" />Voice & structure</button>
           </div>
-          <div v-if="guideOpen" class="rounded-2xl border p-5 grid sm:grid-cols-2 gap-5 text-[13px]" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
+          <div v-if="guideOpen" class="rounded-2xl border p-5 max-md:p-4 grid sm:grid-cols-2 gap-5 text-[13px]" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
             <div>
               <p class="text-[11px] font-semibold uppercase tracking-widest mb-2" :style="{ color: 'var(--color-text-tertiary)' }">Voice</p>
               <ul class="space-y-1.5 list-disc pl-4"><li v-for="v in guide?.voice ?? []" :key="v">{{ v }}</li></ul>
@@ -436,8 +436,8 @@ const statusStyle = computed(() => post.value?.status === 'published'
         </div>
 
         <!-- Side rail -->
-        <div class="lg:sticky lg:top-20 space-y-4">
-          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="lg:sticky lg:top-20 space-y-4 max-md:min-w-0">
+          <div class="rounded-2xl border p-5 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-3" :style="{ color: 'var(--color-text-tertiary)' }">Cover image</h2>
             <input v-model="form.cover_image_url" type="text" placeholder="https://… or /path" class="contact-input w-full mb-2">
             <input v-model="form.cover_image_alt" type="text" maxlength="160" placeholder="Image description (alt text)" class="contact-input w-full">
@@ -445,7 +445,7 @@ const statusStyle = computed(() => post.value?.status === 'published'
             <p class="mt-2 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Paste an image URL — there’s no upload. It’s also the link preview when the post is shared.</p>
           </div>
 
-          <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="rounded-2xl border p-5 max-md:p-4 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest" :style="{ color: 'var(--color-text-tertiary)' }">Format, category & topics</h2>
             <div>
               <span class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-tertiary)' }">Format — the label before the date</span>
@@ -462,18 +462,18 @@ const statusStyle = computed(() => post.value?.status === 'published'
             <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">On /blog the pills filter by format and the dropdown by topic — the category counts as a topic too.</p>
           </div>
 
-          <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="rounded-2xl border p-5 max-md:p-4 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest" :style="{ color: 'var(--color-text-tertiary)' }">Closing call to action</h2>
             <input v-model="form.cta_heading" type="text" maxlength="120" :placeholder="ctaDefaults?.heading" class="contact-input w-full">
             <textarea v-model="form.cta_body" rows="2" maxlength="500" :placeholder="ctaDefaults?.body" class="contact-input w-full" />
-            <div class="grid grid-cols-[1fr_1.4fr] gap-2">
+            <div class="grid grid-cols-[1fr_1.4fr] max-md:grid-cols-1 gap-2">
               <input v-model="form.cta_label" type="text" maxlength="60" :placeholder="ctaDefaults?.label" class="contact-input w-full">
               <input v-model="form.cta_url" type="text" :placeholder="ctaDefaults?.url" class="contact-input w-full">
             </div>
             <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Leave blank to use the defaults shown.</p>
           </div>
 
-          <div class="rounded-2xl border p-5 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="rounded-2xl border p-5 max-md:p-4 space-y-3" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest" :style="{ color: 'var(--color-text-tertiary)' }">SEO</h2>
             <div>
               <input v-model="form.seo_title" type="text" maxlength="70" placeholder="Custom search title (falls back to the title)" class="contact-input w-full">
@@ -485,7 +485,7 @@ const statusStyle = computed(() => post.value?.status === 'published'
             </div>
           </div>
 
-          <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="rounded-2xl border p-5 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest mb-3" :style="{ color: 'var(--color-text-tertiary)' }">URL slug</h2>
             <div class="flex items-center gap-2">
               <span class="text-[12px] shrink-0" :style="{ color: 'var(--color-text-tertiary)' }">/blog/</span>
@@ -511,7 +511,7 @@ const statusStyle = computed(() => post.value?.status === 'published'
             <h2 class="text-[17px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Import Markdown</h2>
             <p class="text-[13px] mb-4" style="color: var(--color-text-secondary);">Paste a draft. <code>#</code> becomes the title, the paragraphs before the first <code>##</code> become the introduction, and each <code>##</code> becomes a section. Sections are added after any you already have.</p>
             <textarea v-model="importText" rows="14" class="contact-input w-full font-mono text-[12px]" placeholder="# Title&#10;&#10;Opening paragraph…&#10;&#10;## First section&#10;…" />
-            <div class="flex items-center justify-end gap-2 mt-4">
+            <div class="flex items-center justify-end gap-2 mt-4 max-md:*:flex-1">
               <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="importOpen = false">Cancel</button>
               <button type="button" class="btn-pill btn-pill-accent text-[13px]" :disabled="!importText.trim()" @click="importMarkdown">Import</button>
             </div>
@@ -527,11 +527,11 @@ const statusStyle = computed(() => post.value?.status === 'published'
              fixed overlay's own scroll area stays frozen without it (same as the admin
              layout's scroll panes). -->
         <div v-if="previewOpen && previewPost" data-lenis-prevent class="fixed inset-0 z-[80] overflow-y-auto overscroll-contain" :style="{ background: 'var(--color-bg)' }">
-          <div class="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-6 py-3 border-b" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-            <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">Preview <span class="font-normal" :style="{ color: 'var(--color-text-tertiary)' }">· exactly what readers will see</span></p>
-            <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="previewOpen = false"><UIcon name="i-lucide-x" class="size-4" /> Close</button>
+          <div class="sticky top-0 z-10 flex items-center justify-between max-md:gap-3 px-4 sm:px-6 py-3 border-b" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <p class="text-[13px] font-semibold max-md:min-w-0 max-md:leading-snug" :style="{ color: 'var(--color-text)' }">Preview <span class="font-normal" :style="{ color: 'var(--color-text-tertiary)' }">· exactly what readers will see</span></p>
+            <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:shrink-0 max-md:h-10! max-md:px-4!" @click="previewOpen = false"><UIcon name="i-lucide-x" class="size-4" /> Close</button>
           </div>
-          <div class="max-w-6xl mx-auto px-6 py-12">
+          <div class="max-w-6xl mx-auto px-6 py-12 max-md:px-4 max-md:py-8">
             <PublicBlogArticle :post="previewPost" preview />
           </div>
         </div>
@@ -539,3 +539,13 @@ const statusStyle = computed(() => post.value?.status === 'published'
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+/* Mobile only (<768px) — desktop untouched. 16px inputs + editor stop iOS focus-zoom. */
+@media (max-width: 767.98px) {
+  .contact-input { font-size: 16px; }
+  .blog-editor :deep(.ProseMirror) { font-size: 16px; }
+  .confirm-overlay { padding: 16px; }
+  .confirm-card { padding: 20px; }
+}
+</style>

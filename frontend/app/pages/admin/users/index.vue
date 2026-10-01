@@ -302,17 +302,17 @@ onKeyStroke('Escape', () => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Users</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Users</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           Provision teammates, set their monthly allowance, and deactivate access when someone leaves.
         </p>
       </div>
-      <button type="button" class="btn-pill btn-pill-primary text-[13px]" @click="openCreate">
+      <button type="button" class="btn-pill btn-pill-primary text-[13px] max-md:w-full" @click="openCreate">
         <UIcon name="i-lucide-user-plus" class="size-4" />
         New teammate
       </button>
@@ -321,9 +321,9 @@ onKeyStroke('Escape', () => {
     <!-- Filter row (§12.11) -->
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.q" placeholder="Search by name or email…" />
-      <div class="flex flex-wrap gap-1.5">
+      <div class="flex flex-wrap gap-1.5 max-md:w-full max-md:flex-nowrap max-md:overflow-x-auto max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden">
         <button
-          v-for="r in roleFilterOptions" :key="r.value" type="button" class="standard-pill"
+          v-for="r in roleFilterOptions" :key="r.value" type="button" class="standard-pill max-md:shrink-0 max-md:py-2! max-md:px-3.5!"
           :style="filters.role === r.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}"
           @click="filters.role = r.value">
           {{ r.label }}
@@ -420,7 +420,7 @@ onKeyStroke('Escape', () => {
     <!-- Mobile: cards -->
     <div v-if="!loading && !isDesktop && filteredUsers.length" class="space-y-2.5">
       <div
-        v-for="u in filteredUsers" :key="u.id" class="rounded-xl border p-4 cursor-pointer"
+        v-for="u in filteredUsers" :key="u.id" class="rounded-xl border p-4 cursor-pointer transition-colors active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="openEdit(u)">
         <div class="flex items-start justify-between gap-3 mb-1.5">
@@ -428,7 +428,7 @@ onKeyStroke('Escape', () => {
             <p class="text-[13px] font-semibold leading-tight truncate" :style="{ color: 'var(--color-text)' }">{{ u.name }}</p>
             <p class="text-[11px] truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ u.email }}</p>
           </div>
-          <StatusPill :status="u.deactivated_at ? 'deactivated' : 'active'" type="user" />
+          <StatusPill :status="u.deactivated_at ? 'deactivated' : 'active'" type="user" class="shrink-0" />
         </div>
         <p class="text-[11px] mb-3 flex items-center gap-1.5 flex-wrap" :style="{ color: 'var(--color-text-tertiary)' }">
           <span
@@ -439,21 +439,21 @@ onKeyStroke('Escape', () => {
           </span>
           · {{ availabilityMeta(u.availability)?.label ?? '—' }} · {{ fmtMyr(u.monthly_allowance_myr) }}
         </p>
-        <div class="pt-2 border-t flex items-center justify-between gap-3" :style="{ borderColor: 'var(--color-border)' }">
-          <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Since {{ fmtDate(u.created_at) }}</span>
-          <div class="flex items-center gap-1.5">
+        <div class="pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
+          <span class="block text-[11px] mb-2.5" :style="{ color: 'var(--color-text-tertiary)' }">Since {{ fmtDate(u.created_at) }}</span>
+          <div class="flex items-center gap-2">
             <button
-              v-if="!u.deactivated_at" type="button" class="btn-pill btn-pill-ghost text-[12px]"
+              v-if="!u.deactivated_at" type="button" class="btn-pill btn-pill-ghost text-[12px] flex-1 h-10! px-3!"
               @click.stop="pendingAction = { user: u, kind: 'reset-password' }">
               Reset password
             </button>
             <button
-              v-if="u.deactivated_at" type="button" class="btn-pill btn-pill-accent text-[12px]"
+              v-if="u.deactivated_at" type="button" class="btn-pill btn-pill-accent text-[12px] flex-1 h-10! px-3!"
               @click.stop="pendingAction = { user: u, kind: 'reactivate' }">
               Reactivate
             </button>
             <button
-              v-else type="button" class="btn-pill btn-pill-danger text-[12px]"
+              v-else type="button" class="btn-pill btn-pill-danger text-[12px] flex-1 h-10! px-3!"
               :disabled="!canDeactivate(u)" :class="{ 'opacity-40 cursor-not-allowed': !canDeactivate(u) }"
               @click.stop="canDeactivate(u) && (pendingAction = { user: u, kind: 'deactivate' })">
               Deactivate
@@ -674,6 +674,13 @@ onKeyStroke('Escape', () => {
   .slideover-leave-active .slideover-panel {
     transition: none;
   }
+}
+
+/* Mobile (<768px): tighter slideover padding and a 40px close hit area. */
+@media (max-width: 767.98px) {
+  .slideover-head { padding: 16px; }
+  .slideover-body { padding: 16px; }
+  .slideover-close { width: 40px; height: 40px; margin: -4px -4px 0 0; }
 }
 
 .confirm-overlay {

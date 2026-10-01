@@ -55,11 +55,11 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
   <Teleport to="body">
     <Transition name="preview-modal">
       <div
-v-if="open" class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6"
+v-if="open" class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 max-md:items-end max-md:p-0 max-md:pt-3"
         @click.self="open = false">
         <div class="absolute inset-0" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(2px);" @click="open = false" />
-        <div class="relative w-full max-w-[900px] h-[92vh] shadow-2xl" @click.stop>
-          <AdminDocumentPreview :data="data" closable class="h-full" @close="open = false" />
+        <div class="relative w-full max-w-[900px] h-[92vh] max-md:h-[92dvh] shadow-2xl" @click.stop>
+          <AdminDocumentPreview :data="data" closable class="h-full max-md:rounded-b-none max-md:border-b-0" @close="open = false" />
         </div>
       </div>
     </Transition>

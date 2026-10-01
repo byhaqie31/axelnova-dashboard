@@ -105,11 +105,11 @@ function fmtMyr(amount: string | number) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Orders</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Orders</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Accepted quotations turned into active engagements.</p>
       </div>
     </div>
@@ -193,29 +193,29 @@ v-for="o in orders" :key="o.id"
         v-for="o in orders"
         :key="o.id"
         type="button"
-        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="navigateTo(`/admin/orders/${o.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-2">
           <div class="min-w-0">
-            <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ o.order_number }}</p>
-            <p v-if="o.reference_code" class="font-mono text-[10px]" :style="{ color: 'var(--color-text-tertiary)' }">from {{ o.reference_code }}</p>
+            <p class="font-mono text-[12px] font-medium break-all" :style="{ color: 'var(--color-accent)' }">{{ o.order_number }}</p>
+            <p v-if="o.reference_code" class="font-mono text-[11px] break-all" :style="{ color: 'var(--color-text-tertiary)' }">from {{ o.reference_code }}</p>
           </div>
-          <AdminStatusPill :status="o.status" />
+          <AdminStatusPill :status="o.status" class="shrink-0" />
         </div>
         <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ o.name ?? '—' }}</p>
-        <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.email ?? '' }}</p>
+        <p class="text-[11px] mb-3 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ o.email ?? '' }}</p>
         <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3">
-            <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
+            <p class="text-[13px] font-semibold tabular-nums" :style="{ color: 'var(--color-text)' }">
               {{ fmtMyr(o.final_amount_myr) }}
             </p>
-            <p class="text-[11px]" :style="{ color: Number(o.remaining_myr) > 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }">
+            <p class="text-[11px] text-right" :style="{ color: Number(o.remaining_myr) > 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }">
               {{ Number(o.remaining_myr) > 0 ? `${fmtMyr(o.remaining_myr)} remaining` : 'Paid in full' }}
             </p>
           </div>
-          <div class="flex items-center justify-between gap-3 text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">
+          <div class="flex items-center justify-between flex-wrap gap-x-3 gap-y-0.5 text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">
             <span :style="{ color: isOverdue(o) ? 'var(--color-danger)' : 'var(--color-text-secondary)' }">
               Due {{ fmtDate(o.due_at) }}<span v-if="isOverdue(o)" class="font-semibold"> · Overdue</span>
             </span>

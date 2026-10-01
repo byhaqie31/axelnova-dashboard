@@ -24,7 +24,7 @@ name="i-lucide-search" class="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 
       type="search"
       :placeholder="placeholder"
       :aria-label="ariaLabel ?? 'Search'"
-      class="search-bar w-full h-9 rounded-full border text-[13px]"
+      class="search-bar w-full h-9 max-md:h-10 rounded-full border text-[13px]"
       :style="{
         paddingLeft: '2.5rem',
         paddingRight: value ? '2.25rem' : '1rem',
@@ -38,7 +38,7 @@ name="i-lucide-search" class="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 
       v-if="value"
       type="button"
       aria-label="Clear search"
-      class="absolute right-2 top-1/2 -translate-y-1/2 size-6 rounded-full inline-flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary)"
+      class="absolute right-2 max-md:right-1 top-1/2 -translate-y-1/2 size-6 max-md:size-8 rounded-full inline-flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)"
       :style="{ color: 'var(--color-text-tertiary)' }"
       @click="value = ''"
     >
@@ -58,4 +58,10 @@ name="i-lucide-search" class="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 
 /* Hide the native search "clear" so only our button shows. */
 .search-bar::-webkit-search-decoration,
 .search-bar::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+/* Mobile: iOS zooms the page when a focused input is under 16px — keep the typed
+   text at 16px, the placeholder at a calmer 14px. Desktop keeps 13px. */
+@media (max-width: 767.98px) {
+  .search-bar { font-size: 16px; }
+  .search-bar::placeholder { font-size: 14px; }
+}
 </style>

@@ -230,23 +230,23 @@ function roleLabel(role: string) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Payroll</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Payroll</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           Set allowances, generate a payslip per teammate, and open anyone's full history. Amounts as agreed, no statutory calculation.
         </p>
       </div>
       <!-- Period -->
-      <div class="flex items-end gap-2">
-        <label class="block">
+      <div class="flex items-end gap-2 max-md:w-full">
+        <label class="block max-md:flex-1">
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Month</span>
-          <AdminSelect v-model="selMonth" :items="monthItems" class="mt-1 w-36" />
+          <AdminSelect v-model="selMonth" :items="monthItems" class="mt-1 w-36 max-md:w-full" />
         </label>
-        <label class="block">
+        <label class="block max-md:flex-1">
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Year</span>
-          <AdminSelect v-model="selYear" :items="yearItems" class="mt-1 w-24" />
+          <AdminSelect v-model="selYear" :items="yearItems" class="mt-1 w-24 max-md:w-full" />
         </label>
       </div>
     </div>
@@ -263,7 +263,7 @@ function roleLabel(role: string) {
 
     <template v-else>
       <!-- Dashboard tiles -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 md:mb-8">
         <div v-for="t in tiles" :key="t.key" class="rounded-2xl border p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <span class="size-9 rounded-xl inline-flex items-center justify-center mb-3" :style="{ background: t.bg, color: t.fg }">
             <UIcon :name="t.icon" class="size-[18px]" />
@@ -286,20 +286,20 @@ function roleLabel(role: string) {
 
       <!-- Roster -->
       <div v-else>
-        <div class="flex items-center justify-between gap-3 mb-3">
+        <div class="flex items-center justify-between gap-3 mb-3 max-md:flex-wrap">
           <h2 class="text-[13px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Team</h2>
-          <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="openOneTime">
+          <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:w-full" @click="openOneTime">
             <UIcon name="i-lucide-gift" class="size-4" /> Record one-time payment
           </button>
         </div>
         <div class="space-y-2.5">
         <div
           v-for="row in roster" :key="row.user_id"
-          class="flex items-center gap-4 flex-wrap p-4 rounded-2xl border"
+          class="flex items-center gap-4 flex-wrap p-4 rounded-2xl border max-md:grid max-md:grid-cols-3 max-md:gap-x-3 max-md:gap-y-3"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <!-- Person (links to detail) -->
-          <div class="min-w-40 flex-1">
-            <div class="flex items-center gap-2">
+          <div class="min-w-40 flex-1 max-md:col-span-3 max-md:min-w-0">
+            <div class="flex items-center gap-2 max-md:flex-wrap">
               <NuxtLink :to="`/admin/payroll/${row.user_id}`" class="text-[14px] font-semibold tracking-tight hover:underline" style="color: var(--color-text);">{{ row.name }}</NuxtLink>
               <span v-if="row.deactivated" class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded" :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">deactivated</span>
             </div>
@@ -307,7 +307,7 @@ function roleLabel(role: string) {
           </div>
 
           <!-- Allowance (read-only — set on the Users page) -->
-          <div class="w-32">
+          <div class="w-32 max-md:w-auto max-md:min-w-0">
             <p class="text-[10px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Allowance</p>
             <p class="text-[13px] font-semibold tabular-nums" style="color: var(--color-text);">
               {{ row.monthly_allowance_myr == null ? 'None' : fmtMyr(row.monthly_allowance_myr) }}
@@ -315,7 +315,7 @@ function roleLabel(role: string) {
           </div>
 
           <!-- Extras -->
-          <div class="w-28">
+          <div class="w-28 max-md:w-auto max-md:min-w-0">
             <p class="text-[10px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Task extras</p>
             <p class="text-[13px] font-semibold tabular-nums" style="color: var(--color-text);">
               {{ fmtMyr(row.pending_extras_myr) }}<span v-if="row.pending_extras_count" class="text-[11px] font-normal" style="color: var(--color-text-tertiary);"> · {{ row.pending_extras_count }}</span>
@@ -323,14 +323,14 @@ function roleLabel(role: string) {
           </div>
 
           <!-- Projected -->
-          <div class="w-28">
+          <div class="w-28 max-md:w-auto max-md:min-w-0">
             <p class="text-[10px] uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Projected</p>
             <p class="text-[13px] font-bold tabular-nums" style="color: var(--color-accent);">{{ fmtMyr(row.projected_gross_myr) }}</p>
           </div>
 
           <!-- Actions -->
-          <div class="flex items-center gap-1.5 ml-auto">
-            <button type="button" class="btn-table-action is-accent" :disabled="!!generateDisabledReason(row)" :title="generateDisabledReason(row) ?? undefined" @click="openGenerate(row)">
+          <div class="flex items-center gap-1.5 ml-auto max-md:col-span-3 max-md:ml-0 max-md:pt-3 max-md:border-t max-md:border-(--color-border)">
+            <button type="button" class="btn-table-action is-accent max-md:flex-1" :disabled="!!generateDisabledReason(row)" :title="generateDisabledReason(row) ?? undefined" @click="openGenerate(row)">
               <UIcon name="i-lucide-receipt" class="size-3.5" />Generate
             </button>
             <NuxtLink :to="`/admin/payroll/${row.user_id}`" class="cal-mini-nav" aria-label="Payroll details">
@@ -350,7 +350,7 @@ function roleLabel(role: string) {
             <h2 class="text-[17px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Generate {{ period }} payslip</h2>
             <p class="text-[13px] mb-4" style="color: var(--color-text-secondary);">For <span class="font-medium" style="color: var(--color-text);">{{ pendingGenerate.name }}</span>.</p>
 
-            <div class="rounded-xl border p-4 mb-4 grid grid-cols-3 gap-3" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
+            <div class="rounded-xl border p-4 mb-4 grid grid-cols-3 gap-3 max-md:grid-cols-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
               <div>
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">Allowance</p>
                 <p class="text-[14px] font-semibold tabular-nums" style="color: var(--color-text);">{{ pendingGenerate.monthly_allowance_myr == null ? 'None' : fmtMyr(pendingGenerate.monthly_allowance_myr) }}</p>
@@ -359,7 +359,7 @@ function roleLabel(role: string) {
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">Extras ({{ pendingGenerate.pending_extras_count }})</p>
                 <p class="text-[14px] font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyr(pendingGenerate.pending_extras_myr) }}</p>
               </div>
-              <div>
+              <div class="max-md:col-span-2">
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">Gross</p>
                 <p class="text-[14px] font-bold tabular-nums" style="color: var(--color-accent);">{{ fmtMyr(pendingGenerate.projected_gross_myr) }}</p>
               </div>
@@ -368,7 +368,7 @@ function roleLabel(role: string) {
             <div class="mb-4">
               <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Method</span>
               <div class="flex flex-wrap gap-1.5 mt-1.5">
-                <button v-for="m in methodOptions" :key="m.value" type="button" class="standard-pill" :style="genMethod === m.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}" @click="genMethod = m.value">{{ m.label }}</button>
+                <button v-for="m in methodOptions" :key="m.value" type="button" class="standard-pill max-md:min-h-9" :style="genMethod === m.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}" @click="genMethod = m.value">{{ m.label }}</button>
               </div>
             </div>
 
@@ -377,7 +377,7 @@ function roleLabel(role: string) {
               <input v-model="genNote" type="text" placeholder="Internal note" class="contact-input mt-1 w-full">
             </label>
 
-            <div class="flex items-center justify-end gap-2">
+            <div class="flex items-center justify-end gap-2 max-md:flex-col-reverse max-md:items-stretch">
               <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="generating" @click="pendingGenerate = null">Cancel</button>
               <button type="button" class="btn-pill btn-pill-accent text-[13px]" :disabled="generating" @click="confirmGenerate">
                 {{ generating ? 'Generating…' : 'Generate payslip' }}
@@ -406,7 +406,7 @@ function roleLabel(role: string) {
             <div class="mb-4">
               <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Type</span>
               <div class="flex flex-wrap gap-1.5 mt-1.5">
-                <button v-for="t in oneTimeTypes" :key="t.value" type="button" class="standard-pill" :style="otType === t.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}" @click="otType = t.value">{{ t.label }}</button>
+                <button v-for="t in oneTimeTypes" :key="t.value" type="button" class="standard-pill max-md:min-h-9" :style="otType === t.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}" @click="otType = t.value">{{ t.label }}</button>
               </div>
             </div>
 
@@ -454,7 +454,7 @@ function roleLabel(role: string) {
               <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-accent);">{{ fmtMyr(otProjected) }}</span>
             </div>
 
-            <div class="flex items-center justify-end gap-2">
+            <div class="flex items-center justify-end gap-2 max-md:flex-col-reverse max-md:items-stretch">
               <button type="button" class="btn-pill btn-pill-ghost text-[13px]" :disabled="savingOneTime" @click="oneTimeOpen = false">Cancel</button>
               <button type="button" class="btn-pill btn-pill-accent text-[13px]" :disabled="savingOneTime || !otCanSubmit" @click="confirmOneTime">
                 {{ savingOneTime ? 'Recording…' : otMarkPaid ? 'Record payment' : 'Save as pending' }}
@@ -513,6 +513,21 @@ function roleLabel(role: string) {
 .confirm-fade-leave-to {
   opacity: 0;
 }
+/* Phone: roomier touch targets, 16px inputs (no iOS focus-zoom — .contact-input
+   is unlayered, so utilities can't override it), and dialogs that scroll
+   instead of clipping on short screens. */
+@media (max-width: 767.98px) {
+  .cal-mini-nav { width: 40px; height: 40px; }
+  .btn-table-action { height: 40px; }
+  .contact-input { font-size: 16px; }
+  .confirm-overlay { padding: 16px; }
+  .confirm-card {
+    padding: 20px;
+    max-height: 100%;
+    overflow-y: auto;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .confirm-fade-enter-active,
   .confirm-fade-leave-active { transition: none; }

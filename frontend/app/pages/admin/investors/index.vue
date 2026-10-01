@@ -48,12 +48,12 @@ async function copyLandingUrl(path: string) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <!-- Header -->
-    <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-start justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">Admin · Fundraising</p>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Investors</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Investors</h1>
         <p class="text-[14px] mt-1 max-w-2xl" style="color: var(--color-text-secondary);">
           Manage investor relationships and pitch materials across Axel Nova Ventures projects. Investor accounts and gated deal rooms are coming soon — for now, share project landings directly.
         </p>
@@ -61,7 +61,7 @@ async function copyLandingUrl(path: string) {
       <button
         type="button"
         disabled
-        class="btn-pill text-[12px] inline-flex items-center gap-1.5 opacity-60 cursor-not-allowed"
+        class="btn-pill text-[12px] inline-flex items-center gap-1.5 opacity-60 cursor-not-allowed max-md:w-full"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
       >
         <UIcon name="i-lucide-plus" class="size-3.5" />
@@ -70,7 +70,7 @@ async function copyLandingUrl(path: string) {
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8 md:mb-10">
       <div
         v-for="stat in [
           { label: 'Active investors', value: '0' },
@@ -79,16 +79,16 @@ async function copyLandingUrl(path: string) {
           { label: 'Open conversations', value: '0' },
         ]"
         :key="stat.label"
-        class="rounded-2xl border p-5"
+        class="rounded-2xl border p-4 md:p-5"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
       >
         <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">{{ stat.label }}</p>
-        <p class="mt-2 text-[28px] font-semibold tabular-nums tracking-tight" style="color: var(--color-text);">{{ stat.value }}</p>
+        <p class="mt-2 text-[24px] md:text-[28px] font-semibold tabular-nums tracking-tight" style="color: var(--color-text);">{{ stat.value }}</p>
       </div>
     </div>
 
     <!-- Pitch material per project -->
-    <section class="mb-10">
+    <section class="mb-8 md:mb-10">
       <div class="flex items-end justify-between mb-4">
         <div>
           <h2 class="text-[18px] font-semibold tracking-tight" style="color: var(--color-text);">Pitch material</h2>
@@ -100,13 +100,13 @@ async function copyLandingUrl(path: string) {
         <article
           v-for="p in projects"
           :key="p.slug"
-          class="rounded-2xl border p-5 transition-shadow hover:shadow-md"
+          class="rounded-2xl border p-4 md:p-5 transition-shadow hover:shadow-md"
           :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         >
           <div class="flex items-start justify-between gap-3 mb-3">
             <div class="min-w-0">
               <h3 class="text-[15px] font-semibold tracking-tight" :style="{ color: 'var(--color-text)' }">{{ p.name }}</h3>
-              <p class="text-[10px] font-mono mt-0.5" :style="{ color: 'var(--color-text-tertiary)' }">{{ p.slug }}</p>
+              <p class="text-[11px] md:text-[10px] font-mono mt-0.5 max-md:break-all" :style="{ color: 'var(--color-text-tertiary)' }">{{ p.slug }}</p>
             </div>
             <span
               class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
@@ -125,7 +125,7 @@ async function copyLandingUrl(path: string) {
                 :href="m.url"
                 target="_blank"
                 rel="noopener"
-                class="inline-flex items-center gap-1.5 text-[12px] transition-colors hover:underline"
+                class="inline-flex items-center gap-1.5 text-[12px] transition-colors hover:underline active:underline max-md:py-1"
                 :style="{ color: 'var(--color-text-secondary)' }"
               >
                 <UIcon name="i-lucide-file-text" class="size-3.5" />
@@ -139,7 +139,7 @@ async function copyLandingUrl(path: string) {
             <NuxtLink
               :to="p.landingUrl"
               target="_blank"
-              class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary) inline-flex items-center gap-1"
+              class="text-[11px] font-medium px-2.5 py-1 max-md:px-3 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary) inline-flex items-center gap-1"
               :style="{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }"
             >
               Open landing
@@ -147,7 +147,7 @@ async function copyLandingUrl(path: string) {
             </NuxtLink>
             <button
               type="button"
-              class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary) inline-flex items-center gap-1 ml-auto"
+              class="text-[11px] font-medium px-2.5 py-1 max-md:px-3 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary) inline-flex items-center gap-1 ml-auto"
               :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
               @click="copyLandingUrl(p.landingUrl)"
             >
@@ -169,7 +169,7 @@ async function copyLandingUrl(path: string) {
       </div>
 
       <div
-        class="rounded-2xl border p-12 text-center"
+        class="rounded-2xl border p-8 md:p-12 text-center"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
       >
         <div

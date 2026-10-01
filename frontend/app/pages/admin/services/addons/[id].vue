@@ -104,15 +104,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <NuxtLink
-to="/admin/services/addons" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/services/addons" class="inline-flex items-center gap-2 text-[13px] mb-5 md:mb-8 max-md:py-1 transition-opacity hover:opacity-70 active:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All add-ons
     </NuxtLink>
 
     <div class="mb-6">
-      <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
+      <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
         {{ isNew ? 'New add-on' : 'Edit add-on' }}
       </h1>
     </div>
@@ -120,7 +120,7 @@ to="/admin/services/addons" class="inline-flex items-center gap-2 text-[13px] mb
     <p v-if="message" class="mb-4 text-[13px]" :style="{ color: 'var(--color-danger)' }">{{ message }}</p>
 
     <form
-v-if="!loading" class="rounded-2xl border p-6 space-y-5"
+v-if="!loading" class="rounded-2xl border p-4 md:p-6 space-y-5"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
       @submit.prevent="save">
 
@@ -224,7 +224,7 @@ class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
         </span>
       </button>
 
-      <div class="flex items-center gap-3 pt-2">
+      <div class="flex items-center gap-3 pt-2 max-md:flex-col-reverse max-md:items-stretch">
         <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
           {{ saving ? 'Saving…' : isNew ? 'Create add-on' : 'Save changes' }}
         </button>
@@ -235,3 +235,11 @@ class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
     <div v-else class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
   </div>
 </template>
+
+<style scoped>
+/* Phone: 16px inputs stop iOS focus-zoom (.contact-input is 14px, unlayered,
+   so a Tailwind utility can't override it). */
+@media (max-width: 767.98px) {
+  .contact-input { font-size: 16px; }
+}
+</style>
