@@ -96,16 +96,25 @@ html,body{background:var(--paper);color:var(--ink);
 .head{display:flex;justify-content:space-between;align-items:flex-start;}
 .brand{display:flex;gap:13px;align-items:flex-start;}
 .brand .logo{height:38px;width:auto;display:block;margin-top:1px;}
-.brand .wm{font-weight:700;font-size:16px;line-height:1.12;
-  letter-spacing:-.005em;color:var(--ink);}
-.brand .tag{margin-top:6px;font-size:10.5px;color:var(--muted);letter-spacing:.005em;}
+/* Name cap-top sits level with the visible mark's top, the SSM baseline level
+   with its bottom (the PNG's lower ~30% is transparent padding). */
+.brand .wm{font-weight:700;font-size:15px;line-height:1;letter-spacing:.08em;
+  color:var(--ink);white-space:nowrap;margin-top:-.5px;}
+/* Proportional figures on the SSM line only; prices stay tabular. */
+.brand .reg{font-size:10px;line-height:1;letter-spacing:.01em;color:var(--body);
+  font-variant-numeric:proportional-nums;white-space:nowrap;margin-top:4.25px;}
 .doc{text-align:right;}
+/* The first pair's top margin collapses into this one: 18pt from the title
+   to the first pair, then ~14pt between pairs. 10px (not 9) because Chromium
+   snaps these baselines to whole px — measured in the prod Alpine Chromium,
+   NO./DATE/STATUS land at 100.5 / 114.75 / 128.25pt. */
 .doc .kind-big{font-weight:700;font-size:28px;
-  letter-spacing:-.01em;line-height:1;margin-bottom:9px;color:var(--ink);}
-.doc .pair{margin-top:9px;}
+  letter-spacing:-.01em;line-height:1;margin-bottom:10px;color:var(--ink);}
+.doc .pair{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;
+  margin-top:5.67px;}
 .doc .lab{font-size:8.5px;font-weight:500;letter-spacing:.18em;
   text-transform:uppercase;color:var(--muted);}
-.doc .val{font-size:11.5px;color:var(--ink);margin-top:3px;}
+.doc .val{font-size:11.5px;color:var(--ink);margin-top:0;line-height:1;}
 
 /* ---- rule with primary leading segment ---- */
 .rule{position:relative;height:.5px;background:var(--hairline);margin:16px 0 0;}
@@ -216,7 +225,7 @@ tbody tr:last-child td{border-bottom:0;}
 .sum-row.total .v{font-size:14px;font-weight:500;color:var(--primary);}
 
 /* ---- panels ---- */
-.panels{display:flex;gap:18px;margin-top:18px;}
+.panels{display:flex;flex-wrap:wrap;gap:18px;margin-top:18px;}
 .panel{flex:1;border:1px solid var(--hairline);border-radius:9px;
   background:var(--surface);padding:17px 19px 18px;}
 .panel.accent{border-color:var(--primary);}
@@ -227,6 +236,15 @@ tbody tr:last-child td{border-bottom:0;}
 .panel.accent .val{color:var(--primary);}
 .panel .note{font-size:10px;color:var(--muted);line-height:1.55;margin-top:10px;}
 .panel .note b{color:var(--ink);font-weight:500;}
+/* Accent panel with a "what this bill is for" half: a 2-col × 3-row grid so
+   each right-hand line shares a baseline with its left-hand partner (amount /
+   title, label / label, note / note). The 56px gap lands the right column
+   where the old balance panel's text started. Always takes its own row. */
+.panel.split{flex:1 1 100%;display:grid;grid-template-columns:1fr 1fr;
+  grid-auto-flow:column;grid-template-rows:auto auto auto;align-items:baseline;
+  column-gap:56px;}
+.panel .bf-t{font-size:13px;font-weight:500;color:var(--ink);letter-spacing:-.005em;}
+.panel.split .label.bf-l{color:var(--muted);}
 
 /* ---- how to pay (invoice) ---- */
 /* Kept whole across a page break — a half-split QR is unscannable. */
@@ -441,23 +459,49 @@ function optionCardHTML(c: OptionCard, cur: string): string {
   </div>`;
 }
 
-function panelHTML(p: Panel, cur: string): string {
+function panelHTML(p: Panel, cur: string, billingFor?: DocumentData["billingFor"]): string {
   const note = p.note
     ? `<div class="note">${esc(p.note).replace(/\n/g, "<br>")}</div>`
     : "";
+  if (billingFor?.title) {
+    // Grid auto-flows by column, so every one of the six cells must exist —
+    // an empty <div> holds a slot when a note is missing.
+    const bfNote = billingFor.text
+      ? `<div class="note">${esc(billingFor.text).replace(/\n/g, "<br>")}</div>`
+      : "<div></div>";
+    return `<div class="panel split${p.accent ? " accent" : ""}">
+    <div class="val">${money(p.value, cur, 2)}</div>
+    <div class="label">${esc(p.label)}</div>${note || "<div></div>"}
+    <div class="bf-t">${esc(billingFor.title)}</div>
+    <div class="label bf-l">${esc(billingFor.label || "Scope covered")}</div>${bfNote}
+  </div>`;
+  }
   return `<div class="panel${p.accent ? " accent" : ""}">
     <div class="val">${money(p.value, cur, 2)}</div>
     <div class="label">${esc(p.label)}</div>${note}
   </div>`;
 }
 
+/**
+ * Letterhead identity for the header on every document kind.
+ *
+ * Owned by the renderer, not read from `data.studio`, for the same reason as
+ * STUDIO_PAY: PDFs re-render from the frozen payload on every download, and
+ * older payloads carry `reg: "Reg. …"`. Reading it from the payload would print
+ * the stale string on every past document. Header chrome is house style; the
+ * payload freezes data, not letterhead.
+ *
+ * KEEP IN SYNC with `DocumentMapper::STUDIO['reg']` (backend).
+ */
+const STUDIO_IDENTITY = {
+  name: "AXEL NOVA VENTURES",
+  reg: "SSM Registration: 202603119899 (CA0420977-U)",
+} as const;
+
 function headHTML(data: DocumentData): string {
   const kindWord =
     data.kind === "invoice" ? "Invoice" : data.kind === "receipt" ? "Receipt" : "";
   const logo = data.studio.logo || STUDIO_LOGO;
-  const tag = data.studio.tagline
-    ? `<div class="tag">${esc(data.studio.tagline)}</div>`
-    : "";
 
   const pairs: string[] = [];
   if (data.kind === "quotation") {
@@ -479,23 +523,17 @@ function headHTML(data: DocumentData): string {
     <div class="brand">
       <img class="logo" src="${esc(logo)}" alt="${esc(data.studio.name)}" />
       <div>
-        <div class="wm">${wordmark(data.studio.name)}</div>
-        ${tag}
+        <div class="wm">${esc(STUDIO_IDENTITY.name)}</div>
+        <div class="reg">${esc(STUDIO_IDENTITY.reg)}</div>
       </div>
     </div>
     <div class="doc">${big}${pairs.join("")}</div>
   </div>`;
 }
 
+/** One right-aligned meta line: label then value on a shared baseline. */
 function pair(label: string, value: string): string {
-  return `<div class="pair"><div class="lab">${esc(label)}</div><div class="val">${esc(value)}</div></div>`;
-}
-
-/** Wordmark on (at most) two lines: first two words, then the rest. */
-function wordmark(name: string): string {
-  const w = name.trim().split(/\s+/);
-  if (w.length <= 2) return esc(name);
-  return `${esc(w.slice(0, 2).join(" "))}<br>${esc(w.slice(2).join(" "))}`;
+  return `<div class="pair"><span class="lab">${esc(label)}</span><span class="val">${esc(value)}</span></div>`;
 }
 
 function creditHTML(data: DocumentData): string {
@@ -539,10 +577,8 @@ function renderStandard(data: DocumentData): string {
     : "";
 
   const terms = (data.terms ?? []).map((x) => `<li>${esc(x)}</li>`).join("");
-  const studioLn = [data.studio.email, data.studio.reg]
-    .filter(Boolean)
-    .map(esc)
-    .join("<br>");
+  // reg is not repeated here — the letterhead already carries the SSM line.
+  const studioLn = esc(data.studio.email);
 
   const depositCard =
     (data.depositPct ?? 100) < 100
@@ -649,7 +685,7 @@ function renderDetailed(data: DocumentData): string {
       <div class="party">
         <div class="plabel">Bill to</div>
         <div class="pname">${esc(data.client.name)}</div>
-        <div class="pln">${[esc(data.client.attn), addr, esc(data.client.email)].filter(Boolean).join("<br>")}</div>
+        <div class="pln">${[esc(data.client.attn), addr, esc(data.client.email), esc(data.client.company)].filter(Boolean).join("<br>")}</div>
       </div>
       <div class="party">
         <div class="plabel">Project</div>
@@ -709,9 +745,17 @@ function renderDetailed(data: DocumentData): string {
   if (data.paymentTerms)
     parts.push(`<div class="sec">${sectionHeaderHTML(data.paymentTerms.title ?? "Payment terms")}${bulletHTML({ items: data.paymentTerms.items })}</div>`);
 
+  // Display switches hide at RENDER time: the payload keeps every row and
+  // panel (amount_total is derived from the summary rows), and hidden parts are
+  // not emitted at all — no display:none, so hidden figures can't leak through
+  // copy, search or a screen reader.
+  const showSummary = data.display?.summary !== false;
+  const showRemaining = data.display?.remaining !== false;
+
   // Summary (invoice)
-  if (data.summary) {
+  if (data.summary && showSummary) {
     const rows = data.summary.rows
+      .filter((r) => showRemaining || r.role !== "remaining")
       .map((r) => {
         const cls = [
           r.total ? "total" : "",
@@ -727,9 +771,17 @@ function renderDetailed(data: DocumentData): string {
     parts.push(`<div class="sec">${sectionHeaderHTML(data.summary.title ?? "Summary")}<div class="sum">${rows}</div></div>`);
   }
 
-  // Deposit / balance panels
-  if (data.panels?.length)
-    parts.push(`<div class="panels">${data.panels.map((p) => panelHTML(p, cur)).join("")}</div>`);
+  // Deposit / balance panels. billingFor fills the right half of the accent
+  // (amount-due) panel.
+  const panels = (data.panels ?? []).filter(
+    (p) => showRemaining || p.role !== "balance",
+  );
+  if (panels.length)
+    parts.push(`<div class="panels">${panels.map((p) => panelHTML(p, cur, p.accent ? data.billingFor : undefined)).join("")}</div>`);
+
+  // Scope covered — what this bill pays for, before the payment instructions.
+  if (data.scope?.items?.length)
+    parts.push(`<div class="sec">${sectionHeaderHTML(data.scope.title || "Scope covered")}${bulletHTML(data.scope)}</div>`);
 
   // How to pay — invoices only, directly under the amount-due panel it refers to.
   if (data.kind === "invoice") parts.push(payBlockHTML(data));

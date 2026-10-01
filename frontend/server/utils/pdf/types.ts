@@ -1,7 +1,8 @@
 // Data contracts for the Axel Nova document generator.
 //
-// One shared visual design (Geist + the red/gradient palette, logo-and-wordmark
-// header, footer) renders in two CONTENT formats, selected by `layout`:
+// One shared visual design (Satoshi + the pink/purple house palette, the
+// logo + "AXEL NOVA VENTURES" / SSM-line letterhead, footer) renders in two
+// CONTENT formats, selected by `layout`:
 //   - "standard"  the simple parties → scope table → totals format. Good default
 //                 for non-customized projects.
 //   - "detailed"  the rich sectioned format (packages, options, care plans,
@@ -19,7 +20,8 @@ export interface Studio {
   logo?: string;
   email?: string;
   site?: string;
-  /** business / company registration number */
+  /** business / company registration number. Frozen into payloads but NOT read
+   *  by the header — the letterhead renders from `STUDIO_IDENTITY` in template.ts. */
   reg?: string;
   /** footer credit, e.g. "Designed by Qie / Axel Nova Ventures" */
   designedBy?: string;
@@ -133,6 +135,8 @@ export interface SummaryRow {
   red?: boolean;
   /** emphasize value in green — money already received ("Paid to date") */
   green?: boolean;
+  /** stable hook for render-time display switches (never match on label text) */
+  role?: "remaining";
 }
 
 export interface Panel {
@@ -143,6 +147,8 @@ export interface Panel {
   note?: string;
   /** red-bordered emphasis card */
   accent?: boolean;
+  /** stable hook for render-time display switches (never match on label text) */
+  role?: "balance";
 }
 
 export interface NoteLine {
@@ -206,6 +212,14 @@ export interface DocumentData {
   paymentTerms?: { title?: string; items: string[] };
   summary?: { title?: string; rows: SummaryRow[] };
   panels?: Panel[];
+  /** Render-time switches. Absent = everything shown (frozen payloads predate
+   *  this). Hidden parts are not emitted at all — the data stays in the payload
+   *  because `amount_total` is derived from the summary rows. */
+  display?: { summary?: boolean; remaining?: boolean };
+  /** Right half of the accent amount panel: what this bill is for. */
+  billingFor?: { title: string; label?: string; text?: string };
+  /** Bullet section between the panels and How to pay. */
+  scope?: { title?: string } & BulletList;
   /** bottom prose, e.g. "Estimated completion: …". Frozen invoice/receipt
    *  payloads may store the admin's free-text notes as a plain string —
    *  the template normalizes it to a single unlabelled line. */

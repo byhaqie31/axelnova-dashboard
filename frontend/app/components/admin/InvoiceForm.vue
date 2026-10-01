@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Shared invoice form — used by both the issue page (create) and the edit
 // page. Create posts the full body; edit merges over the stored issue inputs
-// server-side, and when `amountsLocked` (payments recorded) only notes and
-// due date are submitted — the other fields render disabled.
+// server-side, and when `amountsLocked` (payments recorded) only notes, due
+// date and the display options are submitted — the other fields render disabled.
 
 interface OrderMoney {
   id: number
@@ -51,7 +51,37 @@ const form = reactive({
   promoCode: (init.promoCode ?? '') as string,
   notes: (init.notes ?? '') as string,
   dueAt: (init.dueAt ?? '') as string,
+  // Display options — layout only, never money, so they stay editable when
+  // amounts lock. Hidden parts are dropped at render time; the stored figures
+  // (and the invoice total) don't change.
+  showSummary: init.showSummary !== false,
+  showRemaining: init.showRemaining !== false,
+  describeBilling: Boolean(init.billingTitle),
+  billingTitle: (init.billingTitle ?? '') as string,
+  billingLabel: (init.billingLabel ?? '') as string,
+  billingText: (init.billingText ?? '') as string,
+  addScope: Array.isArray(init.scopeItems) && init.scopeItems.length > 0,
+  scopeTitle: (init.scopeTitle ?? '') as string,
+  scopeText: (Array.isArray(init.scopeItems) ? init.scopeItems.join('\n') : '') as string,
 })
+
+// "What this payment covers" title, prefilled from the invoice type. A title
+// still matching the old type's default follows a type change; a hand-edited
+// one is left alone.
+const BILLING_TITLES: Record<string, string> = {
+  deposit: 'Deposit on signing and mobilisation',
+  partial: 'Progress payment on delivered milestones',
+  final: 'Final balance on completion and handover',
+}
+const SCOPE_MAX = 8
+watch(() => form.describeBilling, (on) => {
+  if (on && !form.billingTitle.trim()) form.billingTitle = BILLING_TITLES[form.type] ?? ''
+})
+watch(() => form.type, (t, prev) => {
+  if (form.describeBilling && form.billingTitle === BILLING_TITLES[prev]) form.billingTitle = BILLING_TITLES[t] ?? ''
+})
+const scopeItems = computed(() =>
+  form.scopeText.split('\n').map(l => l.trim()).filter(Boolean))
 
 // Sensible default per invoice type, drawn from the order: deposit → deposit due,
 // partial / final → outstanding balance. Always editable. (Create mode only —
@@ -135,7 +165,23 @@ function fullBody(): Record<string, unknown> {
   }
   if (form.notes || props.mode === 'edit') body.notes = form.notes || null
   if (form.dueAt) body.dueAt = form.dueAt
-  return body
+  return { ...body, ...displayBody() }
+}
+
+// Always sent in full — a toggle switched off sends nulls, so an edit clears
+// the stored option instead of keeping it.
+function displayBody(): Record<string, unknown> {
+  const billing = form.describeBilling && form.billingTitle.trim()
+  const scope = form.addScope && scopeItems.value.length > 0
+  return {
+    showSummary: form.showSummary,
+    showRemaining: form.showRemaining,
+    billingTitle: billing ? form.billingTitle.trim() : null,
+    billingLabel: billing ? form.billingLabel.trim() || null : null,
+    billingText: billing ? form.billingText.trim() || null : null,
+    scopeTitle: scope ? form.scopeTitle.trim() || null : null,
+    scopeItems: scope ? scopeItems.value : null,
+  }
 }
 
 function submitBody(): Record<string, unknown> {
@@ -143,7 +189,7 @@ function submitBody(): Record<string, unknown> {
   // Locked: the server rejects amount-bearing fields — send only what may change.
   const body: Record<string, unknown> = { notes: form.notes || null }
   if (form.dueAt) body.dueAt = form.dueAt
-  return body
+  return { ...body, ...displayBody() }
 }
 
 // ── Document preview (lazy) ────────────────────────────────────────────────
@@ -186,6 +232,14 @@ function submit() {
     toast.error('Enter an amount', 'The invoice amount must be greater than zero.')
     return
   }
+  if (form.addScope && scopeItems.value.length > SCOPE_MAX) {
+    toast.error('Too many scope bullets', `Keep it to ${SCOPE_MAX} or fewer — 5 reads best.`)
+    return
+  }
+  if (form.addScope && scopeItems.value.some(l => l.length > 120)) {
+    toast.error('Scope bullet too long', 'Each bullet can be up to 120 characters.')
+    return
+  }
   emit('submit', submitBody())
 }
 
@@ -222,7 +276,7 @@ function fmtMyr(amount: string | number) {
         class="rounded-xl border px-3 py-2 text-[12px] flex items-center gap-2"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
         <UIcon name="i-lucide-lock" class="size-3.5 shrink-0" />
-        Payments are recorded against this invoice — amounts are locked. Only the note and due date can change.
+        Payments are recorded against this invoice — amounts are locked. Only the note, due date and display options can change.
       </p>
 
       <div class="grid sm:grid-cols-2 gap-3">
@@ -274,6 +328,59 @@ function fmtMyr(amount: string | number) {
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Due date (optional)</span>
           <input v-model="form.dueAt" type="date" class="contact-input mt-1 w-full">
         </label>
+      </div>
+
+      <!-- Display — what the PDF shows. Layout only: hidden sections are
+           left out of the document, the invoice total never changes. -->
+      <div class="pt-4 border-t space-y-3" style="border-color: var(--color-border);">
+        <p class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Display</p>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="flex items-center gap-2.5 cursor-pointer select-none">
+            <input v-model="form.showSummary" type="checkbox" class="size-4 shrink-0" style="accent-color: var(--color-accent);">
+            <span class="text-[13px]" style="color: var(--color-text);">Show summary <span style="color: var(--color-text-tertiary);">(agreed total, paid to date)</span></span>
+          </label>
+          <label class="flex items-center gap-2.5 cursor-pointer select-none">
+            <input v-model="form.showRemaining" type="checkbox" class="size-4 shrink-0" style="accent-color: var(--color-accent);">
+            <span class="text-[13px]" style="color: var(--color-text);">Show remaining balance</span>
+          </label>
+        </div>
+
+        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+          <input v-model="form.describeBilling" type="checkbox" class="size-4 shrink-0" style="accent-color: var(--color-accent);">
+          <span class="text-[13px]" style="color: var(--color-text);">Describe what this payment covers</span>
+        </label>
+        <div v-if="form.describeBilling" class="grid sm:grid-cols-2 gap-3 pl-6">
+          <label class="block">
+            <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Title</span>
+            <input v-model="form.billingTitle" type="text" maxlength="80" placeholder="e.g. Deposit on signing and mobilisation" class="contact-input mt-1 w-full">
+          </label>
+          <label class="block">
+            <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Label</span>
+            <input v-model="form.billingLabel" type="text" maxlength="40" placeholder="Scope covered" class="contact-input mt-1 w-full">
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Short note</span>
+            <textarea v-model="form.billingText" rows="2" maxlength="220" placeholder="One or two lines on what this payment covers" class="contact-input mt-1 resize-none w-full" />
+          </label>
+        </div>
+
+        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+          <input v-model="form.addScope" type="checkbox" class="size-4 shrink-0" style="accent-color: var(--color-accent);">
+          <span class="text-[13px]" style="color: var(--color-text);">Add scope bullets</span>
+        </label>
+        <div v-if="form.addScope" class="space-y-3 pl-6">
+          <label class="block">
+            <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Section title</span>
+            <input v-model="form.scopeTitle" type="text" maxlength="60" placeholder="Scope covered" class="contact-input mt-1 w-full">
+          </label>
+          <label class="block">
+            <span class="flex items-center justify-between">
+              <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Bullets <span class="normal-case font-normal">(one per line)</span></span>
+              <span class="text-[11px] tabular-nums" :style="{ color: scopeItems.length > SCOPE_MAX ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }">{{ scopeItems.length }} / {{ SCOPE_MAX }}</span>
+            </span>
+            <textarea v-model="form.scopeText" rows="5" placeholder="One bullet per line…" class="contact-input mt-1 resize-none w-full" />
+          </label>
+        </div>
       </div>
 
       <!-- Live total — mirrors the PDF summary: agreed total and paid-to-date
