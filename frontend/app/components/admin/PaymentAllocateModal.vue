@@ -130,16 +130,16 @@ function fmtMyr(amount: string | number) {
 
   <Teleport to="body">
     <Transition name="link-modal">
-      <div v-if="open" class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6" @click.self="open = false">
+      <div v-if="open" class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 max-md:items-end max-md:p-0 max-md:pt-6" @click.self="open = false">
         <div class="absolute inset-0" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(2px);" @click="open = false" />
 
         <div
-class="relative w-full max-w-[520px] max-h-[85vh] flex flex-col rounded-2xl border shadow-2xl"
+class="relative w-full max-w-[520px] max-h-[85vh] max-md:max-w-none max-md:max-h-[90dvh] flex flex-col rounded-2xl max-md:rounded-b-none border max-md:border-b-0 shadow-2xl"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }" @click.stop>
           <!-- Header -->
           <div class="flex items-center justify-between px-5 pt-5 pb-3">
             <p class="text-[15px] font-semibold" style="color: var(--color-text);">Allocate to invoice</p>
-            <button type="button" class="transition-opacity hover:opacity-70" style="color: var(--color-text-tertiary);" @click="open = false">
+            <button type="button" class="transition-opacity hover:opacity-70 max-md:inline-flex max-md:items-center max-md:justify-center max-md:size-10 max-md:-mr-2.5 max-md:active:opacity-60" style="color: var(--color-text-tertiary);" aria-label="Close" @click="open = false">
               <UIcon name="i-lucide-x" class="size-5" />
             </button>
           </div>
@@ -152,17 +152,17 @@ class="relative w-full max-w-[520px] max-h-[85vh] flex flex-col rounded-2xl bord
               <p v-if="!invoices.length" class="text-[13px] py-6 text-center" style="color: var(--color-text-secondary);">No invoices on this order yet — issue one from the order page first.</p>
               <button
 v-for="inv in invoices" :key="inv.id" type="button"
-                class="w-full flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors"
+                class="w-full flex items-center justify-between gap-3 max-md:flex-col max-md:items-start max-md:gap-1.5 rounded-xl border px-3.5 py-3 text-left transition-colors"
                 :style="{
                   background: selectedId === inv.id ? 'var(--color-accent-soft)' : 'var(--color-bg)',
                   borderColor: selectedId === inv.id ? 'var(--color-accent)' : 'var(--color-border)',
                 }"
                 @click="selectedId = inv.id">
-                <span class="flex items-center gap-2 min-w-0">
+                <span class="flex items-center gap-2 min-w-0 max-md:max-w-full">
                   <span class="font-mono text-[13px] truncate" style="color: var(--color-text);">{{ inv.number }}</span>
                   <AdminStatusPill :status="inv.status" />
                 </span>
-                <span class="text-[12px] shrink-0" style="color: var(--color-text-secondary);">
+                <span class="text-[12px] shrink-0 max-md:shrink" style="color: var(--color-text-secondary);">
                   {{ fmtMyr(outstanding(inv)) }} of {{ fmtMyr(inv.amount_total) }} outstanding
                 </span>
               </button>
@@ -181,10 +181,10 @@ v-if="currentInvoiceId" type="button"
           </div>
 
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-2 px-5 py-4 border-t" style="border-color: var(--color-border);">
-            <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="open = false">Cancel</button>
+          <div class="flex items-center justify-end gap-2 px-5 py-4 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] border-t" style="border-color: var(--color-border);">
+            <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1" @click="open = false">Cancel</button>
             <button
-type="button" class="btn-pill btn-pill-primary text-[13px]"
+type="button" class="btn-pill btn-pill-primary text-[13px] max-md:flex-1"
               :class="{ 'opacity-50': !changed || saving }" :disabled="!changed || saving" @click="submit">
               {{ saving ? 'Updating…' : 'Update allocation' }}
             </button>

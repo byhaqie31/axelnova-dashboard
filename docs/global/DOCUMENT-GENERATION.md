@@ -64,30 +64,46 @@ the order override path. `AdminQuotationRequest` validates `document.payload` lo
 
 Defined once in the `CSS` block of [template.ts](../../frontend/server/utils/pdf/template.ts).
 
+The Axel Nova house palette: pink / purple on soft pink surfaces. Every colour is
+a `:root` token; nothing below it uses a literal hex.
+
 | Token | Value | Use |
 |---|---|---|
-| `--ink` | `#1C1C1E` | headings, item titles, numbers |
-| `--body` | `#39393C` | paragraphs, table detail text |
-| `--muted` | `#6B6B70` | sublabels, "one-time", notes |
-| `--faint` | `#9A9AA0` | column headers, page-foot |
-| `--line` | `#ECEAE7` | hairlines / row separators |
-| `--strong` | `#1C1C1E` | header underline, section-total / project-total top border |
-| `--red` | `#EE1C25` | section bullets, eyebrows, "Free", accent borders |
-| `--red-deep` | `#C8141C` | emphasized money (section total, option B, project total) |
-| gradient | `#4E7DF4 → #BE76E6` | top hairline (matches the logo) |
+| `--paper` | `#FFFFFF` | page background |
+| `--ink` | `#1B0F1D` | headings, item titles, numbers |
+| `--body` | `#4B3B4D` | paragraphs, table detail text, the SSM line |
+| `--muted` | `#8A7789` | sublabels, meta labels, notes, page-foot |
+| `--primary` | `#D11E72` | section squares, bullets, eyebrows, accent borders, emphasized money |
+| `--accent` | `#8B3DD6` | alt section square (care plans), gradient end |
+| `--surface` / `--surface-strong` | `#FDF4F8` / `#FDEDF5` | panels, option cards / eyebrow pills |
+| `--hairline` | `#EFE0E9` | hairlines / row separators |
+| `--green` | `#0E8A3E` | money already received ("Paid to date") |
+| gradient | `--primary → --accent` | top hairline |
 
-- **Fonts** — **Geist** (sans, 400/500/600) for everything; **Geist Mono**
-  (400/500/700) for all numbers, codes, labels, and the page-foot. Embedded as
-  base64 `@font-face` in [fonts.ts](../../frontend/server/utils/pdf/fonts.ts) so
-  the headless render needs no network or font install.
+- **Font** — **Satoshi** (400/500/700, Fontshare) for everything, tabular figures
+  by default (`tnum`) so prices align; the header's SSM line alone switches to
+  proportional figures. Embedded as base64 `@font-face` in
+  [fonts.ts](../../frontend/server/utils/pdf/fonts.ts) so the headless render
+  needs no network or font install.
 - **Logo** — the Axel Nova "A" mark, inlined as a base64 data URI in
-  [logo.ts](../../frontend/server/utils/pdf/logo.ts). The text wordmark
-  ("Axel Nova / Ventures", two lines) is rendered in Geist, not part of the image.
-- **Shared chrome** — gradient top hairline, logo+wordmark+tagline header with
-  right-aligned doc meta, a rule with a red leading segment, red rounded-square
-  section bullets, red-dot lists, ITEM·DETAIL·PRICE tables, a "Designed by …"
-  credit block, and a running page-foot (`studio · tagline · number` left,
-  `Page X of Y` right).
+  [logo.ts](../../frontend/server/utils/pdf/logo.ts).
+- **Letterhead (all kinds)** — logo, then `AXEL NOVA VENTURES` on one line
+  (uppercase, letter-spaced) with `SSM Registration: 202603119899 (CA0420977-U)`
+  under it. **No tagline in the header.** Right side: the kind word (`Invoice` /
+  `Receipt`), then one line per meta pair, label and value on one baseline
+  (`NO.  AXNI-2026-0005`, `DATE …`, `STATUS …`).
+  The identity strings come from `STUDIO_IDENTITY` in `template.ts`, **not** from
+  `data.studio`: payloads are frozen, and older ones carry `reg: "Reg. …"`. Same
+  reasoning as `STUDIO_PAY` below. `DocumentMapper::STUDIO['reg']` holds the same
+  string — keep the two in sync. `data.studio.name` is only the logo's `alt`.
+- **Shared chrome** — gradient top hairline, the letterhead above, a rule with a
+  primary leading segment, rounded-square section markers, dot lists,
+  ITEM·DETAIL·PRICE tables, a "Designed by …" credit block (with the tagline), and
+  a running page-foot (`studio · tagline · number` left, `Page X of Y` right).
+
+> **Header and footer are chrome; the payload freezes data.** Because PDFs are
+> never stored, every past document picks up the current letterhead the next time
+> its link is opened. That's intended — amounts, numbers and dates never change.
 
 ---
 
@@ -100,8 +116,8 @@ maps a row to this shape; the renderer consumes it. Key fields:
 layout      "standard" | "detailed"
 kind        "quotation" | "invoice" | "receipt"
 number, issued, validUntil, status, currency
-studio      { name, tagline, logo?, email, site, reg, designedBy }
-client      { name, attn?, address?, email? }
+studio      { name, tagline, logo?, email, site, reg, designedBy }   # reg not read by the header
+client      { name, company?, attn?, address?, email? }
 project, subtitle?, intro?
 
 # standard
@@ -117,8 +133,11 @@ care            { title, headers?, rows[ {label, detail, price, period?} ], note
 provide, notIncluded   { title?, items[], columns? }
 timeline        { title?, text }
 paymentTerms    { title?, items[] }
-summary         { rows[ {label, price|priceText, negative?, total?, red?, priceMuted?} ] }
-panels[]        { label, value, note?, accent? }            # deposit / balance cards
+summary         { rows[ {label, price|priceText, negative?, total?, red?, priceMuted?, role?} ] }
+panels[]        { label, value, note?, accent?, role? }     # deposit / balance cards
+display         { summary?, remaining? }                    # render-time switches; absent = shown
+billingFor      { title, label?, text? }                    # right half of the accent amount panel
+scope           { title?, items[], columns?, note? }        # bullets between panels and How to pay
 notes[]         { label, text }
 pay             { online?, bank?, holder?, acct?, note? }
 ```
@@ -134,7 +153,7 @@ override path — see Roadmap).
 | File | Role |
 |---|---|
 | `types.ts` | the `DocumentData` contract |
-| `fonts.ts` | `FONT_FACES` — 6 Geist faces, base64 woff2 |
+| `fonts.ts` | `FONT_FACES` — Satoshi 400/500/700, base64 woff2 |
 | `logo.ts` | `STUDIO_LOGO` — base64 logomark |
 | `qr.ts` | `DUITNOW_QR` — base64 DuitNow QR payment card (invoices only) |
 | `template.ts` | shared CSS + `renderStandard` / `renderDetailed` + `renderDocumentHTML(data)` dispatch on `data.layout` |
@@ -199,6 +218,39 @@ entering the paid amount + method + ref. `DocumentMapper::forOrder` builds the
 panels from those: invoice → "Deposit received" + accent "Balance due on
 completion"; receipt → "Paid in full".
 
+### Invoice display options
+
+Per-invoice switches on the invoice form ("Display" group), stored in
+`invoices.inputs` and mapped by `DocumentMapper::amountDocument()` (amount-based
+invoices only — receipts and quotations ignore them):
+
+| Input | Default | Effect |
+|---|---|---|
+| `showSummary` | `true` | off → the whole Summary section is not rendered |
+| `showRemaining` | `true` | off → the "Remaining after this payment" row and the "Balance after this payment" panel are not rendered; the amount-due panel spans the full width |
+| `billingTitle` / `billingLabel` / `billingText` | empty | title set → the accent panel's right half shows title / label (default `Scope covered`) / note, each line on its left partner's baseline |
+| `scopeTitle` / `scopeItems[]` | empty | items set → a "Scope covered" bullet section after the panels, before How to pay (max 8, 5 reads best) |
+
+"Amount only" (as on AXNI-2026-0005) is `showSummary: false` + `showRemaining: false`.
+
+**Hide at render time, never strip data.** `DocumentIssuer::payloadTotal()`
+derives `amount_total` — which the payments ledger and the invoice paid status
+depend on — from the summary rows. So the mapper always builds the full rows and
+both panels, adds a `display` object, and tags the hideable parts with
+`role: "remaining"` (summary row) / `role: "balance"` (panel). The template simply
+does not emit hidden parts — no `display:none`, so hidden figures never reach the
+PDF text layer. Match on `role`, never on label text.
+
+The options are display-only, so they stay editable on an amount-locked invoice
+(`InvoicesController::update` lets them through beside `notes` / `dueAt`). They
+are part of `DocumentIssuer::INPUT_KEYS` — drop them from there and
+`cleanInputs()` silently loses them, reverting the invoice to defaults on the next
+edit. Validation lives in `DocumentIssuer::DISPLAY_RULES`, shared by issue,
+preview and update.
+
+The **Bill to** block prints the client company on its own line under the email,
+when it differs from the display name.
+
 ### "How to pay" block (invoices)
 
 Invoices — and only invoices — render a **How to pay** block under the
@@ -262,10 +314,10 @@ Chrome's `--print-to-pdf` honours the CSS `@page` (A4, margins, page-foot) the
 same way `preferCSSPageSize` does in Playwright.
 
 ### Regenerate the embedded fonts
-`fonts.ts` is the latin-subset woff2 of Geist 400/500/600 + Geist Mono 400/500/700
-(Google Fonts, OFL), base64-inlined (~72 KB raw → ~98 KB). To refresh: fetch the
-`css2` API with a modern UA, take the `/* latin */` woff2 per face, base64-encode,
-and re-emit the `FONT_FACES` template string.
+`fonts.ts` is the latin-subset woff2 of Satoshi 400/500/700 (Fontshare, ITF
+Fontshare EULA), base64-inlined. To refresh: download the woff2 per weight from
+Fontshare, subset to latin, base64-encode, and re-emit the `FONT_FACES` template
+string.
 
 ### Regenerate the logo
 `logo.ts` is `axel_nova_logo.png` (1024², transparent) cropped to the mark's
@@ -307,7 +359,12 @@ fit before reflowing spacing.
   correctly because they're `@page` margin boxes.
 - **Money formatting** — table/summary use no decimals (`RM1,800`); panels use 2
   (`RM1,300.00`). `money(n, cur, dec)`.
-- **Wordmark** breaks after the first two words (`Axel Nova` / `Ventures`).
+- **Letterhead identity is not in the payload** — `STUDIO_IDENTITY` in
+  `template.ts`, kept in sync with `DocumentMapper::STUDIO['reg']`. Nothing in the
+  header may break the name onto two lines.
+- **Header pair baselines are px-snapped** — Chromium snaps them to whole px, so
+  `.kind-big` uses `margin-bottom:10px` to land NO./DATE/STATUS at 100.5 / 114.75 /
+  128.25pt. Re-measure (pdfplumber, char matrix) after touching header spacing.
 - **CSS string injection** — the page-foot identity goes through a `--pgfoot-l`
   custom property; values are escaped for a CSS string literal (`cssStr`).
 

@@ -30,7 +30,7 @@ function fmt(stamp: string): string {
 </script>
 
 <template>
-  <ul v-if="comments" class="space-y-3.5">
+  <ul v-if="comments" class="space-y-3.5 max-md:space-y-4">
     <li v-for="(c, i) in comments" :key="i" class="flex gap-2.5">
       <span
         class="grid place-items-center rounded-full shrink-0 mt-0.5"
@@ -40,14 +40,14 @@ function fmt(stamp: string): string {
         <UIcon name="i-lucide-message-square" class="size-3" aria-hidden="true" />
       </span>
       <div class="min-w-0 flex-1">
-        <div class="flex items-baseline justify-between gap-2">
-          <span class="text-[12px] font-medium truncate" :style="{ color: 'var(--color-text)' }">{{ c.author }}</span>
+        <div class="flex items-baseline justify-between gap-2 max-md:flex-col max-md:gap-0">
+          <span class="text-[12px] font-medium truncate max-md:max-w-full" :style="{ color: 'var(--color-text)' }">{{ c.author }}</span>
           <span class="text-[11px] shrink-0" :style="{ color: 'var(--color-text-tertiary)' }">{{ fmt(c.time) }}</span>
         </div>
-        <p class="text-[13px] leading-relaxed whitespace-pre-wrap mt-0.5" :style="{ color: 'var(--color-text-secondary)' }">{{ c.text }}</p>
+        <p class="text-[13px] leading-relaxed whitespace-pre-wrap mt-0.5 max-md:mt-1 max-md:wrap-break-word" :style="{ color: 'var(--color-text-secondary)' }">{{ c.text }}</p>
       </div>
     </li>
   </ul>
   <!-- Fallback: notes that don't follow the stamped format. -->
-  <p v-else class="text-[13px] leading-relaxed whitespace-pre-wrap" :style="{ color: 'var(--color-text-secondary)' }">{{ notes }}</p>
+  <p v-else class="text-[13px] leading-relaxed whitespace-pre-wrap max-md:wrap-break-word" :style="{ color: 'var(--color-text-secondary)' }">{{ notes }}</p>
 </template>

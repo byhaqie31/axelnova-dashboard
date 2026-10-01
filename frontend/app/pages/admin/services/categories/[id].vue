@@ -173,21 +173,21 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <NuxtLink
-to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-5 md:mb-8 max-md:py-1 transition-opacity hover:opacity-70 active:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All services
     </NuxtLink>
 
     <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
-      <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
+      <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
         {{ isNew ? 'New category' : 'Edit category' }}
       </h1>
-      <div v-if="!loading" class="flex items-center gap-2 shrink-0">
-        <NuxtLink to="/admin/services" class="btn-pill btn-pill-ghost text-[13px]">Cancel</NuxtLink>
-        <button type="button" :disabled="saving" class="btn-pill btn-pill-accent text-[13px]" @click="save">
+      <div v-if="!loading" class="flex items-center gap-2 shrink-0 max-md:w-full">
+        <NuxtLink to="/admin/services" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1">Cancel</NuxtLink>
+        <button type="button" :disabled="saving" class="btn-pill btn-pill-accent text-[13px] max-md:flex-1" @click="save">
           {{ saving ? 'Saving…' : isNew ? 'Create category' : 'Save changes' }}
         </button>
       </div>
@@ -196,7 +196,7 @@ to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 tran
     <p v-if="message" class="mb-4 text-[13px]" :style="{ color: 'var(--color-danger)' }">{{ message }}</p>
 
     <form
-v-if="!loading" class="rounded-2xl border p-6 space-y-5"
+v-if="!loading" class="rounded-2xl border p-4 md:p-6 space-y-5"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
       @submit.prevent="save">
 
@@ -354,7 +354,7 @@ class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
 
     <!-- New category: scope fields attach to a saved category, so they appear after creating it. -->
     <p
-v-if="!loading && isNew" class="mt-6 rounded-2xl border border-dashed p-6 text-center text-[12px]"
+v-if="!loading && isNew" class="mt-6 rounded-2xl border border-dashed p-5 md:p-6 text-center text-[12px]"
       :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }">
       <UIcon name="i-lucide-sliders-horizontal" class="size-4 inline-block mb-1" /><br>
       Scope fields (the quote-builder inputs for this category) can be added once you’ve created it — save first, then they’ll appear here.
@@ -362,7 +362,7 @@ v-if="!loading && isNew" class="mt-6 rounded-2xl border border-dashed p-6 text-c
 
     <!-- Scope fields — the quote-builder inputs + pricing for this category. -->
     <section
-v-if="!loading && !isNew" class="mt-6 rounded-2xl border p-6"
+v-if="!loading && !isNew" class="mt-6 rounded-2xl border p-4 md:p-6"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <div class="mb-4">
         <h2 class="text-[15px] font-semibold" :style="{ color: 'var(--color-text)' }">Scope fields</h2>
@@ -378,7 +378,7 @@ v-if="!loading && !isNew" class="mt-6 rounded-2xl border p-6"
       <ul v-else class="rounded-xl border overflow-hidden" :style="{ borderColor: 'var(--color-border)' }">
         <li
 v-for="f in scopeFields" :key="f.id"
-          class="flex items-center gap-3 px-4 py-3 border-b last:border-b-0" :style="{ borderColor: 'var(--color-border)' }">
+          class="flex items-center gap-3 px-4 py-3 border-b last:border-b-0 max-md:flex-wrap max-md:gap-y-1" :style="{ borderColor: 'var(--color-border)' }">
           <span
 class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
             :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">{{ f.type }}</span>
@@ -390,19 +390,21 @@ v-if="!f.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.
                 :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Off</span>
             </div>
             <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">
-              <code>{{ f.field_key }}</code> · {{ fieldPriceSummary(f) }}
+              <code class="max-md:break-all">{{ f.field_key }}</code> · {{ fieldPriceSummary(f) }}
             </p>
           </div>
+          <!-- Phone: break the row so the three actions get their own line. -->
+          <span class="basis-full md:hidden" aria-hidden="true" />
           <button
-type="button" class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+type="button" class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 max-md:ml-auto rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
             @click="toggleFieldActive(f)">{{ f.active ? 'Disable' : 'Enable' }}</button>
           <button
-type="button" class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+type="button" class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
             @click="openEditField(f)">Edit</button>
           <button
-type="button" class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+type="button" class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
             @click="deleteField(f)">Delete</button>
         </li>
@@ -410,7 +412,7 @@ type="button" class="text-[11px] font-medium px-2.5 py-1 rounded-md border trans
 
       <div class="flex justify-end mt-3">
         <button
-type="button" class="btn-pill btn-pill-ghost text-[12px] inline-flex items-center gap-1.5"
+type="button" class="btn-pill btn-pill-ghost text-[12px] inline-flex items-center gap-1.5 max-md:w-full"
           @click="openNewField">
           <UIcon name="i-lucide-plus" class="size-3.5" /> New scope field
         </button>
@@ -424,3 +426,11 @@ type="button" class="btn-pill btn-pill-ghost text-[12px] inline-flex items-cente
       @close="modalOpen = false" @saved="loadScopeFields" />
   </div>
 </template>
+
+<style scoped>
+/* Phone: 16px inputs stop iOS focus-zoom (.contact-input is 14px, unlayered,
+   so a Tailwind utility can't override it). */
+@media (max-width: 767.98px) {
+  .contact-input { font-size: 16px; }
+}
+</style>

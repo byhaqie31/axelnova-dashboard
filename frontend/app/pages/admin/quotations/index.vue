@@ -124,16 +124,16 @@ const {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Quotations</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Quotations</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Drafts you're building plus quotes you've sent. Accepted quotations move to <NuxtLink to="/admin/orders" class="underline" :style="{ color: 'var(--color-accent)' }">Orders</NuxtLink>.</p>
       </div>
-      <div class="flex items-center gap-3">
-        <NuxtLink to="/admin/quotations/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5">
+      <div class="flex items-center gap-3 max-md:w-full">
+        <NuxtLink to="/admin/quotations/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5 max-md:w-full">
           <UIcon name="i-lucide-plus" class="size-3.5" />
           New quotation
         </NuxtLink>
@@ -224,29 +224,29 @@ v-for="q in quotations" :key="q.id"
         v-for="q in quotations"
         :key="q.id"
         type="button"
-        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="navigateTo(`/admin/quotations/${q.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-2">
-          <span class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ q.reference_code }}</span>
-          <AdminStatusPill :status="q.status" />
+          <span class="font-mono text-[12px] font-medium min-w-0 break-all" :style="{ color: 'var(--color-accent)' }">{{ q.reference_code }}</span>
+          <AdminStatusPill :status="q.status" class="shrink-0" />
         </div>
         <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ q.name }}</p>
-        <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
+        <p class="text-[11px] mb-3 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
         <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3">
-            <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
+            <p class="text-[13px] font-semibold tabular-nums shrink-0" :style="{ color: 'var(--color-text)' }">
               {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
             </p>
-            <p class="text-[11px] text-right" :style="{ color: 'var(--color-text-tertiary)' }">
+            <p class="text-[11px] text-right min-w-0 break-words" :style="{ color: 'var(--color-text-tertiary)' }">
               <template v-if="q.custom_package">
                 <span class="block font-medium" :style="{ color: 'var(--color-text-secondary)' }">{{ q.custom_package.label }}</span>
                 <span :style="{ color: q.custom_package.via_connector ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }">{{ q.custom_package.via_connector ? 'Custom · Axelnova MCP' : 'Custom' }}</span>
               </template>
               <template v-else>
                 <span v-if="packageName(q.package_key)" class="block font-medium" :style="{ color: 'var(--color-text-secondary)' }">{{ packageName(q.package_key) }}</span>
-                <span class="font-mono">{{ q.package_key ?? '—' }}</span>
+                <span class="font-mono break-all">{{ q.package_key ?? '—' }}</span>
               </template>
             </p>
           </div>

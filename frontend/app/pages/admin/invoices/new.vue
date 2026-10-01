@@ -58,10 +58,10 @@ onMounted(fetchOrder)
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <NuxtLink
       :to="orderId ? `/admin/orders/${orderId}` : '/admin/invoices'"
-      class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70" :style="{ color: 'var(--color-text-secondary)' }">
+      class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 max-md:py-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60" :style="{ color: 'var(--color-text-secondary)' }">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> {{ orderId ? 'Back to order' : 'All invoices' }}
     </NuxtLink>
 

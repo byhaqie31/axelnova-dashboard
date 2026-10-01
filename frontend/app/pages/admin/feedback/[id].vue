@@ -338,10 +338,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <NuxtLink
-      to="/admin/feedback" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+      to="/admin/feedback" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 transition-opacity hover:opacity-70 active:opacity-60"
       style="color: var(--color-text-secondary);"
     >
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All feedback
@@ -350,7 +350,7 @@ onMounted(() => {
     <!-- §12.1 header — no eyebrow -->
     <div class="flex items-start justify-between gap-3 flex-wrap mb-6">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
           {{ isNew ? 'New feedback' : 'Review feedback' }}
         </h1>
         <div v-if="record" class="flex items-center gap-2.5 mt-2">
@@ -366,7 +366,7 @@ onMounted(() => {
 
     <!-- ════════ CREATE (/new) ════════ -->
     <form
-      v-else-if="isNew" class="rounded-2xl border p-6 space-y-6"
+      v-else-if="isNew" class="rounded-2xl border p-6 max-md:p-4 space-y-6 max-md:space-y-5"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
       @submit.prevent="create"
     >
@@ -613,7 +613,7 @@ onMounted(() => {
         </div>
       </template>
 
-      <div class="flex items-center gap-3 pt-2">
+      <div class="flex items-center gap-3 pt-2 max-md:flex-col max-md:items-stretch">
         <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
           {{ saving ? 'Saving…'
             : mode === 'log' ? 'Log feedback'
@@ -626,17 +626,17 @@ onMounted(() => {
 
     <!-- ════════ DETAIL ════════ -->
     <template v-else-if="record">
-      <div class="grid lg:grid-cols-[1fr_300px] gap-8 items-start">
-      <div class="space-y-6 min-w-0">
+      <div class="grid lg:grid-cols-[1fr_300px] gap-8 max-md:gap-5 items-start">
+      <div class="space-y-6 max-md:space-y-5 min-w-0">
         <!-- The review (read-only — scores are the client's record) -->
         <section
-          class="rounded-2xl border p-6"
+          class="rounded-2xl border p-6 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
         >
           <div class="flex items-start justify-between gap-3 flex-wrap mb-5">
             <div>
               <p class="text-[15px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ record.name ?? 'Unnamed client' }}</p>
-              <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
+              <p class="text-[12px] max-md:wrap-anywhere" :style="{ color: 'var(--color-text-secondary)' }">
                 {{ record.email ?? 'no email' }}<template v-if="record.order_number"> · order
                   <NuxtLink :to="`/admin/orders/${record.order_id}`" class="font-mono underline" :style="{ color: 'var(--color-accent)' }">{{ record.order_number }}</NuxtLink>
                 </template>
@@ -685,7 +685,7 @@ onMounted(() => {
 
         <!-- Moderation form -->
         <form
-          class="rounded-2xl border p-6 space-y-5"
+          class="rounded-2xl border p-6 max-md:p-4 space-y-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
           @submit.prevent="save"
         >
@@ -821,7 +821,7 @@ onMounted(() => {
             </button>
           </div>
 
-          <div class="flex items-center gap-3 pt-2">
+          <div class="flex items-center gap-3 pt-2 max-md:flex-col max-md:items-stretch">
             <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
               {{ saving ? 'Saving…' : 'Save changes' }}
             </button>
@@ -832,7 +832,7 @@ onMounted(() => {
       <!-- Sidebar — status, share link, record (stacks below content < lg) -->
       <aside class="space-y-4">
         <section
-          class="rounded-2xl border p-5"
+          class="rounded-2xl border p-5 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
         >
           <div class="flex items-center justify-between gap-3 mb-4">
@@ -861,7 +861,7 @@ onMounted(() => {
         </section>
 
         <section
-          class="rounded-2xl border p-5"
+          class="rounded-2xl border p-5 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
         >
           <p class="text-[11px] font-semibold uppercase tracking-wider mb-3" :style="{ color: 'var(--color-text-tertiary)' }">Review link</p>
@@ -878,7 +878,7 @@ onMounted(() => {
         </section>
 
         <section
-          class="rounded-2xl border p-5"
+          class="rounded-2xl border p-5 max-md:p-4"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
         >
           <p class="text-[11px] font-semibold uppercase tracking-wider mb-3" :style="{ color: 'var(--color-text-tertiary)' }">Record</p>
@@ -904,7 +904,7 @@ onMounted(() => {
 
         <button
           type="button"
-          class="btn-table-action is-danger"
+          class="btn-table-action is-danger max-md:w-full max-md:h-10! max-md:mt-2 max-md:text-[13px]!"
           @click="destroy"
         >
           <UIcon name="i-lucide-trash-2" class="size-3.5" /> Delete feedback
@@ -916,3 +916,10 @@ onMounted(() => {
     <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
   </div>
 </template>
+
+<style scoped>
+/* Mobile only — 16px inputs stop iOS focus-zoom; desktop keeps 14px. */
+@media (max-width: 767.98px) {
+  .contact-input { font-size: 16px; }
+}
+</style>

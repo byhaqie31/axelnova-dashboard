@@ -148,6 +148,7 @@ class OrdersController extends Controller
             'promoType' => ['nullable', 'in:amount,percent'],
             'promoValue' => ['nullable', 'numeric', 'min:0'],
             'dueAt' => ['nullable', 'date'],
+            ...DocumentIssuer::DISPLAY_RULES,
             // Optional full DocumentData override from a customized builder.
             'payload' => ['nullable', 'array'],
         ]);
@@ -186,6 +187,7 @@ class OrdersController extends Controller
             'promoCode' => ['nullable', 'string', 'max:40'],
             'promoType' => ['nullable', 'in:amount,percent'],
             'promoValue' => ['nullable', 'numeric', 'min:0'],
+            ...DocumentIssuer::DISPLAY_RULES,
         ]);
 
         $order->loadMissing('quotation');

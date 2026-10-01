@@ -75,4 +75,22 @@ const form = defineModel<TaskFormShape>({ required: true })
 .standard-pill:disabled {
   cursor: default;
 }
+
+/* Mobile only (<768px) — desktop untouched. */
+@media (max-width: 767.98px) {
+  /* 16px inputs stop iOS focus-zoom. */
+  .contact-input { font-size: 16px; }
+  /* iOS renders empty date inputs collapsed + centred; keep them full-width and left-aligned. */
+  .contact-input[type="datetime-local"] {
+    display: block;
+    min-width: 0;
+    min-height: 48px;
+  }
+  .contact-input[type="datetime-local"]::-webkit-date-and-time-value { text-align: left; }
+  /* Bigger priority pills for touch. */
+  .standard-pill {
+    padding: 0.5rem 0.875rem;
+    font-size: 13px;
+  }
+}
 </style>

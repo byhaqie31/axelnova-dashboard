@@ -146,15 +146,15 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
 
 <template>
   <Transition name="dropdown-panel">
-    <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4 max-md:items-end max-md:p-0 max-md:pt-6">
       <button class="absolute inset-0 cursor-default" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);" aria-label="Close" @click="emit('close')" />
 
       <div
-        class="relative w-full max-w-lg rounded-2xl border p-6 max-h-[90vh] overflow-y-auto"
+        class="relative w-full max-w-lg max-md:max-w-none rounded-2xl max-md:rounded-b-none border max-md:border-b-0 p-6 max-md:p-5 max-md:pb-[max(1.25rem,env(safe-area-inset-bottom))] max-h-[90vh] max-md:max-h-[92dvh] overflow-y-auto max-md:overscroll-contain"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
         <div class="flex items-center justify-between mb-1">
           <p class="text-[16px] font-semibold tracking-tight" style="color: var(--color-text);">Manage client</p>
-          <button type="button" class="size-8 rounded-lg flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text-tertiary);" aria-label="Close" @click="emit('close')">
+          <button type="button" class="size-8 max-md:size-10 max-md:-mr-2 rounded-lg flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)" style="color: var(--color-text-tertiary);" aria-label="Close" @click="emit('close')">
             <UIcon name="i-lucide-x" class="size-4" />
           </button>
         </div>
@@ -163,9 +163,9 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
         </p>
 
         <!-- Mode switch -->
-        <div class="inline-flex p-0.5 rounded-xl mb-5" style="background: var(--color-bg-secondary);">
+        <div class="inline-flex max-md:flex max-md:w-full p-0.5 rounded-xl mb-5" style="background: var(--color-bg-secondary);">
           <button
-            type="button" class="px-3.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors"
+            type="button" class="px-3.5 py-1.5 max-md:flex-1 max-md:py-2.5 max-md:text-[13px] rounded-lg text-[12px] font-medium transition-colors"
             :style="tab === 'edit'
               ? { background: 'var(--color-bg-elevated)', color: 'var(--color-text)', boxShadow: 'var(--shadow-sm)' }
               : { color: 'var(--color-text-secondary)' }"
@@ -175,7 +175,7 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
             Edit details
           </button>
           <button
-            type="button" class="px-3.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors"
+            type="button" class="px-3.5 py-1.5 max-md:flex-1 max-md:py-2.5 max-md:text-[13px] rounded-lg text-[12px] font-medium transition-colors"
             :style="tab === 'change'
               ? { background: 'var(--color-bg-elevated)', color: 'var(--color-text)', boxShadow: 'var(--shadow-sm)' }
               : { color: 'var(--color-text-secondary)' }"
@@ -211,8 +211,8 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <p v-if="error" class="text-[12px]" style="color: var(--color-danger);">{{ error }}</p>
 
           <div class="flex items-center justify-end gap-2 pt-1">
-            <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="emit('close')">Cancel</button>
-            <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
+            <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1" @click="emit('close')">Cancel</button>
+            <button type="submit" class="btn-pill btn-pill-accent text-[13px] max-md:flex-1" :disabled="saving">
               {{ saving ? 'Saving…' : 'Save changes' }}
             </button>
           </div>
@@ -232,8 +232,8 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <p v-if="error" class="text-[12px]" style="color: var(--color-danger);">{{ error }}</p>
 
           <div class="flex items-center justify-end gap-2 pt-1">
-            <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="emit('close')">Cancel</button>
-            <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
+            <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1" @click="emit('close')">Cancel</button>
+            <button type="submit" class="btn-pill btn-pill-accent text-[13px] max-md:flex-1" :disabled="saving">
               {{ saving ? 'Re-linking…' : 'Re-link client' }}
             </button>
           </div>
@@ -242,3 +242,11 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
     </div>
   </Transition>
 </template>
+
+<style scoped>
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox'], [type='radio']),
+  textarea { font-size: 16px; }
+}
+</style>

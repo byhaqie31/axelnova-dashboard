@@ -74,7 +74,7 @@ function selectAll() {
       type="button"
       :aria-expanded="open"
       aria-haspopup="listbox"
-      class="inline-flex items-center gap-2 text-[12px] px-3.5 h-9 rounded-full border transition-all duration-200 min-w-32"
+      class="inline-flex items-center gap-2 text-[12px] px-3.5 h-9 max-md:h-10 rounded-full border transition-all duration-200 min-w-32"
       :style="{
         borderColor: open ? 'var(--color-accent)' : 'var(--color-border-strong)',
         background: open ? 'var(--color-accent-soft)' : 'var(--color-bg-elevated)',
@@ -95,7 +95,7 @@ function selectAll() {
       <ul
         v-if="open"
         role="listbox"
-        class="absolute left-auto right-0 top-full mt-1.5 min-w-44 rounded-xl border p-1 z-30"
+        class="absolute left-auto right-0 top-full mt-1.5 min-w-44 max-md:max-w-[calc(100vw-2rem)] rounded-xl border p-1 z-30"
         :style="{
           background: 'var(--color-bg-elevated)',
           borderColor: 'var(--color-border)',
@@ -109,7 +109,7 @@ function selectAll() {
               type="button"
               role="option"
               :aria-selected="!selected.length"
-              class="w-full flex items-center gap-2.5 text-[13px] px-2.5 py-2 rounded-md transition-colors"
+              class="w-full flex items-center gap-2.5 text-[13px] px-2.5 py-2 max-md:py-2.5 rounded-md transition-colors"
               :style="{
                 background: !selected.length ? 'var(--color-accent-soft)' : 'transparent',
                 color: !selected.length ? 'var(--color-accent)' : 'var(--color-text)',
@@ -135,7 +135,7 @@ function selectAll() {
               type="button"
               role="option"
               :aria-selected="selected.includes(opt.value)"
-              class="w-full flex items-center gap-2.5 text-[13px] px-2.5 py-2 rounded-md transition-colors"
+              class="w-full flex items-center gap-2.5 text-[13px] px-2.5 py-2 max-md:py-2.5 rounded-md transition-colors"
               :style="{
                 background: selected.includes(opt.value) ? 'var(--color-accent-soft)' : 'transparent',
                 color: selected.includes(opt.value) ? 'var(--color-accent)' : 'var(--color-text)',
@@ -164,7 +164,7 @@ function selectAll() {
               type="button"
               role="option"
               :aria-selected="modelValue === opt.value"
-              class="w-full flex items-center justify-between gap-3 text-[13px] px-2.5 py-2 rounded-md transition-colors"
+              class="w-full flex items-center justify-between gap-3 text-[13px] px-2.5 py-2 max-md:py-2.5 rounded-md transition-colors"
               :style="{
                 background: modelValue === opt.value ? 'var(--color-accent-soft)' : 'transparent',
                 color: modelValue === opt.value ? 'var(--color-accent)' : 'var(--color-text)',

@@ -69,13 +69,14 @@ class DocumentMapperTest extends TestCase
         $this->assertSame([
             ['label' => 'Agreed project total', 'price' => 2600.0],
             ['label' => 'Deposit due', 'price' => 1300.0, 'total' => true, 'red' => true],
-            ['label' => 'Remaining after this payment', 'price' => 1300.0, 'priceMuted' => true],
+            ['label' => 'Remaining after this payment', 'price' => 1300.0, 'priceMuted' => true, 'role' => 'remaining'],
         ], $doc['summary']['rows']);
 
         // Accent "Amount due" panel plus the balance-after panel.
         $this->assertCount(2, $doc['panels']);
         $this->assertSame('Balance after this payment', $doc['panels'][1]['label']);
         $this->assertSame(1300.0, $doc['panels'][1]['value']);
+        $this->assertSame('balance', $doc['panels'][1]['role']);
     }
 
     public function test_partial_invoice_shows_paid_to_date_and_remaining(): void
@@ -94,7 +95,7 @@ class DocumentMapperTest extends TestCase
             ['label' => 'Agreed project total', 'price' => 2600.0],
             ['label' => 'Paid to date', 'price' => 600.0, 'negative' => true, 'green' => true],
             ['label' => 'Partial payment due', 'price' => 1000.0, 'total' => true, 'red' => true],
-            ['label' => 'Remaining after this payment', 'price' => 1000.0, 'priceMuted' => true],
+            ['label' => 'Remaining after this payment', 'price' => 1000.0, 'priceMuted' => true, 'role' => 'remaining'],
         ], $doc['summary']['rows']);
     }
 
@@ -133,5 +134,94 @@ class DocumentMapperTest extends TestCase
         ]);
 
         $this->assertSame($lines, $doc['notes']);
+    }
+
+    private function deposit(array $input = []): array
+    {
+        return DocumentMapper::forOrder($this->order(), 'invoice', array_merge([
+            'number' => 'AXNI-2026-0020',
+            'issued' => '15 July 2026',
+            'invoiceType' => 'deposit',
+            'amount' => 1300,
+        ], $input));
+    }
+
+    public function test_defaults_keep_todays_payload_plus_an_all_shown_display_object(): void
+    {
+        $doc = $this->deposit();
+
+        $this->assertSame(['summary' => true, 'remaining' => true], $doc['display']);
+        $this->assertArrayNotHasKey('billingFor', $doc);
+        $this->assertArrayNotHasKey('scope', $doc);
+        $this->assertSame([
+            'layout', 'kind', 'number', 'issued', 'status', 'currency', 'studio',
+            'client', 'project', 'subtitle', 'summary', 'panels', 'display',
+        ], array_keys($doc));
+    }
+
+    public function test_display_switches_hide_at_render_time_and_never_strip_data(): void
+    {
+        $default = $this->deposit();
+        $hidden = $this->deposit(['showSummary' => false, 'showRemaining' => false]);
+
+        $this->assertSame(['summary' => false, 'remaining' => false], $hidden['display']);
+        // The remaining row and the balance panel are still stored — the template
+        // skips them, the payload keeps them (amount_total is read from the rows).
+        $this->assertSame($default['summary'], $hidden['summary']);
+        $this->assertSame($default['panels'], $hidden['panels']);
+    }
+
+    public function test_billing_for_and_scope_map_from_the_inputs(): void
+    {
+        $doc = $this->deposit([
+            'billingTitle' => '  Deposit on signing and mobilisation ',
+            'billingText' => 'Project mobilisation and discovery.',
+            'scopeTitle' => '',
+            'scopeItems' => ['Kick-off', '  ', 'Discovery', ''],
+        ]);
+
+        // Blank label omitted — the template defaults it to "Scope covered".
+        $this->assertSame([
+            'title' => 'Deposit on signing and mobilisation',
+            'text' => 'Project mobilisation and discovery.',
+        ], $doc['billingFor']);
+        $this->assertSame(['items' => ['Kick-off', 'Discovery']], $doc['scope']);
+    }
+
+    public function test_scope_with_only_blank_items_is_skipped(): void
+    {
+        $doc = $this->deposit(['scopeTitle' => 'Scope covered', 'scopeItems' => ['', '  ']]);
+
+        $this->assertArrayNotHasKey('scope', $doc);
+    }
+
+    public function test_receipts_carry_no_display_options(): void
+    {
+        $doc = DocumentMapper::forOrder($this->order(), 'receipt', [
+            'number' => 'AXNR-2026-0001',
+            'issued' => '15 July 2026',
+            'amount' => 1300,
+            'showSummary' => false,
+            'billingTitle' => 'Ignored',
+        ]);
+
+        $this->assertArrayNotHasKey('display', $doc);
+        $this->assertArrayNotHasKey('billingFor', $doc);
+    }
+
+    public function test_bill_to_shows_the_company_when_it_differs_from_the_name(): void
+    {
+        $order = $this->order();
+        $order->quotation->company = 'Client Co Sdn Bhd';
+        $this->assertSame('Client Co Sdn Bhd', DocumentMapper::forOrder($order, 'invoice', [
+            'amount' => 1300,
+        ])['client']['company']);
+
+        // Company-only contact: it's already the display name — not printed twice.
+        $solo = new Order(['final_amount_myr' => 2600]);
+        $solo->setRelation('quotation', new Quotation(['company' => 'Client Co Sdn Bhd']));
+        $client = DocumentMapper::forOrder($solo, 'invoice', ['amount' => 1300])['client'];
+        $this->assertSame('Client Co Sdn Bhd', $client['name']);
+        $this->assertArrayNotHasKey('company', $client);
     }
 }

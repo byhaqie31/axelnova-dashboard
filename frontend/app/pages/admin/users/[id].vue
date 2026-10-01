@@ -192,8 +192,8 @@ const addressBlock = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <NuxtLink to="/admin/users" class="inline-flex items-center gap-1.5 text-[13px] mb-6 transition-colors hover:opacity-80" style="color: var(--color-text-secondary);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <NuxtLink to="/admin/users" class="inline-flex items-center gap-1.5 text-[13px] mb-6 max-md:mb-5 transition-colors hover:opacity-80 active:opacity-60" style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All teammates
     </NuxtLink>
 
@@ -206,14 +206,14 @@ const addressBlock = computed(() => {
 
     <template v-else>
       <!-- Header -->
-      <div class="flex items-start justify-between gap-4 flex-wrap mb-8">
-        <div class="flex items-center gap-3">
+      <div class="flex items-start justify-between gap-4 flex-wrap mb-6 md:mb-8">
+        <div class="flex items-center gap-3 max-md:min-w-0">
           <span class="size-12 rounded-2xl inline-flex items-center justify-center text-[18px] font-bold shrink-0" :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">
             {{ profile.name.charAt(0).toUpperCase() }}
           </span>
-          <div>
-            <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">{{ profile.name }}</h1>
-            <div class="flex items-center gap-2 mt-1">
+          <div class="max-md:min-w-0">
+            <h1 class="text-[24px] font-bold tracking-tight max-md:wrap-break-word" style="color: var(--color-text);">{{ profile.name }}</h1>
+            <div class="flex items-center gap-2 mt-1 max-md:flex-wrap">
               <span class="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-medium" :style="{ color: roleMeta(profile.role).color, background: roleMeta(profile.role).bg }">
                 <UIcon v-if="profile.role === 'founder'" name="i-lucide-crown" class="size-3" aria-hidden="true" />
                 {{ roleMeta(profile.role).label }}
@@ -222,16 +222,16 @@ const addressBlock = computed(() => {
             </div>
           </div>
         </div>
-        <NuxtLink :to="`/admin/payroll/${profile.id}`" class="btn-pill btn-pill-ghost text-[13px]">
+        <NuxtLink :to="`/admin/payroll/${profile.id}`" class="btn-pill btn-pill-ghost text-[13px] max-md:w-full">
           <UIcon name="i-lucide-banknote" class="size-4" /> View payroll
         </NuxtLink>
       </div>
 
-      <div class="grid lg:grid-cols-2 gap-6 items-start">
+      <div class="grid lg:grid-cols-2 gap-6 max-md:gap-4 items-start">
         <!-- LEFT: admin-owned -->
-        <div class="space-y-6">
+        <div class="space-y-6 max-md:space-y-4 max-md:min-w-0">
           <!-- Identity + compensation (editable) -->
-          <section class="rounded-2xl border p-6 space-y-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <section class="rounded-2xl border p-6 max-md:p-4 space-y-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[13px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Identity & pay</h2>
 
             <label class="block">
@@ -273,29 +273,29 @@ const addressBlock = computed(() => {
           </section>
 
           <!-- Account -->
-          <section class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <section class="rounded-2xl border p-6 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <h2 class="text-[13px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Account</h2>
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
               <div>
                 <p class="text-[13px]" style="color: var(--color-text);">Joined {{ fmtDate(profile.created_at) }}</p>
                 <p class="text-[12px] mt-0.5" style="color: var(--color-text-tertiary);">
                   Availability: {{ availabilityMeta(profile.availability)?.label ?? '—' }}
                 </p>
               </div>
-              <div v-if="!profile.deactivated_at" class="flex items-center gap-1.5 flex-wrap justify-end">
+              <div v-if="!profile.deactivated_at" class="flex items-center gap-1.5 flex-wrap justify-end max-md:gap-2">
                 <button
-                  type="button" class="btn-table-action" title="Issue a new temporary password"
+                  type="button" class="btn-table-action max-md:flex-1 max-md:h-10! max-md:text-[13px]!" title="Issue a new temporary password"
                   @click="pendingAction = 'reset-password'">
                   <UIcon name="i-lucide-key-round" class="size-3.5" /> Reset password
                 </button>
                 <button
-                  type="button" class="btn-table-action is-danger"
+                  type="button" class="btn-table-action is-danger max-md:flex-1 max-md:h-10! max-md:text-[13px]!"
                   :disabled="isSelf" :title="isSelf ? 'You can’t deactivate your own account' : undefined"
                   @click="pendingAction = 'deactivate'">
                   <UIcon name="i-lucide-user-x" class="size-3.5" /> Deactivate
                 </button>
               </div>
-              <button v-else type="button" class="btn-table-action is-accent" @click="pendingAction = 'reactivate'">
+              <button v-else type="button" class="btn-table-action is-accent max-md:h-10! max-md:text-[13px]!" @click="pendingAction = 'reactivate'">
                 <UIcon name="i-lucide-user-check" class="size-3.5" /> Reactivate
               </button>
             </div>
@@ -303,7 +303,7 @@ const addressBlock = computed(() => {
         </div>
 
         <!-- RIGHT: teammate-owned (read-only) -->
-        <section class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <section class="rounded-2xl border p-6 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3 mb-1">
             <h2 class="text-[13px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Personal details</h2>
             <span
@@ -413,6 +413,13 @@ const addressBlock = computed(() => {
 .confirm-fade-enter-from,
 .confirm-fade-leave-to {
   opacity: 0;
+}
+/* Mobile only (<768px) — desktop untouched. */
+@media (max-width: 767.98px) {
+  /* 16px inputs stop iOS focus-zoom. */
+  .contact-input { font-size: 16px; }
+  .confirm-overlay { padding: 16px; }
+  .confirm-card { padding: 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .confirm-fade-enter-active,

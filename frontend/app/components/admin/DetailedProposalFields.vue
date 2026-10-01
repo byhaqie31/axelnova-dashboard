@@ -119,7 +119,7 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 max-md:space-y-5">
     <!-- Header fields -->
     <div class="grid sm:grid-cols-2 gap-4">
       <div class="space-y-1.5">
@@ -143,25 +143,25 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <label class="text-[12px] font-medium block" style="color: var(--color-text-secondary);">“What's included” groups</label>
           <p class="text-[11px]" style="color: var(--color-text-tertiary);">Tick-list groups shown on the quotation.</p>
         </div>
-        <button type="button" class="text-[12px] shrink-0 mt-0.5" style="color: var(--color-accent);" @click="addIncluded">+ Add group</button>
+        <button type="button" class="text-[12px] shrink-0 mt-0.5 max-md:mt-0 max-md:-my-2 max-md:min-h-10 max-md:px-2 max-md:-mr-2 max-md:text-[13px] max-md:font-medium max-md:active:opacity-60" style="color: var(--color-accent);" @click="addIncluded">+ Add group</button>
       </div>
       <button v-if="!included.length" type="button" class="w-full rounded-xl border border-dashed px-4 py-5 text-center text-[12px] transition-colors hover:border-(--color-accent)" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }" @click="addIncluded">
         No groups yet. <span class="font-medium" style="color: var(--color-text-secondary);">Add a group</span> to list what's included, like a “BASIC SEO” set with bullet points.
       </button>
       <div v-for="(g, gi) in included" :key="gi" class="rounded-xl border p-3 space-y-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-        <div class="flex items-center gap-2">
-          <input v-model="g.eyebrow" type="text" placeholder="Eyebrow (optional, e.g. BASIC SEO)" class="contact-input flex-1 min-w-0 text-[12px]" :style="fieldStyle">
+        <div class="flex items-center gap-2 max-md:flex-wrap">
+          <input v-model="g.eyebrow" type="text" placeholder="Eyebrow (optional, e.g. BASIC SEO)" class="contact-input flex-1 min-w-0 text-[12px] max-md:basis-full" :style="fieldStyle">
           <div class="inline-flex shrink-0 items-center rounded-lg border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
             <button
-type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
+type="button" class="px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md text-[12px] font-medium transition-colors"
               :style="g.columns === 1 ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-secondary)' }"
               @click="g.columns = 1">1 col</button>
             <button
-type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors"
+type="button" class="px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md text-[12px] font-medium transition-colors"
               :style="g.columns === 2 ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-secondary)' }"
               @click="g.columns = 2">2 col</button>
           </div>
-          <button type="button" class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove group" @click="removeIncluded(gi)">
+          <button type="button" class="size-9 max-md:size-10 max-md:ml-auto rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove group" @click="removeIncluded(gi)">
             <UIcon name="i-lucide-trash-2" class="size-4" />
           </button>
         </div>
@@ -177,7 +177,7 @@ type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-c
           <label class="text-[12px] font-medium block" style="color: var(--color-text-secondary);">Option cards</label>
           <p class="text-[11px]" style="color: var(--color-text-tertiary);">Side-by-side package choices the client picks between.</p>
         </div>
-        <button type="button" class="text-[12px] shrink-0 mt-0.5" style="color: var(--color-accent);" @click="addOption">+ Add option</button>
+        <button type="button" class="text-[12px] shrink-0 mt-0.5 max-md:mt-0 max-md:-my-2 max-md:min-h-10 max-md:px-2 max-md:-mr-2 max-md:text-[13px] max-md:font-medium max-md:active:opacity-60" style="color: var(--color-accent);" @click="addOption">+ Add option</button>
       </div>
       <button v-if="!options.length" type="button" class="w-full rounded-xl border border-dashed px-4 py-5 text-center text-[12px] transition-colors hover:border-(--color-accent)" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }" @click="addOption">
         No options yet. <span class="font-medium" style="color: var(--color-text-secondary);">Add a card</span> to present tiered choices (Option A, Option B).
@@ -193,34 +193,34 @@ type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-c
         </div>
       </div>
       <div v-for="(c, ci) in options" :key="ci" class="rounded-xl border p-3 space-y-2" :style="{ borderColor: c.accent ? 'var(--color-accent)' : 'var(--color-border)', background: 'var(--color-bg)' }">
-        <div class="flex items-center gap-2">
-          <input v-model="c.badge" type="text" placeholder="OPTION A" class="contact-input shrink-0 text-[11px] font-semibold uppercase tracking-wider" :style="{ ...fieldStyle, width: '8rem' }">
-          <input v-model="c.title" type="text" placeholder="Option title" class="contact-input flex-1 min-w-0 text-[13px] font-medium" :style="fieldStyle">
-          <button type="button" class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove option" @click="removeOption(ci)">
+        <div class="flex items-center gap-2 max-md:flex-wrap">
+          <input v-model="c.badge" type="text" placeholder="OPTION A" class="contact-input shrink-0 text-[11px] font-semibold uppercase tracking-wider max-md:flex-1 max-md:min-w-0" :style="{ ...fieldStyle, width: '8rem' }">
+          <input v-model="c.title" type="text" placeholder="Option title" class="contact-input flex-1 min-w-0 text-[13px] font-medium max-md:basis-full max-md:order-last" :style="fieldStyle">
+          <button type="button" class="size-9 max-md:size-10 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove option" @click="removeOption(ci)">
             <UIcon name="i-lucide-trash-2" class="size-4" />
           </button>
         </div>
         <input v-model="c.sub" type="text" placeholder="Sub line (optional)" class="contact-input w-full text-[12px]" :style="fieldStyle">
-        <div class="flex flex-wrap items-end gap-2">
-          <div class="w-32">
+        <div class="flex flex-wrap items-end gap-2 max-md:grid max-md:grid-cols-2">
+          <div class="w-32 max-md:w-auto">
             <span class="d-label">Price</span>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none" style="color: var(--color-text-tertiary);">RM</span>
               <input v-model.number="c.price" type="number" min="0" step="50" class="contact-input w-full text-[13px] pl-9 text-right" :style="fieldStyle">
             </div>
           </div>
-          <div class="w-32">
+          <div class="w-32 max-md:w-auto">
             <span class="d-label">Was (optional)</span>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none" style="color: var(--color-text-tertiary);">RM</span>
               <input v-model.number="c.priceWas" type="number" min="0" step="50" class="contact-input w-full text-[13px] pl-9 text-right" :style="fieldStyle">
             </div>
           </div>
-          <div class="flex-1 min-w-28">
+          <div class="flex-1 min-w-28 max-md:min-w-0">
             <span class="d-label">Price note</span>
             <input v-model="c.priceNote" type="text" placeholder="one-time" class="contact-input w-full text-[12px]" :style="fieldStyle">
           </div>
-          <label class="inline-flex items-center gap-1.5 text-[12px] pb-2.5" style="color: var(--color-text-secondary);">
+          <label class="inline-flex items-center gap-1.5 text-[12px] max-md:text-[13px] pb-2.5 max-md:pb-3" style="color: var(--color-text-secondary);">
             <input v-model="c.accent" type="checkbox"> Recommended
           </label>
         </div>
@@ -234,33 +234,33 @@ type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-c
           <label class="text-[12px] font-medium block" style="color: var(--color-text-secondary);">Care plan</label>
           <p class="text-[11px]" style="color: var(--color-text-tertiary);">Optional ongoing support tiers listed after the quote.</p>
         </div>
-        <button type="button" class="text-[12px] shrink-0 mt-0.5" style="color: var(--color-accent);" @click="addCare">+ Add plan row</button>
+        <button type="button" class="text-[12px] shrink-0 mt-0.5 max-md:mt-0 max-md:-my-2 max-md:min-h-10 max-md:px-2 max-md:-mr-2 max-md:text-[13px] max-md:font-medium max-md:active:opacity-60" style="color: var(--color-accent);" @click="addCare">+ Add plan row</button>
       </div>
       <button v-if="!care.length" type="button" class="w-full rounded-xl border border-dashed px-4 py-5 text-center text-[12px] transition-colors hover:border-(--color-accent)" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-tertiary)' }" @click="addCare">
         No care plan yet. <span class="font-medium" style="color: var(--color-text-secondary);">Add a row</span> for monthly or yearly support.
       </button>
       <input v-if="care.length" v-model="careTitle" type="text" placeholder="Care section title" class="contact-input w-full text-[12px]" :style="fieldStyle">
-      <div v-for="(r, ri) in care" :key="ri" class="flex flex-wrap items-end gap-2 rounded-xl border p-2.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-        <div class="w-36">
+      <div v-for="(r, ri) in care" :key="ri" class="flex flex-wrap items-end gap-2 max-md:grid max-md:grid-cols-[1fr_1fr_2.5rem] max-md:p-3 rounded-xl border p-2.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+        <div class="w-36 max-md:w-auto max-md:col-span-2 max-md:row-start-1">
           <span class="d-label">Plan</span>
           <input v-model="r.label" type="text" placeholder="Basic" class="contact-input w-full text-[13px]" :style="fieldStyle">
         </div>
-        <div class="flex-1 min-w-40">
+        <div class="flex-1 min-w-40 max-md:min-w-0 max-md:col-span-3">
           <span class="d-label">Detail</span>
           <input v-model="r.detail" type="text" placeholder="Hosting + updates" class="contact-input w-full text-[12px]" :style="fieldStyle">
         </div>
-        <div class="w-28">
+        <div class="w-28 max-md:w-auto">
           <span class="d-label">Price</span>
           <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none" style="color: var(--color-text-tertiary);">RM</span>
             <input v-model.number="r.price" type="number" min="0" step="10" class="contact-input w-full text-[13px] pl-9 text-right" :style="fieldStyle">
           </div>
         </div>
-        <div class="w-24">
+        <div class="w-24 max-md:w-auto max-md:col-span-2">
           <span class="d-label">Per</span>
           <AdminSelect v-model="r.period" :items="[{ label: '—', value: '' }, { label: 'month', value: 'month' }, { label: 'year', value: 'year' }]" class="w-full" />
         </div>
-        <button type="button" class="size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove plan row" @click="removeCare(ri)">
+        <button type="button" class="size-9 max-md:size-10 max-md:col-start-3 max-md:row-start-1 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)" :style="{ color: 'var(--color-danger)' }" aria-label="Remove plan row" @click="removeCare(ri)">
           <UIcon name="i-lucide-x" class="size-4" />
         </button>
       </div>
@@ -278,5 +278,12 @@ type="button" class="px-2.5 py-1 rounded-md text-[12px] font-medium transition-c
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-tertiary);
+}
+
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox'], [type='radio']),
+  textarea,
+  :deep(input:not([type='checkbox'], [type='radio'])) { font-size: 16px; }
 }
 </style>

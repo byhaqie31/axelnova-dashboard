@@ -272,10 +272,10 @@ const agreedAmount = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <NuxtLink
-to="/admin/orders" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/orders" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 max-md:py-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All orders
     </NuxtLink>
@@ -283,23 +283,23 @@ to="/admin/orders" class="inline-flex items-center gap-2 text-[13px] mb-8 transi
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
     <p v-else-if="error" style="color: var(--color-danger);">{{ error }}</p>
 
-    <div v-else-if="order" class="grid lg:grid-cols-[1fr_300px] gap-8 items-start">
+    <div v-else-if="order" class="grid lg:grid-cols-[1fr_300px] gap-8 max-md:gap-5 items-start">
 
-      <div class="space-y-6">
+      <div class="space-y-6 max-md:space-y-4 max-md:min-w-0">
 
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
-            <div>
+          <div class="flex items-start justify-between flex-wrap gap-4 max-md:gap-3 mb-5">
+            <div class="max-md:min-w-0">
               <p class="font-mono text-[20px] font-bold mb-1" style="color: var(--color-accent);">{{ order.order_number }}</p>
-              <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ order.name ?? '—' }}</p>
+              <p class="text-[22px] max-md:text-[20px] font-bold tracking-tight max-md:break-words" style="color: var(--color-text);">{{ order.name ?? '—' }}</p>
               <p v-if="order.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ order.company }}</p>
             </div>
-            <div class="flex flex-col items-end gap-2">
+            <div class="flex flex-col items-end gap-2 max-md:w-full max-md:flex-row max-md:items-center max-md:justify-between">
               <AdminStatusPill :status="order.status" size="md" />
               <button
-                type="button" class="text-[12px] font-medium inline-flex items-center gap-1.5 transition-opacity hover:opacity-70"
+                type="button" class="text-[12px] max-md:text-[13px] max-md:py-2 font-medium inline-flex items-center gap-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60"
                 :style="{ color: 'var(--color-accent)' }" @click="manageClientOpen = true">
                 <UIcon name="i-lucide-pencil" class="size-3" /> Manage client
               </button>
@@ -308,7 +308,7 @@ class="rounded-2xl border p-6"
           <div class="grid sm:grid-cols-3 gap-4 pt-4 border-t" style="border-color: var(--color-border);">
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Email</p>
-              <a v-if="order.email" :href="`mailto:${order.email}`" class="text-[13px] font-medium" style="color: var(--color-accent);">{{ order.email }}</a>
+              <a v-if="order.email" :href="`mailto:${order.email}`" class="text-[13px] font-medium max-md:break-all" style="color: var(--color-accent);">{{ order.email }}</a>
               <span v-else class="text-[13px]" :style="{ color: 'var(--color-text-tertiary)' }">—</span>
             </div>
             <div>
@@ -327,7 +327,7 @@ class="rounded-2xl border p-6"
 
         <!-- Scope snapshot (confirmed quotation, read-only) -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3 mb-4">
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Scope snapshot</p>
@@ -395,7 +395,7 @@ v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold
 
         <!-- Payment -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3 mb-5">
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Payment</p>
@@ -458,10 +458,10 @@ v-for="p in order.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
 
           <!-- Shortcuts into the Payments module -->
           <div class="flex flex-wrap gap-2 pt-5 mt-5 border-t" style="border-color: var(--color-border);">
-            <NuxtLink :to="`/admin/payments/new?order_id=${order.id}`" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;">
+            <NuxtLink :to="`/admin/payments/new?order_id=${order.id}`" class="btn-pill btn-pill-primary text-[12px] max-md:flex-1 max-md:h-10!" style="height: 34px; padding: 0 16px;">
               Record payment
             </NuxtLink>
-            <NuxtLink :to="`/admin/payments?order_id=${order.id}`" class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;">
+            <NuxtLink :to="`/admin/payments?order_id=${order.id}`" class="btn-pill btn-pill-ghost text-[12px] max-md:flex-1 max-md:h-10!" style="height: 34px; padding: 0 16px;">
               View all payments
             </NuxtLink>
           </div>
@@ -469,7 +469,7 @@ v-for="p in order.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
 
         <!-- Invoices -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Invoices</p>
 
@@ -497,10 +497,10 @@ class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
 
           <!-- Shortcuts into the Invoices module -->
           <div class="flex flex-wrap gap-2 pt-4 border-t" style="border-color: var(--color-border);">
-            <NuxtLink :to="`/admin/invoices/new?order_id=${order.id}`" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;">
+            <NuxtLink :to="`/admin/invoices/new?order_id=${order.id}`" class="btn-pill btn-pill-primary text-[12px] max-md:flex-1 max-md:h-10!" style="height: 34px; padding: 0 16px;">
               Issue invoice
             </NuxtLink>
-            <NuxtLink :to="`/admin/invoices?order_id=${order.id}`" class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;">
+            <NuxtLink :to="`/admin/invoices?order_id=${order.id}`" class="btn-pill btn-pill-ghost text-[12px] max-md:flex-1 max-md:h-10!" style="height: 34px; padding: 0 16px;">
               View all invoices
             </NuxtLink>
           </div>
@@ -508,7 +508,7 @@ class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
 
         <!-- Receipts -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Receipts</p>
 
@@ -525,7 +525,7 @@ v-for="r in order.receipts" :key="r.id"
               </div>
               <a
 :href="r.pdf_path" target="_blank" rel="noopener"
-                class="btn-pill btn-pill-ghost text-[12px] shrink-0" style="height: 32px; padding: 0 16px;">
+                class="btn-pill btn-pill-ghost text-[12px] shrink-0 max-md:h-9!" style="height: 32px; padding: 0 16px;">
                 View PDF
               </a>
             </div>
@@ -550,7 +550,7 @@ class="rounded-2xl border p-5"
           <div class="flex flex-wrap gap-2">
             <button
 v-for="s in statusOptions" :key="s" type="button"
-              class="status-pill status-pill-button"
+              class="status-pill status-pill-button max-md:text-[12px]! max-md:px-3! max-md:py-1.5!"
               :class="{ 'opacity-50': statusLoading }"
               :data-status="order.status === s ? s : ''"
               :data-active="order.status === s"
@@ -658,5 +658,10 @@ v-if="order.phone" :href="`https://wa.me/${order.phone.replace(/\\D/g, '')}?text
 .doc-input:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  .doc-input { height: 44px; font-size: 16px; }
 }
 </style>

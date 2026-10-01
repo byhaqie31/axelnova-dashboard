@@ -180,16 +180,16 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <NuxtLink
-to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-5 md:mb-8 max-md:py-1 transition-opacity hover:opacity-70 active:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All services
     </NuxtLink>
 
     <div class="mb-6">
-      <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
+      <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">
         {{ isNew ? 'New package' : 'Edit package' }}
       </h1>
     </div>
@@ -197,7 +197,7 @@ to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 tran
     <p v-if="message" class="mb-4 text-[13px]" :style="{ color: 'var(--color-danger)' }">{{ message }}</p>
 
     <form
-v-if="!loading" class="rounded-2xl border p-6 space-y-5"
+v-if="!loading" class="rounded-2xl border p-4 md:p-6 space-y-5"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
       @submit.prevent="save">
 
@@ -261,7 +261,7 @@ v-model="form.tagline" type="text" required class="contact-input w-full"
           :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
       </div>
 
-      <div class="grid sm:grid-cols-3 gap-4">
+      <div class="grid max-sm:grid-cols-2 sm:grid-cols-3 gap-4 max-sm:gap-3">
         <div>
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Price min (MYR) *</label>
           <input
@@ -276,7 +276,7 @@ v-model.number="form.price_max_myr" type="number" min="0"
             class="contact-input w-full"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         </div>
-        <div>
+        <div class="max-sm:col-span-2">
           <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Unit *</label>
           <input
 v-model="form.unit" type="text" required class="contact-input w-full"
@@ -316,7 +316,7 @@ v-model.number="form.eta_value" type="number" required min="1" max="999"
           <div class="flex flex-wrap gap-1.5">
             <button
 v-for="u in etaUnitOptions" :key="u.value" type="button"
-              class="standard-pill"
+              class="standard-pill max-md:min-h-9"
               :style="form.eta_unit === u.value
                 ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
                 : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
@@ -347,12 +347,12 @@ v-model="form.cta" type="text" class="contact-input w-full"
       <div
 class="rounded-xl border p-4"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-        <label class="flex items-center gap-2 cursor-pointer">
+        <label class="flex items-center gap-2 cursor-pointer max-md:min-h-9">
           <input v-model="useQuoteKey" type="checkbox" class="size-4" >
           <span class="text-[13px] font-medium" :style="{ color: 'var(--color-text)' }">Wire CTA to the quote builder</span>
         </label>
         <p class="text-[11px] mt-1" :style="{ color: 'var(--color-text-tertiary)' }">
-          When enabled, clicking the package CTA opens <code>/quote?category=&hellip;&package=&hellip;</code> with the right preset.
+          When enabled, clicking the package CTA opens <code class="max-md:break-all">/quote?category=&hellip;&package=&hellip;</code> with the right preset.
         </p>
         <div v-if="useQuoteKey" class="grid sm:grid-cols-2 gap-3 mt-3">
           <input
@@ -472,7 +472,7 @@ class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
         </button>
       </div>
 
-      <div class="flex items-center gap-3 pt-2">
+      <div class="flex items-center gap-3 pt-2 max-md:flex-col-reverse max-md:items-stretch">
         <button type="submit" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving">
           {{ saving ? 'Saving…' : isNew ? 'Create package' : 'Save changes' }}
         </button>
@@ -483,3 +483,11 @@ class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
     <div v-else class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
   </div>
 </template>
+
+<style scoped>
+/* Phone: 16px inputs stop iOS focus-zoom (.contact-input is 14px, unlayered,
+   so a Tailwind utility can't override it). */
+@media (max-width: 767.98px) {
+  .contact-input { font-size: 16px; }
+}
+</style>

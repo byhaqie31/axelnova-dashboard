@@ -116,24 +116,24 @@ function fmtDate(iso: string | null) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Feedback</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Feedback</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Client reviews — request, moderate, and publish to the testimonial wall.</p>
       </div>
-      <NuxtLink to="/admin/feedback/new" class="btn-pill btn-pill-accent text-[13px]">
+      <NuxtLink to="/admin/feedback/new" class="btn-pill btn-pill-accent text-[13px] max-md:w-full">
         <UIcon name="i-lucide-plus" class="size-4" /> New feedback
       </NuxtLink>
     </div>
 
     <!-- Stat tiles -->
-    <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+    <div ref="tilesGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 md:mb-8">
       <div
         v-for="tile in tiles"
         :key="tile.label"
-        class="rounded-2xl border p-5"
+        class="rounded-2xl border p-5 max-md:p-4"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
       >
         <div
@@ -143,7 +143,7 @@ function fmtDate(iso: string | null) {
           <UIcon :name="tile.icon" class="size-4" />
         </div>
         <p class="text-[11px] font-semibold uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">{{ tile.label }}</p>
-        <p class="text-[28px] font-bold tracking-tight tabular-nums" style="color: var(--color-text);">
+        <p class="text-[28px] max-md:text-[24px] font-bold tracking-tight tabular-nums" style="color: var(--color-text);">
           <span v-if="loading && !stats" class="opacity-50">—</span>
           <span v-else>{{ tile.value }}</span>
         </p>
@@ -234,16 +234,21 @@ function fmtDate(iso: string | null) {
         v-for="f in rows"
         :key="f.id"
         type="button"
-        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="navigateTo(`/admin/feedback/${f.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-2">
-          <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ f.reference_code }}</p>
-          <StatusPill :status="f.status" type="feedback" />
+          <div class="min-w-0">
+            <p class="font-mono text-[12px] font-medium break-all" :style="{ color: 'var(--color-accent)' }">{{ f.reference_code }}</p>
+            <p v-if="f.featured" class="text-[11px] font-semibold mt-0.5 inline-flex items-center gap-1" :style="{ color: 'var(--color-warning)' }">
+              <UIcon name="i-lucide-star" class="size-3" />Featured
+            </p>
+          </div>
+          <StatusPill :status="f.status" type="feedback" class="shrink-0" />
         </div>
-        <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ f.name ?? '—' }}</p>
-        <p class="text-[11px] mb-3" :style="{ color: 'var(--color-text-tertiary)' }">{{ f.project_label ?? f.email ?? '' }}</p>
+        <p class="text-[13px] font-medium leading-tight truncate" :style="{ color: 'var(--color-text)' }">{{ f.name ?? '—' }}</p>
+        <p class="text-[11px] mb-3 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ f.project_label ?? f.email ?? '' }}</p>
         <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3">
             <p class="text-[13px] font-semibold tabular-nums" :style="{ color: 'var(--color-text)' }">
@@ -253,7 +258,7 @@ function fmtDate(iso: string | null) {
               v-if="f.nps_bucket"
               class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
               :style="{ background: npsBuckets[f.nps_bucket]?.bg, color: npsBuckets[f.nps_bucket]?.color }"
-            >{{ npsBuckets[f.nps_bucket]?.label }}</span>
+            >{{ npsBuckets[f.nps_bucket]?.label }} · {{ f.nps }}</span>
           </div>
           <p class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">
             {{ f.submitted_at ? `Submitted ${fmtDate(f.submitted_at)}` : 'Awaiting client' }}

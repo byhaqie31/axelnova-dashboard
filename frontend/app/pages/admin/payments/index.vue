@@ -132,17 +132,17 @@ function methodLabel(v: string) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Payments</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Payments</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">The money ledger — every payment and refund across all orders.</p>
       </div>
     </div>
 
     <div class="flex flex-wrap items-center gap-3 mb-6">
-      <AdminExpandingSearch v-model="filters.search" placeholder="Search by payment #, ref, order or client…" />
+      <AdminExpandingSearch v-model="filters.search" placeholder="Search by payment #, ref, order or client…" class="max-md:flex-1 max-md:min-w-40" />
       <AdminFilterMenu :active-count="activeFilterCount" @clear="clearSecondary">
         <AdminFilterPills v-model="filters.type" label="Type" :options="typeOptions" />
         <AdminFilterPills v-model="filters.method" label="Method" :options="methodOptions" />
@@ -152,12 +152,12 @@ function methodLabel(v: string) {
     </div>
 
     <div
-v-if="filters.order_id" class="flex items-center justify-between gap-3 mb-5 rounded-xl border px-4 py-2.5"
+v-if="filters.order_id" class="flex items-center justify-between max-md:flex-wrap gap-3 mb-5 rounded-xl border px-4 py-2.5"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
       <p class="text-[12px]" style="color: var(--color-text-secondary);">Filtered to one order.</p>
       <div class="flex items-center gap-2">
-        <NuxtLink :to="`/admin/payments/new?order_id=${filters.order_id}`" class="btn-pill btn-pill-primary text-[12px]" style="height: 30px; padding: 0 14px;">Record payment</NuxtLink>
-        <button type="button" class="btn-pill btn-pill-ghost text-[12px]" style="height: 30px; padding: 0 14px;" @click="clearOrderFilter">Clear</button>
+        <NuxtLink :to="`/admin/payments/new?order_id=${filters.order_id}`" class="btn-pill btn-pill-primary text-[12px] h-9! md:h-[30px]! px-3.5!">Record payment</NuxtLink>
+        <button type="button" class="btn-pill btn-pill-ghost text-[12px] h-9! md:h-[30px]! px-3.5!" @click="clearOrderFilter">Clear</button>
       </div>
     </div>
 
@@ -232,25 +232,29 @@ class="text-[13px] font-semibold"
         v-for="p in payments"
         :key="p.id"
         type="button"
-        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary)"
+        class="w-full text-left rounded-xl border p-4 transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="navigateTo(`/admin/payments/${p.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-2">
           <div class="min-w-0">
-            <p class="font-mono text-[12px] font-medium" :style="{ color: 'var(--color-accent)' }">{{ p.payment_number }}</p>
-            <p v-if="p.order_number" class="font-mono text-[10px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ p.order_number }}</p>
+            <p class="font-mono text-[12px] font-medium break-all" :style="{ color: 'var(--color-accent)' }">{{ p.payment_number }}</p>
+            <p v-if="p.order_number" class="font-mono text-[11px] break-all" :style="{ color: 'var(--color-text-tertiary)' }">{{ p.order_number }}</p>
           </div>
-          <AdminStatusPill :status="p.status" />
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span v-if="p.type === 'refund'" class="text-[10px] font-semibold uppercase tracking-wider" :style="{ color: 'var(--color-danger)' }">Refund</span>
+            <AdminStatusPill :status="p.status" />
+          </div>
         </div>
-        <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ p.name ?? '—' }}</p>
-        <div class="flex items-center justify-between gap-3 pt-2 mt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
+        <p class="text-[13px] font-medium leading-tight truncate" :style="{ color: 'var(--color-text)' }">{{ p.name ?? '—' }}</p>
+        <p v-if="p.email" class="text-[11px] truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ p.email }}</p>
+        <div class="flex items-center justify-between gap-3 pt-2 mt-3 border-t" :style="{ borderColor: 'var(--color-border)' }">
           <p
-class="text-[14px] font-semibold"
+class="text-[14px] font-semibold tabular-nums shrink-0"
             :style="{ color: Number(p.amount_myr) < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">
             {{ Number(p.amount_myr) < 0 ? '−' : '' }}{{ fmtMyr(p.amount_myr) }}
           </p>
-          <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ methodLabel(p.method) }} · {{ fmtDate(p.paid_at) }}</span>
+          <span class="text-[11px] text-right min-w-0" :style="{ color: 'var(--color-text-tertiary)' }">{{ methodLabel(p.method) }} · {{ fmtDate(p.paid_at) }}</span>
         </div>
       </button>
     </div>

@@ -103,20 +103,20 @@ const tiles = computed(() => [
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <div class="flex items-end justify-between gap-4 flex-wrap mb-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <div class="flex items-end justify-between gap-4 flex-wrap mb-6 md:mb-8">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Revenue</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Revenue</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           What we sold versus what we banked, by month.
         </p>
       </div>
-      <div class="flex gap-1.5">
+      <div class="flex gap-1.5 max-md:w-full">
         <button
           v-for="n in ([6, 12, 24] as const)"
           :key="n"
           type="button"
-          class="standard-pill"
+          class="standard-pill max-md:flex-1 max-md:justify-center max-md:py-2!"
           :style="months === n
             ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
             : { borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
@@ -128,11 +128,11 @@ const tiles = computed(() => [
     <p v-if="error" class="mb-6 text-[13px]" style="color: var(--color-danger);">{{ error }}</p>
 
     <!-- Totals -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 max-md:gap-3 mb-4 max-md:mb-3">
       <section
         v-for="t in tiles"
         :key="t.key"
-        class="rounded-2xl border p-5"
+        class="rounded-2xl border p-5 max-md:p-4 max-md:min-w-0"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }"
       >
         <div class="flex items-center gap-1.5 mb-1">
@@ -145,7 +145,7 @@ const tiles = computed(() => [
             {{ t.label }}
           </p>
         </div>
-        <p class="text-[26px] font-bold tracking-tight tabular-nums leading-none" style="color: var(--color-text);">
+        <p class="text-[26px] max-md:text-[19px] font-bold tracking-tight tabular-nums leading-none max-md:break-words" style="color: var(--color-text);">
           <span v-if="loading" class="opacity-40">—</span>
           <span v-else>{{ myr.format(t.value ?? 0) }}</span>
         </p>
@@ -155,10 +155,10 @@ const tiles = computed(() => [
 
     <!-- Booked vs collected -->
     <section
-      class="rounded-2xl border p-6 mb-4"
+      class="rounded-2xl border p-6 max-md:p-4 mb-4 max-md:mb-3"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }"
     >
-      <div class="flex items-start justify-between gap-6 flex-wrap mb-6">
+      <div class="flex items-start justify-between gap-6 max-md:gap-3 flex-wrap mb-6 max-md:mb-4">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-1" style="color: var(--color-text-tertiary);">
             Booked vs collected
@@ -240,7 +240,9 @@ const tiles = computed(() => [
           </div>
         </div>
         <div class="flex gap-1 mt-2">
-          <div v-for="(row, i) in series" :key="row.month" class="flex-1 text-center">
+          <div
+            v-for="(row, i) in series" :key="row.month" class="flex-1 text-center"
+            :class="{ 'max-md:even:*:invisible': series.length > 6 && series.length <= 12 }">
             <!-- Label every other month at 24 so ticks never collide. -->
             <span
               v-if="series.length <= 12 || i % 2 === 0"
@@ -255,7 +257,7 @@ const tiles = computed(() => [
     <!-- Table view — the exact figures behind the chart. -->
     <section
       v-if="!loading && hasData"
-      class="rounded-2xl border overflow-hidden"
+      class="hidden md:block rounded-2xl border overflow-hidden"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }"
     >
       <div class="overflow-x-auto">
@@ -304,6 +306,45 @@ const tiles = computed(() => [
         </table>
       </div>
     </section>
+
+    <!-- Mobile: cards — same rows (newest first) and drill-down as the table. -->
+    <div v-if="!loading && hasData" class="md:hidden space-y-2.5">
+      <button
+        v-for="{ row } in tableRows"
+        :key="row.month"
+        type="button"
+        class="w-full text-left rounded-xl border p-4 transition-colors active:bg-(--color-bg-secondary)"
+        :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }"
+        :aria-label="`Open ${row.label} breakdown`"
+        @click="openMonth(row.month)"
+      >
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <span class="text-[14px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ row.label }}</span>
+          <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0" :style="{ color: 'var(--color-text-tertiary)' }" />
+        </div>
+        <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+          <div class="min-w-0">
+            <p class="text-[11px] flex items-center gap-1.5" :style="{ color: 'var(--color-text-tertiary)' }">
+              <span class="size-2 rounded-[2px] shrink-0" :style="{ background: 'var(--chart-secondary)' }" />Booked
+            </p>
+            <p class="text-[13px] font-semibold tabular-nums break-words" :style="{ color: 'var(--color-text)' }">{{ myrExact.format(row.booked) }}</p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[11px] flex items-center gap-1.5" :style="{ color: 'var(--color-text-tertiary)' }">
+              <span class="size-2 rounded-[2px] shrink-0" :style="{ background: 'var(--chart-primary)' }" />Collected
+            </p>
+            <p class="text-[13px] font-semibold tabular-nums break-words" :style="{ color: 'var(--color-text)' }">{{ myrExact.format(row.collected) }}</p>
+          </div>
+        </div>
+        <div class="flex items-center justify-between gap-3 pt-2 mt-3 border-t text-[11px]" :style="{ borderColor: 'var(--color-border)' }">
+          <span
+            class="tabular-nums min-w-0"
+            :style="{ color: row.collected - row.booked < 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }"
+          >{{ row.collected - row.booked >= 0 ? '+' : '' }}{{ myrExact.format(row.collected - row.booked) }}</span>
+          <span class="tabular-nums shrink-0" :style="{ color: 'var(--color-text-secondary)' }">{{ row.orders }} orders · {{ row.payments }} payments</span>
+        </div>
+      </button>
+    </div>
 
     <p class="text-[11px] mt-4 leading-relaxed" style="color: var(--color-text-tertiary);">
       <strong style="color: var(--color-text-secondary);">Booked</strong> is the contracted value of orders won in a month.

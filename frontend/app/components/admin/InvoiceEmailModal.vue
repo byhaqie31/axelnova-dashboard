@@ -42,14 +42,14 @@ function fmtDate(iso?: string | null) {
             <input v-model="email" type="email" placeholder="client@example.com" class="contact-input mt-1 w-full" @keyup.enter="valid && !sending && emit('send', email)">
           </label>
 
-          <p v-if="emailedAt" class="text-[11px] mb-4" style="color: var(--color-text-tertiary);">
+          <p v-if="emailedAt" class="text-[11px] mb-4 max-md:break-words" style="color: var(--color-text-tertiary);">
             Last sent to {{ emailedTo }} on {{ fmtDate(emailedAt) }}.
           </p>
 
           <div class="flex items-center justify-end gap-2 mt-4">
-            <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="emit('close')">Cancel</button>
+            <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1" @click="emit('close')">Cancel</button>
             <button
-              type="button" class="btn-pill btn-pill-accent text-[13px]"
+              type="button" class="btn-pill btn-pill-accent text-[13px] max-md:flex-1"
               :class="{ 'opacity-50': !valid || sending }" :disabled="!valid || sending"
               @click="emit('send', email)">
               {{ sending ? 'Queuing…' : 'Send invoice' }}
@@ -60,3 +60,21 @@ function fmtDate(iso?: string | null) {
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+/* Mobile: the dialog becomes a bottom sheet — full width, anchored to the
+   bottom edge, scrolls internally, clears the home indicator. Desktop keeps
+   the shared centered .confirm-card from main.css. */
+@media (max-width: 767.98px) {
+  .confirm-overlay { align-items: flex-end; padding: 12px 0 0; }
+  .confirm-card {
+    max-width: none;
+    max-height: 90dvh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    border-bottom-width: 0;
+    padding: 20px 20px max(20px, env(safe-area-inset-bottom));
+  }
+  input { font-size: 16px; }
+}
+</style>

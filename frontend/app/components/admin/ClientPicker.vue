@@ -94,16 +94,16 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
             : { borderColor: 'var(--color-border)' }"
           @click="selectedId = c.id">
           <div class="flex items-center justify-between gap-2">
-            <span class="text-[13px] font-semibold" style="color: var(--color-text);">{{ c.name }}</span>
+            <span class="text-[13px] font-semibold max-md:min-w-0 max-md:wrap-anywhere" style="color: var(--color-text);">{{ c.name }}</span>
             <UIcon v-if="selectedId === c.id" name="i-lucide-check" class="size-4 shrink-0" :style="{ color: 'var(--color-accent)' }" />
           </div>
-          <p class="text-[11px] mt-0.5" style="color: var(--color-text-tertiary);">
+          <p class="text-[11px] mt-0.5 max-md:wrap-anywhere" style="color: var(--color-text-tertiary);">
             {{ c.email }}<span v-if="c.company"> · {{ c.company }}</span>
           </p>
         </button>
       </div>
 
-      <button type="button" class="text-[12px] font-medium inline-flex items-center gap-1.5" :style="{ color: 'var(--color-accent)' }" @click="creatingNew = true">
+      <button type="button" class="text-[12px] font-medium inline-flex items-center gap-1.5 max-md:text-[13px] max-md:py-2 max-md:active:opacity-60" :style="{ color: 'var(--color-accent)' }" @click="creatingNew = true">
         <UIcon name="i-lucide-plus" class="size-3.5" /> Create a new client instead
       </button>
     </template>
@@ -111,7 +111,7 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
     <template v-else>
       <div class="flex items-center justify-between">
         <p class="text-[12px] font-medium" style="color: var(--color-text-secondary);">New client</p>
-        <button type="button" class="text-[12px]" :style="{ color: 'var(--color-text-tertiary)' }" @click="creatingNew = false">
+        <button type="button" class="text-[12px] max-md:py-2 max-md:active:opacity-60" :style="{ color: 'var(--color-text-tertiary)' }" @click="creatingNew = false">
           ← Back to search
         </button>
       </div>
@@ -139,3 +139,11 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
     </template>
   </div>
 </template>
+
+<style scoped>
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox'], [type='radio']),
+  textarea { font-size: 16px; }
+}
+</style>

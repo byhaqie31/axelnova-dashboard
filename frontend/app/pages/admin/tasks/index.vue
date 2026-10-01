@@ -145,17 +145,17 @@ function fmtDeadline(iso: string | null) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Tasks</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Tasks</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           Delegate work to the team — assign directly or leave it in the pick-up pool. Open a task for its pay, timeline and payment status.
         </p>
       </div>
-      <NuxtLink to="/admin/tasks/new" class="btn-pill btn-pill-primary text-[13px]">
+      <NuxtLink to="/admin/tasks/new" class="btn-pill btn-pill-primary text-[13px] max-md:w-full">
         <UIcon name="i-lucide-plus" class="size-4" />
         New task
       </NuxtLink>
@@ -163,7 +163,7 @@ function fmtDeadline(iso: string | null) {
 
     <!-- Filter row (§12.11) -->
     <div class="flex flex-wrap items-center gap-3 mb-6">
-      <AdminExpandingSearch v-model="filters.q" placeholder="Search by title…" />
+      <AdminExpandingSearch v-model="filters.q" placeholder="Search by title…" class="max-md:flex-1 max-md:min-w-40" />
       <AdminFilterMenu :active-count="secondaryActiveCount" @clear="clearSecondaryFilters">
         <AdminFilterPills v-model="filters.priority" label="Priority" :options="priorityFilterOptions" />
         <div>
@@ -241,22 +241,28 @@ function fmtDeadline(iso: string | null) {
     <!-- Mobile: cards -->
     <div v-if="!loading && !isDesktop && tasks.length" class="space-y-2.5">
       <div
-        v-for="t in tasks" :key="t.id" class="rounded-xl border p-4 cursor-pointer"
+        v-for="t in tasks" :key="t.id" class="rounded-xl border p-4 cursor-pointer transition-colors active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="openTask(t)">
-        <div class="flex items-start justify-between gap-3 mb-1.5">
-          <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ t.title }}</span>
-          <StatusPill :status="t.status" type="task" />
+        <div class="flex items-start justify-between gap-3 mb-1">
+          <span class="text-[13px] font-semibold leading-tight min-w-0 break-words" :style="{ color: 'var(--color-text)' }">{{ t.title }}</span>
+          <StatusPill :status="t.status" type="task" class="shrink-0" />
         </div>
-        <div class="flex items-center justify-between gap-3">
-          <p class="text-[13px]" :style="{ color: 'var(--color-text-tertiary)' }">
-            {{ t.assignee_name ?? 'Pool' }} · <span class="capitalize">{{ t.priority }}</span>
-            <template v-if="t.deadline"> · due {{ fmtDeadline(t.deadline) }}</template>
-          </p>
+        <p class="text-[11px] mb-3 truncate" :style="{ color: t.assignee_name ? 'var(--color-text-secondary)' : 'var(--color-text-tertiary)' }">
+          {{ t.assignee_name ?? 'Pool' }}
+        </p>
+        <div class="pt-2 border-t flex items-center justify-between gap-3" :style="{ borderColor: 'var(--color-border)' }">
+          <div class="flex items-center gap-2 min-w-0 text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">
+            <span
+              class="inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-medium capitalize shrink-0"
+              :style="{ color: taskPriorityMeta(t.priority)?.color, background: taskPriorityMeta(t.priority)?.bg }"
+            >{{ t.priority }}</span>
+            <span v-if="t.deadline" class="truncate">Due {{ fmtDeadline(t.deadline) }}</span>
+          </div>
           <button
-            type="button" class="btn-table-action is-danger shrink-0" aria-label="Delete task"
+            type="button" class="btn-table-action is-danger shrink-0 h-9! w-9! px-0!" aria-label="Delete task"
             @click.stop="pendingDelete = t">
-            <UIcon name="i-lucide-trash-2" class="size-3.5" />
+            <UIcon name="i-lucide-trash-2" class="size-4" />
           </button>
         </div>
       </div>

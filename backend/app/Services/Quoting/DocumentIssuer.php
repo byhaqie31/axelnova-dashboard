@@ -25,10 +25,34 @@ class DocumentIssuer
      * values over these and re-runs DocumentMapper — the payload is always a
      * pure function of (order, inputs, number, issued).
      */
+    /**
+     * Display-only options (see DocumentMapper::amountDocument) — they change how
+     * the invoice looks, never what it bills, so they stay editable once amounts
+     * lock. Part of INPUT_KEYS: without that cleanInputs() would drop them and the
+     * next edit would revert the invoice to the defaults.
+     */
+    public const DISPLAY_KEYS = [
+        'showSummary', 'showRemaining', 'billingTitle', 'billingLabel', 'billingText',
+        'scopeTitle', 'scopeItems',
+    ];
+
+    /** Validation for DISPLAY_KEYS — shared by every endpoint that takes invoice inputs. */
+    public const DISPLAY_RULES = [
+        'showSummary' => ['nullable', 'boolean'],
+        'showRemaining' => ['nullable', 'boolean'],
+        'billingTitle' => ['nullable', 'string', 'max:80'],
+        'billingLabel' => ['nullable', 'string', 'max:40'],
+        'billingText' => ['nullable', 'string', 'max:220'],
+        'scopeTitle' => ['nullable', 'string', 'max:60'],
+        'scopeItems' => ['nullable', 'array', 'max:8'],
+        'scopeItems.*' => ['nullable', 'string', 'max:120'],
+    ];
+
     private const INPUT_KEYS = [
         'invoiceType', 'amount', 'amountPaid', 'paymentRef', 'paymentMethod',
         'discountType', 'discountValue', 'discountLabel',
         'promoCode', 'promoType', 'promoValue', 'notes', 'dueAt',
+        ...self::DISPLAY_KEYS,
     ];
 
     /**
@@ -140,7 +164,10 @@ class DocumentIssuer
         ], fn ($v) => $v !== null);
     }
 
-    /** Whitelist + drop empties — what gets persisted to `invoices.inputs`. */
+    /**
+     * Whitelist + drop empties — what gets persisted to `invoices.inputs`.
+     * Only null and '' count as empty: `false` (a hidden section) is kept.
+     */
     private static function cleanInputs(array $input): array
     {
         return array_filter(

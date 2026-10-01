@@ -36,7 +36,7 @@ onUnmounted(() => clearTimeout(timer))
     type="button"
     :aria-label="label ?? `Copy ${value}`"
     :title="copied ? 'Copied' : 'Copy'"
-    class="shrink-0 rounded-md inline-flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary)"
+    class="shrink-0 rounded-md inline-flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary) max-md:relative max-md:after:absolute max-md:after:-inset-2 max-md:active:bg-(--color-bg-secondary)"
     :class="size === 'md' ? 'size-7' : 'size-5'"
     :style="{ color: copied ? 'var(--color-success)' : 'var(--color-text-tertiary)' }"
     @click.stop.prevent="copy"

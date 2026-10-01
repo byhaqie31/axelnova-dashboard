@@ -55,21 +55,21 @@ function fmtPrice(n: string | number) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <NuxtLink
-to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/services" class="inline-flex items-center gap-2 text-[13px] mb-5 md:mb-8 max-md:py-1 transition-opacity hover:opacity-70 active:opacity-70"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All services
     </NuxtLink>
 
-    <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-start justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Add-ons</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Add-ons</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           {{ addons.length }} total · {{ activeCount }} active · shown in every quote builder
         </p>
       </div>
-      <NuxtLink to="/admin/services/addons/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5">
+      <NuxtLink to="/admin/services/addons/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5 max-md:w-full">
         <UIcon name="i-lucide-plus" class="size-3.5" />
         New add-on
       </NuxtLink>
@@ -92,7 +92,7 @@ v-else class="rounded-2xl border overflow-hidden"
       :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
       <li
 v-for="a in addons" :key="a.id"
-        class="flex items-center gap-4 px-5 py-3.5 border-b last:border-b-0"
+        class="flex items-center gap-4 px-5 py-3.5 border-b last:border-b-0 max-md:flex-wrap max-md:gap-x-3 max-md:gap-y-2.5 max-md:px-4"
         :style="{ borderColor: 'var(--color-border)' }">
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 flex-wrap">
@@ -101,18 +101,18 @@ v-for="a in addons" :key="a.id"
 v-if="!a.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
               :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
           </div>
-          <p class="text-[11px] font-mono mt-0.5" :style="{ color: 'var(--color-text-tertiary)' }">{{ a.addon_key }}</p>
+          <p class="text-[11px] font-mono mt-0.5 max-md:break-all" :style="{ color: 'var(--color-text-tertiary)' }">{{ a.addon_key }}</p>
         </div>
         <p class="text-[13px] font-semibold tabular-nums shrink-0" :style="{ color: 'var(--color-text)' }">{{ fmtPrice(a.amount_myr) }}</p>
-        <div class="flex items-center gap-1 shrink-0">
+        <div class="flex items-center gap-1 shrink-0 max-md:w-full max-md:justify-end max-md:gap-1.5">
           <NuxtLink
 :to="`/admin/services/addons/${a.id}`"
-            class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+            class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
             Edit
           </NuxtLink>
           <button
-class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
             :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
             @click="deleteAddon(a)">
             Delete

@@ -55,22 +55,22 @@ onBeforeUnmount(() => { if (blobUrl) URL.revokeObjectURL(blobUrl) })
   <div class="flex flex-col h-full rounded-2xl border overflow-hidden" :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }">
     <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-b shrink-0" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
       <div class="flex items-center gap-2 min-w-0">
-        <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">PDF preview</p>
+        <p class="text-[11px] font-semibold uppercase tracking-widest max-md:truncate" style="color: var(--color-text-tertiary);">PDF preview</p>
         <span
 v-if="stale && !generating" class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
           :style="{ color: 'var(--color-warning)', background: 'var(--color-warning-soft, var(--color-bg-secondary))' }">Draft changed</span>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
         <button
-type="button" class="btn-pill btn-pill-ghost text-[11px]" style="height: 28px; padding: 0 12px;"
+type="button" class="btn-pill btn-pill-ghost text-[11px] max-md:h-9!" style="height: 28px; padding: 0 12px;"
           :class="{ 'opacity-50': generating || !data }" :disabled="generating || !data" @click="generate">
           <UIcon :name="generating ? 'i-lucide-loader-circle' : 'i-lucide-refresh-cw'" class="size-3.5" :class="{ 'animate-spin': generating }" />
           {{ generating ? 'Generating…' : 'Refresh' }}
         </button>
-        <button v-if="pdfUrl" type="button" class="btn-pill btn-pill-ghost text-[11px]" style="height: 28px; padding: 0 12px;" @click="openInTab">
+        <button v-if="pdfUrl" type="button" class="btn-pill btn-pill-ghost text-[11px] max-md:h-9!" style="height: 28px; padding: 0 12px;" @click="openInTab">
           <UIcon name="i-lucide-external-link" class="size-3.5" /> Open
         </button>
-        <button v-if="closable" type="button" class="btn-pill btn-pill-ghost text-[11px]" style="height: 28px; width: 28px; padding: 0;" aria-label="Close" @click="emit('close')">
+        <button v-if="closable" type="button" class="btn-pill btn-pill-ghost text-[11px] max-md:h-9! max-md:w-9!" style="height: 28px; width: 28px; padding: 0;" aria-label="Close" @click="emit('close')">
           <UIcon name="i-lucide-x" class="size-4" />
         </button>
       </div>
@@ -92,7 +92,7 @@ type="button" class="btn-pill btn-pill-ghost text-[11px]" style="height: 28px; p
           <p class="text-[12px]">
             {{ generating ? 'Generating preview…' : failed ? 'Couldn’t render the preview.' : (data ? 'Generating preview…' : 'Nothing to preview yet.') }}
           </p>
-          <button v-if="failed" type="button" class="btn-pill btn-pill-ghost text-[11px] mt-3" style="height: 28px; padding: 0 14px;" @click="generate">Try again</button>
+          <button v-if="failed" type="button" class="btn-pill btn-pill-ghost text-[11px] mt-3 max-md:h-9!" style="height: 28px; padding: 0 14px;" @click="generate">Try again</button>
         </div>
       </div>
 

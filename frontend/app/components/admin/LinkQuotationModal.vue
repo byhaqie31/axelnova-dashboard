@@ -89,17 +89,17 @@ onKeyStroke('Escape', () => { if (open.value) open.value = false })
 
   <Teleport to="body">
     <Transition name="link-modal">
-      <div v-if="open" class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6" @click.self="open = false">
+      <div v-if="open" class="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 max-md:items-end max-md:p-0 max-md:pt-6" @click.self="open = false">
         <div class="absolute inset-0" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(2px);" @click="open = false" />
 
         <div
-class="relative w-full max-w-[520px] max-h-[85vh] flex flex-col rounded-2xl border shadow-2xl"
+class="relative w-full max-w-[520px] max-h-[85vh] max-md:max-w-none max-md:max-h-[90dvh] flex flex-col rounded-2xl max-md:rounded-b-none border max-md:border-b-0 shadow-2xl"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }" @click.stop>
 
           <!-- Header -->
           <div class="flex items-center justify-between px-5 pt-5 pb-3">
             <p class="text-[15px] font-semibold" style="color: var(--color-text);">Link existing quotation</p>
-            <button type="button" class="transition-opacity hover:opacity-70" style="color: var(--color-text-tertiary);" @click="open = false">
+            <button type="button" class="transition-opacity hover:opacity-70 max-md:inline-flex max-md:items-center max-md:justify-center max-md:size-10 max-md:-mr-2.5 max-md:active:opacity-60" style="color: var(--color-text-tertiary);" aria-label="Close" @click="open = false">
               <UIcon name="i-lucide-x" class="size-5" />
             </button>
           </div>
@@ -133,17 +133,17 @@ type="button"
                     <AdminStatusPill :status="q.status" />
                   </div>
                   <p class="text-[13px] font-medium mt-1" style="color: var(--color-text);">{{ q.name }}</p>
-                  <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ q.email }}</p>
+                  <p class="text-[11px] max-md:break-all" style="color: var(--color-text-tertiary);">{{ q.email }}</p>
                 </button>
               </li>
             </ul>
           </div>
 
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-2 px-5 py-4 border-t" style="border-color: var(--color-border);">
-            <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="open = false">Cancel</button>
+          <div class="flex items-center justify-end gap-2 px-5 py-4 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] border-t" style="border-color: var(--color-border);">
+            <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1" @click="open = false">Cancel</button>
             <button
-type="button" class="btn-pill btn-pill-accent text-[13px]"
+type="button" class="btn-pill btn-pill-accent text-[13px] max-md:flex-1"
               :class="{ 'opacity-50': !selectedId || linking }"
               :disabled="!selectedId || linking"
               @click="link">
@@ -164,5 +164,10 @@ type="button" class="btn-pill btn-pill-accent text-[13px]"
 .link-modal-enter-from,
 .link-modal-leave-to {
   opacity: 0;
+}
+
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  input { font-size: 16px; }
 }
 </style>

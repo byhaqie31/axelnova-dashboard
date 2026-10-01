@@ -581,7 +581,19 @@ These exist as scoped styles on `admin.vue`. If a second mobile drawer is ever n
 
 Admin is used on mobile too. Every new admin page must be usable at **375px** (iPhone SE) and **414px** (iPhone 14 Pro). The patterns below are mandatory, not optional.
 
-**Container padding.** Use `max-w-[7xl|3xl] mx-auto px-4 sm:px-6 pt-10 pb-32`. Never `px-6` alone — that wastes 12px per side on tiny screens.
+**Container padding.** Use `max-w-[7xl|3xl] mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32`. Never `px-6` alone — that wastes 12px per side on tiny screens. Page `<h1>` is `text-[24px] md:text-[28px]`; the header row below it is `mb-6 md:mb-8`.
+
+**Mobile-only changes never touch desktop.** Tweak existing elements with `max-md:` variants (or a base value plus an `md:` restore), add mobile-only markup inside `md:hidden`, or put scoped CSS in `@media (max-width: 767.98px)`. `.btn-pill`, `.contact-input`, `.status-pill`, `.standard-pill` and `.confirm-*` are unlayered in `main.css`, so they beat Tailwind utilities — overriding their height/padding needs the important form (`max-md:h-10!`) or scoped CSS.
+
+**No iOS focus-zoom.** Inside `.admin-shell` (the admin layout root), `main.css` sets `.contact-input`, `textarea` and `select` to `16px` below `md`. Bare `<input>`s outside `.contact-input` need their own `max-md` 16px rule.
+
+**Mobile touch + layout conventions.**
+- Primary controls are ≥ 40px tall on mobile; small icon buttons get a 36–40px hit area. Cards that navigate get `active:` feedback (touch has no hover).
+- The header's primary action goes full-width below `md`; two header actions split the row evenly.
+- Modals/dialogs become bottom sheets below `md` (anchored bottom, rounded top, `max-h-[90dvh]` internal scroll, footer buttons split evenly, `env(safe-area-inset-bottom)` padding).
+- Stat tiles stay `grid-cols-2` on phones with `p-4` and ~24px figures; long money values must not overflow a half-width tile at 360px.
+- Long reference codes, emails and slugs get `break-all` / `wrap-anywhere` or `truncate`.
+- The mobile drawer footer renders the portal shortcuts (Website · Team Workspace · Partner sign-in · Sign out) as a 2×2 `.app-tile.shortcut-tile` grid; Sign out hovers in `--color-danger`.
 
 **Desktop table surface.** The `hidden md:block` table wrapper uses the global `.admin-table-card` class (in `main.css`) — a solid elevated card (`--color-bg-elevated`) with `--shadow-sm`, a `--color-bg-secondary` header band, and `16px` radius. Do **not** leave the table transparent over the page background; it reads as one flat tone. Each `<tbody>` row uses `.admin-table-row` (handles the bottom hairline, `cursor-pointer`, subtle `--color-bg` zebra on even rows, and a `--color-accent-soft` hover) — drop the old per-row `border-b cursor-pointer hover:bg-(…)` utilities and the inline `border-color`/header `background` styles. All five admin lists (dashboard, inquiries, quotations, orders, referrals) share these two classes; keep them in sync there.
 

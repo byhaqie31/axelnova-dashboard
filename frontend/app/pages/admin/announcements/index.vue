@@ -138,17 +138,17 @@ onKeyStroke('Escape', () => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Announcements</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Announcements</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           Post company notices to the team. Drafts stay hidden until you publish.
         </p>
       </div>
-      <button type="button" class="btn-pill btn-pill-primary text-[13px]" @click="openCreate">
+      <button type="button" class="btn-pill btn-pill-primary text-[13px] max-md:w-full" @click="openCreate">
         <UIcon name="i-lucide-plus" class="size-4" />
         New announcement
       </button>
@@ -215,23 +215,26 @@ onKeyStroke('Escape', () => {
     <!-- Mobile: cards -->
     <div v-if="!loading && announcements.length" class="md:hidden space-y-2.5">
       <div
-        v-for="a in announcements" :key="a.id" class="rounded-xl border p-4 cursor-pointer"
+        v-for="a in announcements" :key="a.id" class="rounded-xl border p-4 cursor-pointer transition-colors active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="openEdit(a)">
         <div class="flex items-start justify-between gap-3 mb-1.5">
-          <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ a.title }}</span>
+          <span class="text-[13px] font-semibold leading-tight min-w-0 break-words" :style="{ color: 'var(--color-text)' }">{{ a.title }}</span>
           <span
-            class="inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-medium shrink-0"
+            class="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-medium shrink-0 whitespace-nowrap"
             :style="{ color: statusMeta(a).fg, background: statusMeta(a).bg }"
-          >{{ a.published_at ? 'Published' : 'Draft' }}</span>
+          >
+            <span class="size-1.5 rounded-full shrink-0" :style="{ background: statusMeta(a).fg }" aria-hidden="true" />
+            {{ statusMeta(a).label }}
+          </span>
         </div>
-        <p class="text-[11px] mb-3 line-clamp-2" :style="{ color: 'var(--color-text-tertiary)' }">{{ a.body }}</p>
+        <p class="text-[12px] mb-3 line-clamp-2" :style="{ color: 'var(--color-text-tertiary)' }">{{ a.body }}</p>
         <div class="pt-2 border-t flex items-center justify-between gap-3" :style="{ borderColor: 'var(--color-border)' }">
           <span
             class="inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-medium"
             :style="{ color: announcementAudienceMeta(a.audience)?.color, background: announcementAudienceMeta(a.audience)?.bg }"
           >{{ announcementAudienceMeta(a.audience)?.label ?? a.audience }}</span>
-          <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ a.created_by_name ?? '—' }}</span>
+          <span class="text-[11px] min-w-0 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ a.created_by_name ?? '—' }}</span>
         </div>
       </div>
     </div>
@@ -272,7 +275,7 @@ onKeyStroke('Escape', () => {
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Audience</span>
                 <div class="flex flex-wrap gap-1.5 mt-1.5">
                   <button
-                    v-for="o in announcementAudienceOptions" :key="o.value" type="button" class="standard-pill"
+                    v-for="o in announcementAudienceOptions" :key="o.value" type="button" class="standard-pill max-md:min-h-9"
                     :style="form.audience === o.value
                       ? { borderColor: o.color, background: o.bg, color: o.color }
                       : {}"
@@ -395,6 +398,12 @@ onKeyStroke('Escape', () => {
 .slideover-leave-to .slideover-panel {
   transform: translateX(100%);
 }
+/* Phone: 16px inputs stop iOS focus-zoom (.contact-input is 14px, unlayered,
+   so a Tailwind utility can't override it). */
+@media (max-width: 767.98px) {
+  .contact-input { font-size: 16px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .slideover-enter-active,
   .slideover-leave-active,

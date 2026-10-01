@@ -168,4 +168,102 @@ class InvoiceUpdateTest extends TestCase
         $this->putJson("/api/v1/admin/invoices/{$invoice->id}", ['notes' => 'x'])
             ->assertUnauthorized();
     }
+
+    /** The AXNI-2026-0005 "amount only" combination (placeholder wording). */
+    private const DISPLAY_OPTIONS = [
+        'showSummary' => false,
+        'showRemaining' => false,
+        'billingTitle' => 'Deposit on signing and mobilisation',
+        'billingLabel' => 'Scope covered',
+        'billingText' => 'Mobilisation and discovery.',
+        'scopeTitle' => 'Scope covered',
+        'scopeItems' => ['Kick-off', 'Discovery'],
+    ];
+
+    public function test_amount_total_is_identical_across_every_display_combination(): void
+    {
+        $order = Order::factory()->create(['final_amount_myr' => 2600]);
+        $base = ['invoiceType' => 'deposit', 'amount' => 1300];
+
+        $totals = [];
+        foreach ([true, false] as $summary) {
+            foreach ([true, false] as $remaining) {
+                $totals[] = $this->issueInvoice($order, array_merge($base, [
+                    'showSummary' => $summary,
+                    'showRemaining' => $remaining,
+                ]))->amount_total;
+            }
+        }
+        $totals[] = $this->issueInvoice($order, array_merge($base, self::DISPLAY_OPTIONS))->amount_total;
+
+        $this->assertSame(['1300.00'], array_values(array_unique($totals)));
+    }
+
+    public function test_display_options_survive_clean_inputs_and_a_later_edit(): void
+    {
+        $order = Order::factory()->create(['final_amount_myr' => 2600]);
+
+        $this->postJson("/api/v1/admin/orders/{$order->id}/documents", array_merge([
+            'type' => 'invoice',
+            'invoiceType' => 'deposit',
+            'amount' => 1300,
+        ], self::DISPLAY_OPTIONS), $this->adminHeaders())->assertCreated();
+
+        $invoice = Invoice::where('order_id', $order->id)->sole();
+        // `false` switches are kept — only null/'' count as empty.
+        $this->assertFalse($invoice->inputs['showSummary']);
+        $this->assertFalse($invoice->inputs['showRemaining']);
+        $this->assertSame(['Kick-off', 'Discovery'], $invoice->inputs['scopeItems']);
+
+        // An unrelated edit re-runs the mapper over the stored inputs — the
+        // options must not revert to the defaults.
+        $this->putJson("/api/v1/admin/invoices/{$invoice->id}", [
+            'notes' => 'Thanks',
+        ], $this->adminHeaders())->assertOk();
+
+        $payload = $invoice->refresh()->payload;
+        $this->assertSame(['summary' => false, 'remaining' => false], $payload['display']);
+        $this->assertSame('Deposit on signing and mobilisation', $payload['billingFor']['title']);
+        $this->assertSame(['Kick-off', 'Discovery'], $payload['scope']['items']);
+        // Data intact: the remaining row and balance panel are still stored.
+        $this->assertContains('remaining', array_column($payload['summary']['rows'], 'role'));
+        $this->assertContains('balance', array_column($payload['panels'], 'role'));
+    }
+
+    public function test_locked_invoices_accept_display_options_but_still_reject_amounts(): void
+    {
+        $order = Order::factory()->create(['final_amount_myr' => 2600]);
+        $invoice = $this->issueInvoice($order, ['invoiceType' => 'deposit']);
+        Payment::factory()->create([
+            'order_id' => $order->id,
+            'client_id' => $order->client_id,
+            'invoice_id' => $invoice->id,
+            'amount_myr' => 500,
+        ]);
+
+        $this->putJson("/api/v1/admin/invoices/{$invoice->id}", array_merge(
+            self::DISPLAY_OPTIONS, ['amount' => 9999],
+        ), $this->adminHeaders())->assertUnprocessable()->assertJsonValidationErrors('amount');
+
+        $this->putJson("/api/v1/admin/invoices/{$invoice->id}", self::DISPLAY_OPTIONS, $this->adminHeaders())
+            ->assertOk();
+
+        $invoice->refresh();
+        $this->assertSame('1300.00', $invoice->amount_total);
+        $this->assertSame(['summary' => false, 'remaining' => false], $invoice->payload['display']);
+    }
+
+    public function test_display_options_are_validated(): void
+    {
+        $order = Order::factory()->create(['final_amount_myr' => 2600]);
+        $invoice = $this->issueInvoice($order);
+
+        $this->putJson("/api/v1/admin/invoices/{$invoice->id}", [
+            'showSummary' => 'sometimes',
+            'billingTitle' => str_repeat('x', 81),
+            'scopeItems' => array_fill(0, 9, 'Bullet'),
+        ], $this->adminHeaders())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['showSummary', 'billingTitle', 'scopeItems']);
+    }
 }

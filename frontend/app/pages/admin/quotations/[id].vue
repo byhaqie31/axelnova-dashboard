@@ -234,10 +234,10 @@ const { confirmOpen, confirmConfig, confirm, resolveConfirm } = useConfirm()
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <NuxtLink
-to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 max-md:py-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All quotations
     </NuxtLink>
@@ -248,7 +248,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
     <template v-else-if="quotation">
       <!-- Draft → builder -->
       <template v-if="isDraft">
-        <div class="mb-8 flex items-center justify-between flex-wrap gap-3">
+        <div class="mb-8 max-md:mb-6 flex items-center justify-between flex-wrap gap-3">
           <div>
             <p class="font-mono text-[18px] font-bold" style="color: var(--color-accent);">{{ quotation.reference_code }}</p>
             <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Edit {{ isDetailed ? 'detailed ' : '' }}draft quotation</h1>
@@ -265,19 +265,19 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
       </template>
 
       <!-- Non-draft → read view -->
-      <div v-else class="grid lg:grid-cols-[1fr_300px] gap-8 items-start">
-        <div class="space-y-6">
-          <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-            <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
-              <div>
+      <div v-else class="grid lg:grid-cols-[1fr_300px] gap-8 max-md:gap-5 items-start">
+        <div class="space-y-6 max-md:space-y-4 max-md:min-w-0">
+          <div class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <div class="flex items-start justify-between flex-wrap gap-4 max-md:gap-3 mb-5">
+              <div class="max-md:min-w-0">
                 <p class="font-mono text-[20px] font-bold mb-1" style="color: var(--color-accent);">{{ quotation.reference_code }}</p>
-                <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ quotation.name }}</p>
+                <p class="text-[22px] max-md:text-[20px] font-bold tracking-tight max-md:break-words" style="color: var(--color-text);">{{ quotation.name }}</p>
                 <p v-if="quotation.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ quotation.company }}</p>
               </div>
-              <div class="flex flex-col items-end gap-2">
+              <div class="flex flex-col items-end gap-2 max-md:w-full max-md:flex-row max-md:items-center max-md:justify-between">
                 <AdminStatusPill :status="quotation.status" size="md" />
                 <button
-                  type="button" class="text-[12px] font-medium inline-flex items-center gap-1.5 transition-opacity hover:opacity-70"
+                  type="button" class="text-[12px] max-md:text-[13px] max-md:py-2 font-medium inline-flex items-center gap-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60"
                   :style="{ color: 'var(--color-accent)' }" @click="manageClientOpen = true">
                   <UIcon name="i-lucide-pencil" class="size-3" /> Manage client
                 </button>
@@ -286,7 +286,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
             <div class="grid sm:grid-cols-3 gap-4 pt-4 border-t" style="border-color: var(--color-border);">
               <div>
                 <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Email</p>
-                <a :href="`mailto:${quotation.email}`" class="text-[13px] font-medium" style="color: var(--color-accent);">{{ quotation.email }}</a>
+                <a :href="`mailto:${quotation.email}`" class="text-[13px] font-medium max-md:break-all" style="color: var(--color-accent);">{{ quotation.email }}</a>
               </div>
               <div v-if="quotation.phone">
                 <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Phone</p>
@@ -310,7 +310,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
                   </button>
                 </p>
                 <div v-if="expiryEditing" class="flex items-center gap-1.5">
-                  <input v-model="expiryDraft" type="date" class="contact-input text-[12px] py-1 px-2" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
+                  <input v-model="expiryDraft" type="date" class="contact-input text-[12px] py-1 px-2 max-md:min-w-0" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
                   <button type="button" class="inline-flex items-center justify-center size-7 rounded-lg shrink-0 transition-colors" :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }" :disabled="expiryLoading" aria-label="Save validity date" @click="saveExpiry">
                     <UIcon :name="expiryLoading ? 'i-lucide-loader-circle' : 'i-lucide-check'" class="size-3.5" :class="{ 'animate-spin': expiryLoading }" />
                   </button>
@@ -327,9 +327,9 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
           <DetailedQuotationView v-if="isDetailed && quotation.document?.payload" :payload="quotation.document.payload" />
 
           <template v-else>
-          <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Estimate</p>
-            <p class="text-[30px] font-bold tracking-tight mb-1" style="color: var(--color-text);">
+            <p class="text-[30px] max-md:text-[24px] font-bold tracking-tight mb-1" style="color: var(--color-text);">
               {{ fmtMyr(quotation.estimate_min_myr) }} – {{ fmtMyr(quotation.estimate_max_myr) }}
             </p>
             <p class="text-[13px]" style="color: var(--color-text-secondary);">
@@ -338,7 +338,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
             </p>
           </div>
 
-          <div v-if="quotation.document?.items?.length" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div v-if="quotation.document?.items?.length" class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Quotation line items</p>
             <div class="space-y-2">
               <div v-for="(it, i) in quotation.document.items" :key="i" class="flex justify-between items-baseline gap-4">
@@ -348,12 +348,12 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 tr
             </div>
           </div>
 
-          <div v-if="quotation.addons?.length" class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div v-if="quotation.addons?.length" class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Add-ons</p>
             <div class="space-y-2">
-              <div v-for="addon in quotation.addons" :key="addon.key" class="flex justify-between items-center">
+              <div v-for="addon in quotation.addons" :key="addon.key" class="flex justify-between items-center max-md:gap-3">
                 <span class="text-[13px]" style="color: var(--color-text);">{{ addon.label }}</span>
-                <span class="text-[13px] font-semibold" style="color: var(--color-text);">{{ fmtMyrExact(addon.amount_myr) }}</span>
+                <span class="text-[13px] font-semibold max-md:whitespace-nowrap" style="color: var(--color-text);">{{ fmtMyrExact(addon.amount_myr) }}</span>
               </div>
             </div>
           </div>
@@ -454,3 +454,10 @@ v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, ''
       @saved="onClientSaved" />
   </div>
 </template>
+
+<style scoped>
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']) { font-size: 16px; }
+}
+</style>

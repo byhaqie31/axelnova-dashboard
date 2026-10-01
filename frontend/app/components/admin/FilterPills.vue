@@ -20,7 +20,7 @@ defineEmits<{ 'update:modelValue': [value: string] }>()
         v-for="o in options"
         :key="o.value"
         type="button"
-        class="standard-pill"
+        class="standard-pill max-md:py-2! max-md:px-3.5!"
         :style="modelValue === o.value ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : {}"
         @click="$emit('update:modelValue', o.value)"
       >{{ o.label }}</button>

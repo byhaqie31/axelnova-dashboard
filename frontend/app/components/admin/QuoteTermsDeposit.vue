@@ -41,3 +41,11 @@ const depositPct = defineModel<number>('depositPct', { required: true })
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox'], [type='radio']),
+  textarea { font-size: 16px; }
+}
+</style>

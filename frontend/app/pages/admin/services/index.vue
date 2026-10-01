@@ -87,20 +87,20 @@ function fmtPrice(min: string | number, max: string | number | null) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <div class="flex items-start justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Services</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Services</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           {{ categories.length }} categories · {{ totalPackages }} packages · {{ featuredPackages }} featured
         </p>
       </div>
-      <div class="flex items-center gap-2">
-        <NuxtLink to="/admin/services/addons" class="btn-pill btn-pill-ghost text-[12px] inline-flex items-center gap-1.5">
+      <div class="flex items-center gap-2 max-md:w-full">
+        <NuxtLink to="/admin/services/addons" class="btn-pill btn-pill-ghost text-[12px] inline-flex items-center gap-1.5 max-md:flex-1">
           <UIcon name="i-lucide-puzzle" class="size-3.5" />
           Add-ons
         </NuxtLink>
-        <NuxtLink to="/admin/services/categories/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5">
+        <NuxtLink to="/admin/services/categories/new" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5 max-md:flex-1">
           <UIcon name="i-lucide-plus" class="size-3.5" />
           New category
         </NuxtLink>
@@ -121,13 +121,13 @@ v-else-if="!categories.length" class="rounded-2xl border p-12 text-center"
       </NuxtLink>
     </div>
 
-    <div v-else class="space-y-6">
+    <div v-else class="space-y-4 md:space-y-6">
       <section
 v-for="cat in categories" :key="cat.id"
         class="rounded-2xl border overflow-hidden"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <header
-class="flex flex-wrap items-center gap-3 px-5 py-4 border-b"
+class="flex flex-wrap items-center gap-3 px-4 md:px-5 py-4 border-b"
           :style="{ borderColor: 'var(--color-border)', background: 'var(--color-accent-soft)' }">
           <div
 class="size-9 rounded-xl inline-flex items-center justify-center shrink-0"
@@ -147,23 +147,23 @@ v-if="cat.is_default" class="text-[10px] font-semibold uppercase tracking-wider 
 v-if="!cat.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                 :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg)' }">Inactive</span>
             </div>
-            <p class="text-[12px] truncate" :style="{ color: 'var(--color-text-secondary)' }">{{ cat.description }}</p>
+            <p class="text-[12px] truncate max-md:whitespace-normal max-md:line-clamp-2" :style="{ color: 'var(--color-text-secondary)' }">{{ cat.description }}</p>
           </div>
           <div class="flex items-center gap-2 w-full sm:w-auto sm:shrink-0 justify-end flex-wrap">
             <NuxtLink
 :to="`/admin/services/packages/new?category=${cat.id}`"
-              class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+              class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
               + Package
             </NuxtLink>
             <NuxtLink
 :to="`/admin/services/categories/${cat.id}`"
-              class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+              class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
               Edit
             </NuxtLink>
             <button
-class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-danger)' }"
               @click="deleteCategory(cat)">
               Delete
@@ -174,7 +174,7 @@ class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors h
         <ul v-if="cat.packages.length">
           <li
 v-for="pkg in cat.packages" :key="pkg.id"
-            class="px-5 py-3.5 border-b last:border-b-0"
+            class="px-4 md:px-5 py-3.5 border-b last:border-b-0"
             :style="{ borderColor: 'var(--color-border)' }">
             <!-- Desktop: row layout -->
             <div class="hidden md:flex items-center gap-4">
@@ -197,12 +197,12 @@ v-if="!pkg.active" class="text-[10px] font-semibold uppercase tracking-wider px-
               <div class="flex items-center gap-1 shrink-0">
                 <NuxtLink
 :to="`/admin/services/packages/${pkg.id}`"
-                  class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+                  class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
                   :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
                   Edit
                 </NuxtLink>
                 <button
-class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
                   :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
                   @click="deletePackage(pkg)">
                   Delete
@@ -221,7 +221,7 @@ v-if="pkg.featured" class="text-[10px] font-semibold uppercase tracking-wider px
 v-if="!pkg.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                   :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
               </div>
-              <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">{{ pkg.tagline }}</p>
+              <p class="text-[12px] break-words" :style="{ color: 'var(--color-text-secondary)' }">{{ pkg.tagline }}</p>
               <div class="flex items-center justify-between gap-3 pt-1">
                 <div>
                   <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ fmtPrice(pkg.price_min_myr, pkg.price_max_myr) }}</p>
@@ -230,12 +230,12 @@ v-if="!pkg.active" class="text-[10px] font-semibold uppercase tracking-wider px-
                 <div class="flex items-center gap-1 shrink-0">
                   <NuxtLink
 :to="`/admin/services/packages/${pkg.id}`"
-                    class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+                    class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
                     :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
                     Edit
                   </NuxtLink>
                   <button
-class="text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors hover:bg-(--color-bg-secondary)"
+class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
                     :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
                     @click="deletePackage(pkg)">
                     Delete

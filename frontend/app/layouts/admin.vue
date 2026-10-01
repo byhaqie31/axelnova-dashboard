@@ -106,7 +106,7 @@ useHead({ title: 'Admin Portal' })
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col" style="background: var(--color-bg-secondary); color: var(--color-text);">
+  <div class="admin-shell min-h-screen flex flex-col" style="background: var(--color-bg-secondary); color: var(--color-text);">
     <!-- Topbar -->
     <header
       class="sticky top-0 z-40 h-14 border-b backdrop-blur"
@@ -119,8 +119,9 @@ useHead({ title: 'Admin Portal' })
         <div class="flex items-center gap-2.5">
           <!-- Mobile: open the slide-in drawer -->
           <button
-            class="md:hidden inline-flex items-center justify-center size-8 rounded-md transition-colors hover:bg-(--color-bg-secondary)"
+            class="md:hidden -ml-1.5 inline-flex items-center justify-center size-10 rounded-lg transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
             :style="{ color: 'var(--color-text)' }"
+            :aria-expanded="mobileNavOpen"
             aria-label="Toggle navigation"
             @click="mobileNavOpen = !mobileNavOpen"
           >
@@ -424,13 +425,13 @@ useHead({ title: 'Admin Portal' })
       <Transition name="drawer-panel">
         <aside
           v-if="mobileNavOpen"
-          class="md:hidden fixed left-3 right-auto top-17 bottom-3 w-64 z-30 rounded-2xl border shadow-2xl overflow-hidden"
+          class="md:hidden fixed left-3 right-auto top-17 bottom-3 w-72 max-w-[calc(100vw-1.5rem)] z-30 rounded-2xl border shadow-2xl overflow-hidden"
           :style="{
             background: 'var(--color-bg)',
             borderColor: 'var(--color-border)',
           }"
         >
-          <nav data-lenis-prevent class="p-3 flex flex-col gap-1.5 h-full overflow-y-auto">
+          <nav data-lenis-prevent class="side-nav-scroll p-3 flex flex-col gap-1.5 h-full overflow-y-auto overscroll-contain">
             <div v-for="group in navGroups" :key="group.label" class="flex flex-col gap-1">
               <button
                 type="button"
@@ -459,28 +460,29 @@ useHead({ title: 'Admin Portal' })
               </div>
             </div>
             <hr class="my-2 border-0 border-t" :style="{ borderColor: 'var(--color-border)' }" >
-            <NuxtLink to="/" target="_blank" rel="noopener" class="admin-nav-item">
-              <UIcon name="i-lucide-globe" class="size-4.5 shrink-0" />
-              <span>Website</span>
-              <UIcon name="i-lucide-arrow-up-right" class="size-3.5 shrink-0 ml-auto opacity-60" />
-            </NuxtLink>
-            <button type="button" class="admin-nav-item w-full" @click="jumpToTeam">
-              <UIcon name="i-lucide-users-round" class="size-4.5 shrink-0" />
-              <span>Team Workspace</span>
-              <UIcon name="i-lucide-arrow-up-right" class="size-3.5 shrink-0 ml-auto opacity-60" />
-            </button>
-            <NuxtLink to="/partners/login" target="_blank" rel="noopener" class="admin-nav-item">
-              <UIcon name="i-lucide-handshake" class="size-4.5 shrink-0" />
-              <span>Partner sign-in</span>
-              <UIcon name="i-lucide-arrow-up-right" class="size-3.5 shrink-0 ml-auto opacity-60" />
-            </NuxtLink>
-            <button
-              class="admin-nav-item"
-              @click="logout"
-            >
-              <UIcon name="i-lucide-log-out" class="size-4.5 shrink-0" />
-              <span>Sign out</span>
-            </button>
+            <!-- Shortcuts as a 2×2 tile grid (launchpad grammar) instead of four
+                 stacked rows — keeps the drawer footer compact. -->
+            <div class="grid grid-cols-2 gap-1.5">
+              <NuxtLink to="/" target="_blank" rel="noopener" class="app-tile shortcut-tile">
+                <UIcon name="i-lucide-globe" class="size-4.5 shrink-0" />
+                <span class="text-[11px] font-medium leading-tight text-center">Website</span>
+                <UIcon name="i-lucide-arrow-up-right" class="shortcut-tile-ext size-3 opacity-60" />
+              </NuxtLink>
+              <button type="button" class="app-tile shortcut-tile" @click="jumpToTeam">
+                <UIcon name="i-lucide-users-round" class="size-4.5 shrink-0" />
+                <span class="text-[11px] font-medium leading-tight text-center">Team Workspace</span>
+                <UIcon name="i-lucide-arrow-up-right" class="shortcut-tile-ext size-3 opacity-60" />
+              </button>
+              <NuxtLink to="/partners/login" target="_blank" rel="noopener" class="app-tile shortcut-tile">
+                <UIcon name="i-lucide-handshake" class="size-4.5 shrink-0" />
+                <span class="text-[11px] font-medium leading-tight text-center">Partner sign-in</span>
+                <UIcon name="i-lucide-arrow-up-right" class="shortcut-tile-ext size-3 opacity-60" />
+              </NuxtLink>
+              <button type="button" class="app-tile shortcut-tile shortcut-tile-signout" @click="logout">
+                <UIcon name="i-lucide-log-out" class="size-4.5 shrink-0" />
+                <span class="text-[11px] font-medium leading-tight text-center">Sign out</span>
+              </button>
+            </div>
           </nav>
         </aside>
       </Transition>
@@ -567,6 +569,22 @@ useHead({ title: 'Admin Portal' })
 .app-tile[data-active="true"] {
   background: var(--color-accent-soft);
   color: var(--color-accent);
+}
+
+/* Mobile drawer shortcut tiles — app-tile with a hairline border so they read
+   as buttons; the corner arrow marks links that leave the admin shell. */
+.shortcut-tile {
+  position: relative;
+  border: 1px solid var(--color-border);
+}
+.shortcut-tile-ext {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.shortcut-tile-signout:hover {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
 }
 
 /* Pin toggle beside each customizable group label in the launchpad. */

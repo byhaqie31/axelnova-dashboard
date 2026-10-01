@@ -107,14 +107,14 @@ function fmtMyr(amount: number) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Company Spending</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Company Spending</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">The spend ledger — every company expense in one place, record-only.</p>
       </div>
-      <button type="button" class="btn-pill btn-pill-primary text-[13px]" @click="showForm = !showForm">
+      <button type="button" class="btn-pill btn-pill-primary text-[13px] max-md:w-full" @click="showForm = !showForm">
         <UIcon :name="showForm ? 'i-lucide-x' : 'i-lucide-plus'" class="size-4" />
         {{ showForm ? 'Close' : 'Record spend' }}
       </button>
@@ -122,7 +122,7 @@ function fmtMyr(amount: number) {
 
     <!-- Record form -->
     <div
-v-if="showForm" class="rounded-2xl border p-6 space-y-5 mb-8"
+v-if="showForm" class="rounded-2xl border p-4 md:p-6 space-y-5 mb-6 md:mb-8"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <div class="grid sm:grid-cols-2 gap-3">
         <label class="block">
@@ -154,7 +154,7 @@ type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]
     </div>
 
     <!-- Filter + roll-up -->
-    <div class="flex flex-wrap items-center gap-3 mb-6">
+    <div class="flex flex-wrap items-center gap-3 mb-5 md:mb-6">
       <AdminExpandingSearch v-model="filters.category" placeholder="Filter by category…" />
       <p v-if="totalMyr !== null" class="ml-auto text-[13px]" style="color: var(--color-text-secondary);">
         Total<span v-if="filters.category"> ({{ filters.category }})</span>:
@@ -211,13 +211,13 @@ v-for="h in ['Category', 'Amount', 'Spent on', 'Entered by', 'Recorded']" :key="
 v-for="x in expenses" :key="x.id" class="rounded-xl border p-4"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <div class="flex items-start justify-between gap-3 mb-1">
-          <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ x.category }}</span>
-          <span class="text-[14px] font-semibold tabular-nums" :style="{ color: 'var(--color-text)' }">{{ fmtMyr(x.amount_myr) }}</span>
+          <span class="text-[13px] font-semibold leading-tight min-w-0 break-words" :style="{ color: 'var(--color-text)' }">{{ x.category }}</span>
+          <span class="text-[14px] font-semibold tabular-nums shrink-0 whitespace-nowrap" :style="{ color: 'var(--color-text)' }">{{ fmtMyr(x.amount_myr) }}</span>
         </div>
-        <p v-if="x.note" class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">{{ x.note }}</p>
+        <p v-if="x.note" class="text-[12px] break-words" :style="{ color: 'var(--color-text-secondary)' }">{{ x.note }}</p>
         <div class="flex items-center justify-between gap-3 pt-2 mt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
-          <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ x.entered_by_name ?? '—' }}</span>
-          <span class="text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(x.spent_at) }}</span>
+          <span class="text-[11px] min-w-0 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ x.entered_by_name ?? '—' }}</span>
+          <span class="text-[11px] shrink-0" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(x.spent_at) }}</span>
         </div>
       </div>
     </div>
@@ -229,3 +229,11 @@ v-for="x in expenses" :key="x.id" class="rounded-xl border p-4"
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Phone: 16px inputs stop iOS focus-zoom (.contact-input is 14px, unlayered,
+   so a Tailwind utility can't override it). */
+@media (max-width: 767.98px) {
+  .contact-input { font-size: 16px; }
+}
+</style>

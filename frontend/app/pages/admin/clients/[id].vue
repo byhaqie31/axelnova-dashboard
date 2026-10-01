@@ -73,10 +73,10 @@ function fmtRm(n: string | number | null) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <NuxtLink
-to="/admin/clients" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/clients" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 max-md:py-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60"
       style="color: var(--color-text-secondary);">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All clients
     </NuxtLink>
@@ -84,22 +84,22 @@ to="/admin/clients" class="inline-flex items-center gap-2 text-[13px] mb-8 trans
     <div v-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
     <p v-else-if="error" style="color: var(--color-danger);">{{ error }}</p>
 
-    <div v-else-if="client" class="grid lg:grid-cols-[1fr_300px] gap-8 items-start">
+    <div v-else-if="client" class="grid lg:grid-cols-[1fr_300px] gap-8 max-md:gap-5 items-start">
 
-      <div class="space-y-6">
+      <div class="space-y-6 max-md:space-y-4 max-md:min-w-0">
 
         <!-- Header -->
-        <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <div class="flex items-start justify-between flex-wrap gap-4 mb-5">
-            <div>
-              <p class="text-[22px] font-bold tracking-tight" style="color: var(--color-text);">{{ client.name }}</p>
+        <div class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="flex items-start justify-between flex-wrap gap-4 max-md:gap-3 max-md:flex-nowrap mb-5">
+            <div class="max-md:min-w-0">
+              <p class="text-[22px] max-md:text-[20px] font-bold tracking-tight max-md:break-words" style="color: var(--color-text);">{{ client.name }}</p>
               <div v-if="client.tags.length" class="flex flex-wrap gap-1.5 mt-2.5">
                 <span
 v-for="t in client.tags" :key="t" class="text-[11px] px-2 py-0.5 rounded-full"
                   :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ t }}</span>
               </div>
             </div>
-            <button type="button" class="btn-pill btn-pill-ghost text-[12px] gap-1.5" @click="modalOpen = true">
+            <button type="button" class="btn-pill btn-pill-ghost text-[12px] gap-1.5 max-md:shrink-0 max-md:h-10! max-md:px-4!" @click="modalOpen = true">
               <UIcon name="i-lucide-pencil" class="size-3.5" /> Edit
             </button>
           </div>
@@ -128,13 +128,13 @@ v-for="t in client.tags" :key="t" class="text-[11px] px-2 py-0.5 rounded-full"
         </div>
 
         <!-- Inquiries -->
-        <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Inquiries ({{ client.inquiries_count }})</p>
           <p v-if="!client.inquiries.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No inquiries.</p>
           <div v-else class="space-y-1.5">
             <NuxtLink
 v-for="i in client.inquiries" :key="i.id" :to="`/admin/inquiries/${i.id}`"
-              class="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-(--color-bg-secondary)"
+              class="flex items-center justify-between gap-3 rounded-xl border px-4 max-md:px-3 py-3 transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
                 <p class="text-[13px] font-medium truncate" style="color: var(--color-text);">{{ i.project_type ?? 'Inquiry' }}</p>
@@ -146,13 +146,13 @@ v-for="i in client.inquiries" :key="i.id" :to="`/admin/inquiries/${i.id}`"
         </div>
 
         <!-- Quotations -->
-        <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Quotations ({{ client.quotations_count }})</p>
           <p v-if="!client.quotations.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No quotations.</p>
           <div v-else class="space-y-1.5">
             <NuxtLink
 v-for="q in client.quotations" :key="q.id" :to="`/admin/quotations/${q.id}`"
-              class="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-(--color-bg-secondary)"
+              class="flex items-center justify-between gap-3 rounded-xl border px-4 max-md:px-3 py-3 transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
                 <p class="text-[13px] font-mono font-medium truncate" style="color: var(--color-text);">{{ q.reference_code }}</p>
@@ -167,13 +167,13 @@ v-for="q in client.quotations" :key="q.id" :to="`/admin/quotations/${q.id}`"
         </div>
 
         <!-- Orders -->
-        <div class="rounded-2xl border p-6" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+        <div class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Orders ({{ client.orders_count }})</p>
           <p v-if="!client.orders.length" class="text-[13px]" style="color: var(--color-text-tertiary);">No orders.</p>
           <div v-else class="space-y-1.5">
             <NuxtLink
 v-for="o in client.orders" :key="o.id" :to="`/admin/orders/${o.id}`"
-              class="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-(--color-bg-secondary)"
+              class="flex items-center justify-between gap-3 rounded-xl border px-4 max-md:px-3 py-3 transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)"
               :style="{ borderColor: 'var(--color-border)' }">
               <div class="min-w-0">
                 <p class="text-[13px] font-mono font-medium truncate" style="color: var(--color-text);">{{ o.order_number }}</p>
@@ -216,6 +216,8 @@ v-if="client.phone"
             :href="`https://wa.me/${client.phone.replace(/\D/g, '')}`"
             target="_blank" rel="noopener"
             class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
+          <!-- Mobile only: set the destructive action apart from the contact actions. -->
+          <div class="md:hidden border-t" :style="{ borderColor: 'var(--color-border)' }" />
           <button
             type="button" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]"
             :style="{ color: 'var(--color-danger)' }"

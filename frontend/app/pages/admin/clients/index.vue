@@ -68,15 +68,15 @@ function fmtDate(iso: string) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div class="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Clients</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Clients</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Everyone who's inquired, been quoted, or ordered. Open one to see their full history.</p>
       </div>
-      <button type="button" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5" @click="modalOpen = true">
+      <button type="button" class="btn-pill btn-pill-accent text-[12px] inline-flex items-center gap-1.5 max-md:w-full" @click="modalOpen = true">
         <UIcon name="i-lucide-plus" class="size-3.5" />
         New client
       </button>
@@ -92,13 +92,13 @@ function fmtDate(iso: string) {
         </span>
         <div class="inline-flex rounded-full border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
           <button
-type="button" class="size-7 rounded-full inline-flex items-center justify-center transition-colors"
+type="button" class="size-7 max-md:size-9 rounded-full inline-flex items-center justify-center transition-colors"
             :style="view === 'grid' ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-tertiary)' }"
             aria-label="Grid view" @click="view = 'grid'">
             <UIcon name="i-lucide-layout-grid" class="size-3.5" />
           </button>
           <button
-type="button" class="size-7 rounded-full inline-flex items-center justify-center transition-colors"
+type="button" class="size-7 max-md:size-9 rounded-full inline-flex items-center justify-center transition-colors"
             :style="view === 'list' ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' } : { color: 'var(--color-text-tertiary)' }"
             aria-label="List view" @click="view = 'list'">
             <UIcon name="i-lucide-list" class="size-3.5" />
@@ -122,7 +122,7 @@ type="button" class="size-7 rounded-full inline-flex items-center justify-center
         :key="c.id"
         role="button"
         tabindex="0"
-        class="text-left rounded-2xl border p-5 cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
+        class="text-left rounded-2xl border p-5 max-md:p-4 cursor-pointer transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
         @click="navigateTo(`/admin/clients/${c.id}`)"
         @keydown.enter="navigateTo(`/admin/clients/${c.id}`)"
@@ -196,21 +196,21 @@ v-for="c in clients" :key="c.id"
           :key="c.id"
           role="button"
           tabindex="0"
-          class="w-full text-left rounded-xl border p-4 cursor-pointer transition-colors hover:bg-(--color-bg-secondary)"
+          class="w-full text-left rounded-xl border p-4 cursor-pointer transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
           :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
           @click="navigateTo(`/admin/clients/${c.id}`)"
           @keydown.enter="navigateTo(`/admin/clients/${c.id}`)"
           @keydown.space.prevent="navigateTo(`/admin/clients/${c.id}`)"
         >
           <div class="flex items-start justify-between gap-3 mb-1">
-            <span class="text-[13px] font-semibold leading-tight" :style="{ color: 'var(--color-text)' }">{{ c.name }}</span>
-            <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ fmtDate(c.created_at) }}</span>
+            <span class="text-[13px] font-semibold leading-tight min-w-0 truncate" :style="{ color: 'var(--color-text)' }">{{ c.name }}</span>
+            <span class="text-[11px] shrink-0" :style="{ color: 'var(--color-text-tertiary)' }">{{ fmtDate(c.created_at) }}</span>
           </div>
           <div class="flex items-center gap-1.5 mb-3 min-w-0">
             <p class="text-[11px] truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ c.email }}</p>
             <AdminCopyButton :value="c.email" :label="`Copy ${c.email}`" />
           </div>
-          <div class="pt-2 border-t flex items-center gap-4 text-[11px]" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
+          <div class="pt-2 border-t flex items-center flex-wrap gap-x-4 gap-y-0.5 text-[11px] tabular-nums" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
             <span>{{ c.inquiries_count }} inquiries</span>
             <span>{{ c.quotations_count }} quotes</span>
             <span>{{ c.orders_count }} orders</span>

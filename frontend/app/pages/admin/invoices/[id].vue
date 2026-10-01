@@ -105,9 +105,9 @@ async function sendInvoice(email: string) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <NuxtLink
-to="/admin/invoices" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/invoices" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 max-md:py-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60"
       :style="{ color: 'var(--color-text-secondary)' }">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All invoices
     </NuxtLink>
@@ -117,10 +117,10 @@ to="/admin/invoices" class="inline-flex items-center gap-2 text-[13px] mb-8 tran
 
     <template v-else-if="invoice">
       <!-- Header -->
-      <div class="flex items-start justify-between gap-4 flex-wrap mb-8">
+      <div class="flex items-start justify-between gap-4 flex-wrap mb-6 md:mb-8">
         <div class="min-w-0">
           <div class="flex items-center gap-3 flex-wrap">
-            <h1 class="font-mono text-[24px] font-bold tracking-tight" style="color: var(--color-text);">{{ invoice.invoice_number }}</h1>
+            <h1 class="font-mono text-[24px] max-md:text-[22px] font-bold tracking-tight max-md:break-all" style="color: var(--color-text);">{{ invoice.invoice_number }}</h1>
             <AdminStatusPill :status="invoice.status" />
             <span
 v-if="invoice.is_overdue" class="text-[11px] font-semibold px-2 py-0.5 rounded-full"
@@ -133,29 +133,29 @@ v-if="invoice.is_overdue" class="text-[11px] font-semibold px-2 py-0.5 rounded-f
             </template>
           </p>
         </div>
-        <div class="flex items-center gap-2 shrink-0 flex-wrap">
+        <div class="flex items-center gap-2 shrink-0 flex-wrap max-md:w-full max-md:grid max-md:grid-cols-2 max-md:[&>:last-child:nth-child(odd)]:col-span-2">
           <!-- Only unpaid issued invoices are editable — paid/void are frozen records. -->
           <NuxtLink
             v-if="invoice.status === 'issued'" :to="`/admin/invoices/edit?id=${invoice.id}`"
-            class="btn-pill btn-pill-ghost text-[12px]" style="height: 36px; padding: 0 18px;">
+            class="btn-pill btn-pill-ghost text-[12px] max-md:w-full max-md:h-11!" style="height: 36px; padding: 0 18px;">
             <UIcon name="i-lucide-pencil" class="size-4" /> Edit
           </NuxtLink>
           <button
             v-if="invoice.status !== 'void'" type="button"
-            class="btn-pill btn-pill-ghost text-[12px]" style="height: 36px; padding: 0 18px;"
+            class="btn-pill btn-pill-ghost text-[12px] max-md:w-full max-md:h-11!" style="height: 36px; padding: 0 18px;"
             @click="emailOpen = true">
             <UIcon name="i-lucide-mail" class="size-4" /> Email invoice
           </button>
           <a
             :href="invoice.pdf_path" target="_blank" rel="noopener"
-            class="btn-pill btn-pill-primary text-[12px]" style="height: 36px; padding: 0 18px;">
+            class="btn-pill btn-pill-primary text-[12px] max-md:w-full max-md:h-11!" style="height: 36px; padding: 0 18px;">
             <UIcon name="i-lucide-file-text" class="size-4" /> View PDF
           </a>
           <!-- Shortcut into the ledger, pre-allocated to this invoice. -->
           <NuxtLink
             v-if="invoice.status === 'issued'"
             :to="`/admin/payments/new?order_id=${invoice.order_id}&invoice_id=${invoice.id}`"
-            class="btn-pill btn-pill-success text-[12px]" style="height: 36px; padding: 0 18px;">
+            class="btn-pill btn-pill-success text-[12px] max-md:w-full max-md:h-11!" style="height: 36px; padding: 0 18px;">
             <UIcon name="i-lucide-wallet" class="size-4" /> Record payment
           </NuxtLink>
         </div>
@@ -164,7 +164,7 @@ v-if="invoice.is_overdue" class="text-[11px] font-semibold px-2 py-0.5 rounded-f
       <div class="grid lg:grid-cols-3 gap-5">
         <!-- Summary -->
         <div
-class="lg:col-span-2 rounded-2xl border p-6"
+class="lg:col-span-2 rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Summary</p>
 
@@ -207,11 +207,11 @@ class="h-full rounded-full transition-[width] duration-500"
 
         <!-- Client & order -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5 max-md:min-w-0"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Client &amp; order</p>
           <p class="text-[14px] font-medium" style="color: var(--color-text);">{{ invoice.name ?? '—' }}</p>
-          <p class="text-[12px] mb-4" style="color: var(--color-text-tertiary);">{{ invoice.email ?? '' }}</p>
+          <p class="text-[12px] mb-4 max-md:break-all" style="color: var(--color-text-tertiary);">{{ invoice.email ?? '' }}</p>
           <div class="space-y-2 pt-4 border-t" style="border-color: var(--color-border);">
             <NuxtLink
 v-if="invoice.order_number" :to="`/admin/orders/${invoice.order_id}`"
@@ -239,7 +239,7 @@ v-if="invoice.order_number" :to="`/admin/orders/${invoice.order_id}`"
 
       <!-- Payments allocated -->
       <div
-class="rounded-2xl border p-6 mt-5"
+class="rounded-2xl border p-6 max-md:p-5 mt-5"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Payments</p>
         <div v-if="invoice.payments?.length" class="space-y-2">
@@ -251,7 +251,7 @@ v-for="p in invoice.payments" :key="p.id"
                 <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ p.payment_number }}</span>
                 <AdminStatusPill :status="p.status" />
               </div>
-              <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
+              <p class="text-[11px] mt-1 max-md:break-words" style="color: var(--color-text-tertiary);">
                 {{ p.method }}<span v-if="p.reference"> · {{ p.reference }}</span> · {{ fmtDate(p.paid_at) }}
               </p>
             </div>

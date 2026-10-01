@@ -41,10 +41,10 @@ function fmtDate(iso?: string) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
-    <div class="flex items-start justify-between mb-8 flex-wrap gap-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
+    <div class="flex items-start justify-between mb-6 md:mb-8 flex-wrap gap-4">
       <div>
-        <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Mockups</h1>
+        <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Mockups</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           Live client prototypes on axelnova.my{{ !loading && mockups.length ? ` — ${mockups.length} public` : '' }}.
         </p>
@@ -53,7 +53,7 @@ function fmtDate(iso?: string) {
         :href="MOCKUP_LISTING_URL"
         target="_blank"
         rel="noopener"
-        class="view-all inline-flex items-center gap-1.5 text-[12px] font-medium px-3.5 py-1.5 rounded-full border"
+        class="view-all inline-flex items-center gap-1.5 text-[12px] font-medium px-3.5 py-1.5 max-md:py-2.5 rounded-full border"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }"
       >
         Open listing
@@ -93,12 +93,12 @@ function fmtDate(iso?: string) {
         :href="mockupUrl(m)"
         target="_blank"
         rel="noopener"
-        class="mockup-card group relative rounded-2xl border p-5 flex flex-col"
+        class="mockup-card group relative rounded-2xl border p-4 md:p-5 flex flex-col"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
       >
         <!-- Hover-revealed open button, top-right — matches the stat tiles -->
         <span
-          class="open-btn absolute top-5 right-5 inline-flex items-center justify-center size-8 rounded-lg"
+          class="open-btn absolute top-4 right-4 md:top-5 md:right-5 inline-flex items-center justify-center size-8 rounded-lg"
           :style="{ background: mockupAccent(m, 0.12), color: mockupAccent(m) }"
           :title="`Open ${m.name}`"
           aria-hidden="true"
@@ -180,6 +180,23 @@ function fmtDate(iso?: string) {
 @keyframes mockup-shimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* Phone: no hover on touch, so show the open affordance at rest and give the
+   card a pressed state instead. */
+@media (max-width: 767.98px) {
+  .open-btn {
+    opacity: 1;
+    transform: none;
+  }
+  .mockup-card:active {
+    border-color: var(--color-border-strong) !important;
+    background: var(--color-bg-secondary) !important;
+  }
+  .view-all:active {
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

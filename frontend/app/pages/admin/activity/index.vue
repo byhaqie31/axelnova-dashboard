@@ -177,15 +177,15 @@ watch(page, fetchActivity)
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Activity</h1>
+    <div class="mb-6 md:mb-8">
+      <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Activity</h1>
       <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">The audit trail — every state change, grouped by day. A system or gateway action shows no actor.</p>
     </div>
 
     <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-3 mb-6">
+    <div class="flex flex-wrap items-center gap-3 mb-5 md:mb-6">
       <AdminStatusFilter v-model="subjectType" :options="subjectOptions" label="Type" />
       <AdminStatusFilter v-model="range" :options="rangeOptions" label="Period" :total="total" class="ml-auto" />
     </div>
@@ -204,7 +204,7 @@ watch(page, fetchActivity)
         <!-- Date header (collapse toggle) -->
         <button
           type="button"
-          class="w-full flex items-center gap-2.5 mb-3 group"
+          class="w-full flex items-center gap-2.5 mb-3 max-md:min-h-10 group"
           :aria-expanded="!collapsed.has(group.key)"
           @click="toggleGroup(group.key)"
         >
@@ -256,15 +256,15 @@ watch(page, fetchActivity)
             <!-- Card -->
             <div class="flex-1 min-w-0 pb-3">
               <div
-                class="rounded-xl border p-3.5"
+                class="rounded-xl border p-3 md:p-3.5"
                 :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }"
               >
-                <div class="flex items-start gap-3">
+                <div class="flex items-start gap-2.5 md:gap-3">
                   <span
-                    class="size-8 shrink-0 rounded-full inline-flex items-center justify-center"
+                    class="size-7 md:size-8 shrink-0 rounded-full inline-flex items-center justify-center"
                     :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }"
                   >
-                    <UIcon :name="metaFor(item.action).icon" class="size-4" />
+                    <UIcon :name="metaFor(item.action).icon" class="size-3.5 md:size-4" />
                   </span>
                   <div class="min-w-0 flex-1">
                     <p class="text-[13px] leading-snug flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5" style="color: var(--color-text);">
@@ -273,12 +273,12 @@ watch(page, fetchActivity)
                       <NuxtLink
                         v-if="linkFor(item)"
                         :to="linkFor(item)!"
-                        class="font-medium hover:underline"
+                        class="font-medium hover:underline active:underline max-md:wrap-anywhere"
                         :style="{ color: 'var(--color-accent)' }"
                       >{{ subjectLabel(item) }}</NuxtLink>
-                      <span v-else class="font-medium" :style="{ color: 'var(--color-text)' }">{{ subjectLabel(item) }}</span>
+                      <span v-else class="font-medium max-md:wrap-anywhere" :style="{ color: 'var(--color-text)' }">{{ subjectLabel(item) }}</span>
                     </p>
-                    <p v-if="changeSummary(item.changes)" class="text-[12px] mt-1 tabular-nums" style="color: var(--color-text-tertiary);">
+                    <p v-if="changeSummary(item.changes)" class="text-[12px] mt-1 tabular-nums max-md:wrap-anywhere" style="color: var(--color-text-tertiary);">
                       {{ changeSummary(item.changes) }}
                     </p>
                   </div>

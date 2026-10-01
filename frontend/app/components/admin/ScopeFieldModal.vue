@@ -178,18 +178,18 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
       <button class="absolute inset-0 cursor-default" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);" aria-label="Close" @click="emit('close')" />
 
       <div
-class="scope-drawer-panel relative h-full w-full max-w-md overflow-y-auto border-l"
+class="scope-drawer-panel relative h-full w-full max-w-md overflow-y-auto max-md:overscroll-contain border-l"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
         <div
-class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b"
+class="sticky top-0 z-10 flex items-center justify-between px-6 max-md:px-5 py-4 max-md:py-3 border-b"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[16px] font-semibold tracking-tight" style="color: var(--color-text);">{{ isEdit ? 'Edit scope field' : 'New scope field' }}</p>
-          <button type="button" class="size-8 rounded-lg flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary)" style="color: var(--color-text-tertiary);" aria-label="Close" @click="emit('close')">
+          <button type="button" class="size-8 max-md:size-10 max-md:-mr-2 rounded-lg flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary) max-md:active:bg-(--color-bg-secondary)" style="color: var(--color-text-tertiary);" aria-label="Close" @click="emit('close')">
             <UIcon name="i-lucide-x" class="size-4" />
           </button>
         </div>
 
-        <form class="p-6 space-y-5" @submit.prevent="save">
+        <form class="p-6 max-md:p-5 space-y-5" @submit.prevent="save">
           <!-- Type -->
           <div>
             <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Type *</label>
@@ -221,14 +221,14 @@ v-for="t in types" :key="t.value" type="button" class="flex flex-col items-cente
           </div>
 
           <!-- Slider config -->
-          <div v-if="form.type === 'slider'" class="rounded-xl border p-4 space-y-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+          <div v-if="form.type === 'slider'" class="rounded-xl border p-4 max-md:p-3 space-y-4" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
             <p class="text-[12px] font-semibold" :style="{ color: 'var(--color-text)' }">Slider settings</p>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-3 gap-3 max-md:gap-2">
               <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Min</label><input v-model.number="form.s_min" type="number" class="contact-input w-full" :style="fieldStyle" ></div>
               <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Max</label><input v-model.number="form.s_max" type="number" class="contact-input w-full" :style="fieldStyle" ></div>
               <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Default</label><input v-model.number="form.s_default" type="number" class="contact-input w-full" :style="fieldStyle" ></div>
             </div>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-3 gap-3 max-md:gap-2">
               <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Unit</label><input v-model="form.s_unit" type="text" placeholder="page" class="contact-input w-full" :style="fieldStyle" ></div>
               <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Free up to</label><input v-model.number="form.s_free_threshold" type="number" min="0" class="contact-input w-full" :style="fieldStyle" ></div>
               <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">RM / extra</label><input v-model.number="form.s_price_per_unit" type="number" min="0" step="50" class="contact-input w-full" :style="fieldStyle" ></div>
@@ -249,14 +249,14 @@ v-for="t in types" :key="t.value" type="button" class="flex flex-col items-cente
           <div v-else class="rounded-xl border p-4 space-y-3" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
             <div class="flex items-center justify-between">
               <p class="text-[12px] font-semibold" :style="{ color: 'var(--color-text)' }">Options</p>
-              <button type="button" class="text-[11px] font-medium" :style="{ color: 'var(--color-accent)' }" @click="addOption">+ Add option</button>
+              <button type="button" class="text-[11px] max-md:text-[13px] font-medium max-md:min-h-10 max-md:px-2 max-md:-mr-2 max-md:-my-2 max-md:active:opacity-60" :style="{ color: 'var(--color-accent)' }" @click="addOption">+ Add option</button>
             </div>
-            <div v-for="(opt, i) in form.sel_options" :key="i" class="flex items-center gap-2">
+            <div v-for="(opt, i) in form.sel_options" :key="i" class="flex items-center gap-2 max-md:grid max-md:grid-cols-[auto_1fr_1fr_auto] max-md:pb-2">
               <input v-model="form.sel_default" type="radio" :value="opt.value" title="Default" class="size-3.5 shrink-0" >
-              <input v-model="opt.value" type="text" placeholder="value" class="contact-input w-20 font-mono text-[12px]" :style="fieldStyle" >
-              <input v-model="opt.label" type="text" placeholder="Label" class="contact-input flex-1" :style="fieldStyle" >
-              <input v-model.number="opt.amount" type="number" min="0" step="50" placeholder="RM" class="contact-input w-20" :style="fieldStyle" >
-              <button type="button" :disabled="form.sel_options.length <= 1" class="shrink-0 size-8 rounded-md inline-flex items-center justify-center transition-opacity disabled:opacity-30" :style="{ color: 'var(--color-danger)' }" aria-label="Remove option" @click="removeOption(i)"><UIcon name="i-lucide-trash-2" class="size-4" /></button>
+              <input v-model="opt.value" type="text" placeholder="value" class="contact-input w-20 max-md:w-auto max-md:min-w-0 font-mono text-[12px]" :style="fieldStyle" >
+              <input v-model="opt.label" type="text" placeholder="Label" class="contact-input flex-1 max-md:order-first max-md:col-span-4" :style="fieldStyle" >
+              <input v-model.number="opt.amount" type="number" min="0" step="50" placeholder="RM" class="contact-input w-20 max-md:w-auto max-md:min-w-0" :style="fieldStyle" >
+              <button type="button" :disabled="form.sel_options.length <= 1" class="shrink-0 size-8 max-md:size-10 rounded-md inline-flex items-center justify-center transition-opacity disabled:opacity-30" :style="{ color: 'var(--color-danger)' }" aria-label="Remove option" @click="removeOption(i)"><UIcon name="i-lucide-trash-2" class="size-4" /></button>
             </div>
             <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">The radio marks the default. Each option adds its RM amount.</p>
           </div>
@@ -266,7 +266,7 @@ v-for="t in types" :key="t.value" type="button" class="flex flex-col items-cente
             <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Applies to</label>
             <div v-if="packages.length" class="flex flex-wrap gap-2">
               <button
-v-for="p in packages" :key="p.key" type="button" class="text-[12px] px-3 py-1.5 rounded-full border transition-all"
+v-for="p in packages" :key="p.key" type="button" class="text-[12px] max-md:text-[13px] px-3 py-1.5 max-md:py-2 rounded-full border transition-all"
                 :style="form.applies_to.includes(p.key)
                   ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
                   : { borderColor: 'var(--color-border)', background: 'transparent', color: 'var(--color-text-secondary)' }"
@@ -302,10 +302,10 @@ class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
         </form>
 
         <div
-class="sticky bottom-0 flex items-center justify-end gap-2 px-6 py-4 border-t"
+class="sticky bottom-0 flex items-center justify-end gap-2 px-6 max-md:px-5 py-4 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] border-t"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <button type="button" class="btn-pill btn-pill-ghost text-[13px]" @click="emit('close')">Cancel</button>
-          <button type="button" class="btn-pill btn-pill-accent text-[13px]" :disabled="saving" @click="save">
+          <button type="button" class="btn-pill btn-pill-ghost text-[13px] max-md:flex-1" @click="emit('close')">Cancel</button>
+          <button type="button" class="btn-pill btn-pill-accent text-[13px] max-md:flex-1" :disabled="saving" @click="save">
             {{ saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create field' }}
           </button>
         </div>
@@ -323,6 +323,11 @@ class="sticky bottom-0 flex items-center justify-end gap-2 px-6 py-4 border-t"
 .scope-drawer-leave-to { opacity: 0; }
 .scope-drawer-enter-from .scope-drawer-panel,
 .scope-drawer-leave-to .scope-drawer-panel { transform: translateX(100%); }
+
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox'], [type='radio']) { font-size: 16px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .scope-drawer-enter-active,

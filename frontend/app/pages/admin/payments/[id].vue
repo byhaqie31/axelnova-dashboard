@@ -126,9 +126,9 @@ function fmtMyr(amount: string | number) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-32">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 md:pt-10 pb-24 md:pb-32">
     <NuxtLink
-to="/admin/payments" class="inline-flex items-center gap-2 text-[13px] mb-8 transition-opacity hover:opacity-70"
+to="/admin/payments" class="inline-flex items-center gap-2 text-[13px] mb-8 max-md:mb-5 max-md:py-1.5 transition-opacity hover:opacity-70 max-md:active:opacity-60"
       :style="{ color: 'var(--color-text-secondary)' }">
       <UIcon name="i-lucide-arrow-left" class="size-4" /> All payments
     </NuxtLink>
@@ -138,10 +138,10 @@ to="/admin/payments" class="inline-flex items-center gap-2 text-[13px] mb-8 tran
 
     <template v-else-if="payment">
       <!-- Header -->
-      <div class="flex items-start justify-between gap-4 flex-wrap mb-8">
+      <div class="flex items-start justify-between gap-4 flex-wrap mb-6 md:mb-8">
         <div class="min-w-0">
           <div class="flex items-center gap-3 flex-wrap">
-            <h1 class="font-mono text-[24px] font-bold tracking-tight" style="color: var(--color-text);">{{ payment.payment_number }}</h1>
+            <h1 class="font-mono text-[24px] max-md:text-[22px] font-bold tracking-tight max-md:break-all" style="color: var(--color-text);">{{ payment.payment_number }}</h1>
             <AdminStatusPill :status="payment.status" />
             <span
 v-if="payment.type === 'refund'" class="text-[11px] font-semibold px-2 py-0.5 rounded-full"
@@ -154,9 +154,9 @@ v-if="payment.type === 'refund'" class="text-[11px] font-semibold px-2 py-0.5 ro
             </template>
           </p>
         </div>
-        <div v-if="canAct && refundable > 0" class="shrink-0">
+        <div v-if="canAct && refundable > 0" class="shrink-0 max-md:w-full">
           <button
-type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 36px; padding: 0 18px;"
+type="button" class="btn-pill btn-pill-primary text-[12px] max-md:w-full max-md:h-11!" style="height: 36px; padding: 0 18px;"
             @click="refundOpen = !refundOpen">
             Refund
           </button>
@@ -165,7 +165,7 @@ type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 36px;
 
       <!-- Refund form -->
       <div
-v-if="refundOpen" class="rounded-2xl border p-6 mb-5"
+v-if="refundOpen" class="rounded-2xl border p-6 max-md:p-5 mb-5"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Refund — up to {{ fmtMyr(refundable) }}</p>
         <div class="grid sm:grid-cols-2 gap-3">
@@ -182,16 +182,16 @@ v-model="refundForm.amount" type="number" min="0" :max="refundable" step="0.01"
         </div>
         <div class="flex gap-2 mt-4">
           <button
-type="button" class="btn-pill btn-pill-primary text-[12px]" style="height: 34px; padding: 0 16px;"
+type="button" class="btn-pill btn-pill-primary text-[12px] max-md:flex-1 max-md:h-11!" style="height: 34px; padding: 0 16px;"
             :class="{ 'opacity-50': refunding }" :disabled="refunding" @click="submitRefund">Record refund</button>
-          <button type="button" class="btn-pill btn-pill-ghost text-[12px]" style="height: 34px; padding: 0 16px;" @click="refundOpen = false">Cancel</button>
+          <button type="button" class="btn-pill btn-pill-ghost text-[12px] max-md:flex-1 max-md:h-11!" style="height: 34px; padding: 0 16px;" @click="refundOpen = false">Cancel</button>
         </div>
       </div>
 
       <div class="grid lg:grid-cols-3 gap-5">
         <!-- Summary -->
         <div
-class="lg:col-span-2 rounded-2xl border p-6"
+class="lg:col-span-2 rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Details</p>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4">
@@ -211,7 +211,7 @@ class="lg:col-span-2 rounded-2xl border p-6"
             </div>
             <div>
               <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Reference</p>
-              <p class="text-[13px]" style="color: var(--color-text);">{{ payment.reference ?? '—' }}</p>
+              <p class="text-[13px] max-md:break-all" style="color: var(--color-text);">{{ payment.reference ?? '—' }}</p>
             </div>
             <div v-if="payment.recorded_by_name">
               <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Recorded by</p>
@@ -223,11 +223,11 @@ class="lg:col-span-2 rounded-2xl border p-6"
 
         <!-- Client & links -->
         <div
-class="rounded-2xl border p-6"
+class="rounded-2xl border p-6 max-md:p-5 max-md:min-w-0"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Client &amp; links</p>
           <p class="text-[14px] font-medium" style="color: var(--color-text);">{{ payment.name ?? '—' }}</p>
-          <p class="text-[12px] mb-4" style="color: var(--color-text-tertiary);">{{ payment.email ?? '' }}</p>
+          <p class="text-[12px] mb-4 max-md:break-all" style="color: var(--color-text-tertiary);">{{ payment.email ?? '' }}</p>
           <div class="space-y-2 pt-4 border-t" style="border-color: var(--color-border);">
             <NuxtLink
 v-if="payment.order_number" :to="`/admin/orders/${payment.order_id}`"
@@ -264,23 +264,23 @@ v-if="payment.invoice_id" :to="`/admin/invoices/${payment.invoice_id}`"
 
       <!-- Receipt — preview + issue (succeeded payments only) -->
       <div
-v-if="canAct" class="rounded-2xl border p-6 mt-5"
+v-if="canAct" class="rounded-2xl border p-6 max-md:p-5 mt-5"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Receipt</p>
             <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">{{ payment.receipt ? 'Issued — proof this payment landed.' : 'Preview the receipt, then issue it.' }}</p>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex items-center gap-2 shrink-0 max-md:w-full max-md:grid max-md:grid-cols-2">
             <!-- No fixed heights — all three share the .btn-pill 44px standard. -->
             <AdminDocumentPreviewModal :data="receiptPreviewData" label="Preview" :disabled="!receiptPreviewData" />
             <a
 v-if="payment.receipt" :href="payment.receipt.pdf_path" target="_blank" rel="noopener"
-              class="btn-pill btn-pill-ghost text-[12px]" style="padding: 0 16px;">
+              class="btn-pill btn-pill-ghost text-[12px] max-md:w-full" style="padding: 0 16px;">
               <UIcon name="i-lucide-file-text" class="size-4" /> View PDF
             </a>
             <button
-v-else type="button" class="btn-pill btn-pill-primary text-[12px]" style="padding: 0 16px;"
+v-else type="button" class="btn-pill btn-pill-primary text-[12px] max-md:w-full" style="padding: 0 16px;"
               :class="{ 'opacity-50': issuingReceipt }" :disabled="issuingReceipt" @click="issueReceipt">
               {{ issuingReceipt ? 'Issuing…' : 'Issue receipt' }}
             </button>
@@ -290,3 +290,10 @@ v-else type="button" class="btn-pill btn-pill-primary text-[12px]" style="paddin
     </template>
   </div>
 </template>
+
+<style scoped>
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']) { font-size: 16px; }
+}
+</style>

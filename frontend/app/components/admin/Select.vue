@@ -73,7 +73,7 @@ function pick(value: string | number) {
             role="option"
             :aria-selected="modelValue === o.value"
             :disabled="o.disabled"
-            class="w-full flex items-center justify-between gap-3 text-[13px] px-2.5 py-2 rounded-md transition-colors disabled:cursor-not-allowed"
+            class="w-full flex items-center justify-between gap-3 text-[13px] px-2.5 py-2 max-md:py-2.5 rounded-md transition-colors disabled:cursor-not-allowed"
             :style="{
               background: modelValue === o.value ? 'var(--color-accent-soft)' : 'transparent',
               color: o.disabled ? 'var(--color-text-tertiary)' : modelValue === o.value ? 'var(--color-accent)' : 'var(--color-text)',

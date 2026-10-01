@@ -159,7 +159,7 @@ function onKeydown(e: KeyboardEvent) {
         <span class="truncate max-w-[180px]">{{ name }}</span>
         <button
           type="button"
-          class="inline-flex size-4 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+          class="inline-flex size-4 items-center justify-center rounded-full transition-opacity hover:opacity-70 max-md:relative max-md:after:absolute max-md:after:-inset-2 max-md:active:opacity-60"
           :aria-label="`Remove ${name}`"
           @click.stop="remove(name)"
         >
@@ -210,7 +210,7 @@ function onKeydown(e: KeyboardEvent) {
               role="option"
               :aria-selected="isChecked(name)"
               :disabled="isDisabled(name)"
-              class="w-full flex items-center gap-2.5 text-[13px] px-2.5 py-2 rounded-md transition-colors disabled:cursor-not-allowed"
+              class="w-full flex items-center gap-2.5 text-[13px] max-md:text-[14px] px-2.5 py-2 max-md:py-2.5 rounded-md transition-colors disabled:cursor-not-allowed"
               :style="{
                 background: highlight === i ? 'var(--color-bg-secondary)' : !multiple && isChecked(name) ? 'var(--color-accent-soft)' : 'transparent',
                 color: isDisabled(name) ? 'var(--color-text-tertiary)' : !multiple && isChecked(name) ? 'var(--color-accent)' : 'var(--color-text)',
@@ -240,7 +240,7 @@ function onKeydown(e: KeyboardEvent) {
             <button
               type="button"
               :disabled="createDisabled"
-              class="w-full flex items-center gap-2.5 text-[13px] px-2.5 py-2 rounded-md transition-colors disabled:cursor-not-allowed"
+              class="w-full flex items-center gap-2.5 text-[13px] max-md:text-[14px] px-2.5 py-2 max-md:py-2.5 rounded-md transition-colors disabled:cursor-not-allowed"
               :style="{
                 background: highlight === filtered.length ? 'var(--color-bg-secondary)' : 'transparent',
                 color: createDisabled ? 'var(--color-text-tertiary)' : 'var(--color-accent)',
@@ -274,4 +274,8 @@ function onKeydown(e: KeyboardEvent) {
 .admin-creatable-leave-to { opacity: 0; transform: translateY(-4px); }
 /* The open popover already shows where focus is — drop the global focus-visible glow. */
 .creatable-search:focus-visible { box-shadow: none; }
+/* Mobile: ≥16px form text stops iOS Safari zooming the page on focus. */
+@media (max-width: 767.98px) {
+  .creatable-search { font-size: 16px; }
+}
 </style>
