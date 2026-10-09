@@ -3,7 +3,7 @@ name: CI
 # Quality + security gates on every PR targeting main. Complements
 # build-check.yml (which only proves the Docker images build):
 #   backend  → Pint (style), PHPUnit against MySQL 8, composer audit (CVEs)
-#   frontend → ESLint, vue-tsc typecheck, npm audit (prod deps, high+)
+#   frontend → ESLint, vue-tsc typecheck, audit-ci over npm audit (prod deps, high+, allowlist)
 # Both jobs always run — the repos are small and skipped-job/required-check
 # interactions on path filters cause more pain than the minutes saved.
 
@@ -95,6 +95,8 @@ jobs:
         run: npm run typecheck
 
       # Production-dependency CVEs only (high and above). Dev-tool advisories
-      # don't ship to users and would block PRs for noise.
-      - name: npm audit
-        run: npm audit --omit=dev --audit-level=high
+      # don't ship to users and would block PRs for noise. audit-ci wraps
+      # `npm audit` so advisories with no fix can be acknowledged — the allowlist
+      # (with reasons + re-check notes) lives in frontend/audit-ci.jsonc.
+      - name: npm audit (audit-ci)
+        run: npx audit-ci --config audit-ci.jsonc

@@ -61,6 +61,7 @@ services:
       - ./frontend/nuxt.config.ts:/app/nuxt.config.ts
       - ./frontend/app.config.ts:/app/app.config.ts
       - ./frontend/eslint.config.mjs:/app/eslint.config.mjs
+      - ./frontend/audit-ci.jsonc:/app/audit-ci.jsonc
       - ./frontend/tsconfig.json:/app/tsconfig.json
       - ./frontend/package.json:/app/package.json
       - ./frontend/package-lock.json:/app/package-lock.json
