@@ -118,7 +118,7 @@ const materials: Material[] = [
             :href="m.href"
             target="_blank"
             rel="noopener"
-            class="reveal group flex flex-col rounded-2xl border p-6 transition-all hover:-translate-y-1"
+            class="reveal group flex flex-col rounded-2xl border p-6 transition-transform hover:-translate-y-1"
             :style="{
               borderColor: 'var(--color-border)',
               background: 'var(--color-bg-elevated)',

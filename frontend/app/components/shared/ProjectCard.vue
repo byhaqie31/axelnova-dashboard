@@ -16,7 +16,7 @@ const statusMeta = (status: Project['status']) => {
 
 <template>
   <div
-    class="card group relative rounded-2xl border p-7 transition-all duration-300 overflow-hidden h-full"
+    class="card group relative rounded-2xl border p-7 transition-[transform,border-color,box-shadow] duration-300 overflow-hidden h-full"
     style="background: var(--color-bg-elevated); border-color: var(--color-border);"
   >
     <!-- Stretched link covers the whole card → detail page -->
