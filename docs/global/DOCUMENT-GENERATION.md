@@ -310,6 +310,23 @@ entering the paid amount + method + ref. `DocumentMapper::forOrder` builds the
 panels from those: invoice → "Deposit received" + accent "Balance due on
 completion"; receipt → "Paid in full".
 
+### Instalment / partner invoices
+
+An order accepted from an instalment or partner quotation carries the agreed
+plan (`orders.payment_plan`, see [QUOTE_BUILDER.md → Deposit & payment plan](./QUOTE_BUILDER.md#deposit--payment-plan--paymentplan)).
+Its invoices follow that plan:
+
+| Invoice | `invoiceType` | Label on the PDF | Amount / due date pre-filled from |
+|---|---|---|---|
+| Up-front payment | `deposit` | `Deposit` (partner: `Setup fee`) | `Order::deposit_due_myr` |
+| One monthly payment | `instalment` + `instalmentNo` | `Instalment 3 of 12` / `Monthly fee 3 of 24` | the plan's monthly figure / that instalment's scheduled date |
+| Anything else | `partial` / `final` | `Partial payment` / `Final balance` | the remaining balance |
+
+Each instalment can carry only one live invoice (void it to re-issue). The deposit
+type greys out once a live deposit invoice exists or less than the deposit
+remains. Labels are worked out by `DocumentMapper::billLabel()` and frozen into
+the payload like any other invoice text.
+
 ### Invoice display options
 
 Per-invoice switches on the invoice form ("Display" group), stored in

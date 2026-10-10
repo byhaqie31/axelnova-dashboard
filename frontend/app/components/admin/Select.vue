@@ -61,10 +61,14 @@ function pick(value: string | number) {
     </button>
 
     <Transition name="admin-select">
+      <!-- data-lenis-prevent: Lenis owns wheel/touch scrolling for the window, so
+           a long list could not scroll without it. overscroll-contain keeps the
+           page still once the list hits its end. -->
       <ul
         v-if="open"
         role="listbox"
-        class="absolute left-0 right-0 top-full mt-1.5 rounded-xl border p-1 z-30 max-h-60 overflow-auto"
+        data-lenis-prevent
+        class="absolute left-0 right-0 top-full mt-1.5 rounded-xl border p-1 z-30 max-h-60 overflow-auto overscroll-contain"
         :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-card-hover)' }"
       >
         <li v-for="o in items" :key="String(o.value)">

@@ -131,7 +131,7 @@ class OrdersController extends Controller
     {
         $data = $request->validate([
             'type' => ['required', 'in:invoice'],
-            'invoiceType' => ['nullable', 'in:deposit,partial,final'],
+            ...DocumentIssuer::TYPE_RULES,
             'amount' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'invoice_id' => ['nullable', 'integer', 'exists:invoices,id'],
@@ -154,6 +154,7 @@ class OrdersController extends Controller
         ]);
 
         $order->loadMissing('quotation');
+        DocumentIssuer::assertPlanFits($order, $data);
 
         $document = DocumentIssuer::issueInvoice($order, $data);
         $document->logActivity('invoice.issued', [
@@ -178,7 +179,7 @@ class OrdersController extends Controller
     public function previewDocument(Request $request, Order $order): JsonResponse
     {
         $data = $request->validate([
-            'invoiceType' => ['nullable', 'in:deposit,partial,final'],
+            ...DocumentIssuer::TYPE_RULES,
             'amount' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'discountType' => ['nullable', 'in:amount,percent'],
@@ -191,6 +192,8 @@ class OrdersController extends Controller
         ]);
 
         $order->loadMissing('quotation');
+        // Range-checked only: a preview may show an already-billed instalment.
+        DocumentIssuer::assertPlanFits($order, $data, checkTaken: false);
 
         $payload = DocumentMapper::forOrder($order, 'invoice', array_merge($data, [
             'number' => 'DRAFT',

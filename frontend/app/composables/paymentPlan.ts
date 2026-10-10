@@ -12,6 +12,39 @@
 
 export type PaymentPlanKind = 'lump_sum' | 'instalment' | 'partner'
 
+/** Invoice types; `instalment` bills one numbered payment of an order's plan. */
+export type InvoiceType = 'deposit' | 'partial' | 'final' | 'instalment'
+
+/** "Instalment 3" / "Deposit" — a short invoice-type chip label. */
+export function invoiceTypeLabel(type: string, instalmentNo?: number | null): string {
+  if (type === 'instalment') return instalmentNo ? `Instalment ${instalmentNo}` : 'Instalment'
+  return ({ deposit: 'Deposit', partial: 'Partial', final: 'Final' } as Record<string, string>)[type] ?? type
+}
+
+/** A live invoice reference on an order's plan view. */
+export interface PlanInvoiceRef { id: number; number: string; status: 'issued' | 'paid' | 'void' }
+
+/**
+ * The order's agreed instalment / partner plan (OrderResource `payment_plan`,
+ * built by Order::planView) — each instalment with the live invoice billing it.
+ */
+export interface OrderPlanView {
+  plan: 'instalment' | 'partner'
+  /** "Deposit" / "Setup fee" */
+  deposit_label: string
+  deposit_myr: number
+  deposit_invoice: PlanInvoiceRef | null
+  months: number
+  monthly_myr: number
+  billing_day: number
+  includes_care_plan: boolean
+  first_date: string | null
+  last_date: string | null
+  plan_total_myr: number
+  next_instalment_no: number | null
+  schedule: { n: number; label: string; date: string; amount: number; invoice: PlanInvoiceRef | null }[]
+}
+
 export const PAYMENT_PLANS: { value: PaymentPlanKind; label: string; hint: string }[] = [
   { value: 'lump_sum', label: 'Lump sum', hint: 'Deposit to commence, balance on completion.' },
   { value: 'instalment', label: 'Instalment', hint: 'Deposit on acceptance, then a fixed monthly amount.' },

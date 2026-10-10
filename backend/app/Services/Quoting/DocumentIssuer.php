@@ -11,6 +11,7 @@ use App\Support\ReferenceCodeGenerator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Issues invoices and receipts for an order: mints an atomic AXN-family number
@@ -48,8 +49,18 @@ class DocumentIssuer
         'scopeItems.*' => ['nullable', 'string', 'max:120'],
     ];
 
+    /**
+     * Invoice type + instalment number — shared by issue, preview and update.
+     * `instalment` bills one numbered payment of the order's instalment /
+     * partner plan; see assertPlanFits() for the plan-aware rules.
+     */
+    public const TYPE_RULES = [
+        'invoiceType' => ['nullable', 'in:deposit,partial,final,instalment'],
+        'instalmentNo' => ['nullable', 'integer', 'min:1', 'max:120'],
+    ];
+
     private const INPUT_KEYS = [
-        'invoiceType', 'amount', 'amountPaid', 'paymentRef', 'paymentMethod',
+        'invoiceType', 'instalmentNo', 'amount', 'amountPaid', 'paymentRef', 'paymentMethod',
         'discountType', 'discountValue', 'discountLabel',
         'promoCode', 'promoType', 'promoValue', 'notes', 'dueAt',
         ...self::DISPLAY_KEYS,
@@ -65,6 +76,7 @@ class DocumentIssuer
     public static function issueInvoice(Order $order, array $input = []): Invoice
     {
         return DB::transaction(function () use ($order, $input) {
+            $input = self::normaliseInstalment($input);
             $number = ReferenceCodeGenerator::generate(DocumentType::Invoice);
 
             $payload = DocumentMapper::forOrder($order, 'invoice', array_merge($input, [
@@ -79,6 +91,7 @@ class DocumentIssuer
                 'invoice_number' => $number,
                 'public_token' => Str::random(48),
                 'type' => $input['invoiceType'] ?? 'deposit',
+                'instalment_no' => $input['instalmentNo'] ?? null,
                 'payload' => $payload,
                 'inputs' => self::cleanInputs($input),
                 'amount_total' => self::payloadTotal($payload),
@@ -87,7 +100,8 @@ class DocumentIssuer
                 'payment_method' => $input['paymentMethod'] ?? null,
                 'status' => $status,
                 'issued_at' => now(),
-                'due_at' => $input['dueAt'] ?? now()->addDays(14)->toDateString(),
+                // An instalment is due on its scheduled date; anything else 14 days out.
+                'due_at' => $input['dueAt'] ?? self::scheduledDue($order, $input) ?? now()->addDays(14)->toDateString(),
                 'paid_at' => $status === 'paid' ? now() : null,
             ]);
 
@@ -109,10 +123,10 @@ class DocumentIssuer
         return DB::transaction(function () use ($invoice, $input) {
             $invoice->loadMissing('order.quotation');
 
-            $inputs = array_replace(
+            $inputs = self::normaliseInstalment(array_replace(
                 self::effectiveInputs($invoice),
                 Arr::only($input, self::INPUT_KEYS),
-            );
+            ));
 
             $payload = DocumentMapper::forOrder($invoice->order, 'invoice', array_merge($inputs, [
                 'number' => $invoice->invoice_number,
@@ -125,11 +139,75 @@ class DocumentIssuer
                 'inputs' => self::cleanInputs($inputs),
                 'amount_total' => self::payloadTotal($payload),
                 'type' => $inputs['invoiceType'] ?? $invoice->type,
+                'instalment_no' => $inputs['instalmentNo'] ?? null,
                 'due_at' => $inputs['dueAt'] ?? $invoice->due_at,
             ]);
 
             return $invoice->refresh();
         });
+    }
+
+    /**
+     * Plan-aware checks for an invoice's type (issue, preview, update). An
+     * `instalment` invoice needs an instalment / partner order, a number inside
+     * its schedule, and — unless only previewing — a number no other live
+     * (non-void) invoice on the order already bills. Throws a 422.
+     */
+    public static function assertPlanFits(Order $order, array $input, ?Invoice $ignore = null, bool $checkTaken = true): void
+    {
+        if (($input['invoiceType'] ?? null) !== 'instalment') {
+            return;
+        }
+
+        if (! $order->isScheduled()) {
+            throw ValidationException::withMessages([
+                'invoiceType' => 'This order has no instalment or partner plan — use a deposit, partial or final invoice.',
+            ]);
+        }
+
+        $months = $order->paymentPlan()->months();
+        $n = (int) ($input['instalmentNo'] ?? 0);
+        if ($n < 1 || $n > $months) {
+            throw ValidationException::withMessages([
+                'instalmentNo' => "Pick which instalment this invoice bills (1–{$months}).",
+            ]);
+        }
+
+        if ($checkTaken) {
+            $taken = Invoice::where('order_id', $order->id)
+                ->where('type', 'instalment')
+                ->where('instalment_no', $n)
+                ->where('status', '!=', 'void')
+                ->when($ignore, fn ($q) => $q->whereKeyNot($ignore->id))
+                ->first();
+            if ($taken) {
+                throw ValidationException::withMessages([
+                    'instalmentNo' => "Instalment {$n} is already billed on {$taken->invoice_number}. Void that invoice first to re-issue it.",
+                ]);
+            }
+        }
+    }
+
+    /** Only an instalment invoice carries an instalment number. */
+    private static function normaliseInstalment(array $input): array
+    {
+        if (($input['invoiceType'] ?? null) !== 'instalment') {
+            $input['instalmentNo'] = null;
+        } elseif (isset($input['instalmentNo'])) {
+            $input['instalmentNo'] = (int) $input['instalmentNo'];
+        }
+
+        return $input;
+    }
+
+    /** The scheduled due date of the instalment an invoice bills, if any. */
+    private static function scheduledDue(Order $order, array $input): ?string
+    {
+        if (($input['invoiceType'] ?? null) !== 'instalment' || empty($input['instalmentNo']) || ! $order->isScheduled()) {
+            return null;
+        }
+
+        return $order->paymentPlan()->instalmentDate((int) $input['instalmentNo'])?->toDateString();
     }
 
     /**
@@ -159,6 +237,7 @@ class DocumentIssuer
 
         return array_filter([
             'invoiceType' => $invoice->type,
+            'instalmentNo' => $invoice->instalment_no,
             'amount' => (float) $invoice->amount_total,
             'notes' => is_string($notes) && trim($notes) !== '' ? $notes : null,
         ], fn ($v) => $v !== null);

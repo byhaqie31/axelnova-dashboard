@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { InvoiceType, OrderPlanView } from '~/composables/paymentPlan'
+import { fmtRm, fmtYmd, invoiceTypeLabel } from '~/composables/paymentPlan'
+
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -26,6 +29,8 @@ interface Order {
   deposit_pct: number | null
   deposit_amount_myr: number | string | null
   deposit_due_myr: number
+  /** The quotation's agreed instalment / partner plan (null for a lump sum). */
+  payment_plan?: OrderPlanView | null
   amount_paid_myr: string
   remaining_myr: number
   payment_status: 'unpaid' | 'deposit_paid' | 'paid'
@@ -50,7 +55,8 @@ interface Order {
 
 interface OrderInvoice {
   id: number
-  type: 'deposit' | 'partial' | 'final'
+  type: InvoiceType
+  instalment_no: number | null
   number: string
   status: 'issued' | 'paid' | 'void'
   amount_total: string
@@ -468,6 +474,66 @@ v-for="p in order.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
           </div>
         </div>
 
+        <!-- Payment plan — the quotation's agreed schedule, each payment with its invoice -->
+        <div
+          v-if="order.payment_plan"
+          class="rounded-2xl border p-6 max-md:p-5"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="flex items-center justify-between gap-3 mb-1">
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Payment plan</p>
+            <span
+              class="text-[11px] font-semibold uppercase tracking-wider rounded-full px-2.5 py-1"
+              :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ order.payment_plan.plan === 'partner' ? 'Partner' : 'Instalment' }}</span>
+          </div>
+          <p class="text-[12px] tabular-nums mb-4" style="color: var(--color-text-secondary);">
+            {{ order.payment_plan.deposit_label }} RM {{ fmtRm(order.payment_plan.deposit_myr) }} + {{ order.payment_plan.months }} × RM {{ fmtRm(order.payment_plan.monthly_myr) }}
+            on the {{ order.payment_plan.billing_day }}{{ order.payment_plan.includes_care_plan ? ' · includes care plan' : '' }} · total RM {{ fmtRm(order.payment_plan.plan_total_myr) }}
+          </p>
+
+          <div data-lenis-prevent class="max-h-[24rem] overflow-y-auto overscroll-contain rounded-xl border" :style="{ borderColor: 'var(--color-border)' }">
+            <table class="w-full text-[12px] max-md:text-[13px] tabular-nums">
+              <thead class="sticky top-0" :style="{ background: 'var(--color-bg)' }">
+                <tr class="text-left text-[10px] font-semibold uppercase tracking-wide" style="color: var(--color-text-tertiary);">
+                  <th class="px-3 py-2 font-semibold">Payment</th>
+                  <th class="px-3 py-2 font-semibold">Due</th>
+                  <th class="px-3 py-2 font-semibold text-right">Amount</th>
+                  <th class="px-3 py-2 font-semibold text-right">Invoice</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-t" :style="{ borderColor: 'var(--color-border)' }">
+                  <td class="px-3 py-2 font-medium whitespace-nowrap" style="color: var(--color-text);">{{ order.payment_plan.deposit_label }}</td>
+                  <td class="px-3 py-2 whitespace-nowrap" style="color: var(--color-text-secondary);">On acceptance</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap" style="color: var(--color-text);">RM {{ fmtRm(order.payment_plan.deposit_myr) }}</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap">
+                    <NuxtLink v-if="order.payment_plan.deposit_invoice" :to="`/admin/invoices/${order.payment_plan.deposit_invoice.id}`" class="inline-flex items-center gap-1.5 font-mono" style="color: var(--color-accent);">
+                      {{ order.payment_plan.deposit_invoice.number }} <AdminStatusPill :status="order.payment_plan.deposit_invoice.status" />
+                    </NuxtLink>
+                    <NuxtLink v-else :to="`/admin/invoices/new?order_id=${order.id}`" class="font-medium" style="color: var(--color-accent);">Issue</NuxtLink>
+                  </td>
+                </tr>
+                <tr
+                  v-for="r in order.payment_plan.schedule" :key="r.n"
+                  class="border-t" :style="{ borderColor: 'var(--color-border)' }">
+                  <td class="px-3 py-2 whitespace-nowrap" style="color: var(--color-text-secondary);">{{ r.label }}</td>
+                  <td class="px-3 py-2 whitespace-nowrap" style="color: var(--color-text-secondary);">{{ fmtYmd(r.date) }}</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap" style="color: var(--color-text);">RM {{ fmtRm(r.amount) }}</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap">
+                    <NuxtLink v-if="r.invoice" :to="`/admin/invoices/${r.invoice.id}`" class="inline-flex items-center gap-1.5 font-mono" style="color: var(--color-accent);">
+                      {{ r.invoice.number }} <AdminStatusPill :status="r.invoice.status" />
+                    </NuxtLink>
+                    <NuxtLink
+                      v-else :to="`/admin/invoices/new?order_id=${order.id}&instalment=${r.n}`"
+                      class="font-medium" :style="{ color: r.n === order.payment_plan.next_instalment_no ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }">
+                      Issue
+                    </NuxtLink>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Invoices -->
         <div
 class="rounded-2xl border p-6 max-md:p-5"
@@ -484,7 +550,7 @@ v-for="d in order.invoices" :key="d.id" :to="`/admin/invoices/${d.id}`"
                   <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ d.number }}</span>
                   <span
 class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                    :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ d.type }}</span>
+                    :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ invoiceTypeLabel(d.type, d.instalment_no) }}</span>
                   <AdminStatusPill :status="d.status" />
                 </div>
                 <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">

@@ -333,8 +333,7 @@ class DocumentMapper
             ])];
             $status = $input['statusLabel'] ?? 'Payment received';
         } else {
-            $labels = ['deposit' => 'Deposit', 'partial' => 'Partial payment', 'final' => 'Final balance'];
-            $billLabel = $labels[$input['invoiceType'] ?? ''] ?? 'Amount';
+            $billLabel = self::billLabel($order, $input);
 
             // Payment context from the order: the agreed total and the ledger-paid
             // cache frame this bill — deposit/partial show what remains after it,
@@ -427,6 +426,26 @@ class DocumentMapper
             'scope' => $scope,
             'notes' => self::noteLines($input['notes'] ?? null),
         ], fn ($v) => $v !== null && $v !== []);
+    }
+
+    /**
+     * What this bill is, as printed in its summary row and status: "Deposit",
+     * "Partial payment", "Final balance" — and on an instalment / partner order,
+     * "Setup fee" (partner deposit) or "Instalment 3 of 12" / "Monthly fee 3 of 24".
+     */
+    private static function billLabel(Order $order, array $input): string
+    {
+        $type = $input['invoiceType'] ?? '';
+        $plan = $order->isScheduled() ? $order->paymentPlan() : null;
+
+        if ($type === 'instalment' && $plan && ! empty($input['instalmentNo'])) {
+            return $plan->instalmentLabel((int) $input['instalmentNo']);
+        }
+        if ($type === 'deposit' && $plan) {
+            return $plan->upfrontLabel();
+        }
+
+        return ['deposit' => 'Deposit', 'partial' => 'Partial payment', 'final' => 'Final balance', 'instalment' => 'Instalment'][$type] ?? 'Amount';
     }
 
     /** A display switch: absent/null means shown; only an explicit false hides. */

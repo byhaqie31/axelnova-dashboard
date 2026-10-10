@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { InvoiceType } from '~/composables/paymentPlan'
+import { invoiceTypeLabel } from '~/composables/paymentPlan'
+
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -26,7 +29,8 @@ interface Invoice {
   client_id: number | null
   name: string | null
   email: string | null
-  type: 'deposit' | 'partial' | 'final'
+  type: InvoiceType
+  instalment_no: number | null
   status: 'issued' | 'paid' | 'void'
   amount_total: string
   amount_paid: string | null
@@ -127,7 +131,7 @@ v-if="invoice.is_overdue" class="text-[11px] font-semibold px-2 py-0.5 rounded-f
               :style="{ color: 'var(--color-danger)', background: 'var(--color-danger-soft)' }">Overdue</span>
           </div>
           <p class="text-[13px] mt-1.5" style="color: var(--color-text-secondary);">
-            <span class="uppercase tracking-wide">{{ invoice.type }}</span> invoice
+            <span class="uppercase tracking-wide">{{ invoiceTypeLabel(invoice.type, invoice.instalment_no) }}</span> invoice
             <template v-if="invoice.order_number">
               · on <NuxtLink :to="`/admin/orders/${invoice.order_id}`" class="underline" :style="{ color: 'var(--color-accent)' }">{{ invoice.order_number }}</NuxtLink>
             </template>

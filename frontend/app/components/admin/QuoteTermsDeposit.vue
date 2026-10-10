@@ -253,7 +253,7 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
               {{ showSchedule ? 'Hide schedule' : `Show schedule (${scheduleRows.length} payments)` }}
             </button>
 
-            <div v-if="showSchedule" class="mt-2 max-h-[22rem] overflow-y-auto rounded-lg border" :style="{ borderColor: 'var(--color-border)' }">
+            <div v-if="showSchedule" data-lenis-prevent class="mt-2 max-h-[22rem] overflow-y-auto overscroll-contain rounded-lg border" :style="{ borderColor: 'var(--color-border)' }">
               <table class="w-full text-[12px] tabular-nums">
                 <thead class="sticky top-0" :style="{ background: 'var(--color-bg-elevated)' }">
                   <!-- Not .d-label: its display:block would pull each <th> out of the table row. -->

@@ -197,9 +197,24 @@ final class PaymentPlan
     /** Fixed amount wins; else pct × total rounded to the nearest ringgit. Never above the total. */
     public function depositAmount(): float
     {
-        $amount = $this->fixedDeposit ?? round($this->total * $this->depositPct / 100);
+        if ($this->fixedDeposit === null) {
+            return self::pctDepositAmount($this->total, $this->depositPct);
+        }
 
-        return (float) min(max($amount, 0), $this->total);
+        return (float) min(max($this->fixedDeposit, 0), $this->total);
+    }
+
+    /**
+     * THE percentage-deposit rule, shared by the quotation (depositAmount) and the
+     * order (Order::deposit_due_myr) so the deposit invoice never differs from the
+     * quoted figure: total × pct / 100 rounded to the NEAREST RINGGIT (halves away
+     * from zero), clamped to 0…total. 19% of RM 14,340 = RM 2,724.60 → RM 2,725.
+     */
+    public static function pctDepositAmount(float $total, int $pct): float
+    {
+        $total = max($total, 0);
+
+        return (float) min(max(round($total * $pct / 100), 0), $total);
     }
 
     public function balance(): float
@@ -311,6 +326,52 @@ final class PaymentPlan
         $month = $first->startOfMonth()->addMonthsNoOverflow($i);
 
         return $month->setDay(min(max($billingDay, 1), $month->daysInMonth));
+    }
+
+    /**
+     * The plan inputs an ORDER keeps once the quotation is accepted — null for a
+     * lump sum. The first date is RESOLVED (a blank one would otherwise drift with
+     * the order's own dates), so the order's schedule is fixed at acceptance.
+     *
+     * @return array{payment_plan: string, instalment_months: int, instalment_amount_myr: float, billing_day: int, first_instalment_date: ?string, includes_care_plan: bool}|null
+     */
+    public function orderSnapshot(): ?array
+    {
+        if (! $this->isScheduled() || $this->months <= 0) {
+            return null;
+        }
+
+        return [
+            'payment_plan' => $this->plan,
+            'instalment_months' => $this->months,
+            'instalment_amount_myr' => $this->instalmentAmount,
+            'billing_day' => $this->billingDay,
+            'first_instalment_date' => $this->firstInstalmentDate()?->toDateString(),
+            'includes_care_plan' => $this->includesCarePlan,
+        ];
+    }
+
+    /** "Instalment 3 of 12" / "Monthly fee 3 of 24" — the invoice label for instalment n. */
+    public function instalmentLabel(int $n): string
+    {
+        return ($this->plan === self::PARTNER ? 'Monthly fee' : 'Instalment')." {$n} of {$this->months}";
+    }
+
+    /** "Deposit" / "Setup fee" — what the up-front payment is called on this plan. */
+    public function upfrontLabel(): string
+    {
+        return $this->plan === self::PARTNER ? 'Setup fee' : 'Deposit';
+    }
+
+    /** The due date of instalment n (1-based), or null outside the schedule. */
+    public function instalmentDate(int $n): ?CarbonImmutable
+    {
+        $first = $this->firstInstalmentDate();
+        if ($first === null || $n < 1 || $n > $this->months) {
+            return null;
+        }
+
+        return self::scheduleDate($first, $n - 1, $this->billingDay);
     }
 
     /**

@@ -383,6 +383,9 @@ class QuotationsController extends Controller
                 'final_amount_myr' => $quotation->finalAmount(),
                 'deposit_pct' => $plan->isFixedDeposit() ? null : $quotation->depositPct(),
                 'deposit_amount_myr' => $plan->isFixedDeposit() ? $plan->depositAmount() : null,
+                // The agreed instalment / partner schedule (null for a lump sum) —
+                // what each monthly invoice's amount, label and due date follow.
+                'payment_plan' => $plan->orderSnapshot(),
                 'amount_paid_myr' => 0,
                 'due_at' => $quotation->dueDateFrom(),
                 'status' => 'pending',

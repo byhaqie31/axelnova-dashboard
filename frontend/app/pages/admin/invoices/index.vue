@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { InvoiceType } from '~/composables/paymentPlan'
+import { invoiceTypeLabel } from '~/composables/paymentPlan'
+
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
@@ -13,7 +16,8 @@ interface Invoice {
   reference_code: string | null
   name: string | null
   email: string | null
-  type: 'deposit' | 'partial' | 'final'
+  type: InvoiceType
+  instalment_no: number | null
   status: 'issued' | 'paid' | 'void'
   amount_total: string
   amount_paid: string | null
@@ -58,6 +62,7 @@ const statusOptions = [
 const typeOptions = [
   { value: '', label: 'All types' },
   { value: 'deposit', label: 'Deposit' },
+  { value: 'instalment', label: 'Instalment' },
   { value: 'partial', label: 'Partial' },
   { value: 'final', label: 'Final' },
 ]
@@ -182,7 +187,7 @@ v-for="i in invoices" :key="i.id"
             <td class="px-4 py-3.5">
               <span
 class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ i.type }}</span>
+                :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ invoiceTypeLabel(i.type, i.instalment_no) }}</span>
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ fmtMyr(i.amount_total) }}</p>
@@ -227,7 +232,7 @@ class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
         <div class="flex items-center gap-2 mb-1 min-w-0">
           <span
 class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0"
-            :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ i.type }}</span>
+            :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ invoiceTypeLabel(i.type, i.instalment_no) }}</span>
           <p class="text-[13px] font-medium leading-tight truncate" :style="{ color: 'var(--color-text)' }">{{ i.name ?? '—' }}</p>
         </div>
         <p class="text-[11px] mb-3 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ i.email ?? '' }}</p>
