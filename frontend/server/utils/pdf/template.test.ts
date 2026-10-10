@@ -178,6 +178,9 @@ describe('renderDocumentHTML', () => {
     expect(en).toContain('9 November 2026')
     expect(en).toContain('<th>Item</th><th>Detail</th><th class="r">Price</th>')
     expect(en).toContain('--pg-page:"Page";--pg-of:"of";')
+    expect(en).toContain('--pgfoot-l:"Axel Nova Ventures  ·  SSM No : 202603119899 (CA0420977-U)  ·  AXNQ-2026-0017";')
+    expect(en).not.toContain('--pgfoot-l:"Axel Nova Ventures  ·  simple, effortless, human.')
+    expect(en).toContain('<div class="name">Designed by Qie,<br>Axel Nova Ventures</div>')
     expect(en).toContain('.payment-plan{break-before:page;page-break-before:always;}')
     expect(en).toContain('.payment-plan .schedule thead{display:table-header-group;}')
     expect(en).toContain('.payment-plan .schedule tr{break-inside:avoid;page-break-inside:avoid;}')
@@ -208,6 +211,11 @@ describe('renderDocumentHTML', () => {
     expect(invoice).toContain('06 July 2026')
     expect(invoice).toContain('Amount due')
     expect(invoice).toContain('>How to pay<')
+    // A frozen payload's old credit string is ignored — the renderer owns the signature.
+    const frozen = renderDocumentHTML({ ...base, kind: 'invoice', locale: undefined, paymentPlan: undefined,
+      studio: { ...base.studio, designedBy: 'Designed by Qie / Axel Nova Ventures' } })
+    expect(frozen).toContain('Designed by Qie,<br>Axel Nova Ventures')
+    expect(frozen).not.toContain('Designed by Qie / Axel Nova Ventures')
     expect(invoice).not.toContain('class="payment-plan')
   })
 })

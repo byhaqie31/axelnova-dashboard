@@ -91,15 +91,22 @@ a `:root` token; nothing below it uses a literal hex.
   (uppercase, letter-spaced) with `SSM Registration: 202603119899 (CA0420977-U)`
   under it. **No tagline in the header.** Right side: the kind word (`Invoice` /
   `Receipt`), then one line per meta pair, label and value on one baseline
-  (`NO.  AXNI-2026-0005`, `DATE …`, `STATUS …`).
+  (`NO.  AXNI-2026-0005`, `DATE …`, `STATUS …`). The pairs share a two-column
+  grid (`.doc` + `subgrid`): labels start on one common left edge, values stay
+  flush right.
   The identity strings come from `STUDIO_IDENTITY` in `template.ts`, **not** from
   `data.studio`: payloads are frozen, and older ones carry `reg: "Reg. …"`. Same
   reasoning as `STUDIO_PAY` below. `DocumentMapper::STUDIO['reg']` holds the same
   string — keep the two in sync. `data.studio.name` is only the logo's `alt`.
 - **Shared chrome** — gradient top hairline, the letterhead above, a rule with a
   primary leading segment, rounded-square section markers, dot lists,
-  ITEM·DETAIL·PRICE tables, a "Designed by …" credit block (with the tagline), and
-  a running page-foot (`studio · tagline · number` left, `Page X of Y` right).
+  ITEM·DETAIL·PRICE tables, a closing credit block ("Designed by Qie," /
+  "Axel Nova Ventures" on two lines, then the tagline and contact line — owned by
+  the renderer's `STUDIO_CREDIT`, never read from the payload), and
+  a running page-foot (`Axel Nova Ventures · SSM No : 202603119899 (CA0420977-U) · AXNQ-…`
+  left, `Page X of Y` right). The footer's SSM number comes from the renderer's
+  `STUDIO_IDENTITY` (same source as the letterhead), the `SSM No :` label from
+  `locales.ts` (`page.ssm`); the tagline stays in the "Designed by" credit block.
 
 ### Language model — chrome vs content
 

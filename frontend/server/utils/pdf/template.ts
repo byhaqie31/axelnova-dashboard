@@ -124,18 +124,24 @@ html,body{background:var(--paper);color:var(--ink);
 /* Proportional figures on the SSM line only; prices stay tabular. */
 .brand .reg{font-size:10px;line-height:1;letter-spacing:.01em;color:var(--body);
   font-variant-numeric:proportional-nums;white-space:nowrap;margin-top:4.25px;}
-.doc{text-align:right;}
-/* The first pair's top margin collapses into this one: 18pt from the title
-   to the first pair, then ~14pt between pairs. 10px (not 9) because Chromium
-   snaps these baselines to whole px — measured in the prod Alpine Chromium,
-   NO./DATE/STATUS land at 100.5 / 114.75 / 128.25pt. */
-.doc .kind-big{font-weight:700;font-size:28px;
+/* Meta block: a two-column grid pushed to the right edge. Every pair rides the
+   same columns (subgrid), so the LABELS share one left edge (QUOTATION / DATE /
+   VALID UNTIL start on the same x) and the VALUES stay flush right. */
+.doc{display:grid;grid-template-columns:auto auto;column-gap:8px;
+  justify-content:end;text-align:right;}
+/* 18pt from the title to the first pair, then ~14pt between pairs. 10px (not
+   9) because Chromium snaps these baselines to whole px — measured in the prod
+   Alpine Chromium, NO./DATE/STATUS land at 100.5 / 114.75 / 128.25pt. Grid
+   margins don't collapse, so the first pair after the title drops its own
+   margin to keep the old collapsed 10px. */
+.doc .kind-big{grid-column:1/-1;font-weight:700;font-size:28px;
   letter-spacing:-.01em;line-height:1;margin-bottom:10px;color:var(--ink);}
-.doc .pair{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;
-  margin-top:5.67px;}
+.doc .pair{grid-column:1/-1;display:grid;grid-template-columns:subgrid;
+  align-items:baseline;margin-top:5.67px;}
+.doc .kind-big + .pair{margin-top:0;}
 .doc .lab{font-size:8.5px;font-weight:500;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--muted);}
-.doc .val{font-size:11.5px;color:var(--ink);margin-top:0;line-height:1;}
+  text-transform:uppercase;color:var(--muted);text-align:left;}
+.doc .val{font-size:11.5px;color:var(--ink);margin-top:0;line-height:1;text-align:right;}
 
 /* ---- rule with primary leading segment ---- */
 .rule{position:relative;height:.5px;background:var(--hairline);margin:16px 0 0;}
@@ -659,12 +665,25 @@ function panelHTML(p: Panel, cur: string, L: LocaleStrings, billingFor?: Documen
  * the stale string on every past document. Header chrome is house style; the
  * payload freezes data, not letterhead.
  *
+ * `ssm` is the bare registration number — the letterhead prints it as
+ * "SSM Registration: …", the running footer as "SSM No : …" (locale file).
+ *
  * KEEP IN SYNC with `DocumentMapper::STUDIO['reg']` (backend).
  */
+const STUDIO_SSM = "202603119899 (CA0420977-U)";
 const STUDIO_IDENTITY = {
   name: "AXEL NOVA VENTURES",
-  reg: "SSM Registration: 202603119899 (CA0420977-U)",
+  ssm: STUDIO_SSM,
+  reg: `SSM Registration: ${STUDIO_SSM}`,
 } as const;
+
+/**
+ * The closing signature ("Designed by Qie," / "Axel Nova Ventures"). Owned by
+ * the renderer for the same reason as STUDIO_IDENTITY: frozen payloads carry an
+ * older `studio.designedBy` string, which is no longer read. The "Designed by
+ * {name}," wording comes from the locale file (`credit.designedBy`).
+ */
+const STUDIO_CREDIT = { designer: "Qie", studio: "Axel Nova Ventures" } as const;
 
 function headHTML(data: DocumentData, L: LocaleStrings): string {
   const kindWord =
@@ -706,8 +725,8 @@ function pair(label: string, value: string): string {
   return `<div class="pair"><span class="lab">${esc(label)}</span><span class="val">${esc(value)}</span></div>`;
 }
 
-function creditHTML(data: DocumentData): string {
-  const by = data.studio.designedBy ?? data.studio.name;
+function creditHTML(data: DocumentData, L: LocaleStrings): string {
+  const by = `${esc(fmt(L.credit.designedBy, { name: STUDIO_CREDIT.designer }))}<br>${esc(STUDIO_CREDIT.studio)}`;
   const contact = [data.studio.email, data.studio.site]
     .filter(Boolean)
     .map(esc)
@@ -716,7 +735,7 @@ function creditHTML(data: DocumentData): string {
     ? `<div class="tag">${esc(data.studio.tagline)}</div>`
     : "";
   return `<div class="credit">
-    <div class="name">${esc(by)}</div>${tag}
+    <div class="name">${by}</div>${tag}
     ${contact ? `<div class="contact">${contact}</div>` : ""}
   </div>`;
 }
@@ -822,7 +841,7 @@ function renderStandard(data: DocumentData): string {
     </div>
   </div>
 
-  ${creditHTML(data)}
+  ${creditHTML(data, L)}
   `;
 }
 
@@ -979,7 +998,7 @@ function renderDetailed(data: DocumentData): string {
   if (notes.length)
     parts.push(`<div class="notes">${notes.map((n) => `<div class="n">${n.label ? `<b>${esc(n.label)}</b> ` : ""}${esc(n.text)}</div>`).join("")}</div>`);
 
-  parts.push(creditHTML(data));
+  parts.push(creditHTML(data, L));
   return parts.join("\n");
 }
 
@@ -993,10 +1012,12 @@ export function renderDocumentHTML(data: DocumentData): string {
   const body =
     data.layout === "detailed" ? renderDetailed(data) : renderStandard(data);
 
-  // Running page-foot identity line (left side) and the localized "Page x of y"
-  // words (right side; the counters come from @page).
+  // Running page-foot identity line (left side): studio · SSM No · number —
+  // the SSM number from the renderer's identity (never a frozen payload), the
+  // label from the locale file. The localized "Page x of y" words sit on the
+  // right; the counters come from @page.
   const L = strings(data.locale);
-  const pgfootL = [data.studio.name, data.studio.tagline, data.number]
+  const pgfootL = [data.studio.name, fmt(L.page.ssm, { ssm: STUDIO_IDENTITY.ssm }), data.number]
     .filter(Boolean)
     .join("  ·  ");
   const rootVar = `:root{--pgfoot-l:"${cssStr(pgfootL)}";--pg-page:"${cssStr(L.page.page)}";--pg-of:"${cssStr(L.page.of)}";}`;

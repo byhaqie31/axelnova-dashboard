@@ -27,7 +27,9 @@ class DocumentMapper
         'reg' => 'SSM Registration: 202603119899 (CA0420977-U)',
         'email' => 'baihaqie@axelnova.tech',
         'site' => 'axelnovaventures.com',
-        'designedBy' => 'Designed by Qie / Axel Nova Ventures',
+        // Frozen into payloads for reference only — the PDF signature renders
+        // from STUDIO_CREDIT in frontend/server/utils/pdf/template.ts.
+        'designedBy' => 'Designed by Qie, Axel Nova Ventures',
     ];
 
     /**

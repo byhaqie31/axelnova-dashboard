@@ -29,7 +29,8 @@ export interface Studio {
   /** business / company registration number. Frozen into payloads but NOT read
    *  by the header — the letterhead renders from `STUDIO_IDENTITY` in template.ts. */
   reg?: string;
-  /** footer credit, e.g. "Designed by Qie / Axel Nova Ventures" */
+  /** Frozen into older payloads but NOT read — the closing signature renders
+   *  from `STUDIO_CREDIT` in template.ts ("Designed by Qie," / "Axel Nova Ventures"). */
   designedBy?: string;
 }
 

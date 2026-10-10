@@ -38,8 +38,10 @@ export interface LocaleStrings {
     paymentTerms: string; summary: string; scopeCovered: string; howToPay: string;
   };
   howToPay: { scanTitle: string; scanText: string; transferTitle: string; reference: string; cardTitle: string; cardText: string };
-  /** Running footer: "{page} 1 {of} 4". */
-  page: { page: string; of: string };
+  /** Running footer: "{page} 1 {of} 4" right; left "Axel Nova Ventures · {ssm} · AXNQ-…". */
+  page: { page: string; of: string; ssm: string };
+  /** Closing signature, first line: "Designed by Qie," (the studio name follows on its own line). */
+  credit: { designedBy: string };
   /** Deposit / balance cards, keyed by the backend's panel `role`. */
   panels: {
     lump_deposit: { label: string; note: string };
@@ -102,7 +104,8 @@ const en: LocaleStrings = {
     cardTitle: "Card (credit & debit)",
     cardText: "Prefer to pay by card? Request a payment link from our admin at {email} and we'll send one over.",
   },
-  page: { page: "Page", of: "of" },
+  page: { page: "Page", of: "of", ssm: "SSM No : {ssm}" },
+  credit: { designedBy: "Designed by {name}," },
   panels: {
     lump_deposit: { label: "Deposit ({pct})", note: "Payable to commence work." },
     lump_balance: { label: "Balance on completion", note: "Due before handover." },
@@ -159,7 +162,8 @@ const bm: LocaleStrings = {
     cardTitle: "Kad (kredit & debit)",
     cardText: "Mahu membayar dengan kad? Minta pautan pembayaran daripada admin kami di {email} dan kami akan hantarkan.",
   },
-  page: { page: "Halaman", of: "daripada" },
+  page: { page: "Halaman", of: "daripada", ssm: "SSM No : {ssm}" },
+  credit: { designedBy: "Designed by {name}," },
   panels: {
     lump_deposit: { label: "Deposit ({pct})", note: "Dibayar untuk memulakan kerja." },
     lump_balance: { label: "Baki selepas siap", note: "Perlu dijelaskan sebelum penyerahan." },
