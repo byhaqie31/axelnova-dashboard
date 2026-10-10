@@ -104,11 +104,16 @@ class AdminQuotationPaymentPlanTest extends TestCase
 
         $q = Quotation::findOrFail($res->json('data.id'));
         $pdf = DocumentMapper::toDocumentData($q);
-        // No new keys → the writer's panels are passed through untouched (only the
-        // terms bullet is realigned, as before).
-        $this->assertSame('Deposit (19%)', $pdf['panels'][0]['label']);
-        $this->assertEquals(2725, $pdf['panels'][0]['value']);
-        $this->assertArrayNotHasKey('paymentPlan', $pdf);
+        // No new keys → still a lump sum on the pct, but the cards are DERIVED on
+        // read (role + figures; the renderer labels them per locale) — the
+        // writer-baked "Deposit (19%)" label never reaches the PDF.
+        $this->assertSame(['role' => 'lump_deposit', 'value' => 2725.0, 'pctLabel' => '19%'], $pdf['panels'][0]);
+        $this->assertSame('lump_balance', $pdf['panels'][1]['role']);
+        $this->assertStringNotContainsString('Deposit (19%)', json_encode($pdf));
+        // A detailed quotation always carries the plan block (lump sum included —
+        // it gets the Payment plan heading, just no schedule).
+        $this->assertSame('lump_sum', $pdf['paymentPlan']['plan']);
+        $this->assertSame([], $pdf['paymentPlan']['schedule']);
         $res->assertJsonPath('data.payment_plan.plan', 'lump_sum')
             ->assertJsonPath('data.payment_plan.deposit_fixed', false)
             ->assertJsonPath('data.payment_plan.deposit_amount_myr', 2725);

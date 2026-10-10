@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Quotation;
 use App\Services\Quoting\PaymentPlan;
 use App\Services\Quoting\PricingEngine;
 use Illuminate\Contracts\Validation\Validator;
@@ -57,6 +58,11 @@ class AdminQuotationRequest extends FormRequest
             // Optional custom validity date. When unset, send() defaults it to
             // sent_at + valid_for_days; when set, that custom date is kept.
             'expires_at' => ['nullable', 'date'],
+
+            // PDF template language (chrome only — headings, labels, dates).
+            // Explicit, never detected from the content. Absent → unchanged
+            // (new rows default to en).
+            'locale' => ['nullable', 'string', Rule::in(Quotation::LOCALES)],
 
             // Presentable document (line items + terms) for the PDF.
             'document' => ['nullable', 'array'],

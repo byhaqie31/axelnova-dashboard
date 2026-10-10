@@ -4,7 +4,7 @@ Quality and security gates for the monorepo. Two PR workflows plus the deploy pi
 
 | Workflow | Trigger | What it proves |
 |---|---|---|
-| [ci.yml](../../.github/workflows/ci.yml) | PR → main | Code quality + security: backend Pint/PHPUnit/composer-audit, frontend ESLint/vue-tsc/npm-audit |
+| [ci.yml](../../.github/workflows/ci.yml) | PR → main | Code quality + security: backend Pint/PHPUnit/composer-audit, frontend ESLint/vue-tsc/vitest/npm-audit |
 | [build-check.yml](../../.github/workflows/build-check.yml) | PR → main | Both Docker images still build |
 | [deploy.yml](../../.github/workflows/deploy.yml) | merge → main | Ships to the VPS (see [DEPLOY.md](./DEPLOY.md)) |
 
@@ -64,7 +64,17 @@ The whole codebase is Pint-clean as of the CI introduction.
 docker compose -f docker-compose.dev.yml exec frontend npm run lint       # eslint (flat config, @nuxt/eslint)
 docker compose -f docker-compose.dev.yml exec frontend npm run lint:fix
 docker compose -f docker-compose.dev.yml exec frontend npm run typecheck  # vue-tsc via `nuxt typecheck`
+docker compose -f docker-compose.dev.yml exec frontend npm test           # vitest — PDF renderer unit tests
 ```
+
+**Renderer tests (vitest).** [vitest.config.ts](../../frontend/vitest.config.ts) runs
+`server/**/*.test.ts` in plain node (no Nuxt runtime) — today that is the PDF
+document renderer in `server/utils/pdf/`: locale-string coverage (every key in
+both `en` and `bm`, no blanks, matching placeholders), schedule / header date
+formatting per locale, and snapshots of the Payment plan partial for each
+plan × locale (`__snapshots__/` next to the tests — commit them; CI runs with
+`CI=true`, where a missing snapshot fails). After an intentional markup change,
+`npx vitest run -u` refreshes them — review the diff.
 
 Lint policy ([eslint.config.mjs](../../frontend/eslint.config.mjs)): errors gate CI;
 `@typescript-eslint/no-explicit-any` is demoted to a warning (~80 pre-existing `any`s

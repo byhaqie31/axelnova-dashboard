@@ -94,6 +94,11 @@ jobs:
       - name: Typecheck (vue-tsc)
         run: npm run typecheck
 
+      # Renderer unit tests (vitest): PDF locale coverage, schedule month names
+      # per locale, payment-plan partial snapshots per plan × locale.
+      - name: Renderer tests (vitest)
+        run: npm test
+
       # Production-dependency CVEs only (high and above). Dev-tool advisories
       # don't ship to users and would block PRs for noise. audit-ci wraps
       # `npm audit` so advisories with no fix can be acknowledged — the allowlist

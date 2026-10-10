@@ -51,10 +51,8 @@ class DetailedDocumentBuilderTest extends TestCase
         $this->assertSame('Project total', $last['label']);
         $this->assertSame(10000.0, $last['price']);
 
-        // Deposit / balance panels (50% of 10000).
-        $this->assertSame(5000.0, $p['panels'][0]['value']);
-        $this->assertSame(5000.0, $p['panels'][1]['value']);
-        $this->assertTrue($p['panels'][1]['accent']);
+        // Deposit / balance cards are derived by the PDF mapper on read, never baked.
+        $this->assertArrayNotHasKey('panels', $p);
 
         // Standard payment terms carried through.
         $this->assertCount(3, $p['paymentTerms']['items']);
@@ -123,9 +121,9 @@ class DetailedDocumentBuilderTest extends TestCase
         $this->assertArrayNotHasKey('payment_plan', $doc); // only the keys sent are stored
 
         $p = $doc['payload'];
-        $this->assertSame('Deposit (18.8%)', $p['panels'][0]['label']);
-        $this->assertSame(2700.0, $p['panels'][0]['value']);
-        $this->assertSame(11640.0, $p['panels'][1]['value']);
+        // Deposit / balance cards are derived by the PDF mapper at render time
+        // (and labelled from the renderer's locale file) — never baked here.
+        $this->assertArrayNotHasKey('panels', $p);
         $this->assertStringStartsWith('RM 2,700 deposit (18.8%) to commence;', $p['paymentTerms']['items'][0]);
         $this->assertStringNotContainsString('19%', json_encode($p));
     }
@@ -152,8 +150,7 @@ class DetailedDocumentBuilderTest extends TestCase
         $this->assertTrue($doc['includes_care_plan']);
 
         $p = $doc['payload'];
-        $this->assertSame(2700.0, $p['panels'][0]['value']);
-        $this->assertSame(970.0, $p['panels'][1]['value']);
+        $this->assertArrayNotHasKey('panels', $p);
         $this->assertStringContainsString('12 monthly instalments of RM 970', $p['paymentTerms']['items'][0]);
     }
 }

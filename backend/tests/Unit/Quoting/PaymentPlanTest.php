@@ -100,7 +100,9 @@ class PaymentPlanTest extends TestCase
         $this->assertSame([], $plan->schedule());
         $this->assertSame(10000.0, $plan->planTotal());
         $this->assertSame(0.0, $plan->variance());
-        $this->assertNull($plan->documentBlock());
+        // A lump sum still has a (schedule-less) block — it gets the section heading.
+        $this->assertSame('lump_sum', $plan->documentBlock()['plan']);
+        $this->assertSame([], $plan->documentBlock()['schedule']);
     }
 
     public function test_unknown_plan_values_fall_back_to_lump_sum(): void
@@ -261,20 +263,58 @@ class PaymentPlanTest extends TestCase
 
         $this->assertSame('instalment', $block['plan']);
         $this->assertSame(2700.0, $block['deposit']);
+        $this->assertSame('18.8%', $block['depositPctLabel']);
+        $this->assertSame(11640.0, $block['balance']);
         $this->assertSame(970.0, $block['monthly']);
         $this->assertSame(12, $block['months']);
         $this->assertSame(20, $block['billingDay']);
-        $this->assertSame('20 November 2026', $block['firstDate']);
-        $this->assertSame('20 Oktober 2027', $block['lastDate']);
+        // Dates travel as ISO — the PDF template formats them per document locale.
+        $this->assertSame('2026-11-20', $block['firstDate']);
+        $this->assertSame('2027-10-20', $block['lastDate']);
         $this->assertSame(14340.0, $block['total']);
         $this->assertTrue($block['includesCarePlan']);
         $this->assertCount(12, $block['schedule']);
+        $this->assertSame(['n' => 1, 'date' => '2026-11-20', 'amount' => 970.0], $block['schedule'][0]);
+        $this->assertSame(['n' => 12, 'date' => '2027-10-20', 'amount' => 970.0], $block['schedule'][11]);
+
+        // Data only — no copy, labels or month names. The locale file owns every
+        // string (template chrome), so none may be baked here.
+        $this->assertSame(
+            ['plan', 'deposit', 'depositPctLabel', 'balance', 'monthly', 'months', 'billingDay',
+                'firstDate', 'lastDate', 'includesCarePlan', 'total', 'schedule'],
+            array_keys($block),
+        );
+        $json = json_encode($block);
+        $this->assertStringNotContainsString('Ansuran', $json);
+        $this->assertStringNotContainsString('Oktober', $json);
+        $this->assertStringNotContainsString('Pelan', $json);
 
         // The forbidden stale figures never appear anywhere in the block.
-        $json = json_encode($block);
         $this->assertStringNotContainsString('19%', $json);
         $this->assertStringNotContainsString('2,725', $json);
         $this->assertStringNotContainsString('2725', $json);
+    }
+
+    public function test_lump_sum_document_block_carries_deposit_balance_and_no_schedule(): void
+    {
+        $block = PaymentPlan::fromDocument(['deposit_pct' => 50], 10000)->documentBlock();
+
+        $this->assertSame('lump_sum', $block['plan']);
+        $this->assertSame(5000.0, $block['deposit']);
+        $this->assertSame('50%', $block['depositPctLabel']);
+        $this->assertSame(5000.0, $block['balance']);
+        $this->assertSame(0.0, $block['monthly']);
+        $this->assertSame(0, $block['months']);
+        $this->assertNull($block['firstDate']);
+        $this->assertNull($block['lastDate']);
+        $this->assertFalse($block['includesCarePlan']);
+        $this->assertSame(10000.0, $block['total']);
+        $this->assertSame([], $block['schedule']);
+    }
+
+    public function test_document_block_is_null_for_a_zero_total(): void
+    {
+        $this->assertNull(PaymentPlan::fromDocument(['deposit_pct' => 50], 0)->documentBlock());
     }
 
     public function test_partner_document_block_shows_setup_plus_monthly_times_months(): void
@@ -291,7 +331,7 @@ class PaymentPlanTest extends TestCase
         $this->assertSame(500.0, $block['monthly']);
         $this->assertSame(24, $block['months']);
         $this->assertSame(13000.0, $block['total']);
-        $this->assertSame('20 Disember 2028', $block['lastDate']);
+        $this->assertSame('2028-12-20', $block['lastDate']);
     }
 
     // ── Panels + terms ───────────────────────────────────────────────────────
@@ -300,20 +340,26 @@ class PaymentPlanTest extends TestCase
     {
         $panels = PaymentPlan::fromDocument(['deposit_pct' => 50], 10000)->panels();
 
-        $this->assertSame('Deposit (50%)', $panels[0]['label']);
-        $this->assertSame(5000.0, $panels[0]['value']);
-        $this->assertSame('Balance on completion', $panels[1]['label']);
-        $this->assertSame(5000.0, $panels[1]['value']);
-        $this->assertTrue($panels[1]['accent']);
+        // Panels carry a ROLE + figures, never a label: the PDF template labels
+        // them from its locale file (en / bm).
+        $this->assertSame(
+            [
+                ['role' => 'lump_deposit', 'value' => 5000.0, 'pctLabel' => '50%'],
+                ['role' => 'lump_balance', 'value' => 5000.0, 'accent' => true],
+            ],
+            $panels,
+        );
     }
 
     public function test_fixed_deposit_panels_show_the_effective_pct(): void
     {
         $panels = PaymentPlan::fromDocument(['deposit_pct' => 19, 'deposit_amount_myr' => 2700], 14340)->panels();
 
-        $this->assertSame('Deposit (18.8%)', $panels[0]['label']);
+        $this->assertSame('lump_deposit', $panels[0]['role']);
+        $this->assertSame('18.8%', $panels[0]['pctLabel']);
         $this->assertSame(2700.0, $panels[0]['value']);
         $this->assertSame(11640.0, $panels[1]['value']);
+        $this->assertArrayNotHasKey('label', $panels[0]);
     }
 
     public function test_instalment_panels_show_deposit_and_monthly(): void
@@ -321,11 +367,28 @@ class PaymentPlanTest extends TestCase
         $panels = PaymentPlan::fromDocument([
             'payment_plan' => 'instalment', 'deposit_amount_myr' => 2700,
             'instalment_months' => 12, 'instalment_amount_myr' => 970,
+            'billing_day' => 20, 'first_instalment_date' => '2026-11-20',
         ], 14340)->panels();
 
-        $this->assertSame(2700.0, $panels[0]['value']);
-        $this->assertSame(970.0, $panels[1]['value']);
-        $this->assertStringContainsString('12', $panels[1]['label']);
+        $this->assertSame(['role' => 'inst_deposit', 'value' => 2700.0], $panels[0]);
+        $this->assertSame([
+            'role' => 'inst_monthly', 'value' => 970.0, 'accent' => true,
+            'months' => 12, 'billingDay' => 20, 'firstDate' => '2026-11-20', 'lastDate' => '2027-10-20',
+        ], $panels[1]);
+    }
+
+    public function test_partner_panels_show_setup_fee_and_monthly_fee(): void
+    {
+        $panels = PaymentPlan::fromDocument([
+            'payment_plan' => 'partner', 'deposit_amount_myr' => 1000,
+            'instalment_amount_myr' => 500, 'first_instalment_date' => '2027-01-20',
+        ], 13000)->panels();
+
+        $this->assertSame(['role' => 'partner_setup', 'value' => 1000.0], $panels[0]);
+        $this->assertSame('partner_monthly', $panels[1]['role']);
+        $this->assertSame(500.0, $panels[1]['value']);
+        $this->assertSame(24, $panels[1]['months']);
+        $this->assertSame('2028-12-20', $panels[1]['lastDate']);
     }
 
     public function test_deposit_term_matches_the_plan(): void

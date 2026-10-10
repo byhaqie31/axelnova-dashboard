@@ -51,10 +51,11 @@ final class DetailedDocumentBuilder
         ], $sections);
         $summaryRows[] = ['label' => 'Project total', 'price' => $scopeTotal, 'total' => true, 'red' => true];
 
-        // Deposit / balance (or deposit / monthly) panels from the SAME derivation
-        // the PDF mapper uses — fixed amount wins over pct, pct rounds to the ringgit.
+        // The deposit / balance (or deposit / monthly) cards are NOT baked: the
+        // PDF mapper derives them on read (PaymentPlan::panels) from the inputs
+        // stored below, and the renderer labels them from its locale file. Only
+        // the terms bullet is worded here, from the same derivation.
         $plan = PaymentPlan::fromDocument(array_merge(['deposit_pct' => $depositPct], $planInputs), $scopeTotal);
-        $panels = $plan->panels();
 
         $payload = array_filter([
             'project' => $project,
@@ -62,12 +63,11 @@ final class DetailedDocumentBuilder
             'subtitle' => $detailed['subtitle'] ?? null,
             'sections' => $sections,
             'summary' => ['rows' => $summaryRows],
-            'panels' => $panels,
             'included' => self::buildIncluded($detailed['included'] ?? []),
             'options' => self::buildOptions($detailed['options'] ?? []),
             'care' => self::buildCare($detailed['care'] ?? []),
-            // Deposit bullet derived from the proposal's own plan — the panels
-            // above already show those figures, so the terms must agree.
+            // Deposit bullet derived from the proposal's own plan — the derived
+            // cards show the same figures, so the terms must agree.
             'paymentTerms' => ['items' => DocumentMapper::defaultTerms($plan)],
         ], fn ($v) => $v !== null && $v !== []);
 
