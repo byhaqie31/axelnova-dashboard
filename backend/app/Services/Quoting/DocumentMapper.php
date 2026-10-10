@@ -45,41 +45,43 @@ class DocumentMapper
 
     /**
      * The three standard payment terms, with the deposit bullet derived from the
-     * document's actual deposit_pct — the single source of these strings for the
-     * seeder, the detailed builder, and this mapper.
+     * document's actual deposit — the single source of these strings for the
+     * seeder, the detailed builder, and this mapper. Accepts a bare pct (the
+     * seeder's 50) or the full PaymentPlan (fixed amount / instalment / partner).
      */
-    public static function defaultTerms(int $depositPct): array
+    public static function defaultTerms(int|PaymentPlan $deposit): array
     {
+        $first = $deposit instanceof PaymentPlan
+            ? $deposit->depositTerm()
+            : "{$deposit}% deposit to commence; balance due on delivery before handover.";
+
         return [
-            "{$depositPct}% deposit to commence; balance due on delivery before handover.",
+            $first,
             'Revisions are included as scoped per phase; further rounds are quoted separately.',
             'Third-party costs (domains, fonts, hosting) are billed at cost where applicable.',
         ];
     }
 
     /**
-     * Rewrite the standard deposit bullet to the document's actual deposit_pct.
-     * Frozen payloads/terms may carry the boilerplate with a stale figure (the old
-     * hardcoded 50%) while deposit_pct says otherwise — align on read so the PDF
-     * never contradicts its own deposit cards. Hand-authored terms don't match the
-     * boilerplate opening and pass through untouched.
+     * Rewrite the standard deposit bullet to the document's actual plan. Frozen
+     * payloads/terms may carry the boilerplate with a stale figure (the old
+     * hardcoded 50%, or a whole-number pct beside a fixed amount) while the
+     * document says otherwise — align on read so the PDF never contradicts its
+     * own deposit cards. Hand-authored terms don't match the boilerplate opening
+     * and pass through untouched (see PaymentPlan::alignTerms).
      */
-    private static function alignDepositTerm(array $terms, int $depositPct): array
+    private static function alignDepositTerm(array $terms, PaymentPlan $plan): array
     {
-        return array_map(
-            fn ($term) => preg_replace(
-                '/^\d+(?:\.\d+)?% deposit to commence\b/',
-                "{$depositPct}% deposit to commence",
-                (string) $term,
-            ),
-            $terms,
-        );
+        return $plan->alignTerms($terms);
     }
 
     public static function toDocumentData(Quotation $quotation): array
     {
         $doc = $quotation->document ?? [];
-        $depositPct = (int) ($doc['deposit_pct'] ?? 50);
+        // Deposit + payment plan — derived once here from the stored document
+        // (fixed amount wins over pct; instalment / partner schedules). Every
+        // figure below comes from this object, never from a raw deposit_pct.
+        $plan = $quotation->paymentPlan();
 
         // issued_at re-stamps on every draft write and freezes once the quote
         // leaves draft — so the header always shows when the record was last
@@ -91,8 +93,8 @@ class DocumentMapper
         $terms = self::alignDepositTerm(
             ! empty($doc['terms']) && is_array($doc['terms'])
                 ? array_values(array_filter($doc['terms']))
-                : self::defaultTerms($depositPct),
-            $depositPct,
+                : self::defaultTerms($plan),
+            $plan,
         );
 
         // Detailed / customized layout — the builder authors the full presentation
@@ -104,15 +106,30 @@ class DocumentMapper
             $payloadClient = is_array($payload['client'] ?? null) ? $payload['client'] : [];
 
             // Frozen detailed payloads carry their own paymentTerms — align the
-            // deposit bullet with the document's actual deposit_pct on read.
+            // deposit bullet with the document's actual plan on read.
             if (is_array($payload['paymentTerms']['items'] ?? null)) {
                 $payload['paymentTerms']['items'] = self::alignDepositTerm(
                     $payload['paymentTerms']['items'],
-                    $depositPct,
+                    $plan,
                 );
             }
 
+            // A document that carries the new plan keys (fixed deposit, or an
+            // instalment / partner plan) has its deposit / balance panels derived
+            // HERE, replacing whatever the writer baked — so a stale "Deposit
+            // (19%) · RM 2,725" pair can never outlive the agreed RM 2,700.
+            // Legacy pct-only documents keep their stored panels untouched.
+            if ($plan->isExplicit()) {
+                $panels = $plan->panels();
+                if ($panels === []) {
+                    unset($payload['panels']);
+                } else {
+                    $payload['panels'] = $panels;
+                }
+            }
+
             return array_filter(array_merge($payload, [
+                'paymentPlan' => $plan->documentBlock(),
                 'layout' => 'detailed',
                 'kind' => 'quotation',
                 'number' => $quotation->reference_code,
@@ -149,7 +166,12 @@ class DocumentMapper
             'discount' => (float) ($doc['discount'] ?? 0),
             'taxLabel' => $doc['tax_label'] ?? 'SST',
             'taxRate' => (float) ($doc['tax_rate'] ?? 0),
-            'depositPct' => $depositPct,
+            // depositPct stays for older renderers; depositAmount is what the
+            // card shows (fixed wins, else pct rounded to the ringgit).
+            'depositPct' => $plan->depositPct(),
+            'depositAmount' => $plan->depositAmount(),
+            'depositPctLabel' => $plan->depositPctLabel(),
+            'paymentPlan' => $plan->documentBlock(),
             'terms' => $terms,
             'pay' => [
                 'online' => self::BANK['online'],

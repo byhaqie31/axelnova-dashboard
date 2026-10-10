@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Services\Quoting\PaymentPlan;
 use App\Services\Quoting\PricingEngine;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -70,6 +71,15 @@ class AdminQuotationRequest extends FormRequest
             'document.terms' => ['nullable', 'array'],
             'document.terms.*' => ['string', 'max:300'],
             'document.deposit_pct' => ['nullable', 'integer', 'min:0', 'max:100'],
+            // Fixed deposit (wins over deposit_pct) + the payment plan. All live on
+            // the document beside deposit_pct — see PaymentPlan for the rules.
+            'document.deposit_amount_myr' => ['nullable', 'numeric', 'min:0'],
+            'document.payment_plan' => ['nullable', 'string', Rule::in(PaymentPlan::PLANS)],
+            'document.instalment_months' => ['nullable', 'integer', 'min:1', 'max:120'],
+            'document.instalment_amount_myr' => ['nullable', 'numeric', 'min:0'],
+            'document.billing_day' => ['nullable', 'integer', 'min:1', 'max:28'],
+            'document.first_instalment_date' => ['nullable', 'date_format:Y-m-d'],
+            'document.includes_care_plan' => ['nullable', 'boolean'],
             'document.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:1'],
 
             // Layout selector + the detailed/customized presentation blob. The
@@ -103,6 +113,17 @@ class AdminQuotationRequest extends FormRequest
                     'package_key',
                     'A package is required unless the document layout is "detailed". Provide packages[] or package_key.',
                 );
+            }
+
+            // A scheduled plan needs its schedule: months and a monthly figure.
+            $plan = $this->input('document.payment_plan');
+            if (in_array($plan, [PaymentPlan::INSTALMENT, PaymentPlan::PARTNER], true)) {
+                if ($plan === PaymentPlan::INSTALMENT && (int) $this->input('document.instalment_months', 0) < 1) {
+                    $validator->errors()->add('document.instalment_months', 'An instalment plan needs the number of months.');
+                }
+                if ((float) $this->input('document.instalment_amount_myr', 0) <= 0) {
+                    $validator->errors()->add('document.instalment_amount_myr', 'A '.str_replace('_', ' ', $plan).' plan needs the monthly amount.');
+                }
             }
         });
     }

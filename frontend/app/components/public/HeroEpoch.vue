@@ -291,7 +291,12 @@ onMounted(() => {
         // which reads as a hitch — most visible on touch, where momentum
         // scrolling gives the main thread less slack.
         anticipatePin: 1,
-        scrub: 0.6,
+        // `true`, not a number — the Lenis-recommended integration. Lenis
+        // already eases the scroll position (lerp 0.1), so following it 1:1
+        // inherits that smoothing. A numeric scrub restarts a second ease
+        // tween every frame on top; measured against 0.6 it added no visible
+        // smoothing over Lenis's own, only redundant per-frame work.
+        scrub: true,
         invalidateOnRefresh: true,
       },
     })

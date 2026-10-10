@@ -55,6 +55,9 @@ class QuotationResource extends JsonResource
             'form_payload' => $this->when(! $listRoute, $this->form_payload),
             'scope_display' => $this->when(! $listRoute, fn () => ScopeSummary::forQuotation($this->resource)),
             'document' => $this->when(! $listRoute, $this->document),
+            // Derived deposit + plan figures (fixed-wins, rounding, schedule, variance)
+            // — what the builder, detail page and order flow display; never re-derived in the UI.
+            'payment_plan' => $this->when(! $listRoute, fn () => $this->paymentPlan()->toArray()),
             'addons' => $this->whenLoaded('addons', fn () => $this->addons->map(fn ($a) => [
                 'key' => $a->addon_key,
                 'label' => $a->addon_label,

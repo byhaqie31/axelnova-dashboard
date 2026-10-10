@@ -103,7 +103,8 @@
   /* Nav surface — themed via CSS so SSR matches client */
   --nav-bg-top: rgba(255, 255, 255, 0.55);
   --nav-bg-scrolled: rgba(255, 255, 255, 0.78);
-  --nav-mobile-bg: rgba(255, 255, 255, 1);
+  --nav-bg-solid: #FFFFFF;          /* fully opaque — floating header + mobile sheet */
+  --nav-mobile-bg: var(--nav-bg-solid);
 
   /* Status pills — single source of truth. Use .status-pill[data-status="..."] */
   --status-new-fg:        #0071E3;
@@ -227,7 +228,8 @@
 
   --nav-bg-top: rgba(10, 15, 31, 0.55);
   --nav-bg-scrolled: rgba(10, 15, 31, 0.78);
-  --nav-mobile-bg: rgba(10, 15, 31, 1);
+  --nav-bg-solid: #0A0F1F;
+  --nav-mobile-bg: var(--nav-bg-solid);
 
   /* Status pills — dark mode overrides (slightly brighter foregrounds, lighter bg alpha) */
   --status-new-fg:        #2997FF;
@@ -724,16 +726,17 @@ h1 { letter-spacing: -0.045em; }
   .confirm-fade-leave-active { transition: none; }
 }
 
-/* Floating glass nav (hero quick-links pill). Uses the scrolled nav surface
-   token + heavy blur so it reads as frosted glass over media in both modes —
-   never bind these to colorMode in JS (FOUC). */
+/* Floating nav pill (site header + the hero's morphing pill — they share this
+   rule so the homepage dock handoff reads as one element). Fully opaque: the
+   old translucent + blur surface let page content bleed through and hurt the
+   link text's legibility, so there is no backdrop-filter here — it would be
+   invisible behind a solid fill anyway. Never bind the background to colorMode
+   in JS (FOUC). */
 .glass-nav {
   border-radius: 9999px;
-  background: var(--nav-bg-scrolled);
+  background: var(--nav-bg-solid);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
 }
 
 /* Shared chip surface — the hero nav "Get in touch" pill AND every marquee

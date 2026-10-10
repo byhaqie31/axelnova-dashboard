@@ -111,9 +111,10 @@ Used for premium moments only — hero text, top-of-nav hairline, brand dot. Nev
 
 These flip automatically with `:root` / `.dark`. Use for any sticky overlay surface.
 
-- `--nav-bg-top` — header backdrop when at top of page
-- `--nav-bg-scrolled` — header backdrop after scroll
-- `--nav-mobile-bg` — mobile menu sheet
+- `--nav-bg-top` — translucent header backdrop when at top of page (legacy; the floating header no longer uses it)
+- `--nav-bg-scrolled` — translucent backdrop for secondary overlays (hero eyebrow badge, partner header, login cards, projects filter bar)
+- `--nav-bg-solid` — **fully opaque** nav surface (`#FFFFFF` / `#0A0F1F`). The floating site header and hero pill use this so link text never has page content bleeding through behind it
+- `--nav-mobile-bg` — mobile menu sheet; aliases `--nav-bg-solid`
 
 **Rule:** never bind these to `colorMode.value` in JS — drive them only through CSS variables to avoid hydration FOUC.
 
@@ -210,7 +211,7 @@ Two pill-family surfaces for floating overlays (introduced by the hero `HeroEpoc
 
 | Class | Style |
 |---|---|
-| `.glass-nav` | Frosted pill rail — `--nav-bg-scrolled` + `backdrop-filter: blur(24px)` + `--shadow-lg`, fully rounded. For floating nav/overlay pills over media. |
+| `.glass-nav` | Floating nav pill rail — **opaque** `--nav-bg-solid` + `--color-border` hairline + `--shadow-lg`, fully rounded, no backdrop blur. Shared by the site header and the hero's morphing pill (the dock handoff depends on them matching). It was frosted/translucent until Oct 2026; that was dropped because content scrolling underneath made the nav links hard to read. |
 | `.pill-chip` | Shared chip surface — `--color-bg-elevated` + `--color-border` + `--shadow-sm`, fully rounded; hover → `--color-border-strong`. **One rule**, reused identically by the hero nav "Get in touch" pill and every marquee logo card. Size/padding via utilities at the call site. |
 
 ---

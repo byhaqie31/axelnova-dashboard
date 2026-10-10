@@ -4,6 +4,8 @@ import DetailedProposalFields from '~/components/admin/DetailedProposalFields.vu
 import type { QuoteScopeState, NormalizedPackage } from '~/composables/quoteScope'
 import type { EstimateResult, EtaUnit } from '~/composables/usePricingEngine'
 import { defaultQuoteScope, normalizePackages } from '~/composables/quoteScope'
+import type { PaymentPlanInputs } from '~/composables/paymentPlan'
+import { alignDepositTerms, defaultPlanInputs, detailedPanels, planInputsFromDocument, toDocumentKeys } from '~/composables/paymentPlan'
 
 interface QuotationLike {
   id: number
@@ -210,6 +212,10 @@ const doc = reactive({
   deposit_pct: 50,
 })
 
+// Deposit amount (fixed, wins over deposit_pct) + payment plan — stored on the
+// document beside deposit_pct; derived figures mirror the backend PaymentPlan.
+const plan = reactive<PaymentPlanInputs>(defaultPlanInputs())
+
 // Optional custom validity date (YYYY-MM-DD). Blank → send() defaults it to
 // valid_for_days after sending.
 const validUntil = ref('')
@@ -355,6 +361,7 @@ function loadFromQuotation(q: QuotationLike) {
     }
     doc.items = items
     doc.deposit_pct = d.deposit_pct ?? 50
+    Object.assign(plan, planInputsFromDocument(d))
     doc.termsText = (p.paymentTerms?.items ?? defaultTerms(doc.deposit_pct)).join('\n')
     detailedInitial.value = p
     detailed.value = true
@@ -366,11 +373,22 @@ function loadFromQuotation(q: QuotationLike) {
       title: it.title ?? '', desc: it.desc ?? '', qty: Number(it.qty ?? 1), unit: it.unit ?? '', rate: Number(it.rate ?? 0),
     }))
     doc.deposit_pct = d.deposit_pct ?? 50
+    Object.assign(plan, planInputsFromDocument(d))
     doc.termsText = (d.terms ?? defaultTerms(doc.deposit_pct)).join('\n')
     detailedInitial.value = null
     detailed.value = false
   }
 }
+
+// Keep the boilerplate deposit bullet truthful as the deposit / plan / total
+// change (the backend realigns on read too — PaymentPlan::alignTerms — but the
+// textarea must show what the PDF will print). Hand-edited bullets keep their
+// wording; only the figures move. Runs pre-flush, so the mount-time hydrate is
+// aligned before the dirty baseline is snapshotted.
+watch(() => [grandTotal.value, doc.deposit_pct, JSON.stringify(plan)], () => {
+  const next = alignDepositTerms(doc.termsText.split('\n'), grandTotal.value, Number(doc.deposit_pct) || 0, plan).join('\n')
+  if (next !== doc.termsText) doc.termsText = next
+})
 
 // ── Draft context (connector provenance / assumptions / open questions) ──────
 // Read-only surface for a draft's authoring context — chiefly a connector-created
@@ -543,12 +561,9 @@ function buildPayload() {
     const depositPct = Number(doc.deposit_pct) || 0
     const summaryRows: Record<string, any>[] = sections.map(s => ({ label: s.title, price: s.total }))
     summaryRows.push({ label: 'Project total', price: scopeTotal, total: true, red: true })
-    const panels: Record<string, any>[] = []
-    if (depositPct > 0 && scopeTotal > 0) {
-      const dep = Math.round(scopeTotal * depositPct / 100)
-      panels.push({ label: `Deposit (${depositPct}%)`, value: dep, note: 'Payable to commence work.' })
-      panels.push({ label: 'Balance on completion', value: scopeTotal - dep, accent: true, note: 'Due before handover.' })
-    }
+    // Deposit / balance (or deposit / monthly) panels from the same derivation the
+    // PDF mapper uses — fixed amount wins over pct, pct rounds to the ringgit.
+    const panels = detailedPanels(scopeTotal, depositPct, plan)
     const blocks = detailedRef.value?.buildBlocks() ?? {}
     return {
       ...base,
@@ -564,6 +579,7 @@ function buildPayload() {
           ...(terms.length ? { paymentTerms: { items: terms } } : {}),
         },
         deposit_pct: depositPct,
+        ...toDocumentKeys(plan),
       },
     }
   }
@@ -576,6 +592,7 @@ function buildPayload() {
       items: doc.items.map(i => ({ title: i.title, desc: i.desc || null, qty: Number(i.qty) || 0, unit: i.unit || null, rate: Number(i.rate) || 0 })),
       terms,
       deposit_pct: Number(doc.deposit_pct) || 0,
+      ...toDocumentKeys(plan),
       tax_rate: 0,
     },
   }
@@ -1049,7 +1066,7 @@ type="button"
           </div>
         </div>
 
-        <AdminQuoteTermsDeposit v-model:terms="doc.termsText" v-model:deposit-pct="doc.deposit_pct" />
+        <AdminQuoteTermsDeposit v-model:terms="doc.termsText" v-model:deposit-pct="doc.deposit_pct" v-model:plan="plan" :total="grandTotal" />
 
         <div class="space-y-1.5 pt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">
           <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">

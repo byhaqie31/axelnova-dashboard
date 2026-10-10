@@ -157,6 +157,49 @@ export interface NoteLine {
   text: string;
 }
 
+/* ------------------------------------------------------------ payment plan */
+
+/** One label/value line of the Payment plan block: money (`amount`, with an
+ *  optional muted `detail` after it) or plain `text` (a date, a billing day). */
+export interface PaymentPlanRow {
+  label: string;
+  amount?: number;
+  detail?: string;
+  text?: string;
+}
+
+export interface PaymentPlanScheduleRow {
+  /** e.g. "Ansuran 1" */
+  label: string;
+  /** formatted, e.g. "20 November 2026" */
+  date: string;
+  amount: number;
+}
+
+/**
+ * The client-facing "Pelan pembayaran" block for an instalment / partner plan.
+ * Fully derived by the backend (PaymentPlan::documentBlock) — copy, dates and
+ * totals arrive ready to print; the template only lays it out. Absent on a
+ * lump-sum quotation, which keeps the deposit card / panels + terms.
+ */
+export interface PaymentPlanBlock {
+  plan: "lump_sum" | "instalment" | "partner";
+  title: string;
+  intro?: string;
+  rows: PaymentPlanRow[];
+  deposit: number;
+  monthly: number;
+  months: number;
+  billingDay: number;
+  firstDate?: string | null;
+  lastDate?: string | null;
+  includesCarePlan: boolean;
+  total: number;
+  totalLabel: string;
+  scheduleTitle?: string;
+  schedule: PaymentPlanScheduleRow[];
+}
+
 /* ---------------------------------------------------------------- document */
 
 export interface DocumentData {
@@ -193,6 +236,13 @@ export interface DocumentData {
   taxRate?: number; // 0..1
   /** quotes: deposit to collect first; invoices: amount being billed */
   depositPct?: number;
+  /** quotes: the deposit actually due — a fixed amount, or the pct rounded to
+   *  the ringgit by the backend. Wins over depositPct when present. */
+  depositAmount?: number;
+  /** quotes: the effective deposit pct for the card label, e.g. "18.8%" */
+  depositPctLabel?: string;
+  /** quotes on an instalment / partner plan: the derived Payment plan block */
+  paymentPlan?: PaymentPlanBlock | null;
 
   // ---- detailed layout ----
   sections?: Section[];

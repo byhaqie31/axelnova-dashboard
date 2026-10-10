@@ -367,6 +367,12 @@ class QuotationsController extends Controller
         $order = DB::transaction(function () use ($request, $quotation) {
             $quotation->update(['status' => 'accepted']);
 
+            // The deposit the order expects up front. A fixed-amount deposit is
+            // carried as the amount (pct left null) so deposit_due_myr can never
+            // recompute a rounded pct back into a different figure; a pct deposit
+            // keeps carrying the pct as before.
+            $plan = $quotation->paymentPlan();
+
             $order = Order::create([
                 'order_number' => ReferenceCodeGenerator::generate(DocumentType::Order),
                 'quotation_id' => $quotation->id,
@@ -374,7 +380,8 @@ class QuotationsController extends Controller
                 'value_min_myr' => $quotation->estimate_min_myr,
                 'value_max_myr' => $quotation->estimate_max_myr,
                 'final_amount_myr' => $quotation->finalAmount(),
-                'deposit_pct' => $quotation->depositPct(),
+                'deposit_pct' => $plan->isFixedDeposit() ? null : $quotation->depositPct(),
+                'deposit_amount_myr' => $plan->isFixedDeposit() ? $plan->depositAmount() : null,
                 'amount_paid_myr' => 0,
                 'due_at' => $quotation->dueDateFrom(),
                 'status' => 'pending',

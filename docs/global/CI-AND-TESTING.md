@@ -81,8 +81,19 @@ single files — after editing them on the host, `docker compose up -d --force-r
   framework advisories that are only fixed in **Laravel 12** are acknowledged in
   `composer.json` → `config.audit.ignore`, each with a re-check note. Remove those
   entries when the L12 upgrade lands.
-- **Frontend**: `npm audit --omit=dev --audit-level=high` — production dependencies
-  only, high severity and above (dev-tool advisories don't ship to users).
+- **Frontend**: `npx audit-ci --config audit-ci.jsonc` (a devDependency wrapping
+  `npm audit`) — production dependencies only (`skip-dev`), high severity and above.
+  npm itself has no way to acknowledge an advisory, so advisories **with no patched
+  release** are allowlisted by GHSA id in
+  [frontend/audit-ci.jsonc](../../frontend/audit-ci.jsonc), each with the reason it
+  is acceptable and the condition for removing it. Current entries (2026-10): `braces`
+  and `node-forge` (no fixed version published) and the `simple-git` 3.36 family
+  (dev-only, via `@nuxt/devtools` 3.x; fixed in simple-git 4, which needs devtools 4).
+  audit-ci prints a warning for an allowlisted id it no longer finds — delete the
+  entry then. **A fixable advisory is never allowlisted**: bump the one package
+  (`npm update <pkg>` for a transitive one), as with vue / shell-quote / seroval /
+  source-map-js in Oct 2026. Run it locally the same way:
+  `docker compose -f docker-compose.dev.yml exec frontend npx audit-ci --config audit-ci.jsonc`.
 
 ### The `nostics` override — do not remove without testing SSR
 

@@ -13,6 +13,7 @@ import type {
   Panel,
   NoteLine,
   PaymentInfo,
+  PaymentPlanBlock,
 } from "./types";
 
 /* ----------------------------------------------------------------- helpers */
@@ -49,7 +50,12 @@ export function computeTotals(d: DocumentData): ComputedTotals {
   const base = subtotal - discount;
   const tax = Math.round(base * (d.taxRate ?? 0) * 100) / 100;
   const total = base + tax;
-  const deposit = Math.round(total * ((d.depositPct ?? 100) / 100) * 100) / 100;
+  // The backend-derived deposit (fixed amount, or pct rounded to the ringgit)
+  // wins; the pct fallback only serves payloads that predate depositAmount.
+  const deposit =
+    d.depositAmount != null
+      ? Math.min(d.depositAmount, total)
+      : Math.round(total * ((d.depositPct ?? 100) / 100) * 100) / 100;
   const balance = total - deposit;
   return { subtotal, discount, tax, total, deposit, balance };
 }
@@ -246,6 +252,14 @@ tbody tr:last-child td{border-bottom:0;}
 .panel .bf-t{font-size:13px;font-weight:500;color:var(--ink);letter-spacing:-.005em;}
 .panel.split .label.bf-l{color:var(--muted);}
 
+/* ---- payment plan (instalment / partner quotations) ---- */
+.plan .sum{margin-top:12px;}
+.plan .sum-row .v .dt{color:var(--muted);font-size:10px;margin-left:7px;}
+.plan .sched-h{font-size:8.5px;font-weight:500;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);margin-top:16px;}
+.plan .sched td{padding:7px 0;}
+.plan .sched .c-item{font-weight:400;color:var(--body);}
+
 /* ---- how to pay (invoice) ---- */
 /* Kept whole across a page break — a half-split QR is unscannable. */
 .howpay{break-inside:avoid;page-break-inside:avoid;}
@@ -433,6 +447,45 @@ function payBlockHTML(data: DocumentData): string {
   </div>`;
 }
 
+/**
+ * The "Pelan pembayaran" block for an instalment / partner quotation. Everything
+ * (copy, dates, totals) arrives derived from the backend; this only lays it out:
+ * intro sentence, label/value rows, the plan total, then the dated schedule.
+ */
+function paymentPlanHTML(block: PaymentPlanBlock, cur: string): string {
+  const rows = block.rows
+    .map((r) => {
+      // Money due prints two decimals, like the deposit card and panels — a
+      // whole-ringgit format would round cents away (RM970.50 → RM971).
+      const value =
+        r.amount != null
+          ? `${money(r.amount, cur, 2)}${r.detail ? `<span class="dt">${esc(r.detail)}</span>` : ""}`
+          : esc(r.text);
+      return `<div class="sum-row"><span class="l">${esc(r.label)}</span><span class="v">${value}</span></div>`;
+    })
+    .join("");
+  const total = `<div class="sum-row total redv"><span class="l">${esc(block.totalLabel)}</span><span class="v">${money(block.total, cur, 2)}</span></div>`;
+
+  // priceText (not price): tableHTML formats `price` to whole ringgit.
+  const schedRows: DetailRow[] = block.schedule.map((r) => ({
+    title: r.label,
+    detail: r.date,
+    priceText: money(r.amount, cur, 2),
+    priceMuted: true,
+  }));
+  const schedule = schedRows.length
+    ? `<div class="sched-h">${esc(block.scheduleTitle ?? "Jadual")}</div>
+       <div class="sched">${tableHTML(schedRows, cur, ["Bayaran", "Tarikh", "Jumlah"])}</div>`
+    : "";
+
+  return `<div class="sec plan">
+    ${sectionHeaderHTML(block.title)}
+    ${block.intro ? `<div class="para">${esc(block.intro)}</div>` : ""}
+    <div class="sum">${rows}${total}</div>
+    ${schedule}
+  </div>`;
+}
+
 function sectionHTML(sec: Section, cur: string): string {
   const total =
     sec.totalLabel != null
@@ -580,14 +633,19 @@ function renderStandard(data: DocumentData): string {
   // reg is not repeated here — the letterhead already carries the SSM line.
   const studioLn = esc(data.studio.email);
 
+  // A scheduled plan replaces the deposit card with the Payment plan block
+  // below; a lump sum keeps the card (fixed amount or pct, label derived).
+  const hasDeposit =
+    data.depositAmount != null ? data.depositAmount < t.total : (data.depositPct ?? 100) < 100;
   const depositCard =
-    (data.depositPct ?? 100) < 100
+    hasDeposit && !data.paymentPlan
       ? `<div class="deposit">
            <div class="val">${money(t.deposit, cur, 2)}</div>
-           <div class="label">Deposit to commence · ${data.depositPct}%</div>
+           <div class="label">Deposit to commence · ${esc(data.depositPctLabel ?? `${data.depositPct}%`)}</div>
            <div class="bal">Balance on delivery&nbsp;&nbsp;${money(t.balance, cur, 2)}</div>
          </div>`
       : "";
+  const planBlock = data.paymentPlan ? paymentPlanHTML(data.paymentPlan, cur) : "";
 
   return `
   ${headHTML(data)}
@@ -628,6 +686,7 @@ function renderStandard(data: DocumentData): string {
       ${depositCard}
     </div>
   </div>
+  ${planBlock}
 
   <div class="lower">
     <div class="pay">
@@ -778,6 +837,10 @@ function renderDetailed(data: DocumentData): string {
   );
   if (panels.length)
     parts.push(`<div class="panels">${panels.map((p) => panelHTML(p, cur, p.accent ? data.billingFor : undefined)).join("")}</div>`);
+
+  // Payment plan (instalment / partner quotations) — the dated schedule under
+  // the deposit / monthly panels it explains.
+  if (data.paymentPlan) parts.push(paymentPlanHTML(data.paymentPlan, cur));
 
   // Scope covered — what this bill pays for, before the payment instructions.
   if (data.scope?.items?.length)

@@ -109,7 +109,8 @@ class QuotationDraftController extends Controller
         ]);
 
         return response()->json([
-            'message' => "Draft quotation {$quotation->reference_code} created. It is a DRAFT for admin review — nothing has been sent to the client.",
+            'message' => "Draft quotation {$quotation->reference_code} created. It is a DRAFT for admin review — nothing has been sent to the client."
+                .self::planVarianceNote($quotation),
             'data' => self::connectorView($quotation->load('addons')),
         ], 201);
     }
@@ -200,10 +201,13 @@ class QuotationDraftController extends Controller
             ? 'The document was re-seeded from the new scope.'
             : 'The existing (edited) document was preserved; the estimate was re-priced. Pass reseed_document: true to regenerate it.';
 
+        $quotation = $quotation->fresh();
+
         return response()->json([
-            'message' => "Quotation {$quotation->reference_code} updated. {$note} It remains a DRAFT for admin review.",
+            'message' => "Quotation {$quotation->reference_code} updated. {$note} It remains a DRAFT for admin review."
+                .self::planVarianceNote($quotation),
             'document_reseeded' => $documentReseeded,
-            'data' => self::connectorView($quotation->fresh()->load('addons')),
+            'data' => self::connectorView($quotation->load('addons')),
         ]);
     }
 
@@ -491,6 +495,26 @@ class QuotationDraftController extends Controller
     }
 
     /**
+     * A warning sentence when a scheduled plan's deposit + instalments don't add
+     * up to the quotation total — the founder may round the monthly figure on
+     * purpose, so it's surfaced, never rejected.
+     */
+    private static function planVarianceNote(Quotation $quotation): string
+    {
+        $plan = $quotation->paymentPlan();
+        if (! $plan->isScheduled() || $plan->reconciles()) {
+            return '';
+        }
+
+        $diff = $plan->variance();
+        $direction = $diff > 0 ? 'less' : 'more';
+
+        return ' NOTE: the payment plan collects RM '.number_format(abs($diff), 2)." {$direction} than the quotation total "
+            .'(deposit '.number_format($plan->depositAmount(), 2).' + '.$plan->months().' × '.number_format($plan->instalmentAmount(), 2)
+            .' = '.number_format($plan->planTotal(), 2).' vs '.number_format($plan->total(), 2).'). Adjust the figures, or confirm the rounding is intended.';
+    }
+
+    /**
      * A slim list row (locked decision #5) — enough to identify and triage a
      * quotation from chat, no form_payload / document. Full detail is show().
      */
@@ -563,6 +587,8 @@ class QuotationDraftController extends Controller
                 'eta_unit' => $hasEta ? $quotation->estimate_eta_unit : null,
             ],
             'line_items' => self::lineItemsView($document),
+            // Deposit + plan as derived (fixed-wins, rounding, schedule, variance).
+            'payment_plan' => $quotation->paymentPlan()->toArray(),
             'assumptions' => $document['assumptions'] ?? [],
             'open_questions' => $document['open_questions'] ?? [],
             'notes' => $document['notes'] ?? null,

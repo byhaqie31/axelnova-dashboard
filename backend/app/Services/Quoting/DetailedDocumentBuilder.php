@@ -22,6 +22,10 @@ final class DetailedDocumentBuilder
     public function build(array $detailed, ?string $project, ?string $intro): array
     {
         $depositPct = (int) ($detailed['deposit_pct'] ?? 50);
+        // Deposit / plan inputs the connector may send beside deposit_pct —
+        // stored on the document as given (only the keys present), and used
+        // below to derive the panels + terms so they agree with the PDF mapper.
+        $planInputs = PaymentPlan::inputsFrom($detailed);
 
         // Priced sections — each row's amount_myr → row.price; section.total = Σ rows.
         $sections = array_map(function (array $s): array {
@@ -47,12 +51,10 @@ final class DetailedDocumentBuilder
         ], $sections);
         $summaryRows[] = ['label' => 'Project total', 'price' => $scopeTotal, 'total' => true, 'red' => true];
 
-        $panels = [];
-        if ($depositPct > 0 && $scopeTotal > 0) {
-            $dep = round($scopeTotal * $depositPct / 100);
-            $panels[] = ['label' => "Deposit ({$depositPct}%)", 'value' => $dep, 'note' => 'Payable to commence work.'];
-            $panels[] = ['label' => 'Balance on completion', 'value' => $scopeTotal - $dep, 'accent' => true, 'note' => 'Due before handover.'];
-        }
+        // Deposit / balance (or deposit / monthly) panels from the SAME derivation
+        // the PDF mapper uses — fixed amount wins over pct, pct rounds to the ringgit.
+        $plan = PaymentPlan::fromDocument(array_merge(['deposit_pct' => $depositPct], $planInputs), $scopeTotal);
+        $panels = $plan->panels();
 
         $payload = array_filter([
             'project' => $project,
@@ -64,17 +66,18 @@ final class DetailedDocumentBuilder
             'included' => self::buildIncluded($detailed['included'] ?? []),
             'options' => self::buildOptions($detailed['options'] ?? []),
             'care' => self::buildCare($detailed['care'] ?? []),
-            // Deposit bullet derived from the proposal's own deposit_pct — the
-            // panels above already show that figure, so the terms must agree.
-            'paymentTerms' => ['items' => DocumentMapper::defaultTerms($depositPct)],
+            // Deposit bullet derived from the proposal's own plan — the panels
+            // above already show those figures, so the terms must agree.
+            'paymentTerms' => ['items' => DocumentMapper::defaultTerms($plan)],
         ], fn ($v) => $v !== null && $v !== []);
 
         return [
-            'document' => [
+            'document' => array_merge([
                 'layout' => 'detailed',
                 'deposit_pct' => $depositPct,
+            ], $planInputs, [
                 'payload' => $payload,
-            ],
+            ]),
             'total' => $scopeTotal,
         ];
     }

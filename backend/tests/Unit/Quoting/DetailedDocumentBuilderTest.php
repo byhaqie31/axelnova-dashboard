@@ -108,4 +108,52 @@ class DetailedDocumentBuilderTest extends TestCase
         $this->assertArrayNotHasKey('care', $p);
         $this->assertArrayNotHasKey('included', $p);
     }
+
+    public function test_fixed_deposit_amount_wins_over_pct_in_panels_terms_and_the_stored_document(): void
+    {
+        $out = (new DetailedDocumentBuilder)->build([
+            'deposit_pct' => 19,
+            'deposit_amount_myr' => 2700,
+            'sections' => [['title' => 'Scope', 'rows' => [['title' => 'x', 'amount_myr' => 14340]]]],
+        ], 'P', null);
+
+        $doc = $out['document'];
+        $this->assertSame(19, $doc['deposit_pct']);
+        $this->assertSame(2700.0, $doc['deposit_amount_myr']);
+        $this->assertArrayNotHasKey('payment_plan', $doc); // only the keys sent are stored
+
+        $p = $doc['payload'];
+        $this->assertSame('Deposit (18.8%)', $p['panels'][0]['label']);
+        $this->assertSame(2700.0, $p['panels'][0]['value']);
+        $this->assertSame(11640.0, $p['panels'][1]['value']);
+        $this->assertStringStartsWith('RM 2,700 deposit (18.8%) to commence;', $p['paymentTerms']['items'][0]);
+        $this->assertStringNotContainsString('19%', json_encode($p));
+    }
+
+    public function test_instalment_plan_stores_its_inputs_and_bakes_deposit_plus_monthly_panels(): void
+    {
+        $out = (new DetailedDocumentBuilder)->build([
+            'deposit_amount_myr' => 2700,
+            'payment_plan' => 'instalment',
+            'instalment_months' => 12,
+            'instalment_amount_myr' => 970,
+            'billing_day' => 20,
+            'first_instalment_date' => '2026-11-20',
+            'includes_care_plan' => true,
+            'sections' => [['title' => 'Scope', 'rows' => [['title' => 'x', 'amount_myr' => 14340]]]],
+        ], 'P', null);
+
+        $doc = $out['document'];
+        $this->assertSame('instalment', $doc['payment_plan']);
+        $this->assertSame(12, $doc['instalment_months']);
+        $this->assertSame(970.0, $doc['instalment_amount_myr']);
+        $this->assertSame(20, $doc['billing_day']);
+        $this->assertSame('2026-11-20', $doc['first_instalment_date']);
+        $this->assertTrue($doc['includes_care_plan']);
+
+        $p = $doc['payload'];
+        $this->assertSame(2700.0, $p['panels'][0]['value']);
+        $this->assertSame(970.0, $p['panels'][1]['value']);
+        $this->assertStringContainsString('12 monthly instalments of RM 970', $p['paymentTerms']['items'][0]);
+    }
 }

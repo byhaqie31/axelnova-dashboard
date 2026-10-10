@@ -1,0 +1,43 @@
+// Frontend dependency-audit policy, run by CI in place of a bare `npm audit`
+// (npm has no way to acknowledge an advisory that has no fix). Mirrors the
+// backend's composer.json `config.audit.ignore`. See docs/global/CI-AND-TESTING.md.
+//
+// Policy: production dependencies only, fail on high severity and above.
+// Every allowlisted advisory needs (a) why it is acceptable and (b) when to
+// re-check and remove it. audit-ci warns when an allowlisted id is no longer
+// found, which is the cue to delete the entry.
+{
+  "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+  "high": true,
+  "skip-dev": true,
+  "report-type": "summary",
+  "show-not-found": true,
+  "allowlist": [
+    // braces <= 3.0.3 — stack-exhaustion DoS through deeply nested glob patterns.
+    // No patched release exists (3.0.3 is latest, advisory 2026-09-18). Reached only
+    // through build-time globbing (micromatch → fast-glob → globby → nitropack);
+    // nothing user-controlled is globbed by the running server.
+    // Re-check: remove once `npm view braces version` is above 3.0.3.
+    "GHSA-vfj7-8cjw-p6xm",
+
+    // node-forge <= 1.4.0 — RSA PKCS#1 v1.5 signature verification accepts extra
+    // nested DigestAlgorithm elements. No patched release (1.4.0 is latest). Reached
+    // only via listhen's dev-server HTTPS certificate helper (listhen → @nuxt/cli /
+    // nitropack); the production server never calls it.
+    // Re-check: remove once `npm view node-forge version` is above 1.4.0.
+    "GHSA-86w9-cpqp-85rv",
+
+    // simple-git 3.36 family (four advisories) — pulled in by @nuxt/devtools 3.x,
+    // which pins simple-git ^3.36 and cannot load simple-git 4 (it imports the
+    // default export that 4.0 removed — an `overrides` to 4.0.2 breaks `nuxt
+    // prepare`). Devtools only runs in `nuxt dev`; it is not part of the Nitro
+    // production bundle. All four are fixed in simple-git >= 4.0.2, which arrives
+    // with @nuxt/devtools 4 (beta as of 2026-10).
+    // Re-check: remove all four once `npm ls simple-git` resolves to >= 4.0.2
+    // (i.e. nuxt depends on @nuxt/devtools ^4).
+    "GHSA-v5rq-49vh-5v5c", // @simple-git/argv-parser < 2.0.1: VISUAL editor env var not blocked
+    "GHSA-x6jw-m9v5-85vh", // unsafe-operation guard misses trailer command configuration
+    "GHSA-g4wm-2vf7-vfgr", // command execution through unblocked git config includes
+    "GHSA-858h-whjf-mvg5"  // unsafe-operations bypass via long-option abbreviation
+  ]
+}

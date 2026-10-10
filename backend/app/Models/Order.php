@@ -22,6 +22,7 @@ class Order extends Model
         'value_max_myr',
         'final_amount_myr',
         'deposit_pct',
+        'deposit_amount_myr',
         'amount_paid_myr',
         'status',
         'started_at',
@@ -38,6 +39,7 @@ class Order extends Model
             'value_max_myr' => 'decimal:2',
             'final_amount_myr' => 'decimal:2',
             'deposit_pct' => 'integer',
+            'deposit_amount_myr' => 'decimal:2',
             'amount_paid_myr' => 'decimal:2',
             'started_at' => 'datetime',
             'delivered_at' => 'datetime',
@@ -52,10 +54,15 @@ class Order extends Model
         return Attribute::get(fn () => max(0, (float) $this->final_amount_myr - (float) $this->amount_paid_myr));
     }
 
-    /** Deposit due up front, derived from the carried deposit percentage. */
+    /**
+     * Deposit due up front: the fixed amount carried from the quotation when it
+     * agreed one, else derived from the carried deposit percentage.
+     */
     protected function depositDueMyr(): Attribute
     {
-        return Attribute::get(fn () => round((float) $this->final_amount_myr * ((int) ($this->deposit_pct ?? 0)) / 100, 2));
+        return Attribute::get(fn () => $this->deposit_amount_myr !== null
+            ? round((float) $this->deposit_amount_myr, 2)
+            : round((float) $this->final_amount_myr * ((int) ($this->deposit_pct ?? 0)) / 100, 2));
     }
 
     /** unpaid → deposit_paid → paid, derived from how much has landed. */

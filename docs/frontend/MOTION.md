@@ -46,6 +46,10 @@ No parallax, no magnetic, no SplitText on dashboards.
   `lenis.scrollTo(target, { duration: 1.1 })` — native anchor jumps bypass Lenis.
 - `main.css` sets `html.lenis { scroll-behavior: auto }` — global
   `scroll-behavior: smooth` fights Lenis and breaks anchor jumps.
+- **ScrollTriggers that scrub against Lenis use `scrub: true`** (hero zoom,
+  parallax). Lenis already eases the scroll position, so following it 1:1
+  inherits that smoothing; a numeric `scrub` restarts a second ease tween every
+  frame on top and, measured, adds nothing visible — only per-frame work.
 - Lenis is disabled entirely under `prefers-reduced-motion`. On touch devices
   Lenis 1.x leaves native momentum scrolling alone; verify on iOS before
   configuring `syncTouch`.
@@ -60,7 +64,7 @@ All are client-guarded, kill their tweens/triggers on unmount, and no-op
 
 | Composable | What it does |
 |---|---|
-| `useScrollReveal(selector, options?)` | The standard `.reveal` API (unchanged signature). y: 52 → 0, 0.9s, `power3.out`, `top 85%`, once; small per-index delay cascades adjacent elements; `clearProps` on complete. |
+| `useScrollReveal(selector, options?)` | The standard `.reveal` API (unchanged signature). y: 52 → 0, 0.9s, `power3.out`, `top 85%`, once; `clearProps` on complete. Elements are grouped with `ScrollTrigger.batch` (`interval: 0.1`): within a batch, elements the viewport has already scrolled past just become visible (`clearProps`), and the ones on screen cascade 0.06s apart, capped at 0.3s total so a full grid of cards compresses instead of queueing. **Never delay by page-wide index** — the old `delay: i * 0.06` held the 30th section invisible ~2s after it was on screen (measured 2.5s to visible on `/partners`, 1.1s after the fix), which read as the page being stuck. |
 | `useReveal(target, opts?)` | Ref- or selector-based reveal with group `stagger` (single trigger on the first element). Same token values. |
 | `useSplitTextReveal(target, opts?)` | Signature headline: SplitText `type: 'words', mask: 'words'`, yPercent 110 → 0, 1.1s, `expo.out`, stagger 0.1. Returns `{ build }` — call inside `onMounted` to get the timeline for sequencing. Reverts the split after the entrance (resize-safe). |
 | `useCountUp(target, end, opts?)` | Counts 0 → end on first view (`top 88%`, once), 1.8s (dashboard ~0.9s), `power1.out`, snapped to integers, written to `textContent`. Put `tabular-nums` on the element. SSR renders the real value; JS zeroes it post-hydration. Named `useCountUp` (not `useCounter`) to avoid colliding with VueUse's auto-imported `useCounter`. |
@@ -137,3 +141,10 @@ All are client-guarded, kill their tweens/triggers on unmount, and no-op
 8. **One signature moment per page** (hero SplitText). Everything else supports
    quietly. If an animation doesn't add meaning, cut it.
 9. **Mobile**: parallax + magnetic disabled on touch; reveals stay simple.
+10. **No CSS transition on a property GSAP animates.** The transition re-eases
+    every per-frame value GSAP writes: `transition-all` on the project card
+    stretched its 0.9s reveal to ~1.05s to full opacity and made the initial
+    hide a visible fade-out at mount. `useScrollReveal` now sets
+    `transition: none` inline while it owns an element, but hover transitions on
+    reveal targets must still name their properties
+    (`transition-[transform,box-shadow]`), never `transition-all`.
