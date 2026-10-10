@@ -92,7 +92,14 @@ There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v
   // OR a rich, self-priced DETAILED proposal (mutually exclusive with package/packages/line_items):
   "detailed": {
     "subtitle": "Website quotation",
-    "deposit_pct": 50,
+    "deposit_pct": 50,                           // whole % (legacy) — OR a fixed amount, which wins:
+    "deposit_amount_myr": 2700,                  // fixed deposit in ringgit; the effective % is derived, never stored
+    "payment_plan": "instalment",                // lump_sum (default) | instalment | partner (setup + monthly × 24)
+    "instalment_months": 12,                     // instalment / partner (partner defaults to 24)
+    "instalment_amount_myr": 970,                // the monthly figure; deposit + months × monthly should equal Σ sections
+    "billing_day": 20,                           // 1–28, default 20
+    "first_instalment_date": "2026-11-20",       // Y-m-d; omit → first billing day after issue
+    "includes_care_plan": true,
     "sections": [                                  // the priced scope; quote total = Σ every row's amount_myr
       { "title": "Design", "rows": [ { "title": "Brand + UI", "detail": "…", "amount_myr": 3500 } ] }
     ],
@@ -114,6 +121,8 @@ There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v
 **Bespoke path (no package).** `estimate_min_myr = estimate_max_myr = Σ line_items.amount_myr`; the `line_items` become the document. ETA is stored as the codebase's `0`/`week` "no ETA yet" sentinel (the columns are `NOT NULL`) and surfaced as `null` — the admin sets the real timeline. Rejected if `line_items` is empty. `modifiers`/`addon_keys`/`packages` are rejected on a bespoke quote.
 
 **Detailed path (`detailed` set).** The connector's richest mode — a self-priced, presentation-grade proposal: grouped scope `sections` (each `rows[].amount_myr` priced), plus optional `included` tick-list groups, `options` cards, and a `care` plan. Priced from the section totals (`estimate_min = estimate_max = Σ section amounts`), NOT the engine — so `detailed` is **mutually exclusive** with `package_key`/`packages`/`line_items`. Built by [`DetailedDocumentBuilder`](../../backend/app/Services/Quoting/DetailedDocumentBuilder.php) into the same `layout: 'detailed'` `document.payload` shape the admin detailed builder produces, so it re-opens in the admin builder's detailed mode and the PDF renders the full proposal. ETA left as the `0`/`week` sentinel. `deposit_pct` defaults to 50.
+
+**Deposit & payment plan (v4.1, `detailed` only).** `deposit_amount_myr` sets a **fixed** deposit that wins over `deposit_pct` (old clients sending only `deposit_pct` keep working — none of the new keys are written). `payment_plan` picks `lump_sum` (default), `instalment` (deposit on acceptance, then `instalment_months × instalment_amount_myr` on `billing_day` from `first_instalment_date`) or `partner` (`deposit_amount_myr` is the setup fee, then `instalment_amount_myr` monthly for `instalment_months`, default 24). A scheduled plan **requires** the months (instalment) and the monthly amount (422 otherwise). `deposit + months × monthly` is compared with the section total: a mismatch is **accepted** but the response message carries a `NOTE:` with the variance, and `data.payment_plan.variance_myr` reports it — the founder may round the monthly figure on purpose. The read-back (`get_quotation` / create / update responses) includes the derived `payment_plan` block (`deposit_amount_myr`, `deposit_pct_label`, `plan_total_myr`, `variance_myr`, `first/last_instalment_date`, `schedule[]`). Rules, rounding and the PDF block are documented in [QUOTE_BUILDER.md → Deposit & payment plan](./QUOTE_BUILDER.md#deposit--payment-plan--paymentplan).
 
 **Document title / intro (any mode).** `project` and `intro` set `document.project` / `document.intro` (the quotation's title + lead-in on the PDF). Optional — the mapper falls back to a default project title when `project` is omitted.
 

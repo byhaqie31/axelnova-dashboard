@@ -135,7 +135,7 @@ Quotation drafts are created three ways — the public `/quote` funnel, the admi
 - one line per **package base**, amount = **midpoint** of that package's min/max, rounded to nearest RM 50;
 - one line per active **modifier** / **add-on** at its **exact** fixed amount;
 - **rush** → a single "Rush delivery (+20%)" line = the uplift on the document subtotal (rounded to RM 50);
-- **deposit 50%**, the three standard terms, valid-until left null (`send()` defaults it to `valid_for_days`);
+- **deposit 50%** (a percentage — see *Deposit & payment plan* below for the fixed-amount and instalment options), the three standard terms, valid-until left null (`send()` defaults it to `valid_for_days`);
 - every midpoint-seeded base line appends a matching `assumptions` note ("… seeded at range midpoint RM X — adjust before sending").
 
 The connector **never overwrites an admin-edited document**: `DocumentSeeder::hasContent()` guards it, and the UI button confirms before replacing hand-edited lines.
@@ -143,6 +143,34 @@ The connector **never overwrites an admin-edited document**: `DocumentSeeder::ha
 ### DetailedDocumentBuilder — the connector's detailed proposals
 
 The MCP connector can also author a full **detailed** proposal (see [MCP-CONNECTOR.md](./MCP-CONNECTOR.md)). `App\Services\Quoting\DetailedDocumentBuilder` turns its structured `detailed` input (priced `sections`, "What's included" groups, option cards, a care plan) into the canonical `layout: 'detailed'` `document.payload` — the SAME shape the admin detailed builder emits, so the same `DocumentMapper` + PDF render it and the draft re-opens in the admin builder's detailed mode. Detailed quotes are priced by their own section totals (`Quotation::sumDetailedSections`), never the engine — Claude provides the prices; `estimate_min == estimate_max == Σ section amounts`.
+
+### Deposit & payment plan — `PaymentPlan`
+
+A quotation's deposit and payment plan live on the `document` JSON beside the legacy `deposit_pct` — **no new quotation columns, nothing backfilled**; a row without the new keys behaves exactly as before (lump sum on `deposit_pct`). All three writers (admin builder, connector `DetailedDocumentBuilder`, seeder) store only the **inputs**; every reader derives the figures through [`App\Services\Quoting\PaymentPlan`](../../backend/app/Services/Quoting/PaymentPlan.php) (`Quotation::paymentPlan()`), which is the single source of the rules:
+
+| `document.*` key | Meaning |
+|---|---|
+| `deposit_pct` | legacy whole-number percentage (fallback 50) |
+| `deposit_amount_myr` | **fixed deposit in ringgit — wins over `deposit_pct`** |
+| `payment_plan` | `lump_sum` (default) · `instalment` · `partner` |
+| `instalment_months` | instalment / partner; partner defaults to **24** |
+| `instalment_amount_myr` | the monthly figure |
+| `billing_day` | 1–28, default **20** |
+| `first_instalment_date` | `Y-m-d`; blank → the first billing day after the issue date |
+| `includes_care_plan` | bool — printed on the PDF ("termasuk Care Plan") |
+
+Rules (all pinned by `tests/Unit/Quoting/PaymentPlanTest.php`):
+
+- **Rounding.** A pct deposit is `round(total × pct / 100)` to the **nearest ringgit, halves away from zero** (PHP `round()`): 19% of RM 14,340 = RM 2,724.60 → **RM 2,725**. A fixed amount is taken as given (clamped to the total).
+- **Effective pct is derived, never stored.** A fixed RM 2,700 on RM 14,340 displays as `RM 2,700 · 18.8%` (one decimal, trimmed when integral). Storing a rounded pct would drift from the agreed amount — so nothing writes one back.
+- **Plan total vs quotation total.** For instalment / partner, `planTotal = deposit + months × monthly`; `variance = total − planTotal` is **surfaced, not rejected** (the admin builder, the detail page and the connector response all show it) because the founder may deliberately round the monthly figure. The PDF prints the plan total.
+- **Schedule.** Instalment 1 falls on `first_instalment_date` as given; each later one on `billing_day` of the following month, **clamped to that month's last day** (31 → 28/29 Feb, 30 Apr). Inputs are validated 1–28; the generator still clamps 29–31 defensively. Dates roll across year ends. The deposit is not an instalment (due on acceptance, shown separately).
+- **Lump sum is unchanged.** Deposit card / "Deposit (N%)" + "Balance on completion" panels and the English boilerplate terms, with the pct label now derived (so a fixed-amount lump sum shows `Deposit (18.8%)`).
+- **Scheduled plans on the PDF.** `DocumentMapper` adds a `paymentPlan` block (BM copy: *Pelan pembayaran* — deposit, monthly × months, billing day, first/last date, total, dated schedule) and, when the document carries the new keys, **replaces** the writer-baked `payload.panels` with derived ones — so a stale `Deposit (19%) · RM 2,725` pair baked before the fixed amount was agreed can never outlive it. Legacy pct-only documents keep their stored panels untouched.
+- **Terms bullet.** `DocumentMapper::defaultTerms(PaymentPlan)` words the first bullet per plan (`RM 2,700 deposit (18.8%) to commence; …`, `… payable in 12 monthly instalments of RM 970, billed on the 20th …`, `RM 1,000 setup fee to commence; then RM 500 monthly for 24 months …`); `PaymentPlan::alignTerms()` realigns a stored boilerplate bullet on read (and the builder does the same live in the textarea), leaving hand-authored bullets alone.
+- **Orders.** On accept, a fixed deposit is carried as `orders.deposit_amount_myr` (with `deposit_pct` **null**) so `Order::deposit_due_myr` is the agreed figure, never a recomputed pct; a pct deposit still carries `deposit_pct` as before. Migration `2026_10_10_000001_add_deposit_amount_myr_to_orders` (additive).
+
+The TS mirror for the admin form's live figures is [`frontend/app/composables/paymentPlan.ts`](../../frontend/app/composables/paymentPlan.ts) — **keep it in sync** with the PHP class (same relationship as the pricing-engine port). Admin / connector read the derived block as `payment_plan` (`QuotationResource`, `get_quotation`).
 
 ### MCP connector tool contract (v3)
 

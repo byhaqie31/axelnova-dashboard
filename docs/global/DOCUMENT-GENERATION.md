@@ -124,6 +124,8 @@ project, subtitle?, intro?
 items[]     { title, desc?, qty, unit?, rate }
 terms[]
 discount?, taxLabel?, taxRate?, depositPct?
+depositAmount?, depositPctLabel?      # quotes: the derived deposit (fixed wins) + "18.8%" label for the card
+paymentPlan?                          # quotes on an instalment / partner plan — see "Payment plan block"
 
 # detailed
 sections[]      { title, rows[ {title, detail?, price|priceText, priceWas?} ], totalLabel?, total?, note? }
@@ -144,6 +146,28 @@ pay             { online?, bank?, holder?, acct?, note? }
 
 A full `payload` can also be passed straight through (the "customized builder"
 override path — see Roadmap).
+
+### Payment plan block (quotations)
+
+`paymentPlan` is emitted by `DocumentMapper::toDocumentData` for an **instalment /
+partner** quotation (absent on a lump sum, which keeps the deposit card / panels +
+terms). It is fully derived server-side by `PaymentPlan::documentBlock()` — copy
+(BM: *Pelan pembayaran*), formatted dates (`20 November 2026`), totals and the dated
+schedule — and the template only lays it out (`paymentPlanHTML`): intro sentence,
+label/value rows, the plan total, then a Bayaran · Tarikh · Jumlah schedule table.
+
+```
+paymentPlan   { plan, title, intro?, rows[ {label, amount?, detail?} | {label, text} ],
+                deposit, monthly, months, billingDay, firstDate?, lastDate?, includesCarePlan,
+                total, totalLabel, scheduleTitle?, schedule[ {label, date, amount} ] }
+```
+
+Standard layout: the block replaces the deposit card and sits under the totals.
+Detailed layout: it follows the deposit / monthly panels (which the mapper derives
+and substitutes for the writer-baked ones whenever the document carries the new plan
+keys). The deposit card's pct label comes from `depositPctLabel` (e.g. `18.8%` for a
+fixed RM 2,700 on RM 14,340) and `computeTotals` prefers `depositAmount` over the
+pct. Rules and rounding: [QUOTE_BUILDER.md → Deposit & payment plan](./QUOTE_BUILDER.md#deposit--payment-plan--paymentplan).
 
 ---
 

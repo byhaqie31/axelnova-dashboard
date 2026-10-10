@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Quoting\FormPayloadNormalizer;
+use App\Services\Quoting\PaymentPlan;
 use App\Support\RecordsActivity;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -294,6 +295,23 @@ class Quotation extends Model
         $pct = is_array($doc) ? (int) ($doc['deposit_pct'] ?? 0) : 0;
 
         return $pct > 0 ? $pct : 50;
+    }
+
+    /**
+     * The deposit + payment plan derived from the stored document against the
+     * agreed total (fixed amount wins over deposit_pct; instalment / partner
+     * schedules). Every renderer reads deposit figures through this — never a
+     * raw document.deposit_pct — so the PDF, admin and order always agree.
+     */
+    public function paymentPlan(): PaymentPlan
+    {
+        return PaymentPlan::fromDocument($this->document, $this->finalAmount(), $this->issuedDate());
+    }
+
+    /** The deposit actually due on acceptance, in ringgit (see PaymentPlan for the rounding rule). */
+    public function depositAmountMyr(): float
+    {
+        return $this->paymentPlan()->depositAmount();
     }
 
     /**

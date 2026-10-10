@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
 import DetailedQuotationView from '~/components/admin/DetailedQuotationView.vue'
+import { PAYMENT_PLANS, fmtRm, fmtYmd } from '~/composables/paymentPlan'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -33,11 +34,33 @@ interface Quotation {
   form_payload: Record<string, any> | null
   scope_display?: Array<{ package_key: string | null, label: string | null, scope: Record<string, any> }> | null
   document: Record<string, any> | null
+  /** Derived server-side (PaymentPlan::toArray) — fixed-wins deposit, schedule, variance. */
+  payment_plan?: PaymentPlanView | null
   addons: { key: string; label: string; amount_myr: string }[]
   referral_partner_id: number | null
   referrer: { name: string; relationship_tier: string; commission_pct: number } | null
   order_id: number | null
   order_number: string | null
+}
+
+interface PaymentPlanView {
+  plan: 'lump_sum' | 'instalment' | 'partner'
+  total_myr: number
+  deposit_pct: number
+  deposit_fixed: boolean
+  deposit_amount_myr: number
+  deposit_pct_label: string
+  balance_myr: number
+  instalment_months: number | null
+  instalment_amount_myr: number | null
+  billing_day: number | null
+  first_instalment_date: string | null
+  last_instalment_date: string | null
+  includes_care_plan: boolean
+  plan_total_myr: number
+  variance_myr: number
+  reconciles: boolean
+  schedule: { n: number; date: string | null; amount: number }[]
 }
 
 interface QuotationInvoice {
@@ -98,6 +121,17 @@ function onClientSaved(patch: Record<string, any>) {
 
 const isDraft = computed(() => quotation.value?.status === 'draft')
 const isDetailed = computed(() => quotation.value?.document?.layout === 'detailed')
+
+// Deposit & payment plan card (read view) — straight from the resource's derived
+// block, so what's shown here is exactly what the PDF and the order will use.
+const pp = computed(() => quotation.value?.payment_plan ?? null)
+const planLabel = computed(() => PAYMENT_PLANS.find(p => p.value === pp.value?.plan)?.label ?? 'Lump sum')
+const planScheduled = computed(() => !!pp.value && pp.value.plan !== 'lump_sum')
+const showSchedule = ref(false)
+function ordinal(n: number): string {
+  const r = n % 100
+  return `${n}${r >= 11 && r <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`
+}
 
 // Referral-attributed quotes let the founder confirm the commission % on accept —
 // defaults to the referrer's tier estimate (or 10 if the nested referrer summary
@@ -360,6 +394,61 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 ma
 
           <AdminScopeDetails :scope="quotation.scope_display ?? quotation.form_payload" variant="card" />
           </template>
+
+          <!-- Deposit & payment plan — derived server-side; the PDF and the order read the same figures. -->
+          <div v-if="pp" class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <div class="flex items-center justify-between gap-3 mb-4">
+              <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Deposit & payment plan</p>
+              <span class="text-[11px] font-semibold uppercase tracking-wider rounded-full px-2.5 py-1" :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ planLabel }}</span>
+            </div>
+            <div class="grid sm:grid-cols-3 gap-4">
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">{{ pp.plan === 'partner' ? 'Setup fee' : 'Deposit' }}{{ pp.deposit_fixed ? ' (fixed)' : '' }}</p>
+                <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">RM {{ fmtRm(pp.deposit_amount_myr) }} <span class="text-[12px] font-normal" style="color: var(--color-text-tertiary);">· {{ pp.deposit_pct_label }}</span></p>
+              </div>
+              <template v-if="planScheduled">
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Monthly</p>
+                  <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">RM {{ fmtRm(pp.instalment_amount_myr ?? 0) }} <span class="text-[12px] font-normal" style="color: var(--color-text-tertiary);">× {{ pp.instalment_months }}</span></p>
+                </div>
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Billing day</p>
+                  <p class="text-[13px]" style="color: var(--color-text);">{{ pp.billing_day ? `${ordinal(pp.billing_day)} of each month` : '—' }}</p>
+                </div>
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">First → last</p>
+                  <p class="text-[13px] tabular-nums" style="color: var(--color-text);">{{ pp.first_instalment_date ? fmtYmd(pp.first_instalment_date) : '—' }} → {{ pp.last_instalment_date ? fmtYmd(pp.last_instalment_date) : '—' }}</p>
+                </div>
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Care plan</p>
+                  <p class="text-[13px]" style="color: var(--color-text);">{{ pp.includes_care_plan ? 'Included in the monthly figure' : 'Not included' }}</p>
+                </div>
+                <div>
+                  <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Plan total</p>
+                  <p class="text-[13px] tabular-nums" :style="{ color: pp.reconciles ? 'var(--color-success)' : 'var(--color-danger)' }">
+                    RM {{ fmtRm(pp.plan_total_myr) }}
+                    <span v-if="pp.reconciles"> · matches total</span>
+                    <span v-else> · RM {{ fmtRm(Math.abs(pp.variance_myr)) }} {{ pp.variance_myr < 0 ? 'over' : 'under' }} the RM {{ fmtRm(pp.total_myr) }} total</span>
+                  </p>
+                </div>
+              </template>
+              <div v-else>
+                <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Balance on completion</p>
+                <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">RM {{ fmtRm(pp.balance_myr) }}</p>
+              </div>
+            </div>
+            <div v-if="pp.schedule?.length" class="mt-4 pt-4 border-t" style="border-color: var(--color-border);">
+              <button type="button" class="text-[12px] font-medium" style="color: var(--color-accent);" @click="showSchedule = !showSchedule">
+                {{ showSchedule ? 'Hide' : 'Show' }} schedule ({{ pp.schedule.length }} {{ pp.plan === 'partner' ? 'payments' : 'instalments' }})
+              </button>
+              <ol v-if="showSchedule" class="grid sm:grid-cols-2 gap-x-6 gap-y-1 mt-3 text-[12px] tabular-nums" style="color: var(--color-text-secondary);">
+                <li v-for="row in pp.schedule" :key="row.n" class="flex justify-between gap-3">
+                  <span><span style="color: var(--color-text-tertiary);">{{ row.n }}.</span> {{ row.date ? fmtYmd(row.date) : '—' }}</span>
+                  <span>RM {{ fmtRm(row.amount) }}</span>
+                </li>
+              </ol>
+            </div>
+          </div>
         </div>
 
         <div class="lg:sticky lg:top-20 space-y-4">

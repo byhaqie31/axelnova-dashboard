@@ -24,6 +24,7 @@ interface Order {
   value_max_myr: string
   final_amount_myr: string
   deposit_pct: number | null
+  deposit_amount_myr: number | string | null
   deposit_due_myr: number
   amount_paid_myr: string
   remaining_myr: number
@@ -413,7 +414,7 @@ class="text-[11px] font-semibold px-2.5 py-1 rounded-full"
               <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(order.final_amount_myr) }}</p>
             </div>
             <div>
-              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Deposit ({{ order.deposit_pct ?? 0 }}%)</p>
+              <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Deposit{{ order.deposit_amount_myr != null ? ' (fixed)' : ` (${order.deposit_pct ?? 0}%)` }}</p>
               <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text-secondary);">{{ fmtMyrExact(order.deposit_due_myr) }}</p>
             </div>
             <div>

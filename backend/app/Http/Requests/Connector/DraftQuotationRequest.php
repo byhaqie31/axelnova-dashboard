@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Connector;
 
 use App\Services\Connector\ConnectorCatalog;
+use App\Services\Quoting\PaymentPlan;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates the MCP connector's draft-quotation contract. Two shapes share one
@@ -71,6 +73,15 @@ class DraftQuotationRequest extends FormRequest
             'detailed' => ['nullable', 'array'],
             'detailed.subtitle' => ['nullable', 'string', 'max:200'],
             'detailed.deposit_pct' => ['nullable', 'integer', 'min:0', 'max:100'],
+            // Fixed deposit (wins over deposit_pct) + the payment plan. Old
+            // clients that only send deposit_pct keep working unchanged.
+            'detailed.deposit_amount_myr' => ['nullable', 'numeric', 'min:0'],
+            'detailed.payment_plan' => ['nullable', 'string', Rule::in(PaymentPlan::PLANS)],
+            'detailed.instalment_months' => ['nullable', 'integer', 'min:1', 'max:120'],
+            'detailed.instalment_amount_myr' => ['nullable', 'numeric', 'min:0'],
+            'detailed.billing_day' => ['nullable', 'integer', 'min:1', 'max:28'],
+            'detailed.first_instalment_date' => ['nullable', 'date_format:Y-m-d'],
+            'detailed.includes_care_plan' => ['nullable', 'boolean'],
             'detailed.sections' => ['required_with:detailed', 'array', 'min:1'],
             'detailed.sections.*.title' => ['required', 'string', 'max:200'],
             'detailed.sections.*.rows' => ['required', 'array', 'min:1'],
@@ -129,6 +140,23 @@ class DraftQuotationRequest extends FormRequest
                         'detailed',
                         'A detailed proposal is self-priced from its own sections — do not also send package_key / packages / modifiers / addon_keys / line_items. Use one pricing mode per draft.',
                     );
+                }
+
+                // A scheduled plan needs its schedule: months (instalment) and a monthly figure.
+                $plan = $this->input('detailed.payment_plan');
+                if (in_array($plan, [PaymentPlan::INSTALMENT, PaymentPlan::PARTNER], true)) {
+                    if ($plan === PaymentPlan::INSTALMENT && (int) $this->input('detailed.instalment_months', 0) < 1) {
+                        $validator->errors()->add(
+                            'detailed.instalment_months',
+                            'payment_plan "instalment" needs detailed.instalment_months (how many monthly instalments follow the deposit).',
+                        );
+                    }
+                    if ((float) $this->input('detailed.instalment_amount_myr', 0) <= 0) {
+                        $validator->errors()->add(
+                            'detailed.instalment_amount_myr',
+                            "payment_plan \"{$plan}\" needs detailed.instalment_amount_myr (the monthly amount). Total due = deposit_amount_myr + months × instalment_amount_myr — make it equal the sum of the sections, or the founder sees the variance.",
+                        );
+                    }
                 }
 
                 return;

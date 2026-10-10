@@ -46,6 +46,7 @@ class OrderResource extends JsonResource
             'value_max_myr' => $this->value_max_myr,
             'final_amount_myr' => $this->final_amount_myr,
             'deposit_pct' => $this->deposit_pct,
+            'deposit_amount_myr' => $this->deposit_amount_myr,
             'deposit_due_myr' => $this->deposit_due_myr,
             'amount_paid_myr' => $this->amount_paid_myr,
             'remaining_myr' => $this->remaining_myr,

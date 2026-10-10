@@ -31,8 +31,11 @@ import { authApp } from "./auth";
  * session can tell which contract it's talking to (advertised as the MCP server
  * version in the initialize handshake). v3: read-open reads + lifecycle-gated update.
  * v4: blog drafts (guide / list / read / create / partial update of a draft).
+ * v4.1: detailed.deposit_amount_myr (fixed deposit, wins over deposit_pct) and
+ * detailed.payment_plan (lump_sum | instalment | partner) with the instalment
+ * fields; get_quotation returns the derived `payment_plan` block.
  */
-const CONNECTOR_VERSION = "4.0.0";
+const CONNECTOR_VERSION = "4.1.0";
 
 const CATALOG_PATH = "/api/v1/connector/catalog";
 const QUOTATIONS_PATH = "/api/v1/connector/quotations";
@@ -120,7 +123,56 @@ const draftInputShape = {
   detailed: z
     .object({
       subtitle: z.string().optional().describe("Short subtitle under the title, e.g. 'Website quotation'."),
-      deposit_pct: z.number().int().min(0).max(100).optional().describe("Deposit %, default 50."),
+      deposit_pct: z
+        .number()
+        .int()
+        .min(0)
+        .max(100)
+        .optional()
+        .describe("Deposit %, default 50. Ignored for display when deposit_amount_myr is set (the fixed amount wins)."),
+      deposit_amount_myr: z
+        .number()
+        .nonnegative()
+        .optional()
+        .describe(
+          "FIXED deposit in ringgit (e.g. 2700). Wins over deposit_pct — use it whenever the agreed deposit is a round figure, not a whole-number percentage. The effective % is derived for display, never stored.",
+        ),
+      payment_plan: z
+        .enum(["lump_sum", "instalment", "partner"])
+        .optional()
+        .describe(
+          "lump_sum (default): deposit now, balance on completion. instalment: deposit on acceptance then instalment_months × instalment_amount_myr. partner: monthly partnership — deposit_amount_myr is the setup fee, then instalment_amount_myr monthly for instalment_months (default 24).",
+        ),
+      instalment_months: z
+        .number()
+        .int()
+        .min(1)
+        .max(120)
+        .optional()
+        .describe("instalment / partner: how many monthly payments follow the deposit (partner defaults to 24)."),
+      instalment_amount_myr: z
+        .number()
+        .nonnegative()
+        .optional()
+        .describe(
+          "instalment / partner: the monthly amount. deposit_amount_myr + months × this should equal the sum of the sections — a mismatch is accepted but reported back as a variance for the founder.",
+        ),
+      billing_day: z
+        .number()
+        .int()
+        .min(1)
+        .max(28)
+        .optional()
+        .describe("Day of the month each instalment is billed, 1–28. Default 20."),
+      first_instalment_date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .describe("ISO date (YYYY-MM-DD) of the first instalment, e.g. 2026-11-20. Omit to start on the next billing day after the quote is issued."),
+      includes_care_plan: z
+        .boolean()
+        .optional()
+        .describe("instalment / partner: true when the monthly figure already includes the care plan (printed on the PDF)."),
       sections: z
         .array(
           z.object({
@@ -326,6 +378,7 @@ export class AxelNovaMCP extends McpAgent<Env> {
         "When package_key is set, modifiers/addon_keys/rush price it through the same engine as the public quote funnel; any line_items are stored as extras and NOT added to that estimate.",
         "For a quote spanning several catalog packages, pass packages[] (each entry its own package_key + modifiers + addon_keys) INSTEAD of the top-level package_key — the estimate sums the packages and the ETA is the longest. rush is still one flag for the whole quote.",
         "For a rich, presentation-grade proposal (grouped scope sections + What's included + option cards + a care plan), pass the `detailed` object INSTEAD — it is self-priced from its section amounts and must not be combined with package_key/packages/line_items.",
+        "Deposit: detailed.deposit_pct (whole %) OR detailed.deposit_amount_myr (a fixed ringgit figure — wins over the pct, use it for any agreed round amount). Payment plan: detailed.payment_plan lump_sum (default) | instalment (deposit, then instalment_months × instalment_amount_myr on billing_day from first_instalment_date) | partner (setup fee + monthly × months, default 24). The PDF prints the schedule; the response's payment_plan shows the derived figures and any variance from the section total.",
         "project and intro set the document's title + lead-in on the PDF for any mode.",
         "Put every guess in assumptions and every unknown in open_questions so the founder can verify them.",
         "Call list_catalog first to get the valid keys. On a validation error, read the returned message — it lists the valid keys — and retry.",

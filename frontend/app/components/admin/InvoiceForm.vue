@@ -10,6 +10,7 @@ interface OrderMoney {
   name: string | null
   final_amount_myr: string
   deposit_pct: number | null
+  deposit_amount_myr?: number | string | null
   deposit_due_myr: number
   amount_paid_myr: string
   remaining_myr: number
