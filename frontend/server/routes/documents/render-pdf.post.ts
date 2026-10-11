@@ -7,6 +7,7 @@
 // Chromium isn't launched on every edit.
 
 import { renderDocumentPDF } from '../../utils/pdf/pdf'
+import { documentFileName } from '../../utils/pdf/template'
 import type { DocumentData } from '../../utils/pdf/types'
 
 export default defineEventHandler(async (event) => {
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event) => {
   const pdf = await renderDocumentPDF(data)
 
   setHeader(event, 'Content-Type', 'application/pdf')
-  setHeader(event, 'Content-Disposition', `inline; filename="${(data.number || 'preview')}.pdf"`)
+  setHeader(event, 'Content-Disposition', `inline; filename="${documentFileName(data)}"`)
   setHeader(event, 'Cache-Control', 'no-store')
   return pdf
 })

@@ -28,6 +28,7 @@ class InvoicesController extends Controller
             'order:id,order_number,quotation_id,client_id',
             'order.client:id,name,email',
             'order.quotation:id,reference_code',
+            'revision:id,number',
         ])->latest('issued_at');
 
         // `overdue` is a derived state (issued + past due), not a stored status.
@@ -65,7 +66,7 @@ class InvoicesController extends Controller
 
     public function show(Invoice $invoice): InvoiceResource
     {
-        $invoice->load(['order.client', 'order.quotation', 'payments']);
+        $invoice->load(['order.client', 'order.quotation', 'payments', 'revision:id,number']);
 
         return new InvoiceResource($invoice);
     }
@@ -115,7 +116,7 @@ class InvoicesController extends Controller
         $invoice->loadMissing('order.quotation');
         DocumentIssuer::assertPlanFits($invoice->order, array_replace(
             DocumentIssuer::effectiveInputs($invoice),
-            array_intersect_key($data, array_flip(['invoiceType', 'instalmentNo'])),
+            array_intersect_key($data, array_flip(['invoiceType', 'instalmentNo', 'carePeriod'])),
         ), $invoice);
 
         $invoice = DocumentIssuer::updateInvoice($invoice, $data);
@@ -124,7 +125,7 @@ class InvoicesController extends Controller
             'fields' => array_keys($data),
         ]);
 
-        $invoice->load(['order.client', 'order.quotation', 'payments']);
+        $invoice->load(['order.client', 'order.quotation', 'payments', 'revision:id,number']);
 
         return new InvoiceResource($invoice);
     }

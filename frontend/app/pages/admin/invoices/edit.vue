@@ -30,7 +30,8 @@ interface Order {
   amount_paid_myr: string
   remaining_myr: number
   payment_plan?: OrderPlanView | null
-  invoices?: { id: number; type: string; status: string; instalment_no?: number | null }[]
+  invoices?: { id: number; type: string; status: string; instalment_no?: number | null; care_period?: string | null }[]
+  care_plans?: { kind: 'included' | 'separate'; monthly_myr: number | null; starts_on: string; ends_on: string | null }[]
 }
 
 const invoiceId = computed(() => route.query.id ? String(route.query.id) : '')
@@ -72,8 +73,8 @@ async function saveInvoice(body: Record<string, unknown>) {
     toast.success('Invoice updated', 'The document was re-frozen with the same invoice number.')
     await navigateTo(`/admin/invoices/${invoice.value.id}`)
   }
-  catch {
-    toast.error('Couldn’t update the invoice', 'Please check the fields and try again.')
+  catch (e: any) {
+    toast.error('Couldn’t update the invoice', apiError(e, 'Please check the fields and try again.'))
   }
   finally {
     saving.value = false
@@ -81,6 +82,12 @@ async function saveInvoice(body: Record<string, unknown>) {
 }
 
 onMounted(fetchData)
+// The API's own words for a refusal (e.g. "Phase 1 was settled by payments made
+// before the revision") — the first validation error, else the message.
+function apiError(e: any, fallback: string): string {
+  const errors = e?.data?.errors as Record<string, string[]> | undefined
+  return (errors && Object.values(errors)[0]?.[0]) || e?.data?.message || fallback
+}
 </script>
 
 <template>

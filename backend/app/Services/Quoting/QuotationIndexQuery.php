@@ -3,6 +3,7 @@
 namespace App\Services\Quoting;
 
 use App\Models\Quotation;
+use App\Models\QuotationRevision;
 use Carbon\Carbon;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -36,6 +37,7 @@ final class QuotationIndexQuery
         public readonly ?string $dateFrom = null,
         public readonly ?string $dateTo = null,
         public readonly bool $excludeAcceptedWhenUnfiltered = false,
+        public readonly bool $revisedAfterAcceptance = false,
     ) {}
 
     /**
@@ -56,6 +58,7 @@ final class QuotationIndexQuery
             dateFrom: $request->filled('date_from') ? (string) $request->query('date_from') : null,
             dateTo: $request->filled('date_to') ? (string) $request->query('date_to') : null,
             excludeAcceptedWhenUnfiltered: ! $request->boolean('include_accepted'),
+            revisedAfterAcceptance: $request->boolean('revised'),
         );
     }
 
@@ -77,6 +80,27 @@ final class QuotationIndexQuery
         );
     }
 
+    /**
+     * Add the two revision scalars a list row shows without extra queries: the
+     * family's current revision number and its open (draft / sent) revision as
+     * "number:status" — for "AXNQ-… · R2" and the "R3 draft" chip.
+     */
+    public static function withRevisionColumns(Builder $query): Builder
+    {
+        // A sub-select alone would REPLACE the implicit `*` — keep every column
+        // unless the caller already chose its own (the admin list does).
+        if ($query->getQuery()->columns === null) {
+            $query->select('quotations.*');
+        }
+
+        return $query
+            ->selectSub(fn ($q) => $q->from('quotation_revisions')->select('number')
+                ->whereColumn('quotation_revisions.id', 'quotations.current_revision_id'), 'current_revision_number')
+            ->selectSub(fn ($q) => $q->from('quotation_revisions')->selectRaw("CONCAT(number, ':', status)")
+                ->whereColumn('quotation_revisions.quotation_id', 'quotations.id')
+                ->whereIn('status', QuotationRevision::OPEN)->orderByDesc('number')->limit(1), 'open_revision');
+    }
+
     /** Build the filtered, newest-first query (soft-deleted rows excluded by scope). */
     public function builder(): Builder
     {
@@ -84,12 +108,33 @@ final class QuotationIndexQuery
         // newest-first order (previously arbitrary on a submitted_at tie).
         $query = Quotation::query()->latest('submitted_at')->latest('id');
 
+        // One row per quotation FAMILY — `status` is the family's derived status.
+        // A draft / sent filter also matches a family whose OPEN revision has that
+        // status (an accepted R1 with an R2 draft in progress is "a draft" to work on).
         if ($this->statuses !== []) {
-            $query->whereIn('status', $this->statuses);
-        } elseif ($this->excludeAcceptedWhenUnfiltered) {
+            $open = array_values(array_intersect($this->statuses, QuotationRevision::OPEN));
+            $query->where(fn (Builder $q) => $q->whereIn('status', $this->statuses)
+                ->when($open !== [], fn (Builder $q) => $q->orWhereExists(fn ($sub) => $sub->from('quotation_revisions')
+                    ->whereColumn('quotation_revisions.quotation_id', 'quotations.id')
+                    ->whereIn('quotation_revisions.status', $open))));
+        } elseif ($this->excludeAcceptedWhenUnfiltered && ! $this->revisedAfterAcceptance) {
             // No status filter: accepted quotes produced an order and live on the
-            // Orders page — hide them unless the caller asked for everything.
-            $query->where('status', '!=', 'accepted');
+            // Orders page — hide them unless the caller asked for everything, or a
+            // new revision is in progress on one (that needs the founder here).
+            $query->where(fn (Builder $q) => $q->where('status', '!=', 'accepted')
+                ->orWhereExists(fn ($sub) => $sub->from('quotation_revisions')
+                    ->whereColumn('quotation_revisions.quotation_id', 'quotations.id')
+                    ->whereIn('quotation_revisions.status', QuotationRevision::OPEN)));
+        }
+
+        // Revised after acceptance: some revision was opened from an accepted one
+        // (and not discarded) — whether it has been accepted yet or not.
+        if ($this->revisedAfterAcceptance) {
+            $query->whereExists(fn ($sub) => $sub->from('quotation_revisions as rn')
+                ->join('quotation_revisions as rp', 'rp.id', '=', 'rn.replaces_revision_id')
+                ->whereColumn('rn.quotation_id', 'quotations.id')
+                ->where('rn.status', '!=', QuotationRevision::DISCARDED)
+                ->whereIn('rp.status', [QuotationRevision::ACCEPTED, QuotationRevision::SUPERSEDED]));
         }
 
         if ($this->search !== null && $this->search !== '') {

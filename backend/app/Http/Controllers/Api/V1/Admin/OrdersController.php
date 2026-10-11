@@ -24,6 +24,7 @@ class OrdersController extends Controller
         $query = Order::with([
             'client',
             'quotation:id,reference_code,package_key,estimate_min_myr,estimate_max_myr,estimate_eta_value,estimate_eta_unit,submitted_at',
+            'currentRevision:id,number',
         ])->latest('created_at');
 
         if ($request->filled('status')) {
@@ -49,7 +50,7 @@ class OrdersController extends Controller
 
     public function show(Order $order): OrderResource
     {
-        $order->load(['client', 'quotation.addons', 'invoices', 'receipts.invoice', 'payments', 'updatedBy']);
+        $order->load(['client', 'quotation.addons', 'currentRevision', 'carePlans.revision', 'invoices', 'receipts.invoice', 'payments', 'updatedBy']);
 
         return new OrderResource($order);
     }

@@ -21,10 +21,12 @@ class Invoice extends Model
 
     protected $fillable = [
         'order_id',
+        'revision_id',
         'invoice_number',
         'public_token',
         'type',
         'instalment_no',
+        'care_period',
         'payload',
         'inputs',
         'amount_total',
@@ -32,6 +34,7 @@ class Invoice extends Model
         'payment_ref',
         'payment_method',
         'status',
+        'void_reason',
         'issued_at',
         'due_at',
         'paid_at',
@@ -45,6 +48,7 @@ class Invoice extends Model
             'payload' => 'array',
             'inputs' => 'array',
             'instalment_no' => 'integer',
+            'care_period' => 'date',
             'amount_total' => 'decimal:2',
             'amount_paid' => 'decimal:2',
             'issued_at' => 'datetime',
@@ -60,6 +64,12 @@ class Invoice extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    /** The quotation revision whose terms produced this invoice (R1, R2 …). */
+    public function revision(): BelongsTo
+    {
+        return $this->belongsTo(QuotationRevision::class, 'revision_id');
     }
 
     public function receipts(): HasMany

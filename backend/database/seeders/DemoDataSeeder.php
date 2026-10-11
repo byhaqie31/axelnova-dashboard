@@ -9,6 +9,7 @@ use App\Models\Quotation;
 use App\Services\Payments\PaymentService;
 use App\Services\Quoting\DocumentIssuer;
 use App\Services\Quoting\PricingEngine;
+use App\Services\Quoting\QuotationRevisions;
 use App\Services\Quoting\QuoteRequestInput;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
@@ -223,6 +224,7 @@ class DemoDataSeeder extends Seeder
             }
 
             $quotation->forceFill(['created_at' => $submitted, 'updated_at' => $submitted])->saveQuietly();
+            QuotationRevisions::initialise($quotation)->forceFill(['created_at' => $submitted, 'updated_at' => $submitted])->saveQuietly();
 
             return $quotation;
         });
@@ -237,6 +239,7 @@ class DemoDataSeeder extends Seeder
             $order = Order::create([
                 'order_number' => ReferenceCodeGenerator::generate(DocumentType::Order),
                 'quotation_id' => $quotation->id,
+                'current_revision_id' => $quotation->current_revision_id,
                 'client_id' => $quotation->client_id,
                 'value_min_myr' => $quotation->estimate_min_myr,
                 'value_max_myr' => $quotation->estimate_max_myr,

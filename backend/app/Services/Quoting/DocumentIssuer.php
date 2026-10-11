@@ -55,12 +55,18 @@ class DocumentIssuer
      * partner plan; see assertPlanFits() for the plan-aware rules.
      */
     public const TYPE_RULES = [
-        'invoiceType' => ['nullable', 'in:deposit,partial,final,instalment'],
+        'invoiceType' => ['nullable', 'in:deposit,partial,final,instalment,phase,care_plan,adjustment'],
         'instalmentNo' => ['nullable', 'integer', 'min:1', 'max:120'],
+        // care_plan: the month it bills (Y-m); adjustment: its printed label.
+        'carePeriod' => ['nullable', 'date_format:Y-m'],
+        'adjustmentLabel' => ['nullable', 'string', 'max:120'],
     ];
 
+    /** Types numbered by instalment_no: a monthly instalment, or a phase of a phased lump sum. */
+    private const NUMBERED_TYPES = ['instalment', 'phase'];
+
     private const INPUT_KEYS = [
-        'invoiceType', 'instalmentNo', 'amount', 'amountPaid', 'paymentRef', 'paymentMethod',
+        'invoiceType', 'instalmentNo', 'carePeriod', 'adjustmentLabel', 'amount', 'amountPaid', 'paymentRef', 'paymentMethod',
         'discountType', 'discountValue', 'discountLabel',
         'promoCode', 'promoType', 'promoValue', 'notes', 'dueAt',
         ...self::DISPLAY_KEYS,
@@ -88,10 +94,14 @@ class DocumentIssuer
 
             $invoice = Invoice::create([
                 'order_id' => $order->id,
+                // The revision whose terms this bills — a supersede voids the
+                // unpaid ones and nets the new schedule against the paid ones.
+                'revision_id' => $order->current_revision_id,
                 'invoice_number' => $number,
                 'public_token' => Str::random(48),
                 'type' => $input['invoiceType'] ?? 'deposit',
                 'instalment_no' => $input['instalmentNo'] ?? null,
+                'care_period' => self::carePeriodDate($input),
                 'payload' => $payload,
                 'inputs' => self::cleanInputs($input),
                 'amount_total' => self::payloadTotal($payload),
@@ -140,6 +150,7 @@ class DocumentIssuer
                 'amount_total' => self::payloadTotal($payload),
                 'type' => $inputs['invoiceType'] ?? $invoice->type,
                 'instalment_no' => $inputs['instalmentNo'] ?? null,
+                'care_period' => self::carePeriodDate($inputs),
                 'due_at' => $inputs['dueAt'] ?? $invoice->due_at,
             ]);
 
@@ -148,56 +159,125 @@ class DocumentIssuer
     }
 
     /**
-     * Plan-aware checks for an invoice's type (issue, preview, update). An
-     * `instalment` invoice needs an instalment / partner order, a number inside
-     * its schedule, and — unless only previewing — a number no other live
-     * (non-void) invoice on the order already bills. Throws a 422.
+     * Plan-aware checks for an invoice's type (issue, preview, update). Throws a
+     * 422 when the bill doesn't fit the order's CURRENT revision:
+     *   • instalment — an instalment / partner order, a number inside its
+     *     schedule, not already billed on a live invoice of this revision;
+     *   • phase — a phased lump-sum order, a phase inside it, not already billed;
+     *   • deposit — not on a phased order (bill Phase 1);
+     *   • care_plan — a month inside a separate Care Plan period, not billed yet;
+     *   • after a revise, nothing the netting already settled or adjusted.
+     * $checkTaken = false (preview) skips the "already billed" checks only.
      */
     public static function assertPlanFits(Order $order, array $input, ?Invoice $ignore = null, bool $checkTaken = true): void
     {
-        if (($input['invoiceType'] ?? null) !== 'instalment') {
+        $type = $input['invoiceType'] ?? null;
+        $n = (int) ($input['instalmentNo'] ?? 0);
+
+        if ($type === 'deposit' && $order->isPhased()) {
+            throw ValidationException::withMessages([
+                'invoiceType' => 'This order is billed by phase — issue Phase 1 instead of a deposit.',
+            ]);
+        }
+
+        if ($type === 'care_plan') {
+            if (empty($input['carePeriod'])) {
+                throw ValidationException::withMessages(['carePeriod' => 'Pick the month this Care Plan invoice bills.']);
+            }
+            $billable = CarePlans::billable($order, (string) $input['carePeriod'], $ignore);
+            if (is_string($billable) && ($checkTaken || ! str_contains($billable, 'already billed'))) {
+                throw ValidationException::withMessages(['carePeriod' => $billable]);
+            }
+
             return;
         }
 
-        if (! $order->isScheduled()) {
+        if ($type === 'instalment') {
+            if (! $order->isScheduled()) {
+                throw ValidationException::withMessages([
+                    'invoiceType' => 'This order has no instalment or partner plan — use a deposit, partial or final invoice.',
+                ]);
+            }
+            $months = $order->paymentPlan()->months();
+            if ($n < 1 || $n > $months) {
+                throw ValidationException::withMessages([
+                    'instalmentNo' => "Pick which instalment this invoice bills (1–{$months}).",
+                ]);
+            }
+        }
+
+        if ($type === 'phase') {
+            if (! $order->isPhased()) {
+                throw ValidationException::withMessages([
+                    'invoiceType' => 'This order is not billed by phase — use a deposit, partial or final invoice.',
+                ]);
+            }
+            $count = count($order->paymentPlan()->phases());
+            if ($n < 1 || $n > $count) {
+                throw ValidationException::withMessages([
+                    'instalmentNo' => "Pick which phase this invoice bills (1–{$count}).",
+                ]);
+            }
+        }
+
+        // After a revise: an item the netting settled (or billed by its adjustment
+        // invoice) is never billed again.
+        $key = match ($type) {
+            'deposit' => 'deposit',
+            'instalment' => "instalment:{$n}",
+            'phase' => "phase:{$n}",
+            default => null,
+        };
+        $netted = $key ? $order->nettedItem($key) : null;
+        if ($checkTaken && in_array($netted['state'] ?? null, [ScheduleNetting::SETTLED, ScheduleNetting::ADJUSTMENT], true)) {
             throw ValidationException::withMessages([
-                'invoiceType' => 'This order has no instalment or partner plan — use a deposit, partial or final invoice.',
+                in_array($type, self::NUMBERED_TYPES, true) ? 'instalmentNo' : 'invoiceType' => $netted['state'] === ScheduleNetting::SETTLED
+                    ? "{$netted['label']} was settled by payments made before the revision — nothing left to bill."
+                    : "{$netted['label']} is billed by the revision's adjustment invoice — nothing left to bill.",
             ]);
         }
 
-        $months = $order->paymentPlan()->months();
-        $n = (int) ($input['instalmentNo'] ?? 0);
-        if ($n < 1 || $n > $months) {
-            throw ValidationException::withMessages([
-                'instalmentNo' => "Pick which instalment this invoice bills (1–{$months}).",
-            ]);
-        }
-
-        if ($checkTaken) {
+        if ($checkTaken && in_array($type, self::NUMBERED_TYPES, true)) {
+            // Live invoices of the CURRENT revision only — a superseded revision's
+            // instalment 1 is not the new schedule's instalment 1.
             $taken = Invoice::where('order_id', $order->id)
-                ->where('type', 'instalment')
+                ->where('type', $type)
                 ->where('instalment_no', $n)
                 ->where('status', '!=', 'void')
+                ->when($order->current_revision_id, fn ($q) => $q->where(fn ($q) => $q
+                    ->where('revision_id', $order->current_revision_id)->orWhereNull('revision_id')))
                 ->when($ignore, fn ($q) => $q->whereKeyNot($ignore->id))
                 ->first();
             if ($taken) {
+                $what = $type === 'phase' ? 'Phase' : 'Instalment';
                 throw ValidationException::withMessages([
-                    'instalmentNo' => "Instalment {$n} is already billed on {$taken->invoice_number}. Void that invoice first to re-issue it.",
+                    'instalmentNo' => "{$what} {$n} is already billed on {$taken->invoice_number}. Void that invoice first to re-issue it.",
                 ]);
             }
         }
     }
 
-    /** Only an instalment invoice carries an instalment number. */
+    /** Only a numbered invoice (instalment / phase) carries a number; only care_plan a month. */
     private static function normaliseInstalment(array $input): array
     {
-        if (($input['invoiceType'] ?? null) !== 'instalment') {
+        if (! in_array($input['invoiceType'] ?? null, self::NUMBERED_TYPES, true)) {
             $input['instalmentNo'] = null;
         } elseif (isset($input['instalmentNo'])) {
             $input['instalmentNo'] = (int) $input['instalmentNo'];
         }
+        if (($input['invoiceType'] ?? null) !== 'care_plan') {
+            $input['carePeriod'] = null;
+        }
 
         return $input;
+    }
+
+    /** The care_period date column for a care_plan invoice ("2026-11" → 2026-11-01). */
+    private static function carePeriodDate(array $input): ?string
+    {
+        return ($input['invoiceType'] ?? null) === 'care_plan' && ! empty($input['carePeriod'])
+            ? "{$input['carePeriod']}-01"
+            : null;
     }
 
     /** The scheduled due date of the instalment an invoice bills, if any. */

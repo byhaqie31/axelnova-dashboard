@@ -158,6 +158,8 @@ A quotation's deposit and payment plan live on the `document` JSON beside the le
 | `billing_day` | 1–28, default **20** |
 | `first_instalment_date` | `Y-m-d`; blank → the first billing day after the issue date |
 | `includes_care_plan` | bool — printed on the PDF ("includes Care Plan" / "termasuk Care Plan", per locale) |
+| `phases` | lump sum only: `[{label, pct}]`, 2–10 phases totalling 100% (40/40/20, 50/50, 20×5 …). Phase 1 is the up-front payment; each phase rounds to the ringgit and the last takes the remainder. Replaces deposit + balance ([QUOTATION-REVISIONS.md §4.4](./QUOTATION-REVISIONS.md#44-phased-lump-sum-dynamic-split)) |
+| `care_plan_monthly_myr` | a **separate** monthly Care Plan (RM / month), billed by `care_plan` invoices — distinct from `includes_care_plan` |
 
 Rules (all pinned by `tests/Unit/Quoting/PaymentPlanTest.php`):
 
@@ -174,6 +176,10 @@ Rules (all pinned by `tests/Unit/Quoting/PaymentPlanTest.php`):
 - **Instalment invoices.** Invoice type `instalment` + `invoices.instalment_no` bill one numbered payment of the plan: the form pre-fills the plan's monthly figure and the scheduled due date, the PDF labels it `Instalment 3 of 12` / `Monthly fee 3 of 24` (a partner deposit is `Setup fee`), and `DocumentIssuer::assertPlanFits()` refuses a lump-sum order, a number outside the schedule, or a number another live (non-void) invoice already bills. The order page's **Payment plan** card shows each payment's invoice with an "Issue" link. Migration `2026_10_11_000001_add_payment_plan_to_orders_and_instalment_invoices` (additive; extends the `invoices.type` enum).
 
 The TS mirror for the admin form's live figures is [`frontend/app/composables/paymentPlan.ts`](../../frontend/app/composables/paymentPlan.ts) — **keep it in sync** with the PHP class (same relationship as the pricing-engine port). Admin / connector read the derived block as `payment_plan` (`QuotationResource`, `get_quotation`).
+
+### Revisions
+
+A quotation is a **family** with numbered **revisions** (R1, R2 …); the `quotations` row mirrors the current revision's content, and every content write goes to the draft revision through `QuotationRevisions::writeDraft`. Accepted / superseded revisions are frozen. See [QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md).
 
 ### MCP connector tool contract (v3)
 

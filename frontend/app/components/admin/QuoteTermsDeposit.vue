@@ -6,17 +6,24 @@
 // Deposit is EITHER a percentage (legacy `deposit_pct`) OR a fixed ringgit amount
 // (`deposit_amount_myr`, which wins). The effective % of a fixed amount is derived
 // read-only — never stored. The payment plan adds the instalment / partner
-// schedule fields; every figure shown here mirrors the backend PaymentPlan class
-// (see composables/paymentPlan.ts), which is what the PDF and the order read.
-import type { PaymentPlanInputs } from '~/composables/paymentPlan'
+// schedule fields; a lump sum can instead be split into any number of phases
+// (40/40/20, 50/50, 20×5 — must total 100%, phase 1 is the up-front payment).
+// Every figure shown here mirrors the backend PaymentPlan class (see
+// composables/paymentPlan.ts), which is what the PDF and the order read.
+import type { PaymentPhase, PaymentPlanInputs } from '~/composables/paymentPlan'
 import {
+  MAX_PHASES,
+  MIN_PHASES,
   PAYMENT_PLANS,
   PARTNER_DEFAULT_MONTHS,
+  PHASE_PRESETS,
   depositAmountFor,
   depositLabel,
   fmtRm,
   fmtYmd,
   isScheduled,
+  phaseAmounts,
+  phasesTotalPct,
   planMonths,
   planTotal,
   scheduleDates,
@@ -118,6 +125,35 @@ const scheduleRows = computed(() => {
   return rows
 })
 
+// ── Lump sum by phase ────────────────────────────────────────────────────────
+const phasedOn = computed(() => plan.value.payment_plan === 'lump_sum' && plan.value.phases.length > 0)
+const phasePctTotal = computed(() => phasesTotalPct(plan.value.phases))
+const phasesBalanced = computed(() => Math.abs(phasePctTotal.value - 100) < 0.01)
+const phaseRm = computed(() => phaseAmounts(props.total, plan.value.phases))
+
+function usePhases(phases: PaymentPhase[]) {
+  plan.value.phases = phases.map(p => ({ ...p }))
+  // Phase 1 IS the up-front payment — a separate fixed deposit would contradict it.
+  plan.value.deposit_amount_myr = null
+}
+function addPhase() {
+  if (plan.value.phases.length >= MAX_PHASES) return
+  plan.value.phases.push({ label: '', pct: Math.max(round2(100 - phasePctTotal.value), 0) })
+}
+function removePhase(i: number) {
+  plan.value.phases.splice(i, 1)
+  // Fewer than two phases isn't a split — fall back to the classic deposit + balance.
+  if (plan.value.phases.length < MIN_PHASES) plan.value.phases = []
+}
+
+// Leaving the lump sum drops its phases (a scheduled plan has its own schedule).
+watch(() => plan.value.payment_plan, (p) => {
+  if (p !== 'lump_sum') plan.value.phases = []
+})
+
+// A separate monthly Care Plan — offered unless the instalment figure already includes it.
+const careSeparateShown = computed(() => !(scheduled.value && plan.value.includes_care_plan))
+
 // Partner defaults to 24 months — prefill so the figure is visible, not implied.
 watch(() => plan.value.payment_plan, (p) => {
   if (p === 'partner' && !plan.value.instalment_months) plan.value.instalment_months = PARTNER_DEFAULT_MONTHS
@@ -132,8 +168,13 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
     :class="separated ? 'pt-2 border-t' : ''"
     :style="separated ? { borderColor: 'var(--color-border)' } : undefined"
   >
-    <!-- Deposit: mode toggle, then the field, then the derived read-only figure -->
-    <div class="space-y-2">
+    <!-- Deposit: mode toggle, then the field, then the derived read-only figure.
+         A phased lump sum has no separate deposit — its phase 1 is the up-front payment. -->
+    <div v-if="phasedOn" class="space-y-1">
+      <label class="block text-[12px] font-medium" style="color: var(--color-text-secondary);">Deposit</label>
+      <p class="text-[12px]" style="color: var(--color-text-tertiary);">Phase 1 is the up-front payment — set it in the phases below.</p>
+    </div>
+    <div v-else class="space-y-2">
       <div class="flex items-center justify-between gap-3 flex-wrap">
         <label class="block text-[12px] font-medium" style="color: var(--color-text-secondary);">Deposit</label>
         <div class="inline-flex shrink-0 items-center rounded-lg border p-0.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
@@ -187,6 +228,68 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <AdminSelect v-model="plan.payment_plan" :items="planItems" class="w-full" />
         </div>
         <p class="text-[11px] sm:pb-2.5" style="color: var(--color-text-tertiary);">{{ planHint }}</p>
+      </div>
+
+      <!-- Lump sum: optionally split into phases (any shape that totals 100%) -->
+      <div v-if="plan.payment_plan === 'lump_sum'" class="space-y-2.5">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <span class="d-label">Bill by phase</span>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button
+              v-for="preset in PHASE_PRESETS" :key="preset.label"
+              type="button"
+              class="px-2.5 py-1 max-md:py-1.5 rounded-md border text-[12px] font-medium tabular-nums transition-colors"
+              :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-elevated)' }"
+              @click="usePhases(preset.phases)"
+            >{{ preset.label }}</button>
+            <button
+              v-if="phasedOn" type="button"
+              class="px-2.5 py-1 max-md:py-1.5 rounded-md text-[12px] font-medium"
+              style="color: var(--color-text-tertiary);"
+              @click="plan.phases = []"
+            >Clear</button>
+          </div>
+        </div>
+        <p v-if="!phasedOn" class="text-[11px]" style="color: var(--color-text-tertiary);">
+          Deposit + balance on completion. Pick a split above to bill in phases instead — any number of phases, as long as they total 100%.
+        </p>
+
+        <div v-else class="rounded-xl border p-3 max-md:p-2.5 space-y-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+          <div
+            v-for="(phase, i) in plan.phases" :key="i"
+            class="grid grid-cols-[1.5rem_1fr_5.5rem_auto_auto] max-md:grid-cols-[1.25rem_1fr_4.75rem_auto] gap-2 items-center"
+          >
+            <span class="text-[12px] tabular-nums text-center" style="color: var(--color-text-tertiary);">{{ i + 1 }}</span>
+            <input
+              v-model="phase.label" type="text" maxlength="80"
+              :placeholder="i === 0 ? 'On acceptance' : `Phase ${i + 1}`"
+              class="contact-input w-full text-[13px] min-w-0" :style="fieldStyle"
+            >
+            <div class="relative">
+              <input v-model.number="phase.pct" type="number" min="0" max="100" step="0.01" class="contact-input w-full pr-7 text-right text-[13px]" :style="fieldStyle">
+              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none" style="color: var(--color-text-tertiary);">%</span>
+            </div>
+            <span class="text-[12px] tabular-nums text-right whitespace-nowrap max-md:hidden" style="color: var(--color-text);">
+              {{ props.total > 0 ? `RM ${fmtRm(phaseRm[i] ?? 0)}` : '—' }}
+            </span>
+            <button
+              type="button" class="p-1.5 rounded-md" style="color: var(--color-text-tertiary);"
+              :aria-label="`Remove phase ${i + 1}`" @click="removePhase(i)"
+            ><UIcon name="i-lucide-x" class="size-3.5" /></button>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 pt-1 flex-wrap">
+            <button
+              v-if="plan.phases.length < MAX_PHASES" type="button"
+              class="inline-flex items-center gap-1.5 text-[12px] font-medium" style="color: var(--color-accent);"
+              @click="addPhase"
+            ><UIcon name="i-lucide-plus" class="size-3.5" /> Add phase</button>
+            <p class="text-[12px] tabular-nums flex items-center gap-1.5" :style="{ color: phasesBalanced ? 'var(--color-success)' : 'var(--color-danger)' }">
+              <UIcon :name="phasesBalanced ? 'i-lucide-circle-check' : 'i-lucide-triangle-alert'" class="size-3.5 shrink-0" />
+              {{ phasesBalanced ? 'Totals 100%' : `Totals ${phasePctTotal}% — must be 100% to save` }}
+            </p>
+          </div>
+        </div>
       </div>
 
       <template v-if="scheduled">
@@ -281,6 +384,21 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <p v-else class="text-[11px]" style="color: var(--color-text-tertiary);">Set the first {{ partnerPlan ? 'payment' : 'instalment' }} date to see the schedule.</p>
         </div>
       </template>
+
+      <!-- A separate Care Plan subscription, billed month by month on its own invoices -->
+      <div v-if="careSeparateShown" class="grid sm:grid-cols-[14rem_1fr] gap-3 sm:items-end">
+        <div class="space-y-1.5">
+          <span class="d-label">Care Plan (separate, monthly)</span>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none" style="color: var(--color-text-tertiary);">RM</span>
+            <input
+              v-model.number="plan.care_plan_monthly_myr" type="number" min="0" step="0.01" placeholder="None"
+              class="contact-input w-full text-[13px] pl-9 text-right" :style="fieldStyle"
+            >
+          </div>
+        </div>
+        <p class="text-[11px] sm:pb-2.5" style="color: var(--color-text-tertiary);">Leave blank for no Care Plan. Billed separately each month once the order runs; printed under the payment plan.</p>
+      </div>
     </div>
 
     <!-- Terms: title above, full-width field below -->

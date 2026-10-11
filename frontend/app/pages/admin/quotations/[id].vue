@@ -2,6 +2,7 @@
 import { formatMyr } from '~/utils/money'
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
 import DetailedQuotationView from '~/components/admin/DetailedQuotationView.vue'
+import type { RevisionTab } from '~/components/admin/QuotationRevisionTabs.vue'
 import { PAYMENT_PLANS, fmtRm, fmtYmd } from '~/composables/paymentPlan'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
@@ -42,6 +43,25 @@ interface Quotation {
   referrer: { name: string; relationship_tier: string; commission_pct: number } | null
   order_id: number | null
   order_number: string | null
+  /** The family's derived status (the fields above are the SHOWN revision's). */
+  family_status: string
+  /** "AXNQ-2026-0017" / "AXNQ-2026-0017 · R2" */
+  display_reference: string
+  revision: {
+    id: number
+    number: number
+    label: string
+    status: string
+    change_reason: string | null
+    replaces: number | null
+    is_current: boolean
+    editable: boolean
+    pdf_path: string | null
+    pdf_filename: string
+  }
+  revisions: RevisionTab[]
+  /** The family's open (draft / sent) revision number, if any. */
+  open_revision: number | null
 }
 
 interface PaymentPlanView {
@@ -76,22 +96,25 @@ interface QuotationInvoice {
 const quotation = ref<Quotation | null>(null)
 const loading = ref(true)
 const error = ref('')
-const statusLoading = ref(false)
 const acceptLoading = ref(false)
 
 useHead(() => ({
-  title: quotation.value ? `${quotation.value.reference_code} — Admin` : 'Quotation — Admin',
+  title: quotation.value ? `${quotation.value.display_reference} — Admin` : 'Quotation — Admin',
 }))
 
 // A `seq` guard keeps the latest-issued fetch authoritative. `quiet` refreshes in
 // the background (after a builder save) without the full-page loading flash.
+// `revision` picks a tab (R1, R2 …); by default the server shows the open
+// (draft / sent) revision, else the current one.
 let fetchSeq = 0
-async function fetchQuotation(quiet = false) {
+async function fetchQuotation(quiet = false, revision?: number) {
   const seq = ++fetchSeq
   if (!quiet) loading.value = true
   error.value = ''
   try {
-    const res = await apiFetch<{ data: Quotation }>(`/api/v1/admin/quotations/${route.params.id}`)
+    // ?revision=N deep-links a tab (the order timeline links each revision).
+    const rev = revision ?? quotation.value?.revision?.number ?? (route.query.revision ? Number(route.query.revision) : undefined)
+    const res = await apiFetch<{ data: Quotation }>(`/api/v1/admin/quotations/${route.params.id}${rev ? `?revision=${rev}` : ''}`)
     if (seq !== fetchSeq) return
     quotation.value = res.data
   }
@@ -120,7 +143,50 @@ function onClientSaved(patch: Record<string, any>) {
   quotation.value = { ...quotation.value, ...patch } as Quotation
 }
 
+// Status / editability follow the SHOWN revision: only a draft revision opens the builder.
 const isDraft = computed(() => quotation.value?.status === 'draft')
+const revisionNumber = computed(() => quotation.value?.revision?.number ?? 1)
+
+function selectRevision(n: number) {
+  if (n === revisionNumber.value) return
+  fetchQuotation(true, n)
+}
+
+// "Revise": a new draft revision from an accepted / sent / rejected / expired one —
+// only while no other revision of the family is open.
+const reviseOpen = ref(false)
+const canRevise = computed(() => {
+  const q = quotation.value
+  if (!q) return false
+  const open = q.open_revision
+  return ['accepted', 'sent', 'rejected', 'expired'].includes(q.status) && (open == null || open === q.revision.number)
+})
+const nextRevisionNumber = computed(() => Math.max(0, ...(quotation.value?.revisions ?? []).map(r => r.number)) + 1)
+function onRevised(data: Record<string, any>) {
+  reviseOpen.value = false
+  applyQuotation(data)
+}
+
+// Discard a draft revision (R2+), undoing the revise that opened it.
+const discarding = ref(false)
+async function discardRevision() {
+  const q = quotation.value
+  if (!q || q.revision.number < 2) return
+  if (!(await confirm({
+    title: `Discard ${q.revision.label}?`,
+    message: `${q.revision.label} is thrown away (it stays in the history as discarded).${q.revisions.find(r => r.number === q.revision.replaces)?.status === 'discarded' ? ` R${q.revision.replaces} goes back to the client-facing version.` : ''}`,
+    confirmLabel: `Discard ${q.revision.label}`,
+    variant: 'danger',
+  }))) return
+  discarding.value = true
+  try {
+    const res = await apiFetch<{ data: Record<string, any> }>(`/api/v1/admin/quotations/${q.id}/revisions/${q.revision.number}/discard`, { method: 'POST' })
+    applyQuotation(res.data)
+    toast.success(`${q.revision.label} discarded`)
+  }
+  catch (e: any) { toast.error('Couldn’t discard', e?.data?.message ?? 'Something went wrong. Please try again.') }
+  finally { discarding.value = false }
+}
 const isDetailed = computed(() => quotation.value?.document?.layout === 'detailed')
 
 // Deposit & payment plan card (read view) — straight from the resource's derived
@@ -145,36 +211,30 @@ watch(() => quotation.value?.referral_partner_id, () => {
 
 async function acceptQuotation() {
   if (!quotation.value) return
-  if (!(await confirm({
-    title: 'Create an order from this quote?',
-    message: `This accepts ${quotation.value.reference_code} and creates a new order — you can’t undo it here.`,
-    confirmLabel: 'Proceed & create order',
-  }))) return
+  const q = quotation.value
+  const superseding = !!q.order_id
+  if (!(await confirm(superseding
+    ? {
+        title: `Accept ${q.revision.label} on order ${q.order_number}?`,
+        message: `${q.revision.label} supersedes the accepted revision on the same order: its unpaid invoices are voided, paid ones kept, and the new schedule is netted against what was paid (an adjustment invoice is issued for any top-up). You can’t undo it here.`,
+        confirmLabel: `Accept ${q.revision.label}`,
+      }
+    : {
+        title: 'Create an order from this quote?',
+        message: `This accepts ${q.display_reference} and creates a new order — you can’t undo it here.`,
+        confirmLabel: 'Proceed & create order',
+      }))) return
   acceptLoading.value = true
   try {
-    const body = isReferralAttributed.value ? { commission_pct: commissionPct.value } : undefined
+    const body = { revision: q.revision.number, ...(isReferralAttributed.value && !superseding ? { commission_pct: commissionPct.value } : {}) }
     const res = await apiFetch<{ message: string; order_id: number; order_number: string }>(
-      `/api/v1/admin/quotations/${quotation.value.id}/accept`, { method: 'POST', body },
+      `/api/v1/admin/quotations/${q.id}/accept`, { method: 'POST', body },
     )
-    toast.success('Order created', `${res.order_number} created from this quotation.`)
+    toast.success(superseding ? `${q.revision.label} accepted` : 'Order created', res.message)
     navigateTo(`/admin/orders/${res.order_id}`)
   }
-  catch { toast.error('Couldn’t accept quotation', 'Something went wrong. Please try again.') }
+  catch (e: any) { toast.error('Couldn’t accept quotation', e?.data?.message ?? 'Something went wrong. Please try again.') }
   finally { acceptLoading.value = false }
-}
-
-// Re-open a sent/rejected/expired quote for editing. Flipping to draft swaps the
-// read view back to the builder (isDraft) and re-enables the edit endpoint.
-async function revertToDraft() {
-  if (!quotation.value) return
-  statusLoading.value = true
-  try {
-    await apiFetch(`/api/v1/admin/quotations/${quotation.value.id}/status`, { method: 'POST', body: { status: 'draft' } })
-    quotation.value.status = 'draft'
-    toast.success('Back to draft', 'Edit and re-send when you’re ready.')
-  }
-  catch { toast.error('Couldn’t move to draft', 'Something went wrong. Please try again.') }
-  finally { statusLoading.value = false }
 }
 
 function viewPdf() {
@@ -211,10 +271,10 @@ async function rejectQuotation() {
   rejectLoading.value = true
   try {
     await apiFetch(`/api/v1/admin/quotations/${quotation.value.id}/status`, { method: 'POST', body: { status: 'rejected' } })
-    quotation.value.status = 'rejected'
-    toast.success('Quotation rejected', 'Moved to rejected. You can still re-open it as a draft.')
+    await fetchQuotation(true)
+    toast.success('Quotation rejected', 'Moved to rejected. Revise it to send the client a new version.')
   }
-  catch { toast.error('Couldn’t reject quotation', 'Something went wrong. Please try again.') }
+  catch (e: any) { toast.error('Couldn’t reject quotation', e?.data?.message ?? 'Something went wrong. Please try again.') }
   finally { rejectLoading.value = false }
 }
 
@@ -272,14 +332,32 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 ma
     <p v-else-if="error" style="color: var(--color-danger);">{{ error }}</p>
 
     <template v-else-if="quotation">
-      <!-- Draft → builder -->
+      <!-- Revision tabs (R1 · R2 · …) — the current revision is bold. -->
+      <AdminQuotationRevisionTabs
+        :revisions="quotation.revisions" :selected="revisionNumber"
+        class="mb-6 max-md:mb-4" @select="selectRevision" />
+
+      <!-- Draft revision → builder -->
       <template v-if="isDraft">
         <div class="mb-8 max-md:mb-6 flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <p class="font-mono text-[18px] font-bold" style="color: var(--color-accent);">{{ quotation.reference_code }}</p>
-            <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Edit {{ isDetailed ? 'detailed ' : '' }}draft quotation</h1>
+          <div class="min-w-0">
+            <p class="font-mono text-[18px] font-bold" style="color: var(--color-accent);">{{ quotation.display_reference }}</p>
+            <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">
+              Edit {{ isDetailed ? 'detailed ' : '' }}{{ revisionNumber > 1 ? `draft revision ${quotation.revision.label}` : 'draft quotation' }}
+            </h1>
+            <p v-if="quotation.revision.change_reason" class="text-[13px] mt-1 max-md:break-words" style="color: var(--color-text-secondary);">
+              Replaces R{{ quotation.revision.replaces }} · {{ quotation.revision.change_reason }}
+            </p>
           </div>
-          <AdminStatusPill :status="quotation.status" size="md" />
+          <div class="flex items-center gap-2">
+            <button
+              v-if="revisionNumber > 1" type="button"
+              class="btn-pill btn-pill-ghost text-[13px]" :style="{ color: 'var(--color-danger)' }"
+              :disabled="discarding" @click="discardRevision">
+              <UIcon name="i-lucide-undo-2" class="size-3.5" /> {{ discarding ? 'Discarding…' : `Discard ${quotation.revision.label}` }}
+            </button>
+            <AdminStatusPill :status="quotation.status" size="md" />
+          </div>
         </div>
         <QuotationBuilder
           :quotation="quotation"
@@ -296,7 +374,10 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 ma
           <div class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <div class="flex items-start justify-between flex-wrap gap-4 max-md:gap-3 mb-5">
               <div class="max-md:min-w-0">
-                <p class="font-mono text-[20px] font-bold mb-1" style="color: var(--color-accent);">{{ quotation.reference_code }}</p>
+                <p class="font-mono text-[20px] font-bold mb-1" style="color: var(--color-accent);">{{ quotation.display_reference }}</p>
+                <p v-if="quotation.revision.change_reason" class="text-[12px] mb-2 max-md:break-words" style="color: var(--color-text-tertiary);">
+                  Replaces R{{ quotation.revision.replaces }} · {{ quotation.revision.change_reason }}
+                </p>
                 <p class="text-[22px] max-md:text-[20px] font-bold tracking-tight max-md:break-words" style="color: var(--color-text);">{{ quotation.name }}</p>
                 <p v-if="quotation.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ quotation.company }}</p>
               </div>
@@ -496,12 +577,17 @@ id="commission-pct" v-model.number="commissionPct" type="number" min="5" max="15
               </button>
             </template>
 
-            <!-- Re-open a sent / rejected / expired quote for editing. -->
-            <button v-if="quotation.status !== 'accepted'" class="btn-pill btn-pill-silver w-full justify-center text-[13px]" :disabled="statusLoading" @click="revertToDraft">
-              {{ statusLoading ? 'Editing…' : 'Mark as Draft' }}
+            <!-- Change terms: open a new draft revision (never re-open this one in place). -->
+            <button v-if="canRevise" class="btn-pill btn-pill-silver w-full justify-center text-[13px]" @click="reviseOpen = true">
+              <UIcon name="i-lucide-git-branch-plus" class="size-3.5" /> Revise
+            </button>
+            <button
+              v-else-if="quotation.open_revision && quotation.open_revision !== revisionNumber"
+              class="btn-pill btn-pill-silver w-full justify-center text-[13px]" @click="selectRevision(quotation.open_revision)">
+              Open R{{ quotation.open_revision }} ({{ quotation.revisions.find(r => r.number === quotation!.open_revision)?.status }})
             </button>
 
-            <a :href="`mailto:${quotation.email}?subject=Re: your quote ${quotation.reference_code}`" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">Email Client</a>
+            <a :href="`mailto:${quotation.email}?subject=Re: your quote ${quotation.display_reference}`" class="btn-pill btn-pill-ghost w-full justify-center text-[13px]">Email Client</a>
             <a
 v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, '')}?text=Hi%20${encodeURIComponent(quotation.name)}%2C%20about%20your%20quote%20${quotation.reference_code}.`"
               target="_blank" rel="noopener" class="btn-pill btn-pill-success w-full justify-center text-[13px]">WhatsApp</a>
@@ -522,8 +608,19 @@ v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, ''
       :target="deleteTarget" :blocked="deleteBlocked" :deleting="deleting"
       @cancel="closeDelete" @confirm="confirmDelete" />
 
-    <!-- Confirm gate for Proceed & Create Order. -->
+    <!-- Confirm gate for Proceed & Create Order / Discard. -->
     <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
+
+    <AdminReviseQuotationModal
+      v-if="quotation"
+      :open="reviseOpen"
+      :quotation-id="quotation.id"
+      :reference="quotation.reference_code"
+      :source="{ number: quotation.revision.number, status: quotation.status }"
+      :next-number="nextRevisionNumber"
+      :order-number="quotation.order_number"
+      @close="reviseOpen = false"
+      @revised="onRevised" />
 
     <AdminManageClientModal
       v-if="quotation"

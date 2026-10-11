@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { formatMyr } from '~/utils/money'
 import type { InvoiceType, OrderPlanView } from '~/composables/paymentPlan'
-import { fmtRm, fmtYmd, invoiceTypeLabel } from '~/composables/paymentPlan'
+import type { CarePlanPeriod } from '~/components/admin/OrderPlanCard.vue'
+import type { OrderRevision } from '~/components/admin/OrderRevisionTimeline.vue'
+import { fmtRm, fmtYm, fmtYmd, invoiceTypeLabel } from '~/composables/paymentPlan'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
@@ -16,6 +18,17 @@ interface Order {
   quotation_id: number
   client_id: number
   reference_code: string | null
+  /** "AXNQ-2026-0017 · R2" once the order runs on a later revision. */
+  display_reference?: string | null
+  revision_number?: number | null
+  revised_at?: string | null
+  /** Raised by the last supersede: overpaid / Care Plan changed. */
+  revision_flags?: {
+    overpaid_myr?: number
+    care_plan_changed?: { from: string | null; to: string | null; from_monthly_myr: number | null; to_monthly_myr: number | null; on: string; ends_on: string | null; starts_on: string | null }
+  } | null
+  revisions?: OrderRevision[]
+  care_plans?: CarePlanPeriod[]
   package_key: string | null
   estimate_eta_value: number | null
   estimate_eta_unit: 'hour' | 'day' | 'week' | 'month' | null
@@ -58,8 +71,10 @@ interface OrderInvoice {
   id: number
   type: InvoiceType
   instalment_no: number | null
+  care_period: string | null
   number: string
   status: 'issued' | 'paid' | 'void'
+  void_reason: string | null
   amount_total: string
   amount_paid: string | null
   payment_ref: string | null
@@ -261,6 +276,13 @@ const docSections = computed(() => {
 
 // A detailed/bespoke quote is an agreed price (min == max), not a range —
 // show the exact figure instead of a degenerate "RM 153,000.00 – RM 153,000.00".
+// Care Plan change, worded for the flag banner.
+function careWord(kind: string | null, monthly: number | null): string {
+  if (kind === 'included') return 'included in the monthly figure'
+  if (kind === 'separate') return `separate at RM ${fmtRm(Number(monthly) || 0)} / month`
+  return 'none'
+}
+
 const agreedAmount = computed(() => {
   const min = Number(order.value?.estimate_min_myr)
   const max = Number(order.value?.estimate_max_myr)
@@ -291,6 +313,9 @@ class="rounded-2xl border p-6 max-md:p-5"
           <div class="flex items-start justify-between flex-wrap gap-4 max-md:gap-3 mb-5">
             <div class="max-md:min-w-0">
               <p class="font-mono text-[20px] font-bold mb-1" style="color: var(--color-accent);">{{ order.order_number }}</p>
+              <p v-if="(order.revision_number ?? 1) > 1" class="text-[12px] mb-1" style="color: var(--color-text-tertiary);">
+                Runs on {{ order.display_reference }}<span v-if="order.revised_at"> · revised {{ fmtDate(order.revised_at) }}</span>
+              </p>
               <p class="text-[22px] max-md:text-[20px] font-bold tracking-tight max-md:break-words" style="color: var(--color-text);">{{ order.name ?? '—' }}</p>
               <p v-if="order.company" class="text-[14px] mt-0.5" style="color: var(--color-text-secondary);">{{ order.company }}</p>
             </div>
@@ -385,9 +410,31 @@ v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold
 
           <p class="text-[12px] mt-4 pt-4 border-t" style="color: var(--color-text-tertiary); border-color: var(--color-border);">
             Source quotation
-            <NuxtLink :to="`/admin/quotations/${order.quotation_id}`" class="underline ml-1" :style="{ color: 'var(--color-accent)' }">{{ order.reference_code ?? `#${order.quotation_id}` }}</NuxtLink>
+            <NuxtLink :to="`/admin/quotations/${order.quotation_id}`" class="underline ml-1" :style="{ color: 'var(--color-accent)' }">{{ order.display_reference ?? order.reference_code ?? `#${order.quotation_id}` }}</NuxtLink>
             <span v-if="order.submitted_at"> · submitted {{ fmtDate(order.submitted_at) }}</span>
             <span v-if="order.updated_by"> · last updated by {{ order.updated_by.name }}</span>
+          </p>
+        </div>
+
+        <!-- Revision chain: the terms this order has run on, with dates and reasons. -->
+        <AdminOrderRevisionTimeline v-if="order.revisions?.length" :revisions="order.revisions" :quotation-id="order.quotation_id" />
+
+        <!-- Flags raised by the last revision (overpaid / Care Plan changed). -->
+        <div
+          v-if="order.revision_flags"
+          class="rounded-2xl border p-5 space-y-2.5"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: order.revision_flags.overpaid_myr ? 'var(--color-danger)' : 'var(--color-border)' }">
+          <p v-if="order.revision_flags.overpaid_myr" class="text-[13px] flex items-start gap-2" style="color: var(--color-danger);">
+            <UIcon name="i-lucide-triangle-alert" class="size-4 shrink-0 mt-px" />
+            <span><span class="font-semibold">Overpaid by RM {{ fmtRm(order.revision_flags.overpaid_myr) }}</span> — the client has paid more than the revised total. A credit note is required (handled manually).</span>
+          </p>
+          <p v-if="order.revision_flags.care_plan_changed" class="text-[13px] flex items-start gap-2" style="color: var(--color-text);">
+            <UIcon name="i-lucide-heart-handshake" class="size-4 shrink-0 mt-px" style="color: var(--color-accent);" />
+            <span>
+              <span class="font-semibold">Care Plan changed</span> on {{ fmtYmd(order.revision_flags.care_plan_changed.on) }}:
+              {{ careWord(order.revision_flags.care_plan_changed.from, order.revision_flags.care_plan_changed.from_monthly_myr) }}
+              → {{ careWord(order.revision_flags.care_plan_changed.to, order.revision_flags.care_plan_changed.to_monthly_myr) }}<template v-if="order.revision_flags.care_plan_changed.starts_on">, from {{ fmtYm(order.revision_flags.care_plan_changed.starts_on) }}</template>.
+            </span>
           </p>
         </div>
 
@@ -465,65 +512,9 @@ v-for="p in order.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
           </div>
         </div>
 
-        <!-- Payment plan — the quotation's agreed schedule, each payment with its invoice -->
-        <div
-          v-if="order.payment_plan"
-          class="rounded-2xl border p-6 max-md:p-5"
-          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <div class="flex items-center justify-between gap-3 mb-1">
-            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Payment plan</p>
-            <span
-              class="text-[11px] font-semibold uppercase tracking-wider rounded-full px-2.5 py-1"
-              :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ order.payment_plan.plan === 'partner' ? 'Partner' : 'Instalment' }}</span>
-          </div>
-          <p class="text-[12px] tabular-nums mb-4" style="color: var(--color-text-secondary);">
-            {{ order.payment_plan.deposit_label }} RM {{ fmtRm(order.payment_plan.deposit_myr) }} + {{ order.payment_plan.months }} × RM {{ fmtRm(order.payment_plan.monthly_myr) }}
-            on the {{ order.payment_plan.billing_day }}{{ order.payment_plan.includes_care_plan ? ' · includes care plan' : '' }} · total RM {{ fmtRm(order.payment_plan.plan_total_myr) }}
-          </p>
-
-          <div data-lenis-prevent class="max-h-[24rem] overflow-y-auto overscroll-contain rounded-xl border" :style="{ borderColor: 'var(--color-border)' }">
-            <table class="w-full text-[12px] max-md:text-[13px] tabular-nums">
-              <thead class="sticky top-0" :style="{ background: 'var(--color-bg)' }">
-                <tr class="text-left text-[10px] font-semibold uppercase tracking-wide" style="color: var(--color-text-tertiary);">
-                  <th class="px-3 py-2 font-semibold">Payment</th>
-                  <th class="px-3 py-2 font-semibold">Due</th>
-                  <th class="px-3 py-2 font-semibold text-right">Amount</th>
-                  <th class="px-3 py-2 font-semibold text-right">Invoice</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="border-t" :style="{ borderColor: 'var(--color-border)' }">
-                  <td class="px-3 py-2 font-medium whitespace-nowrap" style="color: var(--color-text);">{{ order.payment_plan.deposit_label }}</td>
-                  <td class="px-3 py-2 whitespace-nowrap" style="color: var(--color-text-secondary);">On acceptance</td>
-                  <td class="px-3 py-2 text-right whitespace-nowrap" style="color: var(--color-text);">RM {{ fmtRm(order.payment_plan.deposit_myr) }}</td>
-                  <td class="px-3 py-2 text-right whitespace-nowrap">
-                    <NuxtLink v-if="order.payment_plan.deposit_invoice" :to="`/admin/invoices/${order.payment_plan.deposit_invoice.id}`" class="inline-flex items-center gap-1.5 font-mono" style="color: var(--color-accent);">
-                      {{ order.payment_plan.deposit_invoice.number }} <AdminStatusPill :status="order.payment_plan.deposit_invoice.status" />
-                    </NuxtLink>
-                    <NuxtLink v-else :to="`/admin/invoices/new?order_id=${order.id}`" class="font-medium" style="color: var(--color-accent);">Issue</NuxtLink>
-                  </td>
-                </tr>
-                <tr
-                  v-for="r in order.payment_plan.schedule" :key="r.n"
-                  class="border-t" :style="{ borderColor: 'var(--color-border)' }">
-                  <td class="px-3 py-2 whitespace-nowrap" style="color: var(--color-text-secondary);">{{ r.label }}</td>
-                  <td class="px-3 py-2 whitespace-nowrap" style="color: var(--color-text-secondary);">{{ fmtYmd(r.date) }}</td>
-                  <td class="px-3 py-2 text-right whitespace-nowrap" style="color: var(--color-text);">RM {{ fmtRm(r.amount) }}</td>
-                  <td class="px-3 py-2 text-right whitespace-nowrap">
-                    <NuxtLink v-if="r.invoice" :to="`/admin/invoices/${r.invoice.id}`" class="inline-flex items-center gap-1.5 font-mono" style="color: var(--color-accent);">
-                      {{ r.invoice.number }} <AdminStatusPill :status="r.invoice.status" />
-                    </NuxtLink>
-                    <NuxtLink
-                      v-else :to="`/admin/invoices/new?order_id=${order.id}&instalment=${r.n}`"
-                      class="font-medium" :style="{ color: r.n === order.payment_plan.next_instalment_no ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }">
-                      Issue
-                    </NuxtLink>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <!-- Payment plan — the agreed schedule (instalments / phases), each payment with its
+             invoice and, after a revise, how it was netted; then Care Plan coverage. -->
+        <AdminOrderPlanCard :order-id="order.id" :plan="order.payment_plan ?? null" :care-plans="order.care_plans" />
 
         <!-- Invoices -->
         <div
@@ -541,12 +532,13 @@ v-for="d in order.invoices" :key="d.id" :to="`/admin/invoices/${d.id}`"
                   <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ d.number }}</span>
                   <span
 class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                    :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ invoiceTypeLabel(d.type, d.instalment_no) }}</span>
+                    :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ invoiceTypeLabel(d.type, d.instalment_no, d.care_period) }}</span>
                   <AdminStatusPill :status="d.status" />
                 </div>
                 <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
                   {{ formatMyr(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ formatMyr(d.amount_paid) }}</span> · {{ fmtDate(d.issued_at) }}
                 </p>
+                <p v-if="d.status === 'void' && d.void_reason" class="text-[11px] mt-0.5" style="color: var(--color-text-tertiary);">{{ d.void_reason }}</p>
               </div>
               <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0" :style="{ color: 'var(--color-text-tertiary)' }" />
             </NuxtLink>

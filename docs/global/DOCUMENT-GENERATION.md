@@ -181,6 +181,10 @@ pay             { online?, bank?, holder?, acct?, note? }
 A full `payload` can also be passed straight through (the "customized builder"
 override path — see Roadmap).
 
+### Revisions on the PDF
+
+From a quotation's second revision on, the mapper adds a data-only `revision` block (`{number, replaces, replacedEvent: accepted|sent, replacedDate, reason}`; absent on R1, which prints exactly as before). The template prints the reference as `AXNQ-2026-0017 · R2` in the header, the running page-foot and the `<title>` (`docReference()`), and a small-print line under the title from `locales.ts` (`revision.*`): en *"Revision 2 — replaces Revision 1 (accepted 11 October 2026). Reason: …"*, bm *"Semakan 2 — menggantikan Semakan 1 (diterima 11 Oktober 2026). Sebab: …"* — the reason prints as the founder typed it. Both PDF routes name the download with `documentFileName()` → `AXNQ-2026-0017-R2.pdf`. Each revision has its own token; R1 kept the quotation's original one, so old links still open the same document. See [QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md).
+
 ### Payment plan section (quotations)
 
 `paymentPlan` is emitted by `DocumentMapper::toDocumentData` for every
@@ -191,7 +195,8 @@ the dated schedule:
 
 ```
 paymentPlan   { plan, deposit, depositPctLabel, balance, monthly, months, billingDay,
-                firstDate?, lastDate?, includesCarePlan, total, schedule[ {n, date, amount} ] }
+                firstDate?, lastDate?, includesCarePlan, total, schedule[ {n, date, amount} ],
+                phases[ {n, label, pct, amount} ], carePlanMonthly? }
 ```
 
 `paymentPlanHTML` (exported from `template.ts`) renders it as ONE titled
@@ -211,6 +216,8 @@ paymentPlan   { plan, deposit, depositPctLabel, balance, monthly, months, billin
    columns Payment · Date · Amount / Bayaran · Tarikh · Jumlah, rows `Instalment n` /
    `Ansuran n` (partner: `Month n` / `Bulan n`), dates per locale
    (`20 Disember 2026`), money `RM 970.00`.
+
+A **phased lump sum** (`phases` non-empty) titles the section `Payment by Phase` / `Bayaran Berperingkat`, its line reads `3 phases · total RM 10,800.00`, and instead of cards it prints a `Payment phases` / `Peringkat bayaran` table — `Phase n` / `Peringkat n`, the founder's label + share (`Semasa demo · 40%`), the amount. A separate Care Plan (`carePlanMonthly`) adds `Care Plan: RM 220.00 per month, billed separately` / `… sebulan, dibil berasingan` under the plan. Phased plans stay inline (no page break).
 
 **Page handling.** Instalment / partner sections open on their own page and never
 split; a lump sum (`.payment-plan.inline`) keeps flowing. Both the modern and legacy

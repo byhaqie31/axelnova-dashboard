@@ -8,15 +8,18 @@ use App\Http\Requests\Connector\ListQuotationsRequest;
 use App\Http\Requests\Connector\UpdateDraftQuotationRequest;
 use App\Models\Client;
 use App\Models\Quotation;
+use App\Models\QuotationRevision;
 use App\Services\Connector\ConnectorCatalog;
 use App\Services\Quoting\DetailedDocumentBuilder;
 use App\Services\Quoting\DocumentSeeder;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuotationIndexQuery;
+use App\Services\Quoting\QuotationRevisions;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -52,8 +55,7 @@ class QuotationDraftController extends Controller
 
         // Search + status + date-range + newest-first — the SAME shared query the
         // admin index uses (soft-deleted rows excluded by the model scope).
-        $paginator = QuotationIndexQuery::fromConnectorFilters($data)
-            ->builder()
+        $paginator = QuotationIndexQuery::withRevisionColumns(QuotationIndexQuery::fromConnectorFilters($data)->builder())
             ->paginate($perPage);
 
         // Resolve the engine once (package-label lookup), not once per row.
@@ -99,6 +101,7 @@ class QuotationDraftController extends Controller
             ]));
 
             $this->syncAddons($quotation, $built['addonKeys'], $engine);
+            QuotationRevisions::initialise($quotation);
 
             return $quotation;
         });
@@ -132,16 +135,19 @@ class QuotationDraftController extends Controller
             ], 404);
         }
 
-        // Lifecycle gate — pre-send only. A whitelist, so any unknown/future status
-        // is treated as locked. The only pre-send status is 'draft' (see
-        // Quotation::PRE_SEND_STATUSES).
-        if (! $quotation->isPreSend()) {
+        // Lifecycle gate — the family's DRAFT revision is the only editable one.
+        // A sent or accepted revision is what the client saw; changing it means
+        // opening a new revision first (create_revision).
+        $draft = $quotation->draftRevision();
+        if (! $draft) {
             return response()->json([
-                'message' => "Quotation {$quotation->reference_code} is '{$quotation->status}' and can no longer be updated from the connector — "
-                    .'only a pre-send draft (status: '.implode(', ', Quotation::PRE_SEND_STATUSES).') is updatable. '
-                    .'Once a quote is sent to the client, a change is a manual admin revision — out of scope here.',
+                'message' => "Quotation {$quotation->reference_code} has no draft revision — its current revision ({$quotation->revision()->label()}) is '{$quotation->revision()->status}' and can no longer be edited. "
+                    .'Call create_revision with a change_reason to open a new draft revision, then update that.',
             ], 422);
         }
+        // Every read below sees the draft's content, not the family's current revision.
+        $family = $quotation;
+        $quotation = $draft->asQuotation($family);
 
         $data = $request->validated();
         $catalog = new ConnectorCatalog;
@@ -183,17 +189,19 @@ class QuotationDraftController extends Controller
         ];
         $documentReseeded = $regenerate;
 
-        DB::transaction(function () use ($request, $data, $catalog, $engine, $createdVia, $sourceMeta, $quotation, $existingDoc, $preserveDocument): void {
+        DB::transaction(function () use ($request, $data, $catalog, $engine, $createdVia, $sourceMeta, $family, $draft, $existingDoc, $preserveDocument): void {
             $built = $this->buildDraft($request, $data, $this->upsertClient($data['client']), $catalog, $engine, $createdVia, $sourceMeta);
             if ($preserveDocument) {
                 $built['attributes']['document'] = $existingDoc;
             }
-            $quotation->update($built['attributes']);
-            $this->syncAddons($quotation, $built['addonKeys'], $engine);
+            // The client is the family's; the content is the draft revision's.
+            $family->update(array_intersect_key($built['attributes'], array_flip(['client_id', 'name', 'email', 'phone', 'company'])));
+            QuotationRevisions::writeDraft($draft, $built['attributes'], QuotationRevisions::addonSnapshot($built['addonKeys'], $engine), $family);
         });
 
-        $quotation->logActivity('quotation.updated', [
+        $family->logActivity('quotation.updated', [
             'via' => 'mcp_connector',
+            'revision' => $draft->number,
             'document_reseeded' => $documentReseeded,
         ]);
 
@@ -201,13 +209,13 @@ class QuotationDraftController extends Controller
             ? 'The document was re-seeded from the new scope.'
             : 'The existing (edited) document was preserved; the estimate was re-priced. Pass reseed_document: true to regenerate it.';
 
-        $quotation = $quotation->fresh();
+        $quotation = $draft->refresh()->asQuotation($family);
 
         return response()->json([
             'message' => "Quotation {$quotation->reference_code} updated. {$note} It remains a DRAFT for admin review."
                 .self::planVarianceNote($quotation),
             'document_reseeded' => $documentReseeded,
-            'data' => self::connectorView($quotation->load('addons')),
+            'data' => self::connectorView($quotation),
         ]);
     }
 
@@ -216,7 +224,7 @@ class QuotationDraftController extends Controller
      * open — whatever created the row). Soft-deleted rows return 404 (the model's
      * SoftDeletes scope excludes them).
      */
-    public function show(string $reference_code): JsonResponse
+    public function show(Request $request, string $reference_code): JsonResponse
     {
         $quotation = Quotation::query()
             ->where('reference_code', $reference_code)
@@ -229,7 +237,63 @@ class QuotationDraftController extends Controller
             ], 404);
         }
 
-        return response()->json(['data' => self::connectorView($quotation)]);
+        // The flat fields show the WORKING revision by default — the open (draft /
+        // sent) one if any, else the current one — or ?revision=N; `family`,
+        // `current_revision` and `revisions` describe the whole family either way.
+        $revision = $request->filled('revision')
+            ? $quotation->revisions()->where('number', $request->integer('revision'))->first()
+            : ($quotation->openRevision() ?? $quotation->revision());
+        if (! $revision) {
+            return response()->json([
+                'message' => "{$quotation->reference_code} has no revision R{$request->integer('revision')} — see `revisions` in get_quotation without a revision number.",
+            ], 404);
+        }
+
+        return response()->json(['data' => self::connectorView($revision->asQuotation($quotation))]);
+    }
+
+    /**
+     * create_revision (§6): open a new DRAFT revision of a quotation from its
+     * accepted / sent (or rejected / expired) revision, with the change reason.
+     * Nothing is sent. Revising a SENT revision withdraws it (the client gets the
+     * replacement; discarding the new draft in the admin restores it). Refused
+     * (422, naming it) while another revision is still open, and once the order
+     * is completed or cancelled. update_draft_quotation then edits the new draft;
+     * the founder sends or accepts it in the admin — the connector never does.
+     */
+    public function revise(Request $request, string $reference_code): JsonResponse
+    {
+        $data = $request->validate([
+            'change_reason' => ['required', 'string', 'max:500'],
+            'from_revision' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'change_reason.required' => 'create_revision needs a change_reason — why the quotation is changing (it is printed on the new revision\'s PDF and shown on the order timeline).',
+        ]);
+
+        $quotation = Quotation::where('reference_code', $reference_code)->with('addons')->first();
+        if (! $quotation) {
+            return response()->json([
+                'message' => "No quotation found with reference_code '{$reference_code}'. Use list_quotations to find it, or the exact AXNQ code.",
+            ], 404);
+        }
+
+        $source = null;
+        if (isset($data['from_revision'])) {
+            $source = $quotation->revisions()->where('number', $data['from_revision'])->first();
+            if (! $source) {
+                return response()->json(['message' => "{$quotation->reference_code} has no revision R{$data['from_revision']}."], 422);
+            }
+        }
+
+        $revision = QuotationRevisions::revise($quotation, $data['change_reason'], $source);
+
+        return response()->json([
+            'message' => "{$revision->label()} of {$quotation->reference_code} opened as a DRAFT revision (from R{$revision->replaces?->number}). "
+                .'Edit it with update_draft_quotation; the founder sends or accepts it in the admin. Nothing has been sent to the client.',
+            'reference_code' => $quotation->reference_code,
+            'revision_number' => $revision->number,
+            'data' => self::connectorView($revision->asQuotation($quotation->fresh(['addons']))),
+        ], 201);
     }
 
     /**
@@ -528,9 +592,19 @@ class QuotationDraftController extends Controller
         $document = is_array($quotation->document) ? $quotation->document : [];
         $hasEta = (int) $quotation->estimate_eta_value > 0;
 
+        $number = (int) ($quotation->getAttribute('current_revision_number') ?? 1);
+        $open = $quotation->getAttribute('open_revision');
+
         return [
             'reference_code' => $quotation->reference_code,
+            // "AXNQ-2026-0017 · R2" — the revision the family currently presents.
+            'display_reference' => QuotationRevision::displayReference($quotation->reference_code, $number),
             'status' => $quotation->status,
+            'revision_number' => $number,
+            // A newer revision in progress, e.g. "2:draft" on an accepted R1.
+            'open_revision' => $open && (int) $open !== $number
+                ? ['number' => (int) $open, 'status' => explode(':', (string) $open, 2)[1] ?? null]
+                : null,
             'created_via' => $document['created_via'] ?? ($quotation->normalizedForm()['source_meta']['created_via'] ?? null),
             'client' => [
                 'name' => $quotation->name,
@@ -568,9 +642,48 @@ class QuotationDraftController extends Controller
         $createdVia = $quotation->normalizedForm()['source_meta']['created_via'] ?? null;
         $rawMeta = is_array($quotation->form_payload['source_meta'] ?? null) ? $quotation->form_payload['source_meta'] : [];
 
+        $revision = $quotation->revisionView ?? $quotation->revision();
+        $family = $revision->quotation;
+        $revisions = $family->revisions()->get();
+        $current = $revisions->firstWhere('id', $family->current_revision_id) ?? $revision;
+        $open = $revisions->first(fn (QuotationRevision $r) => $r->isOpen());
+
         return [
             'reference_code' => $quotation->reference_code,
+            // The fields below describe THIS revision (the working one by default).
+            'revision' => [
+                'number' => $revision->number,
+                'status' => $revision->status,
+                'display_reference' => QuotationRevision::displayReference($family->reference_code, $revision->number),
+                'replaces' => $revision->replaces?->number,
+                'change_reason' => $revision->change_reason,
+                'editable' => $revision->isDraft(),
+            ],
             'status' => $quotation->status,
+            // The family: one AXNQ reference for the life of the project.
+            'family' => [
+                'reference_code' => $family->reference_code,
+                'status' => $family->status,
+                'current_revision_number' => $current->number,
+                'open_revision_number' => $open?->number,
+                'draft_revision_number' => $revisions->first(fn (QuotationRevision $r) => $r->isDraft())?->number,
+            ],
+            'current_revision' => [
+                'number' => $current->number,
+                'status' => $current->status,
+                'estimate' => $current->asQuotation($family)->finalAmount(),
+                'accepted_at' => $current->accepted_at?->toISOString(),
+                'change_reason' => $current->change_reason,
+            ],
+            'revisions' => $revisions->map(fn (QuotationRevision $r) => [
+                'number' => $r->number,
+                'status' => $r->status,
+                'estimate' => $r->asQuotation($family)->finalAmount(),
+                'sent_at' => $r->sent_at?->toISOString(),
+                'accepted_at' => $r->accepted_at?->toISOString(),
+                'superseded_at' => $r->superseded_at?->toISOString(),
+                'change_reason' => $r->change_reason,
+            ])->values()->all(),
             'source' => $quotation->source,
             'created_via' => $document['created_via'] ?? $createdVia,
             // PDF template language (en | bm) — chrome only; the content prints as authored.

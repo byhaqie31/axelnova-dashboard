@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\Admin\TasksController;
 use App\Http\Controllers\Api\V1\Admin\UsersController;
 use App\Http\Controllers\Api\V1\Connector\BlogPostController as ConnectorBlogPostController;
 use App\Http\Controllers\Api\V1\Connector\CatalogController as ConnectorCatalogController;
+use App\Http\Controllers\Api\V1\Connector\OrderController as ConnectorOrderController;
 use App\Http\Controllers\Api\V1\Connector\QuotationDraftController as ConnectorQuotationDraftController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\FeedbackController;
@@ -238,6 +239,11 @@ Route::middleware([
         Route::post('/quotations/{quotation}/expiry', [QuotationsController::class, 'setExpiry'])->name('quotations.expiry');
         Route::post('/quotations/{quotation}/send', [QuotationsController::class, 'send'])->name('quotations.send');
         Route::post('/quotations/{quotation}/accept', [QuotationsController::class, 'accept'])->name('quotations.accept');
+        // Revisions — open a new draft revision ("Revise", change_reason required)
+        // or discard a draft one. Accept handles first acceptance AND supersede.
+        Route::post('/quotations/{quotation}/revisions', [QuotationsController::class, 'revise'])->name('quotations.revise');
+        Route::post('/quotations/{quotation}/revisions/{number}/discard', [QuotationsController::class, 'discardRevision'])
+            ->whereNumber('number')->name('quotations.revisions.discard');
         // Correct a mis-matched client — re-point (+ refresh snapshot). Not gated by
         // status: bad records may already be sent/accepted.
         Route::post('/quotations/{quotation}/client', [QuotationsController::class, 'updateClient'])->name('quotations.client');
@@ -442,9 +448,10 @@ Route::middleware(['auth:external', 'abilities:partner'])
 // connector token is rejected by every /v1/admin route (abilities:cockpit), and an
 // admin cockpit token is rejected here. The two abilities are UNIVERSAL: they open
 // the read / draft-write routes of every module (quotations, blog, …) — there is
-// no per-module ability. Access model (v4): READ everything (any non-deleted
-// quotation or post), WRITE drafts only (create a DRAFT; update a PRE-SEND
-// quotation or a DRAFT post), DESTROY never (delete is portal-only, by hand). It
+// no per-module ability. Access model (v5): READ everything (any non-deleted
+// quotation or post, and an order's money view), WRITE drafts only (create a DRAFT; open a new DRAFT
+// revision; update a quotation's DRAFT revision or a DRAFT post), DESTROY never
+// (delete is portal-only, by hand). It
 // still CANNOT change status, send/accept a quote, publish/unpublish a post, or
 // touch orders/clients/payments. Routes deny by default; each ability opens
 // exactly its own endpoints, throttled (authenticated, but never unbounded).
@@ -459,6 +466,10 @@ Route::middleware('auth:sanctum')
             Route::get('/catalog', [ConnectorCatalogController::class, 'index'])->name('catalog');
             Route::get('/quotations', [ConnectorQuotationDraftController::class, 'index'])->name('quotations.index');
             Route::get('/quotations/{reference_code}', [ConnectorQuotationDraftController::class, 'show'])->name('quotations.show');
+            // get_order (v5.1) — READ-ONLY money view of an order (by AXNO, or the
+            // AXNQ it came from): paid / open / still-to-bill tally, netted plan,
+            // invoices + void reasons. Invoices stay admin-only to issue or edit.
+            Route::get('/orders/{reference}', [ConnectorOrderController::class, 'show'])->name('orders.show');
             Route::get('/blog/guide', [ConnectorBlogPostController::class, 'guide'])->name('blog.guide');
             Route::get('/blog/posts', [ConnectorBlogPostController::class, 'index'])->name('blog.index');
             Route::get('/blog/posts/{id}', [ConnectorBlogPostController::class, 'show'])->whereNumber('id')->name('blog.show');
@@ -470,6 +481,9 @@ Route::middleware('auth:sanctum')
         Route::middleware(['abilities:connector:draft', 'throttle:30,1'])->group(function () {
             Route::post('/quotations/draft', [ConnectorQuotationDraftController::class, 'store'])->name('quotations.draft');
             Route::put('/quotations/{reference_code}', [ConnectorQuotationDraftController::class, 'update'])->name('quotations.update');
+            // create_revision — a new DRAFT revision of a sent / accepted quote
+            // (change_reason required). Never sends or accepts it.
+            Route::post('/quotations/{reference_code}/revisions', [ConnectorQuotationDraftController::class, 'revise'])->name('quotations.revise');
             Route::post('/blog/posts', [ConnectorBlogPostController::class, 'store'])->name('blog.store');
             Route::put('/blog/posts/{id}', [ConnectorBlogPostController::class, 'update'])->whereNumber('id')->name('blog.update');
         });

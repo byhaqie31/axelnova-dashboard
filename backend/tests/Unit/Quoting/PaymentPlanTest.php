@@ -278,10 +278,11 @@ class PaymentPlanTest extends TestCase
         $this->assertSame(['n' => 12, 'date' => '2027-10-20', 'amount' => 970.0], $block['schedule'][11]);
 
         // Data only — no copy, labels or month names. The locale file owns every
-        // string (template chrome), so none may be baked here.
+        // string (template chrome), so none may be baked here. (A phase's label is
+        // the founder's CONTENT, printed as authored — like a section title.)
         $this->assertSame(
             ['plan', 'deposit', 'depositPctLabel', 'balance', 'monthly', 'months', 'billingDay',
-                'firstDate', 'lastDate', 'includesCarePlan', 'total', 'schedule'],
+                'firstDate', 'lastDate', 'includesCarePlan', 'total', 'schedule', 'phases', 'carePlanMonthly'],
             array_keys($block),
         );
         $json = json_encode($block);

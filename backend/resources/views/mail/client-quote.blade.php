@@ -7,7 +7,7 @@ Here's the estimate for your project, based on what you submitted on the quote b
 
 | | |
 |---|---|
-| **Reference** | `{{ $quote->reference_code }}` |
+| **Reference** | `{{ $quote->displayReference() }}` |
 | **Estimated Investment** | RM {{ number_format($quote->estimate_min_myr, 2) }} – RM {{ number_format($quote->estimate_max_myr, 2) }} |
 | **Estimated Timeline** | {{ $quote->eta_label }} |
 | **Valid Until** | {{ $validUntil }} |

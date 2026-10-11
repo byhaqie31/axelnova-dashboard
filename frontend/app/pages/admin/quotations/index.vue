@@ -16,9 +16,14 @@ function packageName(key: string | null): string | null {
   return null
 }
 
+// One row per quotation FAMILY (however many revisions it has).
 interface Quotation {
   id: number
   reference_code: string
+  /** "AXNQ-2026-0017 · R2" — the revision the family currently presents. */
+  display_reference: string
+  /** A newer revision in progress (draft / sent), e.g. R3 draft on an accepted R2. */
+  open_revision: { number: number, status: string } | null
   name: string
   email: string
   company: string | null
@@ -46,6 +51,8 @@ const filters = reactive({
   statuses: typeof route.query.status === 'string' && route.query.status
     ? route.query.status.split(',').filter(Boolean)
     : ['draft', 'sent'],
+  // "Revised after acceptance" — families whose accepted terms were revised.
+  revised: route.query.revised === '1',
   page: 1,
 })
 
@@ -68,6 +75,7 @@ async function fetchQuotations() {
     if (filters.search) params.set('search', filters.search)
     if (filters.statuses.length) params.set('status', filters.statuses.join(','))
     else params.set('include_accepted', '1') // "All" — surface accepted (they live on Orders)
+    if (filters.revised) params.set('revised', '1')
     params.set('page', String(filters.page))
 
     const res = await apiFetch<{ data: Quotation[]; meta: any }>(`/api/v1/admin/quotations?${params}`)
@@ -93,10 +101,16 @@ watch(() => filters.search, () => {
   searchTimer = setTimeout(() => { filters.page = 1; fetchQuotations() }, 400)
 })
 
-watch(() => filters.statuses, () => {
+watch(() => [filters.statuses, filters.revised], () => {
   if (filters.page !== 1) filters.page = 1
   else fetchQuotations()
 }, { deep: true })
+
+// The revised filter is about accepted quotes, so it opens the full status set.
+function toggleRevised() {
+  filters.revised = !filters.revised
+  if (filters.revised) filters.statuses = []
+}
 watch(() => filters.page, () => fetchQuotations())
 
 function fmtDate(iso: string) {
@@ -138,6 +152,15 @@ const {
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-3 mb-6">
       <AdminExpandingSearch v-model="filters.search" placeholder="Search by name, email, reference…" />
+      <button
+        type="button" :aria-pressed="filters.revised"
+        class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 max-md:py-2 text-[12px] font-medium transition-colors"
+        :style="filters.revised
+          ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+          : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }"
+        @click="toggleRevised">
+        <UIcon name="i-lucide-git-branch" class="size-3.5" /> Revised after acceptance
+      </button>
       <AdminStatusFilter v-model="filters.statuses" :options="statusOptions" multiple :total="meta?.total ?? null" class="ml-auto" />
     </div>
 
@@ -167,7 +190,10 @@ v-for="q in quotations" :key="q.id"
             class="admin-table-row"
             @click="navigateTo(`/admin/quotations/${q.id}`)">
             <td class="px-4 py-3.5">
-              <span class="font-mono text-[12px] font-medium" style="color: var(--color-accent);">{{ q.reference_code }}</span>
+              <span class="font-mono text-[12px] font-medium whitespace-nowrap" style="color: var(--color-accent);">{{ q.display_reference }}</span>
+              <span
+                v-if="q.open_revision" class="block w-max mt-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">R{{ q.open_revision.number }} {{ q.open_revision.status }}</span>
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-medium" style="color: var(--color-text);">{{ q.name }}</p>
@@ -224,7 +250,12 @@ v-for="q in quotations" :key="q.id"
         @click="navigateTo(`/admin/quotations/${q.id}`)"
       >
         <div class="flex items-start justify-between gap-3 mb-2">
-          <span class="font-mono text-[12px] font-medium min-w-0 break-all" :style="{ color: 'var(--color-accent)' }">{{ q.reference_code }}</span>
+          <span class="font-mono text-[12px] font-medium min-w-0 break-all" :style="{ color: 'var(--color-accent)' }">
+            {{ q.display_reference }}
+            <span
+              v-if="q.open_revision" class="ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-sans font-medium"
+              :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">R{{ q.open_revision.number }} {{ q.open_revision.status }}</span>
+          </span>
           <AdminStatusPill :status="q.status" class="shrink-0" />
         </div>
         <p class="text-[13px] font-medium leading-tight" :style="{ color: 'var(--color-text)' }">{{ q.name }}</p>

@@ -32,7 +32,11 @@ interface Invoice {
   email: string | null
   type: InvoiceType
   instalment_no: number | null
+  care_period: string | null
   status: 'issued' | 'paid' | 'void'
+  /** Why a revision voided it ("Superseded by R2"); and the revision it billed. */
+  void_reason: string | null
+  revision_number?: number | null
   amount_total: string
   amount_paid: string | null
   due_at: string | null
@@ -129,10 +133,14 @@ v-if="invoice.is_overdue" class="text-[11px] font-semibold px-2 py-0.5 rounded-f
               :style="{ color: 'var(--color-danger)', background: 'var(--color-danger-soft)' }">Overdue</span>
           </div>
           <p class="text-[13px] mt-1.5" style="color: var(--color-text-secondary);">
-            <span class="uppercase tracking-wide">{{ invoiceTypeLabel(invoice.type, invoice.instalment_no) }}</span> invoice
+            <span class="uppercase tracking-wide">{{ invoiceTypeLabel(invoice.type, invoice.instalment_no, invoice.care_period) }}</span> invoice
             <template v-if="invoice.order_number">
               · on <NuxtLink :to="`/admin/orders/${invoice.order_id}`" class="underline" :style="{ color: 'var(--color-accent)' }">{{ invoice.order_number }}</NuxtLink>
             </template>
+            <template v-if="(invoice.revision_number ?? 1) > 1"> · bills R{{ invoice.revision_number }}</template>
+          </p>
+          <p v-if="invoice.status === 'void' && invoice.void_reason" class="text-[12px] mt-1" style="color: var(--color-text-tertiary);">
+            Void — {{ invoice.void_reason }}
           </p>
         </div>
         <div class="flex items-center gap-2 shrink-0 flex-wrap max-md:w-full max-md:grid max-md:grid-cols-2 max-md:[&>:last-child:nth-child(odd)]:col-span-2">

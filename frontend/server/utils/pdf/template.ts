@@ -157,6 +157,7 @@ html,body{background:var(--paper);color:var(--ink);
 .hero .title{font-weight:700;font-size:25px;color:var(--ink);
   letter-spacing:-.015em;line-height:1.05;margin-top:11px;}
 .hero .subtitle{margin-top:7px;font-size:13px;color:var(--muted);}
+.hero .rev-note{margin-top:8px;font-size:10px;line-height:1.55;color:var(--muted);}
 .hero .intro{margin-top:14px;font-size:11.5px;line-height:1.65;color:var(--body);
   max-width:150mm;}
 
@@ -503,16 +504,23 @@ export function paymentPlanHTML(
   const scheduled = block.plan !== "lump_sum" && block.months > 0;
   const day = L.dayOfMonth(block.billingDay);
 
+  const phases = !scheduled ? (block.phases ?? []) : [];
+  const phased = phases.length > 0;
+
   const title =
     block.plan === "instalment"
       ? fmt(L.plan.title.instalment, { months: block.months })
       : partner
         ? fmt(L.plan.title.partner, { months: block.months })
-        : L.plan.title.lump_sum;
+        : phased
+          ? L.plan.title.phased
+          : L.plan.title.lump_sum;
 
   // One summary line under the heading — only the parts that apply to the plan.
   const line: string[] = [];
-  if (scheduled) {
+  if (phased) {
+    line.push(fmt(L.plan.line.phases, { count: phases.length }));
+  } else if (scheduled) {
     line.push(fmt(partner ? L.plan.line.setup : L.plan.line.deposit, { amount: money(block.deposit, cur) }));
     line.push(fmt(L.plan.line.instalments, { months: block.months, amount: money(block.monthly, cur) }));
     line.push(fmt(L.plan.line.billed, { day }));
@@ -567,12 +575,64 @@ export function paymentPlanHTML(
     }
   }
 
+  // A lump sum billed by phase: one row per phase. The phase label is the
+  // founder's content (as authored); "Phase n", the share and money are chrome/data.
+  if (phased) {
+    const phaseRows: DetailRow[] = phases.map((p) => ({
+      title: fmt(L.plan.phases.row, { n: p.n }),
+      detail: [p.label, `${Number.isInteger(p.pct) ? p.pct : p.pct.toFixed(2).replace(/0+$/, "")}%`].filter(Boolean).join(" · "),
+      priceText: money(p.amount, cur),
+    }));
+    schedule = `<div class="caption">${esc(L.plan.phases.caption)}</div>
+    <div class="schedule">${tableHTML(phaseRows, cur, [L.plan.phases.phase, L.plan.phases.share, L.plan.phases.amount])}</div>`;
+  }
+
+  const care = block.carePlanMonthly
+    ? `<div class="pp-line">${esc(fmt(L.plan.care, { amount: money(block.carePlanMonthly, cur) }))}</div>`
+    : "";
+
   return `<div class="payment-plan${scheduled ? "" : " inline"}">
     <div class="eyebrow">${esc(L.plan.eyebrow)}</div>
     <h2 class="pp-title">${esc(title)}</h2>
     <div class="pp-line">${esc(line.join(L.plan.line.separator))}</div>
-    ${cards}${summary}${schedule}
+    ${cards}${summary}${schedule}${care}
   </div>`;
+}
+
+/**
+ * "AXNQ-2026-0017 · R2" — a quotation's reference as printed in the header,
+ * page-foot and title from its second revision on; R1 (and every invoice /
+ * receipt) prints the bare number exactly as before.
+ */
+export function docReference(data: DocumentData): string {
+  const n = data.kind === "quotation" ? data.revision?.number ?? 1 : 1;
+  return n > 1 ? `${data.number} · R${n}` : data.number;
+}
+
+/** "AXNQ-2026-0017-R2.pdf" — the download filename (bare number on R1 / invoices). */
+export function documentFileName(data: DocumentData): string {
+  const n = data.kind === "quotation" ? data.revision?.number ?? 1 : 1;
+  return `${data.number || "preview"}${n > 1 ? `-R${n}` : ""}.pdf`;
+}
+
+/**
+ * The revised quotation's small print under its title, in the document locale:
+ * "Revision 2 — replaces Revision 1 (accepted 11 October 2026). Reason: …" /
+ * "Semakan 2 — menggantikan Semakan 1 (diterima …). Sebab: …". Nothing on R1.
+ */
+function revisionNoteHTML(data: DocumentData, L: LocaleStrings): string {
+  const r = data.kind === "quotation" ? data.revision : null;
+  if (!r || r.number <= 1) return "";
+
+  let text = r.replaces
+    ? fmt(L.revision.replaces, { n: r.number, prev: r.replaces })
+    : fmt(L.revision.only, { n: r.number });
+  if (r.replaces && r.replacedEvent && r.replacedDate) {
+    text += fmt(L.revision[r.replacedEvent], { date: formatDate(r.replacedDate, L) });
+  }
+  text += r.reason ? fmt(L.revision.reason, { reason: r.reason }) : ".";
+
+  return `<div class="rev-note">${esc(text)}</div>`;
 }
 
 function sectionHTML(sec: Section, cur: string, L: LocaleStrings): string {
@@ -691,7 +751,7 @@ function headHTML(data: DocumentData, L: LocaleStrings): string {
 
   const pairs: string[] = [];
   if (data.kind === "quotation") {
-    pairs.push(pair(L.meta.quotation, data.number));
+    pairs.push(pair(L.meta.quotation, docReference(data)));
   } else {
     pairs.push(pair(L.meta.no, data.number));
   }
@@ -801,6 +861,7 @@ function renderStandard(data: DocumentData): string {
 
   <div class="hero" style="margin-top:18px">
     <div class="title" style="font-size:19px">${esc(data.project)}</div>
+    ${revisionNoteHTML(data, L)}
     ${data.intro ? `<div class="intro">${esc(data.intro)}</div>` : ""}
   </div>
 
@@ -871,6 +932,7 @@ function renderDetailed(data: DocumentData): string {
       ${clientBlock}
       <div class="title">${esc(data.project)}</div>
       ${data.subtitle ? `<div class="subtitle">${esc(data.subtitle)}</div>` : ""}
+      ${revisionNoteHTML(data, L)}
       ${data.intro ? `<div class="intro">${esc(data.intro)}</div>` : ""}
     </div>`);
   } else {
@@ -1016,7 +1078,7 @@ export function renderDocumentHTML(data: DocumentData): string {
   // label from the locale file. The localized "Page x of y" words sit on the
   // right; the counters come from @page.
   const L = strings(data.locale);
-  const pgfootL = [data.studio.name, fmt(L.page.ssm, { ssm: STUDIO_IDENTITY.ssm }), data.number]
+  const pgfootL = [data.studio.name, fmt(L.page.ssm, { ssm: STUDIO_IDENTITY.ssm }), docReference(data)]
     .filter(Boolean)
     .join("  ·  ");
   const rootVar = `:root{--pgfoot-l:"${cssStr(pgfootL)}";--pg-page:"${cssStr(L.page.page)}";--pg-of:"${cssStr(L.page.of)}";}`;
@@ -1025,7 +1087,7 @@ export function renderDocumentHTML(data: DocumentData): string {
   // title when printing). Without it the page renders as about:blank and the PDF
   // viewer/tab shows "about:blank". e.g. "AXNQ-2026-0007 · One Malaysia Taxi".
   const docName = data.project || data.client?.name || data.studio.name;
-  const docTitle = [data.number, docName].filter(Boolean).join(" · ") || data.studio.name;
+  const docTitle = [docReference(data), docName].filter(Boolean).join(" · ") || data.studio.name;
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(docTitle)}</title><style>
 ${FONT_FACES}

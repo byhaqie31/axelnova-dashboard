@@ -1,0 +1,55 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`phased lump sum (Payment by Phase) > snapshot · bm 1`] = `
+"<div class="payment-plan inline">
+    <div class="eyebrow">Pelan pembayaran</div>
+    <h2 class="pp-title">Bayaran Berperingkat</h2>
+    <div class="pp-line">3 peringkat · jumlah RM 10,800.00</div>
+    <div class="caption">Peringkat bayaran</div>
+    <div class="schedule"><table>
+    <thead><tr>
+      <th>Peringkat</th><th>Bahagian</th><th class="r">Jumlah</th>
+    </tr></thead>
+    <tbody><tr>
+        <td class="c-item">Peringkat 1</td>
+        <td class="c-detail">Semasa penerimaan · 40%</td>
+        <td class="c-price"><span class="price-free">RM 4,320.00</span></td>
+      </tr><tr>
+        <td class="c-item">Peringkat 2</td>
+        <td class="c-detail">Semasa demo · 40%</td>
+        <td class="c-price"><span class="price-free">RM 4,320.00</span></td>
+      </tr><tr>
+        <td class="c-item">Peringkat 3</td>
+        <td class="c-detail">Go-live · 20%</td>
+        <td class="c-price"><span class="price-free">RM 2,160.00</span></td>
+      </tr></tbody>
+  </table></div><div class="pp-line">Care Plan: RM 220.00 sebulan, dibil berasingan</div>
+  </div>"
+`;
+
+exports[`phased lump sum (Payment by Phase) > snapshot · en 1`] = `
+"<div class="payment-plan inline">
+    <div class="eyebrow">Payment plan</div>
+    <h2 class="pp-title">Payment by Phase</h2>
+    <div class="pp-line">3 phases · total RM 10,800.00</div>
+    <div class="caption">Payment phases</div>
+    <div class="schedule"><table>
+    <thead><tr>
+      <th>Phase</th><th>Share</th><th class="r">Amount</th>
+    </tr></thead>
+    <tbody><tr>
+        <td class="c-item">Phase 1</td>
+        <td class="c-detail">Semasa penerimaan · 40%</td>
+        <td class="c-price"><span class="price-free">RM 4,320.00</span></td>
+      </tr><tr>
+        <td class="c-item">Phase 2</td>
+        <td class="c-detail">Semasa demo · 40%</td>
+        <td class="c-price"><span class="price-free">RM 4,320.00</span></td>
+      </tr><tr>
+        <td class="c-item">Phase 3</td>
+        <td class="c-detail">Go-live · 20%</td>
+        <td class="c-price"><span class="price-free">RM 2,160.00</span></td>
+      </tr></tbody>
+  </table></div><div class="pp-line">Care Plan: RM 220.00 per month, billed separately</div>
+  </div>"
+`;
