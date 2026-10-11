@@ -11,8 +11,10 @@ interface Inquiry {
   company: string | null
   project_type: string | null
   budget_hint: string | null
-  origin: 'quote' | 'contact'
+  origin: 'quote' | 'contact' | 'partner' | 'collaboration'
   subject: string | null
+  /** origin 'partner': the studio partner the client asked to hire through us. */
+  collaboration_partner?: { slug: string, name: string } | null
   status: string
   created_at: string
 }
@@ -37,17 +39,31 @@ const statusOptions = [
   { value: 'archived', label: 'Archived' },
 ]
 
-// Both public forms feed this one list — /quote (project brief) and /contact.
+// Every public form feeds this one list — /quote (project brief), /contact, and
+// the /collaborations pages (a client hiring a partner studio through us, or a
+// studio applying to partner).
 const originOptions = [
   { value: '', label: 'All' },
   { value: 'quote', label: 'Quote form' },
   { value: 'contact', label: 'Contact form' },
+  { value: 'partner', label: 'Partner enquiry' },
+  { value: 'collaboration', label: 'Partnership' },
 ]
-const originLabels: Record<string, string> = { quote: 'Quote form', contact: 'Contact form' }
+const originLabels: Record<string, string> = {
+  quote: 'Quote form',
+  contact: 'Contact form',
+  partner: 'Partner enquiry',
+  collaboration: 'Partnership',
+}
+function originLabel(q: Inquiry) {
+  return q.origin === 'partner' && q.collaboration_partner
+    ? `Partner · ${q.collaboration_partner.name}`
+    : originLabels[q.origin]
+}
 
-// Contact rows carry a subject instead of a project type.
+// Contact rows and partnership applications carry a subject instead of a project type.
 function topic(q: Inquiry) {
-  return (q.origin === 'contact' ? q.subject : q.project_type) ?? '—'
+  return (q.origin === 'contact' || q.origin === 'collaboration' ? q.subject : q.project_type) ?? '—'
 }
 
 async function fetchInquiries() {
@@ -141,7 +157,7 @@ v-for="q in inquiries" :key="q.id"
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px]" style="color: var(--color-text-secondary);">{{ topic(q) }}</p>
-              <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ originLabels[q.origin] }}</p>
+              <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ originLabel(q) }}</p>
             </td>
             <td class="px-4 py-3.5">
               <span class="text-[12px]" style="color: var(--color-text-secondary);">{{ q.budget_hint ?? '—' }}</span>
@@ -174,7 +190,7 @@ v-for="q in inquiries" :key="q.id"
         </div>
         <p class="text-[11px] mb-3 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ q.email }}</p>
         <div class="pt-2 border-t flex items-center justify-between gap-3" :style="{ borderColor: 'var(--color-border)' }">
-          <p class="text-[13px] min-w-0" :style="{ color: 'var(--color-text-secondary)' }">{{ topic(q) }} <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">· {{ originLabels[q.origin] }}</span></p>
+          <p class="text-[13px] min-w-0" :style="{ color: 'var(--color-text-secondary)' }">{{ topic(q) }} <span class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">· {{ originLabel(q) }}</span></p>
           <p class="text-[11px] shrink-0" :style="{ color: 'var(--color-text-secondary)' }">{{ fmtDate(q.created_at) }}</p>
         </div>
       </button>

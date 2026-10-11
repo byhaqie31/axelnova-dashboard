@@ -94,3 +94,38 @@ One post in the `/blog` grid, the article's "More from the blog" row and the hom
 
 ### `BlogArticle`
 The one article layout, shared by `pages/public/blog/[slug].vue` and the admin editor's preview (`preview` prop hides share + related and makes the CTA inert). Renders backend-sanitised `body_html` into `.blog-prose` via `v-html` — never raw Markdown or user HTML. Header (format eyebrow, title, lede, byline) and cover span the full width; below them a `[220px pane][≤78ch text]` grid puts a sticky left pane (`BlogToc`, from 2 sections up) beside the text; the text column closes with a rule + the share row. The closing CTA card then spans both tracks (copy left, button right from `md`; stacked below), followed by related posts — so the sticky pane stops at the share row. The pane is inline above the first section below `lg`. See [BLOG.md](../global/BLOG.md).
+
+### `CollabLockup` / `CollabPartnerCard` / `CollabsLatest` / `CollabModes` / `CollabInquiryForm`
+
+The `/collaborations` building blocks (see [COLLABORATIONS.md](../global/COLLABORATIONS.md)). All three inherit the accent of the scope they sit in, so inside `.collab-trlabs` they take the co-brand ([UI-STANDARDS § Partner co-branding](UI-STANDARDS.md#partner-co-branding)).
+
+- **`CollabLockup`:** "Axel Nova × {partner}", the two marks on matching `.collab-logo-plate` tiles with ONE `.text-gradient` × between them. Props: `partnerName`, `partnerSymbol` (the square `symbol_url`; falls back to an initial), `size` `md` | `lg`, `named`, `as` (`div` | `h1` | `h2`).
+  - **Bare** (default): one picture (`role="img"` + label). Not currently used on a page.
+  - **`named`:** each tile sits in an equal-size, theme-aware card with the studio name under it ("Axel Nova" / the partner). Wherever the pair appears it IS the heading, so no text title repeats the pair and its ×:
+    - `lg` + `as="h1"`: the partner-page hero.
+    - `md` + `as="h2"`: the `/collaborations` card. Compact cards, sized against the viewport so two cards + the × fit inside the padded card on a 320px phone.
+  - The heading text reads "Axel Nova × TRLabs". The × carries its own spaces because Vue condenses the whitespace between tags, which would give "Nova×TRLabs". Names pin their own letter-spacing against main.css's unlayered `h1 {}` rule.
+  - **Hover** (named, pointer devices, motion allowed; CSS only): the card lifts 6px on `--shadow-lg`, its mark scales to 1.06, and the × makes a quarter turn while either card is hovered (`:has()`).
+  - **Entrance hooks:** `data-lockup="left|x|right"`, `data-lockup-plate`, `data-lockup-chrome` (the card surface, a separate layer) and `data-lockup-name`. An entrance must not resize the card. Grow the chrome with `clip-path` and move the plate with a transform, so nothing re-lays out. Suspend the hover transitions inline while animating (MOTION rule 10).
+- **`CollabPartnerCard`:** one partner as a full-width co-branded link card: the named lockup as its heading, then the eyebrow, summary, service chips and "See the collaboration →".
+  - Props: `partner`, `headingLevel` (`h2` on `/collaborations`, `h3` under a section's h2).
+  - It wears `collab-{slug}`. The parent puts `reveal` on a wrapper, never on the card, because GSAP's leftover inline transform would cancel the hover lift.
+- **`CollabsLatest`:** the homepage section above the blog ("Built with trusted studios." + cards + "All collaborations"). It shares the `/collaborations` fetch key and renders nothing when no partner is active, like `BlogLatest`.
+- **`CollabModes`:** the three ways of working (co-build / subcontract / referral) as three `reveal` cards. Shared copy, used by the index and the partner page.
+- **`CollabInquiryForm`:** one form, two variants, both posting to `POST /v1/inquiries`.
+  - `partner` (needs `partnerSlug` + `partnerName`): a client hiring the partner through Axel Nova, sent with `origin=partner` and `partner={slug}`. It collects name, email, phone, company, a project-type pill and a message.
+  - `collaboration`: a studio applying, sent with `origin=collaboration`. It collects studio name, `portfolio_url`, a "what best describes you" pill (sent as `subject`) and a message.
+  - Uses the shared `.contact-input`, the `website_url` honeypot and `useReferralAttribution().withRef`, like `/contact`.
+
+### `SiteFooter`
+The storefront footer, mounted once by `layouts/public.vue` (which passes its nav `links` array, so the **Explore** section always matches the header). Laid out after apple.com's footer:
+
+- **Directory** — Explore · Services · Support · Legal. Explore is the header nav (`links` from `layouts/public.vue`). Below `md` each section is a 44px accordion row (chevron right, hairline between rows) that toggles independently — closing a row above the one just tapped would shift it out from under the finger. From `md` up the same markup shows four always-open columns (12px semibold heading, 12px links). The panel animates `grid-template-rows: 0fr → 1fr` (no height measuring); `visibility` keeps a collapsed row's links out of the tab order. Open rows reset on route change.
+- **Every link is in the SSR markup at every width** — a collapsed row is hidden, not unrendered — so crawlers still reach every `/services/{slug}` page (see [SEO.md](SEO.md)). The Services section reads `GET /v1/services` (`key: 'footer-services'`) and falls back to a single "All services" link if the API is down.
+- **Company identity** — below the directory, three plain lines, no card: "Axel Nova Ventures" set like the section titles (14px → 12px from `md`, semibold, `--color-text`), then Registration No. / Kuala Lumpur, Malaysia in the copyright line's type (12px, `--color-text-secondary`). No tagline or availability badge.
+- **Back to top:** right of the company identity at every width, flush with the bottom bar's right edge on desktop. It shows the brand mark floating inside a slowly turning ring of the `--grad-aurora-*` stops, with a "Back to top" caption.
+  - On hover/focus the badge lifts, the ring speeds up, the mark flies up and an arrow rises in its place. The float runs on a wrapper so the hover transform never fights the animation.
+  - On click it scrolls through Lenis when Lenis owns scrolling (native smooth scroll would fight it), then focuses the header's brand link.
+  - Reduced motion: no float or spin, and an instant jump.
+- **Bottom bar** — copyright left, socials + the discreet `/admin` gear right (centred and stacked on phones). The owner wants this bar kept as is; restyle the sections above it, not this.
+- Honours `definePageMeta({ footerGap: false })` (drops the `mt-32` above it) for pages that end on their own band.

@@ -12,7 +12,8 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Tells the admin a new inquiry landed — from /quote or /contact alike. Reply-To
+ * Tells the admin a new inquiry landed — from /quote, /contact or the
+ * /collaborations pages alike. Reply-To
  * is the inquirer, so hitting reply in the inbox answers them directly.
  */
 class InquiryAdminNotificationMail extends Mailable implements ShouldQueue
@@ -23,9 +24,12 @@ class InquiryAdminNotificationMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        $label = $this->inquiry->origin === 'contact'
-            ? ($this->inquiry->subject ?: 'Contact message')
-            : 'Project inquiry';
+        $label = match ($this->inquiry->origin) {
+            'contact' => $this->inquiry->subject ?: 'Contact message',
+            'partner' => 'Axel Nova × '.($this->inquiry->collaborationPartner?->name ?? 'partner studio'),
+            'collaboration' => 'Partnership application',
+            default => 'Project inquiry',
+        };
 
         return new Envelope(
             subject: "New inquiry: {$label} — {$this->inquiry->name}",

@@ -34,8 +34,9 @@ const navLinks = [
   { label: 'Home',     to: '/' },
   { label: 'About',    to: '/about' },
   { label: 'Company',  to: '/company' },
-  { label: 'Blog',     to: '/blog' },
+  { label: 'Collabs',  to: '/collaborations' },
   { label: 'Projects', to: '/projects' },
+  { label: 'Blog',     to: '/blog' },
   { label: 'Services', to: '/services' },
   { label: 'Partners', to: '/partners' },
   { label: 'Contact',  to: '/contact' },
@@ -611,7 +612,8 @@ onUnmounted(() => {
             class="hero-pill-expanded absolute inset-0 flex items-center justify-between gap-3 pl-4 pr-1.5"
           >
             <BrandMark variant="compact" wordmark="Axel Nova" class="shrink-0" />
-            <ul class="hidden md:flex items-center">
+            <!-- Same breakpoint as the layout header's links (lg) — see public.vue. -->
+            <ul class="hidden lg:flex items-center">
               <li v-for="l in navLinks" :key="l.to">
                 <NuxtLink :to="l.to" class="epoch-nav-link">{{ l.label }}</NuxtLink>
               </li>

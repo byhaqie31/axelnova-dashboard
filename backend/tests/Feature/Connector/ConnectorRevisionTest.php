@@ -7,13 +7,15 @@ use App\Models\PricingConfig;
 use App\Models\Quotation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * §6 — the MCP connector's revision contract (acceptance test 6):
- * create_revision → update_draft_quotation → (admin) accept → get_quotation
- * shows R2 current and R1 superseded. The connector opens and edits draft
- * revisions only; it never sends or accepts.
+ * §6 — the MCP connector's revision contract (acceptance test 6, as agreed:
+ * the FOUNDER opens revisions). (admin) Revise → connector update_draft_quotation
+ * → (admin) accept → connector get_quotation shows R2 current and R1
+ * superseded. The connector only edits draft revisions — it never opens a
+ * revision, sends, or accepts.
  */
 class ConnectorRevisionTest extends TestCase
 {
@@ -75,6 +77,14 @@ class ConnectorRevisionTest extends TestCase
         return $ref;
     }
 
+    /** The founder's "Revise" in the admin — the only way a revision opens. */
+    private function revise(string $ref, string $reason): TestResponse
+    {
+        $id = Quotation::where('reference_code', $ref)->value('id');
+
+        return $this->postJson("/api/v1/admin/quotations/{$id}/revisions", ['change_reason' => $reason], $this->admin());
+    }
+
     private const R2_UPDATE = [
         'client' => ['name' => 'M Automobile', 'email' => 'm-auto@example.com'],
         'project' => 'Sistem Bengkel — Pakej B · 40/40/20',
@@ -87,22 +97,23 @@ class ConnectorRevisionTest extends TestCase
         'reseed_document' => true,
     ];
 
-    public function test_create_revision_update_accept_get_quotation(): void
+    public function test_founder_revises_connector_updates_founder_accepts(): void
     {
         $ref = $this->acceptedViaConnector();
 
-        // An accepted quote can't be edited until a revision is opened.
+        // An accepted quote can't be edited until the founder opens a revision.
         $this->putJson("/api/v1/connector/quotations/{$ref}", self::R2_UPDATE, $this->connector())
             ->assertStatus(422)
-            ->assertJsonPath('message', fn (string $m) => str_contains($m, 'create_revision'));
+            ->assertJsonPath('message', fn (string $m) => str_contains($m, 'only the founder opens'));
 
-        // create_revision → R2 draft.
-        $this->postJson("/api/v1/connector/quotations/{$ref}/revisions", ['change_reason' => 'Client switched to the 40/40/20 plan'], $this->connector())
-            ->assertCreated()
-            ->assertJsonPath('reference_code', $ref)
-            ->assertJsonPath('revision_number', 2)
+        // The founder revises in the admin → R2 draft, visible to the connector.
+        $this->revise($ref, 'Client switched to the 40/40/20 plan')->assertCreated();
+        $this->getJson("/api/v1/connector/quotations/{$ref}", $this->connector())
+            ->assertOk()
+            ->assertJsonPath('data.revision.number', 2)
             ->assertJsonPath('data.revision.status', 'draft')
             ->assertJsonPath('data.revision.replaces', 1)
+            ->assertJsonPath('data.revision.editable', true)
             ->assertJsonPath('data.family.status', 'accepted')
             ->assertJsonPath('data.family.current_revision_number', 1)
             ->assertJsonPath('data.family.draft_revision_number', 2);
@@ -145,23 +156,20 @@ class ConnectorRevisionTest extends TestCase
         $this->assertSame(0, Invoice::where('type', 'adjustment')->count());
     }
 
-    public function test_only_one_open_revision_and_a_reason_is_required(): void
+    public function test_the_connector_cannot_open_a_revision(): void
     {
         $ref = $this->acceptedViaConnector();
 
-        $this->postJson("/api/v1/connector/quotations/{$ref}/revisions", [], $this->connector())
-            ->assertStatus(422)->assertJsonValidationErrors(['change_reason']);
-
-        $this->postJson("/api/v1/connector/quotations/{$ref}/revisions", ['change_reason' => 'First change'], $this->connector())->assertCreated();
-        $this->postJson("/api/v1/connector/quotations/{$ref}/revisions", ['change_reason' => 'Second change'], $this->connector())
-            ->assertStatus(422)
-            ->assertJsonPath('message', "R2 of {$ref} is still draft — edit, send or discard it before opening another revision.");
+        // There is no connector route for it — revising is the founder's call.
+        $this->postJson("/api/v1/connector/quotations/{$ref}/revisions", ['change_reason' => 'Sneaky change'], $this->connector())
+            ->assertNotFound();
+        $this->assertSame(1, Quotation::where('reference_code', $ref)->firstOrFail()->revisions()->count());
     }
 
     public function test_list_quotations_shows_the_revision_in_progress(): void
     {
         $ref = $this->acceptedViaConnector();
-        $this->postJson("/api/v1/connector/quotations/{$ref}/revisions", ['change_reason' => 'Plan change'], $this->connector())->assertCreated();
+        $this->revise($ref, 'Plan change')->assertCreated();
 
         $row = collect($this->getJson('/api/v1/connector/quotations?status[]=draft', $this->connector())->assertOk()->json('data'))
             ->firstWhere('reference_code', $ref);
@@ -188,7 +196,7 @@ class ConnectorRevisionTest extends TestCase
     public function test_a_connector_token_cannot_reach_the_admin_accept(): void
     {
         $ref = $this->acceptedViaConnector();
-        $this->postJson("/api/v1/connector/quotations/{$ref}/revisions", ['change_reason' => 'Plan change'], $this->connector())->assertCreated();
+        $this->revise($ref, 'Plan change')->assertCreated();
 
         $id = Quotation::where('reference_code', $ref)->value('id');
         $this->postJson("/api/v1/admin/quotations/{$id}/accept", [], $this->connector())->assertForbidden();

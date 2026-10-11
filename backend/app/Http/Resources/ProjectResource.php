@@ -25,6 +25,13 @@ class ProjectResource extends JsonResource
             'sort_order' => $this->sort_order,
             'cover_image_url' => $this->cover_image_url,
             'active' => $this->active,
+            // Detail page only — the "Built with" credit (public credits of live partners).
+            'partners' => $this->whenLoaded('publicPartners', fn () => $this->publicPartners->map(fn ($partner) => [
+                'slug' => $partner->slug,
+                'name' => $partner->name,
+                'symbol_url' => $partner->symbol_url,
+                'mode' => $partner->pivot->mode,
+            ])->values()),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

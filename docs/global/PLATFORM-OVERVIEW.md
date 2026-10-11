@@ -269,7 +269,7 @@ All theming is via **CSS variables** in `app/assets/css/main.css` (never hardcod
 
 The public **layout** (`public.vue`) wraps every storefront page:
 - **Header:** brand mark, nav (Home · About · Company · Blog · Projects · Services · Partners · Contact), dark-mode toggle, "Let's talk" CTA, mobile drawer. Smart-hides on scroll-down, reveals on scroll-up.
-- **Footer:** company registration block (Axel Nova Ventures, 202603119899 / CA0420977-U, Kuala Lumpur) with an availability dot; 5 link columns (Explore, Services, Support, Legal); bottom bar with socials (GitHub, LinkedIn, portfolio, email) + a discreet admin link.
+- **Footer** (`components/public/SiteFooter.vue`, apple.com-style): link directory (Explore, Services, Support, Legal) as accordion rows on phones and four columns from `md`; company registration lines (Axel Nova Ventures, 202603119899 / CA0420977-U, Kuala Lumpur); bottom bar with copyright, socials (GitHub, LinkedIn, portfolio, email) + a discreet admin link.
 
 ### Page-by-page
 
@@ -292,7 +292,7 @@ The public **layout** (`public.vue`) wraps every storefront page:
 | `/investor/roofly` | **Investor brief** | `noindex`. Roofly investor materials hub — pitch deck / investment package / financial summary cards + "request a walkthrough" mailto. |
 | `/legal/privacy-policy` · `/legal/terms` · `/legal/cookies` · `/legal/disclaimer` · `/legal/refund` | **Legal** | Five PDPA-aware policy pages with cross-links and "last updated" dates. |
 
-**Storefront integrations:** Web3Forms (partner referral form only, access key `a9100b0c-…`), Calendly (`calendly.com/baihaqie` discovery-call link), Ko-fi (support link). Sitemap excludes `/admin/**`, `/portal/**`, `/proposals/**`, `/quote/preview`, `/quote/success`, `/investor/**`.
+**Storefront integrations:** Web3Forms (partner referral form only, access key `a9100b0c-…`), Calendly (`calendly.com/baihaqie` discovery-call link), the footer's "Support Our Work" → `/support` (DuitNow QR + OCBC account; replaced Ko-fi), "Give Feedback" → the Google Business Profile review link. Sitemap excludes `/admin/**`, `/portal/**`, `/proposals/**`, `/quote/preview`, `/quote/success`, `/investor/**`.
 
 ---
 

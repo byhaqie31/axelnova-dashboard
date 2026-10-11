@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { classifyScopeFields, type ScopeField } from '~/utils/scopeFields'
+import { classifyScopeFields, type ScopeReadoutField } from '~/utils/scopeFields'
 
 /** One curated scope group from the API (ScopeSummary::forQuotation). */
 export interface ScopeGroup {
@@ -30,7 +30,7 @@ const groups = computed(() => {
     ? s
     : [{ package_key: null, label: null, scope: s }]
   return raw
-    .map(g => ({ ...g, fields: classifyScopeFields(g.scope) as ScopeField[] }))
+    .map(g => ({ ...g, fields: classifyScopeFields(g.scope) as ScopeReadoutField[] }))
     .filter(g => g.fields.length)
 })
 

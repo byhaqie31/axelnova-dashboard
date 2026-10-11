@@ -11,7 +11,7 @@ How the public site (axelnovaventures.com) is set up for search, and the rules n
 
 ## Service pages
 
-The service list is admin data (`GET /v1/services`). Each category gets `/services/{slug}`; [pages/public/services/[slug].vue](../../frontend/app/pages/public/services/[slug].vue) layers optional per-slug SEO copy (`enrichmentBySlug`: `seoTitle`, `seoDescription`, a keyword-led `h1`, hero copy, FAQs) on top. A category without an entry still renders with its admin name and description. The footer's **Services** column is built from the same API, so every service page is linked from every page of the site — that's how crawlers find them (the `/services` tabs only link the active one).
+The service list is admin data (`GET /v1/services`). Each category gets `/services/{slug}`; [pages/public/services/[slug].vue](../../frontend/app/pages/public/services/[slug].vue) layers optional per-slug SEO copy (`enrichmentBySlug`: `seoTitle`, `seoDescription`, a keyword-led `h1`, hero copy, FAQs) on top. A category without an entry still renders with its admin name and description. The footer's **Services** section is built from the same API, so every service page is linked from every page of the site — that's how crawlers find them (the `/services` tabs only link the active one). On phones that section is a collapsed accordion row, but its links are still in the server-rendered HTML — keep it that way (hide, never `v-if`).
 
 ## Structured data (JSON-LD)
 
@@ -26,7 +26,7 @@ The service list is admin data (`GET /v1/services`). Each category gets `/servic
 
 ## Sitemap and robots
 
-`@nuxtjs/sitemap` builds `/sitemap.xml` at request time: the static public pages, plus [server/api/__sitemap__/urls.ts](../../frontend/server/api/__sitemap__/urls.ts), which adds published blog posts, the admin's service categories and the projects (each source fails independently). `sitemap.exclude` in [nuxt.config.ts](../../frontend/nuxt.config.ts) removes everything private — admin, portal, proposals, feedback, investor, the team workspace and the signed-in partner pages (`/partners` and `/partners/refer` stay). Those pages are also `noindex`; don't list a `noindex` page in the sitemap. A new service, project or post appears automatically — nothing to redeploy.
+`@nuxtjs/sitemap` builds `/sitemap.xml` at request time: the static public pages, plus [server/api/__sitemap__/urls.ts](../../frontend/server/api/__sitemap__/urls.ts), which adds published blog posts, the admin's service categories and the projects (each source fails independently). `sitemap.exclude` in [nuxt.config.ts](../../frontend/nuxt.config.ts) removes everything private — admin, portal, proposals, feedback, investor, the team workspace and the signed-in partner pages (`/partners` and `/partners/refer` stay). Those pages are also `noindex`; don't list a `noindex` page in the sitemap. A new service, project or post appears automatically — nothing to redeploy. `/collaborations` and `/collaborations/trlabs` are static page files, so they are listed with the static pages; when a generic `/collaborations/[slug]` template arrives with a second partner, add a `collaborations` source to `urls.ts`.
 
 ## Outside the code
 

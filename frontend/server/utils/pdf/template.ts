@@ -433,7 +433,8 @@ function sectionHeaderHTML(title: string, promo?: string, alt = false): string {
  * it, so custom builder payloads can override per-document.
  *
  * KEEP IN SYNC with `DocumentMapper::BANK` (backend), which words the same
- * details into the panel notes.
+ * details into the panel notes, and `STUDIO_BANK` (app/data/studioPayment.ts),
+ * shown on the public /support page.
  */
 const STUDIO_PAY: PaymentInfo = {
   bank: "OCBC Bank",

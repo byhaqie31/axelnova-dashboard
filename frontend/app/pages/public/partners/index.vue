@@ -276,6 +276,14 @@ useScrollReveal('.reveal')
           </p>
         </div>
       </div>
+
+      <!-- Studios wanting to co-deliver (not refer) belong on /collaborations. -->
+      <p class="mt-8 text-[14px]" style="color: var(--color-text-secondary);">
+        Run a studio and want to build projects with us, not just refer them?
+        <NuxtLink to="/collaborations" class="font-medium link-underline" :style="{ color: 'var(--color-accent)' }">
+          See Collaborations
+        </NuxtLink>
+      </p>
     </section>
 
     <!-- HOW IT WORKS -->

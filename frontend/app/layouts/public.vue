@@ -2,6 +2,7 @@
 import type { ComponentPublicInstance } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import BrandMark from '~/components/shared/BrandMark.vue'
+import SiteFooter from '~/components/public/SiteFooter.vue'
 import { NAV_FLIGHT_KEY } from '~/composables/useNavFlight'
 import { MOTION } from '~/utils/motion'
 
@@ -32,31 +33,15 @@ const links = [
   { label: 'Home',     to: '/' },
   { label: 'About',    to: '/about' },
   { label: 'Company',  to: '/company' },
-  { label: 'Blog',     to: '/blog' },
+  { label: 'Collabs',  to: '/collaborations' },
   { label: 'Projects', to: '/projects' },
+  { label: 'Blog',     to: '/blog' },
   { label: 'Services', to: '/services' },
   { label: 'Partners', to: '/partners' },
   { label: 'Contact',  to: '/contact' },
 ]
 
-const socials = [
-  { label: 'GitHub',    href: 'https://github.com/byhaqie31',           icon: 'i-lucide-github',   external: true },
-  { label: 'LinkedIn',  href: 'https://linkedin.com/in/byhaqieyusri',   icon: 'i-lucide-linkedin', external: true },
-  { label: 'Portfolio', href: 'https://baihaqie.com',                   icon: 'i-lucide-globe',    external: true },
-  { label: 'Email',     href: 'mailto:baihaqie@axelnova.tech',          icon: 'i-lucide-mail',     external: false },
-]
-
 const isActive = (to: string) => to === '/' ? route.path === '/' : route.path.startsWith(to)
-
-// Footer "Services" column — the service categories managed in the admin, each
-// linking to its /services/{slug} page. Links on every page are how crawlers
-// find those pages (the /services tabs only link the active one). If the API
-// is down the column falls back to a single "All services" link.
-const { data: footerServices } = await useFetch(`${useApiBase()}/api/v1/services`, {
-  key: 'footer-services',
-  transform: (res: { data: { slug: string, name: string }[] }) => res.data.map(c => ({ label: c.name, to: `/services/${c.slug}` })),
-  default: () => [] as { label: string, to: string }[],
-})
 
 const toggleDark = () => {
   colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
@@ -254,7 +239,10 @@ if (import.meta.client) {
         >
           <BrandMark />
 
-          <ul class="hidden md:flex items-center gap-8">
+          <!-- Links from lg up: nine of them don't fit beside the brand + CTA at md
+               (measured: the bar overflowed by 47px at 768px with eight), so md
+               keeps the menu button. Tighter gaps until xl leave room at 1024px. -->
+          <ul class="hidden lg:flex items-center gap-5 xl:gap-8">
             <li v-for="l in links" :key="l.to">
               <NuxtLink
                 :to="l.to"
@@ -297,7 +285,7 @@ if (import.meta.client) {
             </NuxtLink>
 
             <button
-              class="md:hidden inline-flex items-center justify-center size-8 rounded-full"
+              class="lg:hidden inline-flex items-center justify-center size-8 rounded-full"
               :style="{ color: 'var(--color-text)' }"
               aria-label="Toggle menu"
               :aria-expanded="mobileOpen"
@@ -313,7 +301,7 @@ if (import.meta.client) {
           <button
             v-if="mobileOpen"
             type="button"
-            class="md:hidden fixed inset-0 top-14 z-30 cursor-default"
+            class="lg:hidden fixed inset-0 top-14 z-30 cursor-default"
             style="background: rgba(0, 0, 0, 0.32); backdrop-filter: blur(2px);"
             aria-label="Close menu"
             @click="mobileOpen = false"
@@ -322,7 +310,7 @@ if (import.meta.client) {
         <Transition name="drawer-panel">
           <aside
             v-if="mobileOpen"
-            class="md:hidden fixed left-3 right-3 top-17 z-40 rounded-2xl border shadow-2xl overflow-hidden"
+            class="lg:hidden fixed left-3 right-3 top-17 z-40 rounded-2xl border shadow-2xl overflow-hidden"
             :style="{
               borderColor: 'var(--color-border)',
               background: 'var(--nav-mobile-bg)'
@@ -406,134 +394,7 @@ if (import.meta.client) {
       <slot />
     </main>
 
-    <!-- The home page ends in a full-bleed colour band that should meet the footer;
-         every other page keeps the breathing room above it — unless it sets
-         `definePageMeta({ footerGap: false })` and owns its bottom spacing
-         (blog articles, which end on the CTA card). -->
-    <footer class="relative" :class="{ 'mt-32': route.path !== '/' && route.meta.footerGap !== false }" :style="{ background: 'var(--footer-bg)' }">
-      <div class="border-t" :style="{ borderColor: 'var(--color-border)' }">
-        <div class="max-w-7xl mx-auto px-6 pt-12 pb-8">
-
-          <!-- Main 5-column grid -->
-          <div class="grid grid-cols-2 lg:grid-cols-[1.8fr_1fr_1fr_1fr_1fr] gap-x-8 gap-y-10 mb-10">
-
-            <!-- Brand: full width on mobile, first col on desktop -->
-            <div class="col-span-2 lg:col-span-1 text-left">
-              <div class="flex justify-start mb-4">
-                <BrandMark />
-              </div>
-              <p class="text-[13px] leading-relaxed mb-5 max-w-xs" style="color: var(--color-text-secondary);">
-                Websites and business systems for Malaysian companies, designed and built in Kuala Lumpur.
-              </p>
-
-              <!-- SSM card -->
-              <div
-                class="inline-block text-left rounded-xl border px-4 py-3 mb-5"
-                :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)' }"
-              >
-                <p class="text-[12px] font-semibold tracking-tight mb-0.5" style="color: var(--color-text);">
-                  Axel Nova Ventures
-                </p>
-                <p class="text-[11px] font-medium" style="color: var(--color-text-tertiary);">
-                  Registration No.: 202603119899 (CA0420977-U)
-                </p>
-                <p class="text-[11px] mt-0.5" style="color: var(--color-text-tertiary);">
-                  Kuala Lumpur, Malaysia
-                </p>
-              </div>
-
-              <!-- Availability badge -->
-              <div class="flex items-center justify-start gap-2">
-                <span class="footer-avail-dot" aria-hidden />
-                <span class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
-                  Taking enquiries for new projects
-                </span>
-              </div>
-            </div>
-
-            <!-- Explore -->
-            <div class="text-left">
-              <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Explore</p>
-              <div class="flex flex-col items-start gap-2.5">
-                <NuxtLink
-                  v-for="l in links"
-                  :key="l.to"
-                  :to="l.to"
-                  class="text-[13px] transition-colors w-fit link-underline"
-                  style="color: var(--color-text-secondary);"
-                >
-                  {{ l.label }}
-                </NuxtLink>
-              </div>
-            </div>
-
-            <!-- Services -->
-            <div class="text-left">
-              <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Services</p>
-              <div class="flex flex-col items-start gap-2.5">
-                <NuxtLink v-for="s in footerServices" :key="s.to" :to="s.to" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">{{ s.label }}</NuxtLink>
-                <NuxtLink v-if="!footerServices.length" to="/services" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">All services</NuxtLink>
-              </div>
-            </div>
-
-            <!-- Support -->
-            <div class="text-left">
-              <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Support</p>
-              <div class="flex flex-col items-start gap-2.5">
-                <NuxtLink to="/contact" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Contact Us</NuxtLink>
-                <a href="https://ko-fi.com/axelnova" target="_blank" rel="noopener" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Support Our Work</a>
-                <a href="mailto:baihaqie@axelnova.tech?subject=Feedback%20—%20axelnovaventures.com" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Give Feedback</a>
-                <a href="mailto:baihaqie@axelnova.tech?subject=Issue%20Report%20—%20axelnovaventures.com" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Report an Issue</a>
-              </div>
-            </div>
-
-            <!-- Legal -->
-            <div class="text-left">
-              <p class="text-[11px] font-medium uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Legal</p>
-              <div class="flex flex-col items-start gap-2.5">
-                <NuxtLink to="/legal/privacy-policy" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Privacy Policy</NuxtLink>
-                <NuxtLink to="/legal/terms" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Terms & Conditions</NuxtLink>
-                <NuxtLink to="/legal/cookies" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Cookie Policy</NuxtLink>
-                <NuxtLink to="/legal/disclaimer" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Disclaimer</NuxtLink>
-                <NuxtLink to="/legal/refund" class="text-[13px] transition-colors w-fit link-underline" style="color: var(--color-text-secondary);">Refund Policy</NuxtLink>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bottom bar -->
-          <div class="border-t pt-6" :style="{ borderColor: 'var(--color-border)' }">
-            <div class="flex flex-col items-center gap-3 text-center lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-4 lg:text-left">
-              <p class="text-[12px] order-1 lg:order-0" style="color: var(--color-text-secondary);">
-                © 2026 Axel Nova Ventures. All rights reserved.
-              </p>
-              <div class="flex items-center gap-1 order-2 lg:order-0 lg:col-start-3 lg:justify-end">
-                <a
-                  v-for="social in socials"
-                  :key="social.label"
-                  :href="social.href"
-                  :target="social.external ? '_blank' : undefined"
-                  :rel="social.external ? 'noopener' : undefined"
-                  :aria-label="social.label"
-                  class="footer-social-btn"
-                  :style="{ color: 'var(--color-text-secondary)' }"
-                >
-                  <UIcon :name="social.icon" class="size-4" />
-                </a>
-                <NuxtLink
-                  to="/admin"
-                  aria-label="Admin access"
-                  title="Admin"
-                  class="footer-social-btn"
-                  :style="{ color: 'var(--color-text-tertiary)' }"
-                >
-                  <UIcon name="i-lucide-settings" class="size-4" />
-                </NuxtLink>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </footer>
+    <SiteFooter :links="links" />
 
     <!-- Consent banner (functional axn_ref attribution cookie is gated on this). -->
     <CookieConsent />
@@ -552,36 +413,6 @@ if (import.meta.client) {
 }
 .nav-bar {
   transition: height 0.3s ease;
-}
-
-.footer-avail-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 9999px;
-  background: var(--color-success);
-  box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.45);
-  animation: avail-pulse 2.4s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-@keyframes avail-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.45); }
-  50% { box-shadow: 0 0 0 5px rgba(48, 209, 88, 0); }
-}
-
-.footer-social-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 9999px;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.footer-social-btn:hover {
-  background: var(--color-bg-secondary);
-  color: var(--color-text) !important;
 }
 
 /* Mobile floating drawer */
@@ -603,7 +434,6 @@ if (import.meta.client) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .footer-avail-dot { animation: none; }
   .drawer-backdrop-enter-active,
   .drawer-backdrop-leave-active,
   .drawer-panel-enter-active,

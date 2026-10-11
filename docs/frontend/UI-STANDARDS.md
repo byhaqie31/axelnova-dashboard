@@ -131,12 +131,13 @@ Larger component families get their own prefixed token group in `main.css` (ligh
 
 - `--kanban-*` — team kanban board surfaces (§12.14)
 - `--calendar-*` — team calendar grid + day chips (§12.15)
+- `--collab-*` — studio-partner co-branding: the logo plate + each partner's brand colours (§7 "Partner co-branding")
 
 ---
 
 ## 3. Typography
 
-- **Body family:** Inter (fallback: SF Pro Display, system sans). Self-hosted via `@nuxt/fonts` (`fonts.families` in `nuxt.config.ts`, `global: true`, `display: swap`). `global` is required: the OG image renderer only sees fonts declared that way ([OG-IMAGES.md](./OG-IMAGES.md)).
+- **Body family:** Inter (fallback: the system sans, which is SF Pro on Apple via `-apple-system`; there are no named `SF Pro` entries, see [OG-IMAGES.md](./OG-IMAGES.md)). Self-hosted via `@nuxt/fonts` (`fonts.families` in `nuxt.config.ts`, `global: true`, `display: swap`). `global` is required: the OG image renderer only sees fonts declared that way ([OG-IMAGES.md](./OG-IMAGES.md)).
 - **Display family:** Outfit (`--font-display`, weights 400/500/600), used on signature headlines via the `.font-display` class — it sets the family only, so weight/tracking come from utilities (e.g. the hero headline is `font-display font-medium tracking-tight`). Falls back to Inter so headings never flash in a system face. Also self-hosted via `@nuxt/fonts`.
 - **Feature settings:** `cv11`, `ss01`. Body letter-spacing `-0.011em`.
 - **Headings:** weight `600`, letter-spacing `-0.022em`, line-height `1.08`. `h1` tightens to `-0.045em`.
@@ -311,6 +312,16 @@ A cover that 404s falls through to step 2 rather than leaving a broken image in 
 - **`ReferenceCode`** — monospace document-code display (e.g. `AXNQ-2026-0012`) with click-to-copy via `useClipboard`. Renders any string; falls back to plain span when `copyable={false}`.
 - **`DateRange`** — Intl `en-MY` formatted dates. Formats: `short`, `long`, `relative`. Accepts optional `prefix` ("Valid until", "Issued").
 - **`FeedbackScale`** (`components/shared/FeedbackScale.vue`) — the dot/pill rating scale shared by the public `/feedback/{token}` form and the admin review pages. Props: `modelValue`, `max` (5 ratings / 10 NPS), `min` (NPS passes 0), `readonly`, optional `labels` end-captions. Selected pill fills `--color-accent`, the run-up below fills `--color-accent-soft`; clicking the selected pill clears an optional score. No native inputs.
+
+### Partner co-branding
+
+Pages and cards for a studio partner (see [COLLABORATIONS.md](../global/COLLABORATIONS.md)) carry the partner's brand **through tokens only**:
+
+- **Scope class.** Wrap the partner's page, card or chip in `.collab-{slug}` (today: `.collab-trlabs`, defined last in `main.css`). It re-points `--color-accent`, `--color-accent-hover`, `--color-accent-soft`, `--grad-text-accent`, `--grad-cta` and `--shadow-glow` at the partner's `--collab-{slug}-*` tokens, so eyebrows, `.text-gradient`, `SectionHeader` rules, selected pills, focus glows and `.btn-pill-accent` all take the co-brand. Components never name a partner colour.
+- **The co-brand gradient** runs Axel Nova blue → violet → the partner's colour (`--grad-collab-trlabs`), so shared elements read as both studios.
+- **Dark mode picks the partner colour that passes contrast.** The TRLabs rust (`#832B00`) is the light-mode accent; on navy it fails contrast, so `.dark` swaps the accent to their orange (`#FF6B35`).
+- **Logo plates.** Every partner mark, and the Axel Nova mark it is paired with, sits on `.collab-logo-plate`: `--collab-logo-plate` is white in light mode and `#F5F5F7` in dark mode, with a hairline border and `--shadow-sm`. A dark-ink logo therefore stays legible in both themes without a second logo file.
+- **A new partner** gets its own `--collab-{slug}-*` tokens (light + `.dark`) and its own `.collab-{slug}` scope block. An unknown slug simply falls back to the house accent.
 
 ### `.icon-gradient`
 Fills an icon glyph with `--grad-text-accent`, so an icon paired with `.text-gradient` text reads as one lockup (the hero pill's "Axel Nova" chevron). Do **not** reach for `.text-gradient` on an icon — it clips a gradient to *text*, and an icon has none, so it renders as nothing. `UIcon` draws the glyph as a mask over `background-color: currentColor`, which is why replacing the background paints the glyph itself.

@@ -29,6 +29,8 @@ The current copy for the public site, written and adopted 29 September 2026 from
 
 **Featured mockups intro:** Explore working prototypes and open a preview without leaving this page. Use “client prototypes” only where the client has agreed to public display.
 
+**Collaborations (above the blog):** eyebrow "Collaborations", H2 *Built with trusted studios.*, intro *When a project needs more than one studio, Axel Nova Ventures brings in partners it trusts. You still get one team and one point of contact.*, action "All collaborations" → `/collaborations`, then the partner card(s).
+
 **Blog intro:** Notes on website design, business systems and the choices behind a useful interface.
 
 **Referral body:** Know a business that needs a website or custom system? Introduce them to Axel Nova Ventures. If the referral becomes a paid project, you may earn a commission under the Partner Program terms.
@@ -186,6 +188,50 @@ These pages need a clear service name in the H1, plain-language benefits first a
 
 **Order:** Feature work relevant to prospective clients first. Keep developer tools in a separate group so they remain available without leading the sales journey.
 
+## Collaborations `/collaborations`
+
+Studio partners, **not** the referral programme (`/partners`). "We" is right here because a partner really is involved; Qie's own reply to an applicant stays "I".
+
+**SEO title:** Studio Collaborations | Axel Nova Ventures
+
+**Meta description:** Axel Nova Ventures works with trusted studios in Malaysia to co-build, subcontract and refer projects. Meet our partners, or apply to collaborate.
+
+**Eyebrow:** Collaborations
+
+**H1:** Studios we build with.
+
+**Intro:** Some projects need more skills than one studio carries. Axel Nova Ventures works with a small circle of trusted studios, so you get one accountable team without gaps.
+
+**Partner cards:** heading = the two named logo cards "Axel Nova" × "{partner}" (no text title), "Collaboration · Since {year}", the partner summary, service chips, "See the collaboration →".
+
+**How it works H2:** Three ways we work with partners. *Every collaboration starts from the project, not the org chart. We pick the arrangement that gets you the right people.*
+
+- **Co-build:** Both studios work on one project, each owning the part it does best. You get one plan, one timeline and one point of contact.
+- **Subcontract:** When a project needs extra hands or a specific skill, the partner studio delivers that part to the lead studio's standard.
+- **Referral:** If your project fits the other studio better, we say so and make the introduction, so you start with the right team.
+
+**Partner with us H2:** Run a studio? Let's build together. *If you design or build for clients and want a partner for the parts you don't cover, tell me about your work. Good partners share a standard: clear scope, honest timelines and work that lasts.* Note: "Want to refer a client for a commission instead? See the Partner Program."
+
+## Axel Nova × TRLabs `/collaborations/trlabs`
+
+**SEO title:** Axel Nova × TRLabs | Studio Collaboration in Malaysia
+
+**Meta description:** Axel Nova Ventures and TRLabs are two founder-led studios in Malaysia working as one build team on websites, business systems, mobile apps and AI products.
+
+**Hero:** **H1** = the two logo cards, "Axel Nova" × "TRLabs" (one ×; no separate text headline) · "Collaboration · Since 2026" · *Two founder-led studios in Malaysia. One build team for projects that need both.* · CTA "Start a project together".
+
+**Meet TRLabs:** the partner `story` from the seeded row (drawn from trlabs.my), closing on their tagline, *Made to move you.* At a glance: founder, based in, builds, partners since, website.
+
+**Founders H2:** Two founders, one team. *Each studio is led by the person who does the work. On a shared project, you hear from both of us.*
+
+**Strengths H2:** What each studio brings. *On a shared build, each part is led by the studio that does it every day.* **Confirm with TRLabs before changing:**
+- Axel Nova Ventures: websites and booking portals; custom business systems and admin dashboards; backend, integrations and hosting.
+- TRLabs: brand-led websites and ecommerce; mobile apps; AI products.
+
+**Shared work H2:** Built together. Empty state: *Our first shared builds are under way. They'll appear here as they launch. Have a project that needs both studios? It could be one of them.*
+
+**Enquiry H2:** Start a project together. *Send one brief to both studios. It comes to Axel Nova first, and we plan the work with TRLabs from there.* Steps: send one brief · we plan it together · one proposal, one contact.
+
 ## Blog `/blog`
 
 **SEO title:** Websites, UX & Business Systems Blog | Axel Nova
@@ -295,11 +341,26 @@ These pages need a clear service name in the H1, plain-language benefits first a
 
 ## Footer
 
-**Tagline:** Websites and business systems for Malaysian companies, designed and built in Kuala Lumpur.
-
-**Status:** Taking enquiries for new projects.
+No tagline or availability status — the footer carries only the link directory, company identity and the copyright bar.
 
 **Company identity and registration:** Keep the current legal name and registration number only after confirming they match official records.
+
+**Support links:**
+- **Support Our Work** → `/support`, which replaced Ko-fi.
+- **Give Feedback** → the Google Business Profile review link (`share.google/E4dCt3twNxrFlVKRm`, opens in a new tab).
+
+## Support `/support`
+
+**SEO title:** Support Our Work | Axel Nova Ventures
+
+**Eyebrow / H1:** Support · *Support our work.*
+
+**Intro:** If a project, tool or note here has helped you, you can support the studio with a contribution of any amount. Scan the DuitNow QR, or transfer straight to our OCBC account.
+
+**Content:**
+- **QR card:** the static DuitNow QR. Caption: *Scan with any banking or e-wallet app that supports DuitNow, then key in the amount yourself.* Plus "Download QR".
+- **Bank card:** OCBC Bank, account number (with Copy), account name Axel Nova Ventures. The details come from `app/data/studioPayment.ts`.
+- **Thanks:** *Thank you for your support. It helps keep the projects and notes on this site going. If you'd like a thank-you note, send your transfer slip to baihaqie@axelnova.tech.*
 
 ## SEO setup and implementation priorities
 

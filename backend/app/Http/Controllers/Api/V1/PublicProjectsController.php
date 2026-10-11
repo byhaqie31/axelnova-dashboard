@@ -25,6 +25,7 @@ class PublicProjectsController extends Controller
         $project = Project::where('slug', $slug)
             ->where('active', true)
             ->withCount('likes')
+            ->with('publicPartners')
             ->firstOrFail();
 
         return new ProjectResource($project);

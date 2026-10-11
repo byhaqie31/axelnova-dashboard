@@ -19,16 +19,19 @@ export function humanizeScope(key: string): string {
 }
 
 export type ScopeKind = 'bool' | 'number' | 'text'
-export interface ScopeField { key: string; label: string; kind: ScopeKind; value: string; on: boolean }
+// A classified readout row. Not `ScopeField` — that name is the pricing-config
+// field (composables/usePricingEngine.ts), and two auto-imported exports with
+// one name make Nuxt warn "Duplicated imports" on every start.
+export interface ScopeReadoutField { key: string; label: string; kind: ScopeKind; value: string; on: boolean }
 
 // Pricing-control keys never belong in a human scope readout.
 const SKIP = new Set(['package_key', 'modifiers', 'addon_keys', 'rush', 'breakdown', 'category_key'])
 
 // Specs (numbers / text) lead; feature toggles (Yes/No) group together after them,
 // so the badges line up as one scannable block rather than scattered through the grid.
-export function classifyScopeFields(payload: Record<string, any> | null | undefined): ScopeField[] {
+export function classifyScopeFields(payload: Record<string, any> | null | undefined): ScopeReadoutField[] {
   if (!payload) return []
-  const fields: ScopeField[] = []
+  const fields: ScopeReadoutField[] = []
   for (const [k, v] of Object.entries(payload)) {
     if (SKIP.has(k) || v === '' || v === null || (Array.isArray(v) && !v.length)) continue
     // Objects and arrays-of-objects are structure (audit blobs, nested shapes),

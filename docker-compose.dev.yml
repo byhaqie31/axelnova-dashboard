@@ -54,6 +54,10 @@ services:
       NUXT_API_BASE: http://backend:8003
       # Browser hits the backend via the Mac host loopback (container hostnames don't resolve on the host).
       NUXT_PUBLIC_API_BASE: http://localhost:8003
+      # Dev-only, NOT a secret: a fixed OG-image signing key so local /_og/ URLs
+      # survive restarts and nuxt-og-image stops warning about an auto-generated
+      # one. Production sets its own in frontend/.env.production (DEPLOY.md).
+      NUXT_OG_IMAGE_SECRET: 6f9dd7c80523cebb4b50f7839ce17d5af130263894caa3dfa30c9fb14ec89212
     volumes:
       - ./frontend/app:/app/app
       - ./frontend/server:/app/server

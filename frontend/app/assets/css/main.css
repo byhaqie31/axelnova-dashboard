@@ -2,7 +2,10 @@
 @import "@nuxt/ui";
 
 @theme static {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  /* No named 'SF Pro …' entries: -apple-system / BlinkMacSystemFont already
+     resolve to SF Pro on Apple devices, and nuxt-og-image would otherwise try
+     (and fail) to download those names for the OG cards on every build. */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   /* Display face — Outfit. Used on signature headlines (.font-display). Falls
      back to Inter so headings never render in a system face mid-swap. */
   --font-display: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -183,6 +186,19 @@
   --calendar-chip-mine-fg: #0071E3;
   --calendar-chip-pool-bg: rgba(134, 134, 139, 0.12);
   --calendar-chip-pool-fg: #6E6E73;
+
+  /* Collaborations (/collaborations — UI-STANDARDS "Partner co-branding").
+     Partner logos always sit on the light plate, in BOTH modes, so a dark-ink
+     logo never vanishes on the navy page. A partner's brand colours are only
+     ever applied through its scope class (.collab-trlabs). */
+  --collab-logo-plate: #FFFFFF;
+  --collab-logo-plate-border: rgba(0, 0, 0, 0.08);
+  --collab-trlabs-ink: #832B00;   /* TRLabs rust — their wordmark */
+  --collab-trlabs-dot: #FF6B35;   /* TRLabs orange — the wordmark's dot */
+  --collab-trlabs-soft: rgba(131, 43, 0, 0.08);
+  --collab-trlabs-glow: rgba(255, 107, 53, 0.28);
+  /* Axel Nova blue → violet flowing into the TRLabs orange: the co-brand. */
+  --grad-collab-trlabs: linear-gradient(135deg, #0071E3 0%, #A855F7 52%, #FF6B35 100%);
 }
 
 .dark {
@@ -310,6 +326,15 @@
   --calendar-chip-mine-fg: #2997FF;
   --calendar-chip-pool-bg: rgba(161, 161, 166, 0.18);
   --calendar-chip-pool-fg: #A1A1A6;
+
+  /* Collaborations — dark. The plate stays light; the TRLabs rust fails
+     contrast on navy, so dark mode leads with their orange instead. */
+  --collab-logo-plate: #F5F5F7;
+  --collab-logo-plate-border: rgba(255, 255, 255, 0.16);
+  --collab-trlabs-ink: #FF6B35;
+  --collab-trlabs-soft: rgba(255, 107, 53, 0.14);
+  --collab-trlabs-glow: rgba(255, 107, 53, 0.34);
+  --grad-collab-trlabs: linear-gradient(135deg, #2997FF 0%, #C77DFF 52%, #FF6B35 100%);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -1134,3 +1159,26 @@ input[type="number"] {
 /* The introduction's editor is a short hook, not a section body. */
 .blog-editor.is-compact .ProseMirror { min-height: 84px; }
 .blog-editor .ProseMirror p.is-editor-empty:first-child::before { color: var(--color-text-tertiary); content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }
+
+/* Partner co-branding (/collaborations — UI-STANDARDS "Partner co-branding").
+   Wrap a partner's page or card in its scope class and every accent-driven
+   element inside — eyebrows, .text-gradient, SectionHeader rules, selected
+   pills, focus glows, .btn-pill-accent — takes the co-brand. Components never
+   name the partner's colours. Placed last so it beats `.dark .btn-pill-accent`. */
+.collab-trlabs {
+  --color-accent: var(--collab-trlabs-ink);
+  --color-accent-hover: var(--collab-trlabs-dot);
+  --color-accent-soft: var(--collab-trlabs-soft);
+  --grad-text-accent: var(--grad-collab-trlabs);
+  --grad-cta: var(--grad-collab-trlabs);
+  --shadow-glow: 0 0 0 4px var(--collab-trlabs-soft);
+}
+.collab-trlabs .btn-pill-accent { box-shadow: 0 8px 24px var(--collab-trlabs-glow); }
+.collab-trlabs .btn-pill-accent:hover { box-shadow: 0 12px 32px var(--collab-trlabs-glow); }
+
+/* The light tile every partner (and the paired Axel Nova) mark sits on. */
+.collab-logo-plate {
+  background: var(--collab-logo-plate);
+  border: 1px solid var(--collab-logo-plate-border);
+  box-shadow: var(--shadow-sm);
+}

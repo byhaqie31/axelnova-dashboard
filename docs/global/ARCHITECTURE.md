@@ -89,6 +89,13 @@ axelnova-dashboard/
 |-------|---------|
 | `blog_posts` | One row per article. Scalars (title, unique `slug`, `excerpt`, cover URL + alt, `category`, `format` — article\|guide\|tutorial\|case_study\|opinion\|news, the accent eyebrow — `tags` json, `cta_*`, `seo_*`, derived `reading_minutes`, `status` draft\|published, `published_at`) + a `sections` json column — the ordered list of `{id, heading, body_md, image_url, image_alt, quote, quote_by}`. **Markdown is the storage format**; `App\Support\BlogMarkdown` renders it to safe HTML on read (raw HTML stripped, unsafe links dropped). Images are URLs only. Soft-deletes; the slug unique index is absolute (deleted rows included), so `BlogPost::uniqueSlug` checks `withTrashed()`. Founder-authored from `/admin/blog`; only `published` rows are served publicly |
 
+### Collaborations (see [COLLABORATIONS.md](./COLLABORATIONS.md))
+
+| Table | Purpose |
+|-------|---------|
+| `collaboration_partners` | Studio partners on `/collaborations`, e.g. TRLabs. **Not** `referral_partners` (the `/partners` commission programme). Profile scalars (unique `slug`, name, tagline, summary, story, `logo_url`/`symbol_url` paths under `frontend/public/logos/`, website, founder, location), `services` json, `partner_since`, `active` (DB default false), `sort_order`. Soft-deletes. Seeded by data migration (TRLabs); no admin editor yet |
+| `collaboration_partner_project` | A project built with a partner: unique (partner, project), both FKs cascadeOnDelete, `mode` `co_build`\|`subcontract`\|`referral`, `role_note`, `credit_public`. Public only when partner active + `credit_public` + project active. `CollaborationPartner::linkProject()` defaults credit ON only for co-builds |
+
 ### Partner portal (portal restructure, Task 9 — type-aware referrer + investor)
 
 | Table | Purpose |
@@ -226,7 +233,6 @@ GET  /v1/connector/quotations             connector:read  — slim list of any n
 POST /v1/connector/quotations/draft       connector:draft — create a DRAFT quotation (priced or bespoke)
 GET  /v1/connector/quotations/{ref}       connector:read  — read back any quotation (AXNQ code; ?revision=N)
 PUT  /v1/connector/quotations/{ref}       connector:draft — update the quotation's DRAFT revision
-POST /v1/connector/quotations/{ref}/revisions  connector:draft — create_revision (new draft revision + change_reason)
 GET  /v1/connector/orders/{reference}     connector:read  — get_order: read-only money view (AXNO or AXNQ) — tally, netted plan, invoices
 GET  /v1/connector/blog/guide             connector:read  — blog writing guide (voice, structure, CTA defaults, formats, …)
 GET  /v1/connector/blog/posts             connector:read  — slim list of any non-deleted post
@@ -282,6 +288,13 @@ DELETE /v1/admin/blog/posts/{id}     Cockpit — soft delete
 POST   /v1/admin/blog/render         Cockpit — preview renderer over unsaved form state (saves nothing)
 GET    /v1/admin/blog/guide          Cockpit — writing guide + CTA defaults (config/blog.php, shared with the connector)
 
+# Collaborations (see COLLABORATIONS.md) — public, read-only (no admin editor yet)
+GET  /v1/collaborations              Public  — active studio partners (sort_order) + public projects_count
+GET  /v1/collaborations/{slug}       Public  — profile + publicly credited, active shared projects; else 404
+                                     (/v1/projects/{slug} also returns partners[] — public credits only)
+# POST /v1/inquiries also takes origin=partner (+ partner slug → collaboration_partner_id) and
+# origin=collaboration (+ portfolio_url, folded into the message) from the /collaborations pages.
+
 # Analytics (see ANALYTICS.md)
 POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)
 POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like
@@ -292,7 +305,7 @@ GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer �
 
 ## Frontend routes
 
-Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. A live blog change purges the cache on demand (`BlogPostObserver` → `SiteCache` → Nuxt `POST /_cache/purge`). See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
+Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/collaborations{,/**}`, `/support`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. A live blog change purges the cache on demand (`BlogPostObserver` → `SiteCache` → Nuxt `POST /_cache/purge`). See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
 
 
 ```
@@ -305,6 +318,11 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 /services             Services & pricing
 /about                About page
 /contact              Contact form → POST /v1/inquiries (origin=contact) — same pipeline as /quote
+/support              "Support Our Work" (footer) — DuitNow QR + OCBC account (data/studioPayment.ts), copy button
+/collaborations       Studio partners (NOT the /partners referral programme) — co-branded partner cards,
+                      the three ways of working, "Partner with us" → POST /v1/inquiries (origin=collaboration)
+/collaborations/trlabs  Axel Nova × TRLabs — hand-built co-branded page (.collab-trlabs scope); enquiry form
+                      → POST /v1/inquiries (origin=partner, partner=trlabs). See COLLABORATIONS.md
 /quote                Project inquiry form → POST /v1/inquiries (origin=quote)
 /quote/success        Post-submission confirmation
 /admin/login          Admin auth

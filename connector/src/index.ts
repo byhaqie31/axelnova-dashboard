@@ -13,12 +13,12 @@
  *     non-deleted quotation, whatever created it, any revision), get_order (an
  *     order's money view — read-only; invoices are issued / edited by hand);
  *     get_blog_guide, list_blog_posts, get_blog_post (ANY non-deleted post).
- *   • WRITE with a gate — create_draft_quotation, create_revision (a new DRAFT
- *     revision of a sent / accepted quote), update_draft_quotation (the
- *     quotation's DRAFT revision only); create_blog_draft, update_blog_draft
- *     (a post while it is a DRAFT; refused once published).
- *   • DESTROY never     — there is NO delete, publish, send, or accept tool;
- *     those are portal-only, by hand.
+ *   • WRITE drafts only — create_draft_quotation, update_draft_quotation (the
+ *     quotation's DRAFT revision only — revisions are opened by the founder,
+ *     "Revise" in the admin); create_blog_draft, update_blog_draft (a post
+ *     while it is a DRAFT; refused once published).
+ *   • NEVER             — there is NO revise, send, accept, delete or publish
+ *     tool; those are portal-only, by hand.
  */
 
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
@@ -47,8 +47,10 @@ import { authApp } from "./auth";
  * v5.1: get_order — READ-ONLY money view of an order (tally: paid + open
  * invoiced + still to bill vs the agreed total, the netted plan, every invoice
  * with its status / void reason, payments, Care Plan periods, revisions).
+ * v5.2: create_revision REMOVED — opening a revision is the founder's call
+ * (Revise in the admin); the connector only edits the draft revision.
  */
-const CONNECTOR_VERSION = "5.1.0";
+const CONNECTOR_VERSION = "5.2.0";
 
 const CATALOG_PATH = "/api/v1/connector/catalog";
 const QUOTATIONS_PATH = "/api/v1/connector/quotations";
@@ -433,8 +435,8 @@ export class AxelNovaMCP extends McpAgent<Env> {
     this.server.tool(
       "update_draft_quotation",
       [
-        "Update the DRAFT REVISION of a quotation — identified by its reference_code. A new quotation's R1 is a draft until sent; a sent or accepted quotation gets a draft revision (R2, R3 …) from create_revision. Any draft works, whoever created it (public funnel, admin, or this connector).",
-        "Refused (422) when the quotation has no draft revision (it was sent / accepted / rejected / expired and no revision is open): call create_revision with a change_reason first, then update that draft. A sent or accepted revision itself is never edited — the client saw (or agreed to) it.",
+        "Update the DRAFT REVISION of a quotation — identified by its reference_code. A new quotation's R1 is a draft until sent; a sent or accepted quotation only gets a draft revision (R2, R3 …) when the FOUNDER opens one (Revise in the admin, with a change reason) — you cannot open revisions. Any draft works, whoever created it (public funnel, admin, or this connector).",
+        "Refused (422) when the quotation has no draft revision (it was sent / accepted / rejected / expired and the founder has not revised it): tell the founder the change needs a revision and ask them to Revise it in the admin, then update that draft. A sent or accepted revision itself is never edited — the client saw (or agreed to) it.",
         "Takes the SAME input as create_draft_quotation — it fully re-specifies the pricing basis (package/packages/modifiers/add-ons/rush, or line_items, or a detailed proposal) and the client — so send the complete intended state, not a partial patch.",
         "It re-prices the estimate. The seeded document is regenerated from the new scope ONLY when it is still untouched (or you pass reseed_document: true); a document a human has edited by hand is preserved and only the estimate is re-priced (the response's document_reseeded tells you which happened).",
         "Pass reseed_document: true to force the document to be regenerated from the new scope even if it was hand-edited.",
@@ -506,40 +508,6 @@ export class AxelNovaMCP extends McpAgent<Env> {
       async ({ reference }) =>
         this.passthrough(await apiFetch(this.env, `${ORDERS_PATH}/${encodeURIComponent(reference)}`)),
     );
-
-    this.server.tool(
-      "create_revision",
-      [
-        "Open a NEW DRAFT REVISION of a quotation that was already sent or accepted — the way to change terms after the client has seen them (e.g. they switch payment plan).",
-        "It copies the latest sent / accepted revision into a new draft (R2, R3 …) carrying your change_reason, which is printed on the new revision's PDF and shown on the order timeline. Then call update_draft_quotation to change the terms.",
-        "Nothing is sent and nothing is accepted: the founder sends or accepts the revision in the admin. Accepting a revision of an ACCEPTED quotation supersedes the old terms on the SAME order (unpaid invoices voided, paid ones kept, the new schedule netted against what was paid).",
-        "Revising a SENT revision withdraws it (the client gets the replacement; the founder can undo by discarding the new draft).",
-        "Refused (422, naming it) while another revision is still draft or sent, and once the order is completed or cancelled. A brand-new quotation that has never been sent needs no revision — just update_draft_quotation.",
-      ].join(" "),
-      {
-        reference_code: z.string().describe("The AXNQ reference code of the quotation to revise."),
-        change_reason: z
-          .string()
-          .min(1)
-          .max(500)
-          .describe("Why the quotation is changing, in the founder's words — e.g. 'Client switched to the 40/40/20 plan'."),
-        from_revision: z
-          .number()
-          .int()
-          .min(1)
-          .optional()
-          .describe("Revise this revision number. Omit to revise the sent one, else the accepted one."),
-      },
-      async ({ reference_code, ...body }) =>
-        this.passthrough(
-          await apiFetch(this.env, `${QUOTATIONS_PATH}/${encodeURIComponent(reference_code)}/revisions`, {
-            method: "POST",
-            body: JSON.stringify(body),
-          }),
-        ),
-    );
-
-    // ── Blog ────────────────────────────────────────────────────────────────
 
     this.server.tool(
       "get_blog_guide",

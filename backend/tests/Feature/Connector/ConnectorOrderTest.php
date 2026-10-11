@@ -62,8 +62,8 @@ class ConnectorOrderTest extends TestCase
 
     /**
      * M Automobile: R1 instalment (RM 2,700 deposit paid, instalment 1 invoiced but
-     * unpaid), revised through the connector to 40/40/20 on RM 10,800 and
-     * accepted in the admin. Returns [reference, order].
+     * unpaid), revised by the founder, edited through the connector to 40/40/20
+     * on RM 10,800, and accepted in the admin. Returns [reference, order].
      *
      * @return array{0: string, 1: Order}
      */
@@ -96,7 +96,8 @@ class ConnectorOrderTest extends TestCase
             ->assertCreated();
 
         Carbon::setTestNow('2026-10-11 09:00:00');
-        $this->postJson("/api/v1/connector/quotations/{$ref}/revisions", ['change_reason' => 'Client switched to the 40/40/20 plan'], $this->connector())->assertCreated();
+        // The founder opens the revision; the connector only edits the draft.
+        $this->postJson("/api/v1/admin/quotations/{$id}/revisions", ['change_reason' => 'Client switched to the 40/40/20 plan'], $this->admin())->assertCreated();
         $this->putJson("/api/v1/connector/quotations/{$ref}", [
             'client' => $client,
             'detailed' => $this->detailed(10800, [
