@@ -62,6 +62,17 @@ All colors are semantic CSS variables defined in `:root` (light) and `.dark` (da
 | `--status-superseded-fg` / `-bg` | `#A855F7` / `rgba(168,85,247,0.10)` | `#C77DFF` / `rgba(199,125,255,0.16)` | A revision a later accepted one replaced — history, not an error (same family as `viewed`) |
 | `--status-discarded-fg` / `-bg` | `#86868B` / `rgba(134,134,139,0.14)` | `#A1A1A6` / `rgba(161,161,166,0.18)` | A draft revision thrown away (same neutral as `void` / `archived`) |
 
+**Email delivery pill keys** (`AdminEmailHistory`, mapped by `utils/emailStatus.ts`). Aliases of existing tones — no new colours, and `.dark` overrides of the base tones carry through. Plain `delivered` stays the purple order hand-over, so a delivered *email* uses its own key:
+
+| Key | Aliases | Label |
+|---|---|---|
+| `email_delivered` | `succeeded` (green) | Delivered |
+| `delayed` | `expired` (amber) | Delayed |
+| `bounced` | `failed` (red) | Bounced |
+| `complained` | `failed` (red) | Spam complaint |
+
+`sent` and `failed` reuse their existing keys.
+
 ### Chart series
 
 For two-series charts (currently `/admin/revenue`). **Never reuse the status colors

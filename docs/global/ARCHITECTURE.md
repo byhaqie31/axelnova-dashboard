@@ -20,7 +20,8 @@ axelnova-dashboard/
 | Backend | Laravel 11, PHP 8.4+ |
 | Database | MySQL 8 (shared via [axelnova-infra](../../../axelnova-infra/)) |
 | Queue | Laravel database queue |
-| Email | SMTP — Mailtrap in dev, Mailgun/Postmark/SES in prod |
+| Email | Resend over SMTP in prod with the Hostinger mailbox as automatic backup (`failover`), Mailtrap in dev; HTML templates from the owner's design kit; every send logged in `email_logs` — see [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md) |
+| Scheduler | One `scheduler` container (`schedule:work`); tasks in `routes/console.php` |
 | Auth | Laravel Sanctum bearer tokens — three isolated user surfaces (admin cockpit / team workspace / partner portal), each minting tokens with its own ability (`cockpit` / `workspace` / `partner`) enforced by the `abilities:` middleware, plus a machine-only **MCP connector** surface (`connector:read`/`connector:draft` — see [MCP-CONNECTOR.md](./MCP-CONNECTOR.md)). Admin → Team jump via `POST /v1/admin/team-session` token exchange |
 
 ## Database tables
@@ -75,6 +76,12 @@ axelnova-dashboard/
 |-------|---------|
 | `feedback` | One review per order — `ORDERS \|\|--o\| FEEDBACK : "reviewed by"` (`order_id` unique + nullable so admin can log standalone feedback; `client_id` denormalised). Token-gated client submission (`public_token`), `AXNF-` reference codes, overall + four dimension scores + NPS, publish lifecycle `pending → approved → published` gated on `publish_consent`. Soft-deletes |
 
+### Email log (see [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md))
+
+| Table | Purpose |
+|-------|---------|
+| `email_logs` | One row per email that left (or finally failed to leave) the dashboard: catalog `type`, `audience`, the record it's about (`related_type` short alias + `related_id`), recipient, subject, `route` (resend / hostinger), forward-only `status` (sent → delayed → delivered → bounced/failed → complained) advanced by the Resend webhook, our `message_id` + Resend's `provider_id`, `triggered_by` user, `alerted_at`. No bodies stored |
+
 ### Team workspace (portal restructure, Task 5/6/7)
 
 | Table | Purpose |
@@ -123,6 +130,12 @@ POST /v1/partner/login               Public, throttled — mints ['partner'] tok
                                      guard (external_accounts — referrer OR investor, Task 9)
 POST /v1/partner/forgot-passcode     Public, throttled — self-service passcode reissue (active
                                      accounts of either type; silent for unknown emails)
+
+# Email (see EMAIL-SYSTEM.md)
+POST /v1/webhooks/resend             Public, Svix-signed (RESEND_WEBHOOK_SECRET), 600/min — Resend
+                                     delivery reports advance email_logs.status forward-only
+GET  /v1/admin/emails                Sanctum (cockpit) — email history: ?related_type=&related_id=
+                                     or ?email= ; newest first, 25/page (AdminEmailHistory panel)
 POST /v1/admin/team-session          Cockpit — exchanges the admin session for a fresh workspace
                                      token (the admin→team direct sign-in; audited per call)
 
@@ -416,8 +429,13 @@ POST /api/v1/quote-requests
        ├─ ReferenceCodeGenerator::generate()
        ├─ QuoteRequest::create()
        ├─ QuoteRequestAddon::create() (for each addon)
-       ├─ SendClientQuoteEmail::dispatch()  → emails the customer their estimate (HTML, no attachment)
-       └─ NotifyAdminJob::dispatch()        → emails admin so they can follow up via /admin/leads
+       ├─ SendClientQuoteEmail::dispatch()  → ClientEstimateMail: the customer's estimate (HTML, no attachment)
+       └─ NotifyAdminJob::dispatchForNewLead() → AdminNotificationMail to the owner (10s delay outside production)
+
+POST /api/v1/admin/quotations/{id}/send
+  └─ SendClientQuoteEmail::dispatch($id, $revisionId) → ClientQuotationMail: the formal quotation
+
+Every send → email_logs row (MessageSent listener); final failure → failed row + owner alert.
 ```
 
 The customer's estimate is rendered **inline** in the email body (reference code, package, modifiers, add-ons, breakdown, valid-until date). No PDF, no attachments, no external object storage — admin handles the full conversation via the leads portal.
@@ -431,7 +449,10 @@ See `backend/.env.example` for the full list. Key variables:
 | `NUXT_PUBLIC_API_BASE` | Backend base URL (set in `docker-compose.dev.yml` for dev) |
 | `FRONTEND_URL` | The app / admin-cockpit origin + the CORS anchor |
 | `PUBLIC_SITE_URL` | The PUBLIC site where clients/partners/teammates land — used for the referral link, client quote-PDF links, and partner/team login emails. Set this when admin runs on its own subdomain (`FRONTEND_URL=https://admin.example.com`, `PUBLIC_SITE_URL=https://example.com`); falls back to `FRONTEND_URL` when unset |
-| `MAIL_*` | SMTP for outbound mail (Mailtrap in dev) |
+| `MAIL_MAILER` | `failover` in prod (Resend → Hostinger), `smtp` (Mailtrap) in dev |
+| `MAIL_*` | The Hostinger SMTP route in prod / Mailtrap in dev |
+| `RESEND_SMTP_KEY` / `RESEND_WEBHOOK_SECRET` | Resend SMTP password (API key) and webhook signing secret |
+| `EMAIL_LOGO_URL` | Optional — absolute URL of the email header logo PNG (defaults to `{PUBLIC_SITE_URL}/email/axn-mark.png`) |
 | `ADMIN_NOTIFICATION_EMAIL` | Where new lead notifications go |
 | `ADMIN_CALENDLY_URL` | Optional CTA URL in the customer email |
 

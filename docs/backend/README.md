@@ -19,7 +19,7 @@ php artisan key:generate
 Edit `.env` with your credentials:
 - `DB_*` — MySQL credentials
 - `AWS_*` — Cloudflare R2 credentials (endpoint format: `https://<account-id>.r2.cloudflarestorage.com`)
-- `MAIL_*` — SMTP provider (Mailgun, Postmark, etc.)
+- `MAIL_*` — SMTP: Mailtrap in dev; in prod the Hostinger backup route behind `MAIL_MAILER=failover` (Resend primary — `RESEND_SMTP_KEY`, `RESEND_WEBHOOK_SECRET`; see [EMAIL-SYSTEM.md](../global/EMAIL-SYSTEM.md))
 - `ADMIN_NOTIFICATION_EMAIL` — your email for lead notifications
 - `ADMIN_CALENDLY_URL` — your Calendly link (included in PDFs)
 

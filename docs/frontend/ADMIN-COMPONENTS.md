@@ -48,6 +48,10 @@ The admin surfaces of [QUOTATION-REVISIONS.md](../global/QUOTATION-REVISIONS.md)
 
 `AdminInvoiceForm` gained the `phase`, `care_plan` (a month picker bounded by the separate Care Plan period) and — edit only — `adjustment` types, and greys out anything the netting already settled.
 
+### `components/admin/EmailHistory.vue` — the "Emails" panel
+
+Every email the dashboard sent about a record, newest first, with Resend's delivery status — feed `GET /api/v1/admin/emails` (see [EMAIL-SYSTEM.md](../global/EMAIL-SYSTEM.md)). Props: `related-type` + `related-id` (an `EmailLog::RELATED` alias — `quotation`, `invoice`, `inquiry`, `feedback`, `user`, …) **or** `email` (everything sent to an address), plus an optional `title`. Rows: type label, `AdminStatusPill` (keys from `utils/emailStatus.ts`), recipient · time · who triggered it · "via Hostinger backup" when the backup route carried it, the bounce/failure reason, and a "View in Resend" link once Resend's id is known. Bounced / spam / failed rows get a danger border. Placed full-width below the main content on the quotation, invoice, inquiry, feedback and team-user pages (by record) and on the client and referral pages (by address — the referral page lists everything sent to the referrer). Order and payment pages get it in Phase 3, when order and receipt emails exist.
+
 ### `components/admin/ClientPicker.vue`
 
 Search-and-pick an existing client, or switch to "create a new client" fields.

@@ -1,6 +1,6 @@
 # Deploy & Ops — axelnova-dashboard
 
-Production runs at **https://axelnovaventures.com**. Stack lives on a Hostinger VPS (`vps` SSH alias) — backend, frontend, and queue worker in Docker via [docker-compose.prod.yml](./docker-compose.prod.yml). Public traffic arrives over a **Cloudflare Tunnel** (`cloudflared`) which hands off to system **nginx** on loopback; nginx still terminates TLS and routes to the containers. See [Edge & tunnel](#edge--tunnel) — the tunnel is not optional, the direct origin path is broken.
+Production runs at **https://axelnovaventures.com**. Stack lives on a Hostinger VPS (`vps` SSH alias) — backend, frontend, queue worker and scheduler in Docker via [docker-compose.prod.yml](./docker-compose.prod.yml). Public traffic arrives over a **Cloudflare Tunnel** (`cloudflared`) which hands off to system **nginx** on loopback; nginx still terminates TLS and routes to the containers. See [Edge & tunnel](#edge--tunnel) — the tunnel is not optional, the direct origin path is broken.
 
 ## Daily flow
 
@@ -39,6 +39,7 @@ Total: ~30s when only source changes; ~2 min for a full rebuild (PHP extension r
 | Frontend (Nuxt 4 SSR) | `axelnova-frontend` container | Built from [frontend/Dockerfile](./frontend/Dockerfile), port 3000 → host 3003 |
 | Backend (Laravel 11) | `axelnova-backend` container | nginx + php-fpm via supervisord, built from [backend/Dockerfile](./backend/Dockerfile), port 8003 |
 | Queue worker | `axelnova-queue` container | Same image as backend; runs `php artisan queue:work`. Healthcheck disabled (no HTTP server) |
+| Scheduler | `axelnova-scheduler` container | Same image; runs `php artisan schedule:work` (tasks in `routes/console.php`, e.g. the hourly quote-expiry sweep). **Exactly one** — a second instance would run every task twice. Healthcheck disabled |
 | MySQL | `axelnova-mysql` (shared infra at `~/infra/`) | Shared with portfolio-v2; reachable as `mysql:3306` from app containers via `axelnova-shared` Docker network |
 | TLS cert | `/etc/letsencrypt/live/axelnovaventures.com/` | Let's Encrypt (ECDSA), auto-renewed via certbot timer. Covers `axelnovaventures.com`, `www.axelnovaventures.com`, `admin.axelnovaventures.com`; expires 2026-11-24. HTTP-01 renewal through the tunnel is verified working — see [ACME through the tunnel](#acme-through-the-tunnel) |
 
@@ -171,6 +172,12 @@ docker compose -f docker-compose.prod.yml exec backend php artisan tinker
 # Restart queue worker (after code changes touching jobs)
 docker compose -f docker-compose.prod.yml exec backend php artisan queue:restart
 
+# Email: send a test through the live mailer and print its email-log row
+docker compose -f docker-compose.prod.yml exec backend php artisan mail:test delivered@resend.dev
+
+# Scheduler: what's scheduled and when
+docker compose -f docker-compose.prod.yml exec scheduler php artisan schedule:list
+
 # Failed jobs
 docker compose -f docker-compose.prod.yml exec backend php artisan queue:failed
 docker compose -f docker-compose.prod.yml exec backend php artisan queue:retry all
@@ -193,9 +200,26 @@ docker compose -f docker-compose.prod.yml up -d --force-recreate
 ```
 
 Required values to fill on first setup:
-- **Backend**: `APP_KEY` (`base64:` + base64-encoded 32 random bytes), `DB_PASSWORD`, `MAIL_PASSWORD`
+- **Backend**: `APP_KEY` (`base64:` + base64-encoded 32 random bytes), `DB_PASSWORD`, `MAIL_PASSWORD` (the Hostinger backup route), `RESEND_SMTP_KEY` + `RESEND_WEBHOOK_SECRET` (see [Email (Resend)](#email-resend))
 
 `SANCTUM_STATEFUL_DOMAINS` doesn't need to be set — the Sanctum stateful middleware is route-scoped to admin endpoints only ([backend/routes/api.php](./backend/routes/api.php)). Public POSTs (the quote form) don't trigger CSRF protection.
+
+## Email (Resend)
+
+Production sends through **Resend over SMTP** with the **Hostinger mailbox SMTP as automatic backup** (`MAIL_MAILER=failover`) — design: [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md). Hostinger mailboxes and the root MX records are untouched; inbound mail (including client replies) stays on Hostinger.
+
+**One-time Resend setup (owner):** account → add domain `axelnova.tech` (closest region to Malaysia) → add Resend's three DNS records in Cloudflare (`resend._domainkey` TXT, `send` MX, `send` TXT — never touch the root MX / SPF / `hostingermail-*` records) → Verify → API key with *Sending access* restricted to `axelnova.tech` (that key is the SMTP password).
+
+**Go-live order:**
+
+1. From the VPS, confirm the SMTP endpoint is reachable: `openssl s_client -starttls smtp -connect smtp.resend.com:587 -quiet` (expect a `250` banner; Ctrl-C to exit).
+2. Deploy the code with `MAIL_MAILER=smtp` still set — the email log starts recording (route `smtp`) and the scheduler starts.
+3. In Resend → Webhooks, create an endpoint `https://admin.axelnovaventures.com/api/v1/webhooks/resend` with events `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.bounced`, `email.complained`, `email.failed`, `email.suppressed`; copy its signing secret.
+4. In `backend/.env.production`: `MAIL_MAILER=failover`, `RESEND_SMTP_KEY=re_…`, `RESEND_WEBHOOK_SECRET=whsec_…` — then `docker compose -f docker-compose.prod.ghcr.yml up -d --force-recreate --no-deps backend queue scheduler` (the entrypoint re-caches config).
+5. Live checks: `php artisan mail:test delivered@resend.dev` → within a minute the row (admin → any page with the panel, or tinker `EmailLog::latest()->first()`) reaches `delivered`; `php artisan mail:test bounced@resend.dev` → reaches `bounced` and the owner alert arrives. Note which match worked (Message-ID or Resend id) in [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md#resend-webhook).
+6. After 1–2 clean weeks, tighten DMARC: `_dmarc.axelnova.tech` → `v=DMARC1; p=quarantine`.
+
+**Rollback:** `MAIL_MAILER=smtp` and recreate `backend queue scheduler` — sending returns to Hostinger directly; the log keeps working.
 
 ## Manual deploy (CI fallback)
 
