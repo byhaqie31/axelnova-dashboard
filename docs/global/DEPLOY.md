@@ -165,8 +165,8 @@ docker compose -f docker-compose.prod.yml logs -f
 # One service
 docker compose -f docker-compose.prod.yml logs -f backend
 
-# Tinker / artisan inside backend
-docker compose -f docker-compose.prod.yml exec backend php artisan tinker
+# Artisan inside backend (no tinker in the prod image — it's a dev dependency)
+docker compose -f docker-compose.prod.yml exec backend php artisan config:show mail.default
 
 # Restart queue worker (after code changes touching jobs)
 docker compose -f docker-compose.prod.yml exec backend php artisan queue:restart
@@ -215,7 +215,17 @@ Production sends through **Resend over SMTP** with the **Hostinger mailbox SMTP 
 2. Deploy the code with `MAIL_MAILER=smtp` still set — the email log starts recording (route `smtp`) and the scheduler starts.
 3. In Resend → Webhooks, create an endpoint `https://admin.axelnovaventures.com/api/v1/webhooks/resend` with events `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.bounced`, `email.complained`, `email.failed`, `email.suppressed`; copy its signing secret.
 4. In `backend/.env.production`: `MAIL_MAILER=failover`, `RESEND_SMTP_KEY=re_…`, `RESEND_WEBHOOK_SECRET=whsec_…` — then `docker compose -f docker-compose.prod.ghcr.yml up -d --force-recreate --no-deps backend queue scheduler` (the entrypoint re-caches config).
-5. Live checks: `php artisan mail:test delivered@resend.dev` → within a minute the row (admin → any page with the panel, or tinker `EmailLog::latest()->first()`) reaches `delivered`; `php artisan mail:test bounced@resend.dev` → reaches `bounced` and the owner alert arrives. Note which match worked (Message-ID or Resend id) in [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md#resend-webhook).
+5. Live checks (tinker isn't in the prod image — verify config with `php artisan config:show mail.default`, and secrets with `sh -c '[ -n "$RESEND_SMTP_KEY" ] && echo set'` inside the container):
+   - `docker compose -f docker-compose.prod.ghcr.yml exec -T backend php artisan mail:test delivered@resend.dev` → the printed `route` must be `resend` (`hostinger` = Resend rejected it and the backup sent it).
+   - A minute later, read the row:
+     ```bash
+     DB_PW=$(grep ^DB_PASSWORD= backend/.env.production | cut -d= -f2-)
+     docker exec -i axelnova-mysql mysql -uaxelnova_dashboard_user -p"$DB_PW" axelnova_dashboard_db \
+       -e "SELECT id, to_email, route, status, status_detail, provider_id IS NOT NULL AS resend_id FROM email_logs ORDER BY id DESC LIMIT 3;" 2>/dev/null
+     ```
+     → `status = delivered`, `resend_id = 1` (the webhook reached the server and the secret matches; Resend → Webhooks shows the deliveries as `200`).
+   - Repeat with `bounced@resend.dev` → `status = bounced`, and the owner alert email arrives.
+   - **Done 2026-10-12** — production is on `failover`, all checks passed.
 6. After 1–2 clean weeks, tighten DMARC: `_dmarc.axelnova.tech` → `v=DMARC1; p=quarantine`.
 
 **Rollback:** `MAIL_MAILER=smtp` and recreate `backend queue scheduler` — sending returns to Hostinger directly; the log keeps working.

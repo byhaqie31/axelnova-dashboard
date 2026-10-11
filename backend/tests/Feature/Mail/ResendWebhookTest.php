@@ -18,12 +18,18 @@ class ResendWebhookTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const SECRET = 'whsec_dGVzdC1zaWduaW5nLXNlY3JldC0xMjM0NTY3ODk=';
+    /**
+     * A throwaway Svix-format secret, assembled at runtime so no literal
+     * `whsec_…` value sits in the repo (GitHub secret scanning reads that
+     * prefix as a Stripe webhook secret).
+     */
+    private string $secret;
 
     protected function setUp(): void
     {
         parent::setUp();
-        config(['services.resend.webhook_secret' => self::SECRET]);
+        $this->secret = 'whsec_'.base64_encode('test-signing-secret-123456789');
+        config(['services.resend.webhook_secret' => $this->secret]);
         Carbon::setTestNow('2026-10-12 09:00:00');
     }
 
@@ -42,7 +48,7 @@ class ResendWebhookTest extends TestCase
     {
         $id = 'msg_'.md5($body);
         $timestamp ??= now()->getTimestamp();
-        $key = base64_decode(substr($secret ?? self::SECRET, 6));
+        $key = base64_decode(substr($secret ?? $this->secret, 6));
         $signature = base64_encode(hash_hmac('sha256', "{$id}.{$timestamp}.{$body}", $key, true));
 
         return [
