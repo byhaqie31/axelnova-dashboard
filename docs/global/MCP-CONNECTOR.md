@@ -158,6 +158,8 @@ php artisan connector:token --email=founder@example.com   # if there are several
 It revokes any prior `mcp-connector` token (so re-running **rotates**), mints a new one with `connector:read` + `connector:draft` and an `expires_at` of `--days` (default **30**), and prints the plaintext **once**. Paste it into the Worker secret (below).
 
 > **Lifetime.** The global `SANCTUM_EXPIRATION_MINUTES` cap (default **720 min = 12 h** in `config/sanctum.php` — a Phase-0 guard so leaked admin *login* tokens die fast) would otherwise kill this token half a day after minting, regardless of its own expiry. `AppServiceProvider` therefore exempts exactly the `mcp-connector` token from the global cap: its lifetime is its **own `expires_at`**. The exemption requires an explicit future expiry — a connector token minted without one falls back under the global cap. When it expires (or to rotate early), run `npm run rotate-token` from `connector/` — or the manual steps above.
+>
+> **Password resets leave it alone.** Using a set-up/reset link signs the account out everywhere *except* this token (`AccessLinks::redeem` — see [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md#credential-links-phase-2)): it's a machine credential minted from the VPS shell, not a login, so a founder "forgot password" never cuts Claude off. Revoke it deliberately with `rotate-token` or by deleting the row.
 
 ## Worker deploy (runbook)
 

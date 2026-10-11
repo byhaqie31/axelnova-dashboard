@@ -153,23 +153,20 @@ final class EmailSamples
 
             'partner.passcode' => fn () => [
                 'name' => 'Farid',
-                'email' => 'farid@example.com',
-                'passcode' => 'K7QX-2M9P',
-                'loginUrl' => 'https://example.com/',
+                'setupUrl' => 'https://example.com/',
+                'expiresIn' => '72 hours',
             ],
 
             'team.welcome' => fn () => [
                 'name' => 'Danial',
-                'email' => 'danial@example.com',
-                'password' => 'temp-9Xr2-Lm4q',
-                'loginUrl' => 'https://example.com/',
+                'setupUrl' => 'https://example.com/',
+                'expiresIn' => '72 hours',
             ],
 
             'team.password_reset' => fn () => [
                 'name' => 'Danial',
-                'email' => 'danial@example.com',
-                'password' => 'temp-3Hk8-Pz1w',
-                'loginUrl' => 'https://example.com/',
+                'resetUrl' => 'https://example.com/',
+                'expiresIn' => '60 minutes',
             ],
 
             'quotation.new_lead_alert' => fn () => [
@@ -305,8 +302,8 @@ final class EmailSamples
 
             'partner.reset_confirm' => fn () => [
                 'name' => 'Farid',
-                'confirmUrl' => 'https://example.com/',
-                'expiresIn' => '[link expiry]', // decided with the Phase 2 flow
+                'resetUrl' => 'https://example.com/',
+                'expiresIn' => '60 minutes',
             ],
 
             'task.assigned' => fn () => [
@@ -372,7 +369,7 @@ final class EmailSamples
 
             'admin.account_recovery' => fn () => [
                 'resetUrl' => 'https://example.com/',
-                'expiresIn' => '[link expiry]', // decided with the Phase 2 flow
+                'expiresIn' => '60 minutes',
             ],
 
             // Kit: 28-delivery-alert.html (the bounced case)

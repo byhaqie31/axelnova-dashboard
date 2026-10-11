@@ -8,12 +8,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Email 26 — heads-up to the founder that a partner (referrer OR investor)
- * used self-service "forgot passcode" and a fresh passcode was auto-issued to
- * them. Carries NO passcode — it's just a notice. Queued like every email
- * (spec §5.7).
+ * Email 26 — heads-up to the founder AFTER a partner (referrer OR investor)
+ * set a new passcode through a reset link (Phase 2). Carries no passcode.
  */
-class PartnerResetRequestedMail extends KitMailable implements ShouldQueue
+class PartnerPasscodeChangedMail extends KitMailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

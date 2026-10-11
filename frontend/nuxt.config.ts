@@ -54,6 +54,7 @@ export default defineNuxtConfig({
       '/team/**',
       '/partners/login',
       '/partners/forgot',
+      '/partners/set-passcode',
       '/partners/home',
       '/partners/profile',
       '/partners/documents',

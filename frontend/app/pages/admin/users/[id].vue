@@ -28,6 +28,8 @@ interface Profile {
   availability: 'available' | 'busy'
   monthly_allowance_myr: number | null
   deactivated_at: string | null
+  // Invited but hasn't chosen a password yet (Phase 2 set-up links).
+  setup_pending: boolean
   created_at: string
   phone: string | null
   bank_name: string | null
@@ -122,15 +124,11 @@ async function save() {
   }
 }
 
-// ── Deactivate / reactivate / reset password ───────────────────────────────
+// ── Deactivate / reactivate / send link ────────────────────────────────────
 // `pendingAction` doubles as the POST /users/{id}/{kind} path segment.
 const pendingAction = ref<'deactivate' | 'reactivate' | 'reset-password' | null>(null)
 const acting = ref(false)
 const isSelf = computed(() => !!profile.value && profile.value.id === meId.value)
-
-// One-time temporary password after a reset — the backend only stores the
-// hash, so this is the founder's only chance to copy it.
-const resetPassword = ref<string | null>(null)
 
 const confirmCopy = computed(() => {
   const name = profile.value?.name ?? ''
@@ -138,7 +136,9 @@ const confirmCopy = computed(() => {
     case 'deactivate':
       return { title: `Deactivate ${name}?`, body: 'Locks them out of the workspace and revokes their active sessions. Their payslip history is kept.', cta: 'Deactivate' }
     case 'reset-password':
-      return { title: `Reset ${name}’s password?`, body: 'A new temporary password is generated and emailed to them, and shown to you once. Their current password stops working and they’re signed out everywhere.', cta: 'Reset password' }
+      return profile.value?.setup_pending
+        ? { title: `Resend ${name}’s set-up link?`, body: 'They get a fresh link to choose their password. It works for 72 hours, and any earlier link stops working.', cta: 'Resend link' }
+        : { title: `Send ${name} a reset link?`, body: 'They get a link to choose a new password. It works for 60 minutes, and their current password keeps working until they use it. To lock them out now, deactivate instead.', cta: 'Send link' }
     default:
       return { title: `Reactivate ${name}?`, body: 'Restores their workspace access. They sign in fresh to get a new session.', cta: 'Reactivate' }
   }
@@ -151,10 +151,9 @@ async function confirmAction() {
   acting.value = true
   try {
     if (kind === 'reset-password') {
-      const res = await apiFetch<{ password: string }>(`/api/v1/admin/users/${p.id}/reset-password`, { method: 'POST' })
-      resetPassword.value = res.password
+      const res = await apiFetch<{ message?: string }>(`/api/v1/admin/users/${p.id}/reset-password`, { method: 'POST' })
       pendingAction.value = null
-      toast.success('Password reset', 'The new temporary password has been emailed to them.')
+      toast.success('Link sent', res.message ?? 'The link has been emailed to them.')
       return
     }
     const updated = await apiFetch<Partial<Profile>>(`/api/v1/admin/users/${p.id}/${kind}`, { method: 'POST' })
@@ -171,8 +170,7 @@ async function confirmAction() {
   }
 }
 onKeyStroke('Escape', () => {
-  if (pendingAction.value) { pendingAction.value = null; return }
-  if (resetPassword.value) resetPassword.value = null
+  if (pendingAction.value) pendingAction.value = null
 })
 
 function orNone(v: string | null): string {
@@ -284,9 +282,10 @@ const addressBlock = computed(() => {
               </div>
               <div v-if="!profile.deactivated_at" class="flex items-center gap-1.5 flex-wrap justify-end max-md:gap-2">
                 <button
-                  type="button" class="btn-table-action max-md:flex-1 max-md:h-10! max-md:text-[13px]!" title="Issue a new temporary password"
+                  type="button" class="btn-table-action max-md:flex-1 max-md:h-10! max-md:text-[13px]!"
+                  :title="profile.setup_pending ? 'They haven’t set a password yet — email a fresh set-up link' : 'Email a link to choose a new password'"
                   @click="pendingAction = 'reset-password'">
-                  <UIcon name="i-lucide-key-round" class="size-3.5" /> Reset password
+                  <UIcon name="i-lucide-mail" class="size-3.5" /> {{ profile.setup_pending ? 'Resend set-up link' : 'Send reset link' }}
                 </button>
                 <button
                   type="button" class="btn-table-action is-danger max-md:flex-1 max-md:h-10! max-md:text-[13px]!"
@@ -341,7 +340,7 @@ const addressBlock = computed(() => {
       <AdminEmailHistory related-type="user" :related-id="profile.id" />
     </template>
 
-    <!-- Deactivate / reactivate / reset-password confirm -->
+    <!-- Deactivate / reactivate / send-link confirm -->
     <Teleport to="body">
       <Transition name="confirm-fade">
         <div v-if="pendingAction && profile" class="confirm-overlay" @click.self="pendingAction = null">
@@ -362,29 +361,6 @@ const addressBlock = computed(() => {
       </Transition>
     </Teleport>
 
-    <!-- One-time reveal of the new temporary password -->
-    <Teleport to="body">
-      <Transition name="confirm-fade">
-        <div v-if="resetPassword && profile" class="confirm-overlay" @click.self="resetPassword = null">
-          <div class="confirm-card" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-lg)' }">
-            <h2 class="text-[17px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Password reset</h2>
-            <p class="text-[12px] mb-4" style="color: var(--color-text-secondary);">
-              Emailed to {{ profile.email }}. It won’t be shown again — share it directly if the mail doesn’t land.
-            </p>
-            <div class="rounded-xl border p-4 mb-5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
-              <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Temporary password</span>
-              <div class="flex items-center gap-2 mt-1">
-                <code class="text-[13px] flex-1 truncate" style="color: var(--color-text);">{{ resetPassword }}</code>
-                <AdminCopyButton :value="resetPassword" size="md" />
-              </div>
-            </div>
-            <div class="flex items-center justify-end">
-              <button type="button" class="btn-pill btn-pill-primary text-[13px]" @click="resetPassword = null">Done</button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>
 

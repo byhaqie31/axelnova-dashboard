@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\V1\Partner;
 
 use App\Http\Controllers\Controller;
 use App\Mail\PartnerPasscodeMail;
-use App\Mail\PartnerResetRequestedMail;
+use App\Mail\PartnerResetLinkMail;
+use App\Models\AccessToken;
 use App\Models\ExternalAccount;
+use App\Services\Auth\AccessLinks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -55,41 +57,34 @@ class AuthController extends Controller
     }
 
     /**
-     * Self-service passcode reset for both partner kinds. A correct, active email
-     * auto-issues a fresh passcode straight to the partner's own inbox — and
-     * notifies the founder that it happened. The response is identical whether or
-     * not the email matches, so this never reveals who holds an account. (Abuse
-     * is bounded by the login-throttle group this route sits in.)
+     * Self-service passcode reset (Phase 2): a matching active account gets a
+     * 60-minute reset link. Nothing changes until the partner uses it, so a
+     * stranger who knows their email can't lock them out. Always a generic
+     * response, and a few links an hour per address at most. The owner hears
+     * about it once the passcode actually changes.
      */
-    public function forgotPasscode(Request $request): JsonResponse
+    public function forgotPasscode(Request $request, AccessLinks $links): JsonResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
         ]);
 
-        $account = ExternalAccount::where('email', $data['email'])->where('status', 'active')->first();
+        $account = $links->allowForgotRequest('partner', $data['email'])
+            ? ExternalAccount::where('email', $data['email'])->where('status', 'active')->first()
+            : null;
 
         if ($account) {
-            $passcode = ExternalAccount::makePasscode();
+            $account->referrer?->logActivity('referral_partner.passcode_reset_requested');
 
-            $account->update(['password' => $passcode]);
-
-            // Audit on the referrer profile (it carries updated_by + the activity
-            // trail); investor accounts have no audited profile yet.
-            $account->referrer?->logActivity('referral_partner.passcode_self_reset');
-
-            // The new passcode only ever lands in the partner's own inbox.
-            Mail::to($account->email, $account->displayName())->send(new PartnerPasscodeMail($account, $passcode));
-
-            // Keep the founder informed (heads-up; the reset already happened).
-            $adminEmail = config('services.admin.email') ?: config('mail.from.address');
-            if ($adminEmail) {
-                Mail::to($adminEmail)->send(new PartnerResetRequestedMail($account));
-            }
+            $purpose = $account->password === null ? AccessToken::SETUP : AccessToken::RESET;
+            $url = $links->issue($account, $purpose);
+            Mail::to($account->email, $account->displayName())->send(
+                $purpose === AccessToken::SETUP ? new PartnerPasscodeMail($account, $url) : new PartnerResetLinkMail($account, $url),
+            );
         }
 
         return response()->json([
-            'message' => 'If that email matches an active partner account, a new passcode has been sent to it.',
+            'message' => "If that email matches an active partner account, we've sent it a link to choose a new passcode.",
         ]);
     }
 

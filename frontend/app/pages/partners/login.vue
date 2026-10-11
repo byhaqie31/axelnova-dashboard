@@ -10,6 +10,7 @@ const route = useRoute()
 const { setToken, apiFetch } = usePartnerAuth()
 const email = ref('')
 const passcode = ref('')
+const showPasscode = ref(false)
 const loading = ref(false)
 const error = ref('')
 const year = new Date().getFullYear()
@@ -80,18 +81,30 @@ async function handleLogin() {
 v-model="email" type="email" required autocomplete="email" placeholder="Email"
                 class="contact-input glass-input" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }" >
             </div>
-            <div class="space-y-2">
+            <!-- Free-form since Phase 2: partners choose their own passcode (10+
+                 characters); older 8-digit passcodes still sign in here too. -->
+            <div class="space-y-1.5">
               <div class="flex items-center justify-between gap-3">
-                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">8-digit passcode</label>
+                <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Passcode</label>
                 <NuxtLink to="/partners/forgot" class="text-[12px]" style="color: var(--color-accent);">Forgot passcode?</NuxtLink>
               </div>
-              <PasscodeInput v-model="passcode" :length="8" />
+              <div class="relative">
+                <input
+                  v-model="passcode" :type="showPasscode ? 'text' : 'password'" required autocomplete="current-password" placeholder="Passcode"
+                  class="contact-input glass-input"
+                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', paddingRight: '2.75rem' }">
+                <button
+                  type="button" class="partner-pw-toggle" :aria-label="showPasscode ? 'Hide passcode' : 'Show passcode'"
+                  @click="showPasscode = !showPasscode">
+                  <UIcon :name="showPasscode ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="size-4.5" />
+                </button>
+              </div>
             </div>
             <p v-if="error" class="text-[12px] flex items-center gap-1.5" style="color: var(--color-danger);">
               <UIcon name="i-lucide-alert-circle" class="size-4 shrink-0" />
               {{ error }}
             </p>
-            <button type="submit" class="btn-pill btn-pill-accent w-full justify-center partner-login-submit" :disabled="loading || !email || passcode.length !== 8">
+            <button type="submit" class="btn-pill btn-pill-accent w-full justify-center partner-login-submit" :disabled="loading || !email || !passcode">
               {{ loading ? 'Signing in…' : 'Sign in →' }}
             </button>
           </form>
@@ -175,6 +188,21 @@ v-model="email" type="email" required autocomplete="email" placeholder="Email"
 
 .partner-login-submit {
   height: 48px;
+}
+
+.partner-pw-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  transition: color 0.15s ease;
+}
+.partner-pw-toggle:hover {
+  color: var(--color-text);
 }
 
 .partner-login-divider {

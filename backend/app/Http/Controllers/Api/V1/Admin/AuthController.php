@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AdminAccountRecoveryMail;
+use App\Models\AccessToken;
 use App\Models\User;
+use App\Services\Auth\AccessLinks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -41,6 +45,31 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'tier' => $user->tier(),
             ],
+        ]);
+    }
+
+    /**
+     * Founder account recovery (Phase 2): a founder account gets a 60-minute
+     * admin reset link at its own address. Every request — teammate, unknown
+     * or deactivated — gets the same answer and nothing else.
+     */
+    public function forgotPassword(Request $request, AccessLinks $links): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = $links->allowForgotRequest('admin', $data['email'])
+            ? User::where('email', $data['email'])->first()
+            : null;
+
+        if ($user && $user->isCockpit() && ! $user->isDeactivated()) {
+            Mail::to($user->email, $user->name)
+                ->send(new AdminAccountRecoveryMail($user, $links->issue($user, AccessToken::RESET, 'admin')));
+        }
+
+        return response()->json([
+            'message' => "If that email belongs to the admin account, we've sent it a link to reset the password.",
         ]);
     }
 

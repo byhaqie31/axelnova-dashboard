@@ -17,6 +17,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => 'password', // hashed by the model cast
+            'password_set_at' => now(), // an already set-up account (Phase 2)
             'role' => 'engineer',
         ];
     }

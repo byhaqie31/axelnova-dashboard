@@ -5,13 +5,16 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\TeamPasswordResetMail;
 use App\Mail\TeamWelcomeMail;
+use App\Models\AccessToken;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\Auth\AccessLinks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -55,32 +58,25 @@ class UsersController extends Controller
     }
 
     /** Provision a teammate. Password is hashed by the model's `hashed` cast. */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, AccessLinks $links): JsonResponse
     {
         Gate::authorize('manage-users');
 
         $data = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:150'],
             'email' => ['required', 'email:rfc', 'max:200', Rule::unique('users', 'email')],
-            'password' => ['required', 'string', 'min:12'],
             'role' => ['required', Rule::in(User::WORKSPACE_ROLES)],
             'monthly_allowance_myr' => ['nullable', 'integer', 'min:0', 'max:1000000'],
         ]);
 
-        $user = User::create($data);
+        // No password is chosen for them (Phase 2): the account starts with an
+        // unusable random one, and the welcome email carries a one-time link
+        // where the teammate sets their own. password_set_at = null marks
+        // "set-up pending" for the Users screen.
+        $user = User::create($data + ['password' => Str::random(64)]);
+        $user->forceFill(['password_set_at' => null])->save();
 
-        // Welcome the teammate with their sign-in details ($data['password'] is
-        // still the plaintext — the model only ever stores its hash). Queued,
-        // and never allowed to fail provisioning: the founder also sees the
-        // one-time credentials on-screen as a fallback if delivery hiccups.
-        try {
-            Mail::to($user->email, $user->name)->send(new TeamWelcomeMail($user, $data['password']));
-        } catch (\Throwable $e) {
-            Log::warning('Welcome email could not be queued for new teammate.', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        $this->sendLink($user, $links);
 
         return response()->json($this->present($user), 201);
     }
@@ -132,7 +128,7 @@ class UsersController extends Controller
      * a *different* founder always leaves the actor active — the platform can
      * never end up with zero active founders through this endpoint.
      */
-    public function deactivate(Request $request, User $user): JsonResponse
+    public function deactivate(Request $request, User $user, AccessLinks $links): JsonResponse
     {
         Gate::authorize('manage-users');
 
@@ -149,6 +145,8 @@ class UsersController extends Controller
         // set it directly rather than via mass-assignment.
         $user->forceFill(['deactivated_at' => now()])->save();
         $user->tokens()->delete();
+        // Outstanding set-up/reset links die too, so reactivating can't revive them.
+        $links->revokeAll($user);
 
         return response()->json($this->present($user->fresh()));
     }
@@ -168,25 +166,17 @@ class UsersController extends Controller
     }
 
     /**
-     * Issue a fresh temporary password for a teammate. This is the ONLY reset
-     * path for team accounts — the workspace "forgot password" just emails the
-     * founder to come here. Mints a random password (hashed by the model's
-     * `hashed` cast), revokes every outstanding token so any open session dies,
-     * emails the teammate their new credentials, and returns the plaintext once
-     * so the founder can hand it over directly if the mail doesn't land.
+     * Email the teammate a one-time link (Phase 2): a fresh set-up link if they
+     * never finished set-up, otherwise a 60-minute reset link. Nothing changes
+     * until they use it — to lock someone out, deactivate the account.
      */
-    public function resetPassword(Request $request, User $user): JsonResponse
+    public function resetPassword(Request $request, User $user, AccessLinks $links): JsonResponse
     {
         Gate::authorize('manage-users');
 
         if ($user->isDeactivated()) {
             return response()->json(['message' => 'Reactivate this teammate before resetting their password.'], 422);
         }
-
-        $password = User::makeTemporaryPassword();
-
-        $user->forceFill(['password' => $password])->save();
-        $user->tokens()->delete();
 
         ActivityLog::create([
             'actor_id' => $request->user()->id,
@@ -196,21 +186,34 @@ class UsersController extends Controller
             'changes' => null,
         ]);
 
-        // Same posture as provisioning: queued, and never allowed to fail the
-        // reset — the founder sees the one-time password on-screen as fallback.
-        try {
-            Mail::to($user->email, $user->name)->send(new TeamPasswordResetMail($user, $password));
-        } catch (\Throwable $e) {
-            Log::warning('Password reset email could not be queued for teammate.', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        $setup = $this->sendLink($user, $links);
 
         return response()->json([
-            'message' => 'Password reset. The new temporary password has been emailed to the teammate.',
-            'password' => $password,
+            'message' => $setup
+                ? "A new set-up link has been emailed to {$user->name}."
+                : "A password reset link has been emailed to {$user->name}.",
         ]);
+    }
+
+    /**
+     * Set-up link while set-up is pending, reset link otherwise. Queued, and
+     * never allowed to fail the request — the founder can resend. Returns
+     * whether it was a set-up link.
+     */
+    private function sendLink(User $user, AccessLinks $links): bool
+    {
+        $setup = $user->password_set_at === null;
+
+        try {
+            $url = $links->issue($user, $setup ? AccessToken::SETUP : AccessToken::RESET);
+            Mail::to($user->email, $user->name)->send(
+                $setup ? new TeamWelcomeMail($user, $url) : new TeamPasswordResetMail($user, $url),
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Team access link could not be sent.', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
+
+        return $setup;
     }
 
     private function present(User $user): array
@@ -224,6 +227,8 @@ class UsersController extends Controller
             'availability' => $user->availability,
             'monthly_allowance_myr' => $user->monthly_allowance_myr,
             'deactivated_at' => $user->deactivated_at,
+            // Invited but hasn't chosen a password yet → "Resend set-up link".
+            'setup_pending' => $user->password_set_at === null,
             'created_at' => $user->created_at,
         ];
     }

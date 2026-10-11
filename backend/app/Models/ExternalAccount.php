@@ -52,15 +52,6 @@ class ExternalAccount extends Authenticatable
         return $this->hasOne(Investor::class, 'external_account_id');
     }
 
-    /**
-     * Mint a login passcode: 8 random digits (CSPRNG), zero-padded so leading
-     * zeros survive. Brute-force is held off by the login throttle, not length.
-     */
-    public static function makePasscode(): string
-    {
-        return str_pad((string) random_int(0, 99_999_999), 8, '0', STR_PAD_LEFT);
-    }
-
     public function isReferrer(): bool
     {
         return $this->type === 'referrer';

@@ -30,6 +30,8 @@ interface UserRecord {
   availability: 'available' | 'busy'
   monthly_allowance_myr: number | null
   deactivated_at: string | null
+  // Invited but hasn't chosen a password yet (Phase 2 set-up links).
+  setup_pending: boolean
   created_at: string
 }
 
@@ -126,33 +128,17 @@ const saving = ref(false)
 const form = reactive({
   name: '',
   email: '',
-  password: '',
   role: 'marketer' as 'marketer' | 'engineer',
   // '' when blank; Vue auto-casts type="number" v-model input to number once digits are typed
   allowance: '' as string | number,
 })
 
-// One-time credentials — a freshly-created account's, or a teammate's after a
-// founder-issued password reset — shown in place of the form until the founder
-// acknowledges them (never retrievable again, since the backend only stores
-// the hash). `mode` only changes the heading copy.
-const createdCredentials = ref<{ email: string, password: string, mode: 'created' | 'reset' } | null>(null)
-
-// Crypto-random password — readable-ish (no ambiguous 0/O/1/l) but well past
-// the backend's 12-char minimum.
-function generatePassword(): string {
-  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  const bytes = new Uint32Array(16)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes, n => alphabet[n % alphabet.length]).join('')
-}
-
+// No password is chosen here (Phase 2): the new teammate gets an emailed
+// set-up link and picks their own. The founder never sees a credential.
 function openCreate() {
   editingUser.value = null
-  createdCredentials.value = null
   form.name = ''
   form.email = ''
-  form.password = generatePassword()
   form.role = 'marketer'
   form.allowance = ''
   slideoverOpen.value = true
@@ -181,10 +167,6 @@ async function save() {
       toast.error('Email required', 'They sign in with this address.')
       return
     }
-    if (form.password.length < 12) {
-      toast.error('Password too short', 'Needs at least 12 characters — regenerate it.')
-      return
-    }
     saving.value = true
     try {
       await apiFetch('/api/v1/admin/users', {
@@ -192,12 +174,12 @@ async function save() {
         body: {
           name: form.name.trim(),
           email: form.email.trim(),
-          password: form.password,
           role: form.role,
           monthly_allowance_myr: allowance,
         },
       })
-      createdCredentials.value = { email: form.email.trim(), password: form.password, mode: 'created' }
+      toast.success('Teammate invited', `A set-up link has been emailed to ${form.email.trim()}. It works for 72 hours.`)
+      slideoverOpen.value = false
       fetchUsers()
     }
     catch (e) {
@@ -232,12 +214,7 @@ async function save() {
   }
 }
 
-function doneAfterCreate() {
-  slideoverOpen.value = false
-  createdCredentials.value = null
-}
-
-// ── Deactivate / reactivate / reset password — confirm-before-act, one dialog
+// ── Deactivate / reactivate / send link — confirm-before-act, one dialog
 // for all three. `kind` doubles as the POST /users/{id}/{kind} path segment.
 type PendingAction = { user: UserRecord, kind: 'deactivate' | 'reactivate' | 'reset-password' }
 const pendingAction = ref<PendingAction | null>(null)
@@ -254,11 +231,17 @@ const confirmCopy = computed(() => {
     }
   }
   if (kind === 'reset-password') {
-    return {
-      title: `Reset ${user.name}’s password?`,
-      body: 'A new temporary password is generated and emailed to them, and shown to you once. Their current password stops working and they’re signed out everywhere.',
-      cta: 'Reset password',
-    }
+    return user.setup_pending
+      ? {
+          title: `Resend ${user.name}’s set-up link?`,
+          body: 'They get a fresh link to choose their password. It works for 72 hours, and any earlier link stops working.',
+          cta: 'Resend link',
+        }
+      : {
+          title: `Send ${user.name} a reset link?`,
+          body: 'They get a link to choose a new password. It works for 60 minutes, and their current password keeps working until they use it. To lock them out now, deactivate instead.',
+          cta: 'Send link',
+        }
   }
   return {
     title: `Reactivate ${user.name}?`,
@@ -272,14 +255,10 @@ async function confirmAction() {
   if (!pending || acting.value) return
   acting.value = true
   try {
-    const res = await apiFetch<{ password?: string }>(`/api/v1/admin/users/${pending.user.id}/${pending.kind}`, { method: 'POST' })
+    const res = await apiFetch<{ message?: string }>(`/api/v1/admin/users/${pending.user.id}/${pending.kind}`, { method: 'POST' })
     pendingAction.value = null
     if (pending.kind === 'reset-password') {
-      // Surface the one-time password in the same panel the create flow uses.
-      editingUser.value = null
-      createdCredentials.value = { email: pending.user.email, password: res.password ?? '', mode: 'reset' }
-      slideoverOpen.value = true
-      toast.success('Password reset', 'The new temporary password has been emailed to them.')
+      toast.success('Link sent', res.message ?? 'The link has been emailed to them.')
     }
     else {
       toast.success(pending.kind === 'deactivate' ? 'Teammate deactivated' : 'Teammate reactivated')
@@ -394,9 +373,9 @@ onKeyStroke('Escape', () => {
                   </button>
                   <button
                     v-if="!u.deactivated_at" type="button" class="btn-table-action"
-                    title="Issue a new temporary password"
+                    :title="u.setup_pending ? 'They haven’t set a password yet — email a fresh set-up link' : 'Email a link to choose a new password'"
                     @click.stop="pendingAction = { user: u, kind: 'reset-password' }">
-                    <UIcon name="i-lucide-key-round" class="size-3.5" />Reset password
+                    <UIcon name="i-lucide-mail" class="size-3.5" />{{ u.setup_pending ? 'Resend set-up link' : 'Send reset link' }}
                   </button>
                   <button
                     v-if="u.deactivated_at" type="button" class="btn-table-action is-accent"
@@ -446,7 +425,7 @@ onKeyStroke('Escape', () => {
             <button
               v-if="!u.deactivated_at" type="button" class="btn-pill btn-pill-ghost text-[12px] flex-1 h-10! px-3!"
               @click.stop="pendingAction = { user: u, kind: 'reset-password' }">
-              Reset password
+              {{ u.setup_pending ? 'Resend set-up link' : 'Send reset link' }}
             </button>
             <button
               v-if="u.deactivated_at" type="button" class="btn-pill btn-pill-accent text-[12px] flex-1 h-10! px-3!"
@@ -472,12 +451,10 @@ onKeyStroke('Escape', () => {
             <div class="slideover-head">
               <div class="min-w-0">
                 <p class="text-[17px] font-bold tracking-tight truncate" style="color: var(--color-text);">
-                  {{ createdCredentials ? (createdCredentials.mode === 'reset' ? 'Password reset' : 'Account created') : editingUser === null ? 'New teammate' : 'Edit teammate' }}
+                  {{ editingUser === null ? 'New teammate' : 'Edit teammate' }}
                 </p>
                 <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">
-                  {{ createdCredentials
-                    ? 'Share these sign-in details — the password won’t be shown again.'
-                    : editingUser === null ? 'Marketer or engineer — founder accounts aren’t created here.' : 'Email stays fixed — it’s their identity.' }}
+                  {{ editingUser === null ? 'Marketer or engineer — founder accounts aren’t created here.' : 'Email stays fixed — it’s their identity.' }}
                 </p>
               </div>
               <button type="button" class="slideover-close" aria-label="Close" @click="closeSlideover">
@@ -485,35 +462,7 @@ onKeyStroke('Escape', () => {
               </button>
             </div>
 
-            <!-- One-time credential reveal, replacing the form after a successful create. -->
-            <div v-if="createdCredentials" class="slideover-body space-y-4">
-              <div class="rounded-xl border p-4 space-y-3" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }">
-                <div>
-                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Email</span>
-                  <div class="flex items-center gap-2 mt-1">
-                    <code class="text-[13px] flex-1 truncate" style="color: var(--color-text);">{{ createdCredentials.email }}</code>
-                    <AdminCopyButton :value="createdCredentials.email" size="md" />
-                  </div>
-                </div>
-                <div>
-                  <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Temporary password</span>
-                  <div class="flex items-center gap-2 mt-1">
-                    <code class="text-[13px] flex-1 truncate" style="color: var(--color-text);">{{ createdCredentials.password }}</code>
-                    <AdminCopyButton :value="createdCredentials.password" size="md" />
-                  </div>
-                </div>
-              </div>
-              <p class="text-[11px]" style="color: var(--color-text-tertiary);">
-                {{ createdCredentials.mode === 'reset'
-                  ? 'This has also been emailed to them. If it doesn’t land, share it directly — they can sign in at /team/login.'
-                  : 'They can sign in at /team/login. If they ever forget this, use “Reset password” on their row to issue a new one.' }}
-              </p>
-              <button type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]" @click="doneAfterCreate">
-                Done
-              </button>
-            </div>
-
-            <div v-else class="slideover-body space-y-5">
+            <div class="slideover-body space-y-5">
               <label class="block">
                 <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Name</span>
                 <input v-model="form.name" type="text" maxlength="150" placeholder="Full name" class="contact-input mt-1 w-full">
@@ -526,18 +475,7 @@ onKeyStroke('Escape', () => {
                   class="contact-input mt-1 w-full" :class="{ 'opacity-60': editingUser !== null }"
                   :disabled="editingUser !== null">
                 <p v-if="editingUser !== null" class="mt-1.5 text-[11px]" style="color: var(--color-text-tertiary);">Email is their identity — it can't be changed here.</p>
-              </label>
-
-              <label v-if="editingUser === null" class="block">
-                <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Temporary password</span>
-                <div class="flex items-center gap-2 mt-1">
-                  <input v-model="form.password" type="text" minlength="12" class="contact-input flex-1">
-                  <button type="button" class="btn-pill btn-pill-ghost text-[12px]" @click="form.password = generatePassword()">
-                    <UIcon name="i-lucide-refresh-cw" class="size-3.5" />
-                    Regenerate
-                  </button>
-                </div>
-                <p class="mt-1.5 text-[11px]" style="color: var(--color-text-tertiary);">Min 12 characters. You'll share this with them once — it can't be recovered afterwards.</p>
+                <p v-else class="mt-1.5 text-[11px]" style="color: var(--color-text-tertiary);">We’ll email them a link to choose their own password. It works for 72 hours.</p>
               </label>
 
               <div>

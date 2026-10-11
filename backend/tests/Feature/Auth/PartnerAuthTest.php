@@ -2,8 +2,9 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Mail\PartnerPasscodeChangedMail;
 use App\Mail\PartnerPasscodeMail;
-use App\Mail\PartnerResetRequestedMail;
+use App\Mail\PartnerResetLinkMail;
 use App\Models\ExternalAccount;
 use App\Models\Investor;
 use App\Models\Referrer;
@@ -174,7 +175,7 @@ class PartnerAuthTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_approve_creates_and_links_an_external_account(): void
+    public function test_approve_creates_and_links_an_external_account_and_sends_a_set_up_link(): void
     {
         Mail::fake();
 
@@ -186,7 +187,7 @@ class PartnerAuthTest extends TestCase
 
         $this->postJson("/api/v1/admin/referral-partners/{$referrer->id}/approve", [], [
             'Authorization' => "Bearer {$adminToken}",
-        ])->assertOk();
+        ])->assertOk()->assertJsonPath('message', 'Partner approved. A set-up link has been emailed to them.');
 
         $referrer->refresh();
         $this->assertSame('active', $referrer->status);
@@ -196,12 +197,14 @@ class PartnerAuthTest extends TestCase
         $this->assertSame('referrer', $account->type);
         $this->assertSame($referrer->email, $account->email);
         $this->assertSame('active', $account->status);
-        $this->assertNotNull($account->password);
+        // The partner chooses their own passcode through the link (Phase 2).
+        $this->assertNull($account->password);
 
-        Mail::assertSent(PartnerPasscodeMail::class, fn ($mail) => $mail->account->is($account));
+        Mail::assertQueued(PartnerPasscodeMail::class, fn ($mail) => $mail->account->is($account)
+            && str_contains($mail->setupUrl, '/partners/set-passcode?token='));
     }
 
-    public function test_reset_passcode_updates_the_same_account_not_a_new_one(): void
+    public function test_reset_passcode_sends_a_reset_link_and_changes_nothing_yet(): void
     {
         Mail::fake();
 
@@ -214,14 +217,14 @@ class PartnerAuthTest extends TestCase
 
         $this->postJson("/api/v1/admin/referral-partners/{$referrer->id}/reset-passcode", [], [
             'Authorization' => "Bearer {$adminToken}",
-        ])->assertOk();
+        ])->assertOk()->assertJsonPath('message', 'A passcode reset link has been emailed to the partner.');
 
         $referrer->refresh();
         $this->assertSame($accountId, $referrer->external_account_id);
         $this->assertSame(1, ExternalAccount::count());
-        $this->assertNotSame($oldHash, $referrer->account->password);
+        $this->assertSame($oldHash, $referrer->account->password, 'the current passcode keeps working');
 
-        Mail::assertSent(PartnerPasscodeMail::class);
+        Mail::assertQueued(PartnerResetLinkMail::class, fn ($mail) => $mail->account->is($referrer->account));
     }
 
     public function test_reset_passcode_creates_a_first_account_for_a_migrated_active_referrer(): void
@@ -237,14 +240,15 @@ class PartnerAuthTest extends TestCase
 
         $this->postJson("/api/v1/admin/referral-partners/{$referrer->id}/reset-passcode", [], [
             'Authorization' => "Bearer {$adminToken}",
-        ])->assertOk();
+        ])->assertOk()->assertJsonPath('message', 'A new set-up link has been emailed to the partner.');
 
         $referrer->refresh();
         $this->assertNotNull($referrer->external_account_id);
         $this->assertSame('referrer', $referrer->account->type);
+        Mail::assertQueued(PartnerPasscodeMail::class);
     }
 
-    public function test_forgot_passcode_reissues_for_an_active_account_and_notifies_the_founder(): void
+    public function test_forgot_passcode_sends_a_reset_link_and_cannot_lock_the_partner_out(): void
     {
         Mail::fake();
 
@@ -253,11 +257,12 @@ class PartnerAuthTest extends TestCase
 
         $this->postJson('/api/v1/partner/forgot-passcode', [
             'email' => $referrer->account->email,
-        ])->assertOk();
+        ])->assertOk()->assertJsonPath('message', "If that email matches an active partner account, we've sent it a link to choose a new passcode.");
 
-        $this->assertNotSame($oldHash, $referrer->account->fresh()->password);
-        Mail::assertSent(PartnerPasscodeMail::class);
-        Mail::assertQueued(PartnerResetRequestedMail::class);
+        $this->assertSame($oldHash, $referrer->account->fresh()->password, 'nothing changes until the link is used');
+        Mail::assertQueued(PartnerResetLinkMail::class, fn ($mail) => str_contains($mail->resetUrl, '/partners/set-passcode?token='));
+        // The owner hears about it only once the passcode actually changes.
+        Mail::assertNotQueued(PartnerPasscodeChangedMail::class);
     }
 
     public function test_forgot_passcode_is_silent_for_unknown_or_suspended_emails(): void
@@ -271,7 +276,7 @@ class PartnerAuthTest extends TestCase
         $this->postJson('/api/v1/partner/forgot-passcode', ['email' => $suspended->email])
             ->assertOk();
 
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_old_referral_guard_is_gone(): void
@@ -280,5 +285,20 @@ class PartnerAuthTest extends TestCase
         $this->assertNull(config('auth.providers.referrers'));
         $this->assertSame('sanctum', config('auth.guards.external.driver'));
         $this->assertSame('external_accounts', config('auth.guards.external.provider'));
+    }
+
+    public function test_forgot_passcode_sends_at_most_three_links_an_hour_per_account(): void
+    {
+        Mail::fake();
+        $referrer = Referrer::factory()->credentialed()->create();
+        $email = $referrer->account->email;
+
+        foreach ([$email, strtoupper($email), $email, $email] as $attempt) {
+            $this->postJson('/api/v1/partner/forgot-passcode', ['email' => $attempt])
+                ->assertOk()
+                ->assertJsonPath('message', "If that email matches an active partner account, we've sent it a link to choose a new passcode.");
+        }
+
+        Mail::assertQueued(PartnerResetLinkMail::class, 3);
     }
 }

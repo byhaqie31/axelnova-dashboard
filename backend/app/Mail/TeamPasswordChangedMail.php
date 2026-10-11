@@ -8,13 +8,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Email 27 — heads-up to the founder that a team member used "forgot
- * password" on the workspace sign-in. Unlike the partner flow there is NO
- * auto-reset — team passwords are only ever reset by the founder from the
- * Users screen, so this mail is the whole flow. Queued like every email
- * (spec §5.7).
+ * Email 27 — heads-up to the founder AFTER a teammate set a new password
+ * through a reset link (Phase 2: team resets are self-service). If it wasn't
+ * them, the founder deactivates the account from the Users screen.
  */
-class TeamPasswordResetRequestedMail extends KitMailable implements ShouldQueue
+class TeamPasswordChangedMail extends KitMailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

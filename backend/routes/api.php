@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\Admin\ServicePackagesController;
 use App\Http\Controllers\Api\V1\Admin\ServiceScopeFieldsController;
 use App\Http\Controllers\Api\V1\Admin\TasksController;
 use App\Http\Controllers\Api\V1\Admin\UsersController;
+use App\Http\Controllers\Api\V1\Auth\AccessLinkController;
 use App\Http\Controllers\Api\V1\Connector\BlogPostController as ConnectorBlogPostController;
 use App\Http\Controllers\Api\V1\Connector\CatalogController as ConnectorCatalogController;
 use App\Http\Controllers\Api\V1\Connector\OrderController as ConnectorOrderController;
@@ -141,17 +142,27 @@ Route::middleware($loginThrottle)->group(function () {
     // (marketer/engineer land here since they get 403 on the cockpit login).
     Route::post('/v1/team/login', [TeamAuthController::class, 'login'])->name('team.login');
 
-    // Workspace "forgot password" — no self-service reset; a matching email
-    // notifies the founder (services.admin.email) to reset it from Users.
+    // Workspace "forgot password" — self-service (Phase 2): a matching active
+    // teammate gets a 60-minute reset link; the response is always generic.
     Route::post('/v1/team/forgot-password', [TeamAuthController::class, 'forgotPassword'])->name('team.forgot-password');
+
+    // Founder account recovery (Phase 2) — a founder account gets an admin reset
+    // link at its own address; anyone else gets the same generic response.
+    Route::post('/v1/admin/forgot-password', [AuthController::class, 'forgotPassword'])->name('admin.forgot-password');
+
+    // One-time access links (set-up / reset) for every surface: GET describes
+    // a live link, POST sets the password/passcode once (AccessLinkController).
+    Route::get('/v1/auth/access-links/{token}', [AccessLinkController::class, 'show'])->name('auth.access-links.show');
+    Route::post('/v1/auth/access-links/{token}', [AccessLinkController::class, 'store'])->name('auth.access-links.store');
 
     // Partner portal login — the isolated `external` guard on external_accounts.
     // Same brute-force throttle; covers both partner types (referrer + investor),
     // active accounts only, with an issued passcode.
     Route::post('/v1/partner/login', [PartnerAuthController::class, 'login'])->name('partner.login');
 
-    // Self-service passcode reset: a correct active email auto-emails a new passcode
-    // (and notifies the founder). Same throttle bounds abuse.
+    // Self-service passcode reset (Phase 2): a matching active account gets a
+    // 60-minute reset link — nothing changes until it's used, so nobody can
+    // lock a partner out. Same throttle bounds abuse.
     Route::post('/v1/partner/forgot-passcode', [PartnerAuthController::class, 'forgotPasscode'])->name('partner.forgot-passcode');
 });
 
@@ -183,8 +194,8 @@ Route::middleware([
         Route::patch('/users/{user}', [UsersController::class, 'update'])->name('users.update');
         Route::post('/users/{user}/deactivate', [UsersController::class, 'deactivate'])->name('users.deactivate');
         Route::post('/users/{user}/reactivate', [UsersController::class, 'reactivate'])->name('users.reactivate');
-        // Founder-only password reset — the only reset path for team accounts
-        // (/v1/team/forgot-password just notifies the founder to come here).
+        // Founder-only "send link" — emails a set-up link (set-up pending) or a
+        // reset link; teammates can also self-serve via /v1/team/forgot-password.
         Route::post('/users/{user}/reset-password', [UsersController::class, 'resetPassword'])->name('users.reset-password');
 
         // Customers (clients) — typeahead for the builder + the Customers spine

@@ -47,7 +47,7 @@ async function handleSubmit() {
               <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Forgot password</h1>
             </div>
             <p class="text-[13px] text-center" style="color: var(--color-text-secondary);">
-              Team passwords are reset by the admin. Enter your work email and Baihaqie will be notified to reset yours.
+              Enter your work email and we'll send you a link to choose a new password.
             </p>
           </div>
 
@@ -58,7 +58,7 @@ class="rounded-2xl border p-4 flex items-start gap-2.5"
               :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
               <UIcon name="i-lucide-mail-check" class="size-5 shrink-0" style="color: var(--color-success);" />
               <p class="text-[13px] leading-relaxed" style="color: var(--color-text-secondary);">
-                If that email matches a team account, the admin has been notified and will reset your password and send you the new credentials shortly.
+                If that email matches a team account, a reset link is on its way. It works for 60 minutes, and your current password keeps working until you use it.
               </p>
             </div>
             <NuxtLink to="/team/login" class="btn-pill btn-pill-accent w-full justify-center team-forgot-submit">
@@ -79,7 +79,7 @@ v-model="email" type="email" required autocomplete="email" placeholder="Your wor
               {{ error }}
             </p>
             <button type="submit" class="btn-pill btn-pill-accent w-full justify-center team-forgot-submit" :disabled="loading || !email">
-              {{ loading ? 'Notifying…' : 'Notify admin →' }}
+              {{ loading ? 'Sending…' : 'Send reset link →' }}
             </button>
           </form>
 

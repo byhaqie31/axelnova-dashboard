@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Mail\TeamPasswordResetRequestedMail;
+use App\Mail\TeamPasswordResetMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -178,19 +178,31 @@ class TeamAuthTest extends TestCase
         $this->assertFalse(Route::has('team.expenses.index'));
     }
 
-    public function test_forgot_password_notifies_the_admin_for_a_known_account(): void
+    public function test_forgot_password_emails_the_teammate_a_reset_link(): void
     {
         Mail::fake();
         $user = User::factory()->marketer()->create();
 
         $this->postJson('/api/v1/team/forgot-password', ['email' => $user->email])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('message', 'If that email matches a team account, we\'ve sent it a link to choose a new password.');
 
-        Mail::assertQueued(TeamPasswordResetRequestedMail::class);
+        Mail::assertQueued(TeamPasswordResetMail::class, fn (TeamPasswordResetMail $mail) => $mail->hasTo($user->email)
+            && str_contains($mail->resetUrl, '/team/set-password?token='));
         $this->assertDatabaseHas('activity_log', [
             'action' => 'team.password_reset_requested',
             'subject_id' => $user->id,
         ]);
+    }
+
+    public function test_forgot_password_sends_nothing_to_a_deactivated_teammate(): void
+    {
+        Mail::fake();
+        $user = User::factory()->marketer()->create(['deactivated_at' => now()]);
+
+        $this->postJson('/api/v1/team/forgot-password', ['email' => $user->email])->assertOk();
+
+        Mail::assertNothingOutgoing();
     }
 
     public function test_forgot_password_reveals_nothing_for_an_unknown_email(): void
@@ -199,7 +211,22 @@ class TeamAuthTest extends TestCase
 
         $known = $this->postJson('/api/v1/team/forgot-password', ['email' => 'ghost@example.com']);
 
-        $known->assertOk();
-        Mail::assertNothingSent();
+        $known->assertOk()
+            ->assertJsonPath('message', 'If that email matches a team account, we\'ve sent it a link to choose a new password.');
+        Mail::assertNothingOutgoing();
+    }
+
+    public function test_forgot_password_sends_at_most_three_links_an_hour_per_account(): void
+    {
+        Mail::fake();
+        $user = User::factory()->marketer()->create(['email' => 'mira@example.com']);
+
+        foreach (['mira@example.com', 'MIRA@example.com', 'mira@example.com', ' Mira@Example.com', 'mira@example.com'] as $email) {
+            $this->postJson('/api/v1/team/forgot-password', ['email' => $email])
+                ->assertOk()
+                ->assertJsonPath('message', 'If that email matches a team account, we\'ve sent it a link to choose a new password.');
+        }
+
+        Mail::assertQueued(TeamPasswordResetMail::class, 3);
     }
 }

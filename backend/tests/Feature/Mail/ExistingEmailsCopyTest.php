@@ -5,28 +5,22 @@ namespace Tests\Feature\Mail;
 use App\Mail\AdminNotificationMail;
 use App\Mail\FeedbackRequestMail;
 use App\Mail\InquiryAdminNotificationMail;
-use App\Mail\PartnerPasscodeMail;
-use App\Mail\PartnerResetRequestedMail;
 use App\Mail\ReferralCommissionMail;
 use App\Mail\ReferralReceivedMail;
-use App\Mail\TeamPasswordResetMail;
-use App\Mail\TeamPasswordResetRequestedMail;
-use App\Mail\TeamWelcomeMail;
-use App\Models\ExternalAccount;
 use App\Models\Feedback;
 use App\Models\Inquiry;
 use App\Models\Order;
 use App\Models\Quotation;
 use App\Models\Referral;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * The ten existing emails the owner didn't mock are re-skinned onto the kit
- * layouts with their wording intact: every sentence of the old markdown
+ * The existing emails the owner didn't mock are re-skinned onto the kit
+ * layouts with their wording intact (the credential emails were rewritten
+ * for Phase 2 — see CredentialEmailsTest): every sentence of the old markdown
  * template must survive (spec §5.13 — copy changes only where a mockup made
  * them). New text is limited to eyebrows, preheaders and labels.
  */
@@ -106,41 +100,6 @@ class ExistingEmailsCopyTest extends TestCase
         ]);
     }
 
-    public function test_partner_and_team_credential_emails_keep_their_copy(): void
-    {
-        $account = ExternalAccount::factory()->create(['email' => 'partner@example.com']);
-        $this->assertKeeps(new PartnerPasscodeMail($account, 'AB12-CD34'), [
-            'Your Partner Portal access is ready',
-            'partner account with Axel Nova Ventures is ready. You can now sign in to the Partner Portal.',
-            'Use these details to log in:',
-            'partner@example.com',
-            'AB12-CD34',
-            'Open the Partner Portal',
-            'For your security, keep this passcode private. We never display it anywhere else, so store it somewhere safe. If you ever lose it, use "Forgot passcode" on the login page and a fresh one will be emailed to you.',
-            'Thanks for partnering with us.',
-        ]);
-
-        $user = User::factory()->create(['name' => 'Danial', 'email' => 'danial@example.com']);
-        $this->assertKeeps(new TeamWelcomeMail($user, 'temp-PASS-1'), [
-            'Welcome to the team, Danial!',
-            "I'm genuinely glad to have you with us at Axel Nova Ventures. This isn't just another account being switched on — it's the start of something we get to build together.",
-            "We're a small team with big intentions: to do work we're proud of, treat every client like they matter, and keep raising our own bar.",
-            "Let's strive together, grow together, and turn every project into something we can point at and say — we made that.",
-            "Here's what you need to sign in:",
-            'temp-PASS-1',
-            'Sign in to the Team Portal',
-            "For your security, please change your password after your first sign-in and keep it private. This temporary password won't be shown again.",
-            "Welcome aboard — let's do great things.",
-        ]);
-
-        $this->assertKeeps(new TeamPasswordResetMail($user, 'temp-PASS-2'), [
-            'Your password has been reset, Danial',
-            'A new temporary password has been issued for your Axel Nova Ventures team account. Any sessions that were still signed in have been closed.',
-            'temp-PASS-2',
-            "If you didn't ask for this reset, reply to this email straight away so we can look into it.",
-        ]);
-    }
-
     public function test_owner_alerts_keep_their_copy_and_use_the_internal_layout(): void
     {
         $quote = Quotation::factory()->create(['name' => 'Lead Person', 'email' => 'lead@example.com', 'company' => 'Lead Co']);
@@ -159,21 +118,6 @@ class ExistingEmailsCopyTest extends TestCase
             'Reply to this email to answer Aina directly.',
         ]);
 
-        $account = ExternalAccount::factory()->create(['email' => 'p@example.com']);
-        $this->assertKeeps(new PartnerResetRequestedMail($account), [
-            'Partner passcode reset',
-            'used "forgot passcode" on the partner portal, so a new passcode has been automatically issued to their email.',
-            'p@example.com',
-            'No action needed — this is just a heads-up. If it looks suspicious, you can issue another passcode from the Referral Partners screen.',
-        ]);
-
-        $user = User::factory()->create(['name' => 'Danial']);
-        $this->assertKeeps(new TeamPasswordResetRequestedMail($user), [
-            'Team password reset request',
-            'Danial used "forgot password" on the team workspace sign-in and is waiting on you — team passwords can only be reset by you.',
-            'Open the Users screen and use Reset password on their row — a new temporary password is emailed to them and shown to you once.',
-            'Open Users',
-        ]);
     }
 
     public function test_the_markdown_mail_templates_are_gone(): void

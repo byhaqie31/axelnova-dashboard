@@ -3,10 +3,10 @@
 namespace Tests\Feature\Mail;
 
 use App\Jobs\NotifyAdminJob;
+use App\Mail\PartnerPasscodeChangedMail;
 use App\Mail\PartnerPasscodeMail;
-use App\Mail\PartnerResetRequestedMail;
 use App\Mail\ReferralCommissionMail;
-use App\Mail\TeamPasswordResetRequestedMail;
+use App\Mail\TeamPasswordChangedMail;
 use App\Models\Order;
 use App\Models\Referral;
 use App\Models\User;
@@ -18,9 +18,8 @@ use Tests\TestCase;
 
 /**
  * Every email goes through the queue (spec §5.7) — its delivery shows on the
- * record instead of the request waiting on SMTP. The partner passcode email is
- * the one exception until Phase 2: queuing it would write the plaintext
- * passcode into the jobs table.
+ * record instead of the request waiting on SMTP. Since Phase 2 no email holds
+ * a credential, so the partner access email is queued too.
  */
 class QueueConsistencyTest extends TestCase
 {
@@ -28,14 +27,9 @@ class QueueConsistencyTest extends TestCase
 
     public function test_the_former_synchronous_emails_are_queued(): void
     {
-        foreach ([ReferralCommissionMail::class, TeamPasswordResetRequestedMail::class, PartnerResetRequestedMail::class] as $class) {
+        foreach ([ReferralCommissionMail::class, TeamPasswordChangedMail::class, PartnerPasscodeChangedMail::class, PartnerPasscodeMail::class] as $class) {
             $this->assertTrue(is_subclass_of($class, ShouldQueue::class), "{$class} should be queued");
         }
-    }
-
-    public function test_the_partner_passcode_stays_synchronous_until_phase_two(): void
-    {
-        $this->assertFalse(is_subclass_of(PartnerPasscodeMail::class, ShouldQueue::class));
     }
 
     public function test_the_commission_email_is_queued_and_says_so(): void

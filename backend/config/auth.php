@@ -81,6 +81,15 @@ return [
     |
     */
 
+    /*
+    | One-time access links (set-up / reset) — App\Services\Auth\AccessLinks.
+    | Owner decision 2026-10-12: set-up links 72 hours, reset links 60 minutes.
+    */
+    'access_links' => [
+        'setup_hours' => 72,
+        'reset_minutes' => 60,
+    ],
+
     'passwords' => [
         'users' => [
             'provider' => 'users',

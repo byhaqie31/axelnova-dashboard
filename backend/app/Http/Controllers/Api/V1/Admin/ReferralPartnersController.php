@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ReferrerDetailResource;
 use App\Http\Resources\ReferrerResource;
 use App\Mail\PartnerPasscodeMail;
+use App\Mail\PartnerResetLinkMail;
+use App\Models\AccessToken;
 use App\Models\ExternalAccount;
 use App\Models\Referral;
 use App\Models\Referrer;
+use App\Services\Auth\AccessLinks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -77,12 +80,7 @@ class ReferralPartnersController extends Controller
             ->additional(['stats' => ['earned_myr' => round($earned, 2), 'estimated_myr' => round($estimated, 2), 'referrals_count' => $referralPartner->referrals->count()]]);
     }
 
-    /**
-     * Approve a pending referrer: flip to active, mint the first passcode onto the
-     * linked external account (created here if none), email it. This is the ONLY
-     * moment a brand-new referrer's portal credentials are created.
-     */
-    public function approve(Referrer $referralPartner): JsonResponse
+    public function approve(Referrer $referralPartner, AccessLinks $links): JsonResponse
     {
         if ($referralPartner->isActive()) {
             return response()->json(['message' => 'This partner is already approved.'], 422);
@@ -90,48 +88,52 @@ class ReferralPartnersController extends Controller
 
         $referralPartner->update(['status' => 'active']);
 
-        $passcode = ExternalAccount::makePasscode();
-        $account = $this->syncAccount($referralPartner, $passcode);
+        $account = $this->syncAccount($referralPartner);
 
-        // Audit the action — NEVER the passcode.
         $referralPartner->logActivity('referral_partner.approved', ['status' => 'active']);
 
+        // Phase 2: a one-time set-up link — the partner chooses their own passcode.
         Mail::to($account->email, $referralPartner->name)
-            ->send(new PartnerPasscodeMail($account, $passcode));
+            ->send(new PartnerPasscodeMail($account, $links->issue($account, AccessToken::SETUP)));
 
-        return response()->json(['message' => 'Partner approved. A passcode has been emailed to them.']);
+        return response()->json(['message' => 'Partner approved. A set-up link has been emailed to them.']);
     }
 
     /**
-     * Staff-initiated passcode reset for an already-active partner: regenerate +
-     * email. (A backfilled/migrated active partner with no account yet gets their
-     * first one here — the account is created and linked on the fly.)
+     * Email the partner a one-time link (Phase 2): a set-up link if they never
+     * chose a passcode, otherwise a 60-minute reset link. Their current
+     * passcode keeps working until they use it.
      */
-    public function resetPasscode(Referrer $referralPartner): JsonResponse
+    public function resetPasscode(Referrer $referralPartner, AccessLinks $links): JsonResponse
     {
         if (! $referralPartner->isActive()) {
             return response()->json(['message' => 'Approve this partner before issuing a passcode.'], 422);
         }
 
-        $passcode = ExternalAccount::makePasscode();
-        $account = $this->syncAccount($referralPartner, $passcode);
+        $account = $this->syncAccount($referralPartner);
+        $setup = $account->password === null;
 
         $referralPartner->logActivity('referral_partner.passcode_reset');
 
+        $url = $links->issue($account, $setup ? AccessToken::SETUP : AccessToken::RESET);
         Mail::to($account->email, $referralPartner->name)
-            ->send(new PartnerPasscodeMail($account, $passcode));
+            ->send($setup ? new PartnerPasscodeMail($account, $url) : new PartnerResetLinkMail($account, $url));
 
-        return response()->json(['message' => 'A new passcode has been emailed to the partner.']);
+        return response()->json([
+            'message' => $setup
+                ? 'A new set-up link has been emailed to the partner.'
+                : 'A passcode reset link has been emailed to the partner.',
+        ]);
     }
 
     /**
-     * Create-or-update the referrer's portal identity: write the new passcode
-     * (hashed by the model cast) onto the linked external_accounts row, creating
-     * + linking one (type 'referrer') when the referrer has none. Account status
-     * follows the referrer's business status (active ↔ suspended) at each mint,
-     * and the account email tracks the profile email.
+     * Create or refresh the partner's login account: creates + links one (type
+     * 'referrer') when the referrer has none, keeps the account email on the
+     * profile email, and sets its status from the referrer's business status
+     * (active ↔ suspended). The passcode is never set here — the partner
+     * chooses it through a link.
      */
-    private function syncAccount(Referrer $referralPartner, string $passcode): ExternalAccount
+    private function syncAccount(Referrer $referralPartner): ExternalAccount
     {
         $status = $referralPartner->isActive() ? 'active' : 'suspended';
 
@@ -140,7 +142,6 @@ class ReferralPartnersController extends Controller
         if ($account) {
             $account->update([
                 'email' => $referralPartner->email,
-                'password' => $passcode,
                 'status' => $status,
             ]);
 
@@ -150,7 +151,6 @@ class ReferralPartnersController extends Controller
         $account = ExternalAccount::create([
             'type' => 'referrer',
             'email' => $referralPartner->email,
-            'password' => $passcode,
             'status' => $status,
         ]);
 
