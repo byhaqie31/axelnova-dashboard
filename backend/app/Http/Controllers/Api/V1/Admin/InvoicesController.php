@@ -82,7 +82,7 @@ class InvoicesController extends Controller
         abort_if($invoice->status === 'paid', 409, 'Paid invoices are read-only.');
 
         $data = $request->validate([
-            'invoiceType' => ['nullable', 'in:deposit,partial,final'],
+            ...DocumentIssuer::TYPE_RULES,
             'amount' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'amountPaid' => ['nullable', 'numeric', 'min:0'],
@@ -110,6 +110,13 @@ class InvoicesController extends Controller
                 ]);
             }
         }
+
+        // The type / instalment the invoice will carry after this edit.
+        $invoice->loadMissing('order.quotation');
+        DocumentIssuer::assertPlanFits($invoice->order, array_replace(
+            DocumentIssuer::effectiveInputs($invoice),
+            array_intersect_key($data, array_flip(['invoiceType', 'instalmentNo'])),
+        ), $invoice);
 
         $invoice = DocumentIssuer::updateInvoice($invoice, $data);
         $invoice->logActivity('invoice.updated', [

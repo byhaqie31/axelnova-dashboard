@@ -110,6 +110,7 @@ There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v
 
   "project": "Brand website — design & build",    // optional: document title on the PDF (any mode)
   "intro": "A fast, clean marketing site.",        // optional: lead-in under the title (any mode)
+  "locale": "en",                                  // optional (v4.2): PDF template-chrome language, en (default) | bm — never the content
   "assumptions": ["…"],                            // the AI's guesses — for admin review
   "open_questions": ["…"],                         // what to confirm with the client
   "notes": "…"
@@ -125,6 +126,8 @@ There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v
 **Deposit & payment plan (v4.1, `detailed` only).** `deposit_amount_myr` sets a **fixed** deposit that wins over `deposit_pct` (old clients sending only `deposit_pct` keep working — none of the new keys are written). `payment_plan` picks `lump_sum` (default), `instalment` (deposit on acceptance, then `instalment_months × instalment_amount_myr` on `billing_day` from `first_instalment_date`) or `partner` (`deposit_amount_myr` is the setup fee, then `instalment_amount_myr` monthly for `instalment_months`, default 24). A scheduled plan **requires** the months (instalment) and the monthly amount (422 otherwise). `deposit + months × monthly` is compared with the section total: a mismatch is **accepted** but the response message carries a `NOTE:` with the variance, and `data.payment_plan.variance_myr` reports it — the founder may round the monthly figure on purpose. The read-back (`get_quotation` / create / update responses) includes the derived `payment_plan` block (`deposit_amount_myr`, `deposit_pct_label`, `plan_total_myr`, `variance_myr`, `first/last_instalment_date`, `schedule[]`). Rules, rounding and the PDF block are documented in [QUOTE_BUILDER.md → Deposit & payment plan](./QUOTE_BUILDER.md#deposit--payment-plan--paymentplan).
 
 **Document title / intro (any mode).** `project` and `intro` set `document.project` / `document.intro` (the quotation's title + lead-in on the PDF). Optional — the mapper falls back to a default project title when `project` is omitted.
+
+**Document language (v4.2, any mode).** `locale` (`en`, default | `bm`) sets `quotations.locale` — the language of the PDF's **template chrome** only (section headings, table captions, row labels, footer, formatted dates). Content Claude writes (project, intro, section / row titles, included items, option cards, care rows) prints exactly as written in either locale — nothing is translated or detected. Omit on update to keep the stored choice; `get_quotation` returns `locale`. Strings live in the renderer's [locales.ts](../../frontend/server/utils/pdf/locales.ts) — see [DOCUMENT-GENERATION.md → Language model](./DOCUMENT-GENERATION.md#language-model--chrome-vs-content).
 
 > **Shape note.** `get_quotation` still returns `line_items` (now derived from `document.items`); the old connector-only `document.line_items` key is retired but legacy rows still read back.
 
@@ -203,6 +206,8 @@ Still no status/accept/order tools, no publish/unpublish tool for posts, no imag
 
 ## Version history
 
+- **v4.2** — `locale` (en | bm) on `create_draft_quotation` / `update_draft_quotation` (any mode) and in `get_quotation`: the PDF's template-chrome language, never the content.
+- **v4.1** — `detailed.deposit_amount_myr` (fixed deposit, wins over `deposit_pct`) and `detailed.payment_plan` (lump_sum | instalment | partner) with the instalment fields; the derived `payment_plan` block in read-backs.
 - **v4** — blog drafts: `get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft` (always draft), `update_blog_draft` (partial, drafts only). Reuses the universal `connector:read` / `connector:draft` abilities — no token rotation needed.
 - **v3** — `list_quotations` (browse/filter), read-open `get_quotation` (any quotation, not just connector-created), `update_draft_quotation` (lifecycle-gated: pre-send drafts only, re-prices + guards the document via `reseed_document`, stamps `last_updated_via`), portal-only soft delete, read/write throttles, `CONNECTOR_VERSION` tag.
 - **v2** — canonical multi-package `form_payload`, `DocumentSeeder`, detailed proposals, project/intro.

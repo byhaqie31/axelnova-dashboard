@@ -38,6 +38,15 @@ class Quotation extends Model
      */
     public const STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'expired'];
 
+    /**
+     * Document languages. `locale` picks the PDF's template CHROME (headings,
+     * captions, row labels, footer, schedule dates) — the founder's content
+     * prints exactly as authored in any locale. Default `en`; never detected
+     * from content. The strings themselves live in the renderer's locale file
+     * (frontend/server/utils/pdf/locales.ts).
+     */
+    public const LOCALES = ['en', 'bm'];
+
     protected $fillable = [
         'reference_code',
         'source',
@@ -52,6 +61,7 @@ class Quotation extends Model
         'pricing_config_id',
         'form_payload',
         'document',
+        'locale',
         'estimate_min_myr',
         'estimate_max_myr',
         'estimate_eta_value',

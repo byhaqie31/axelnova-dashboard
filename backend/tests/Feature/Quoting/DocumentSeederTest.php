@@ -67,7 +67,7 @@ class DocumentSeederTest extends TestCase
         $this->assertSame('standard', $seeded['document']['layout']);
         $this->assertSame(50, $seeded['document']['deposit_pct']);
         $this->assertCount(3, $seeded['document']['terms']);
-        $this->assertStringContainsString('Business Site seeded at range midpoint RM 4,500', $seeded['assumptions'][0]);
+        $this->assertStringContainsString('Business Site seeded at range midpoint RM 4,500.00', $seeded['assumptions'][0]);
     }
 
     public function test_rush_adds_a_single_uplift_line_on_the_subtotal(): void

@@ -55,6 +55,8 @@ class QuotationResource extends JsonResource
             'form_payload' => $this->when(! $listRoute, $this->form_payload),
             'scope_display' => $this->when(! $listRoute, fn () => ScopeSummary::forQuotation($this->resource)),
             'document' => $this->when(! $listRoute, $this->document),
+            // PDF template language (en | bm) — chrome only, never the content.
+            'locale' => $this->locale ?? 'en',
             // Derived deposit + plan figures (fixed-wins, rounding, schedule, variance)
             // — what the builder, detail page and order flow display; never re-derived in the UI.
             'payment_plan' => $this->when(! $listRoute, fn () => $this->paymentPlan()->toArray()),

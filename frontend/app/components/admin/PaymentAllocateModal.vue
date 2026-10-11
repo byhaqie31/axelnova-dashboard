@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Move a payment's invoice allocation after the fact — link an unallocated
 // payment, re-link a wrongly-tagged one, or unlink. A confirm step states the
 // predicted outcome (paid / stays issued / over-allocated) before the PATCH;
@@ -73,7 +74,7 @@ function outcomeConfig() {
   if (netCents > dueCents) {
     return {
       title: `Link to ${inv.number}?`,
-      message: `This payment exceeds the invoice’s outstanding ${fmtMyr(due)} by ${fmtMyr((netCents - dueCents) / 100)}. The invoice will be marked paid.`,
+      message: `This payment exceeds the invoice’s outstanding ${formatMyr(due)} by ${formatMyr((netCents - dueCents) / 100)}. The invoice will be marked paid.`,
       confirmLabel: 'Link anyway',
       variant: 'warning' as const,
     }
@@ -81,14 +82,14 @@ function outcomeConfig() {
   if (netCents === dueCents) {
     return {
       title: `Link to ${inv.number}?`,
-      message: `${fmtMyr(props.netAmount)} fully covers the outstanding balance — the invoice will be marked paid.`,
+      message: `${formatMyr(props.netAmount)} fully covers the outstanding balance — the invoice will be marked paid.`,
       confirmLabel: 'Link payment',
       variant: 'accent' as const,
     }
   }
   return {
     title: `Link to ${inv.number}?`,
-    message: `${fmtMyr(props.netAmount)} of ${fmtMyr(due)} outstanding will be covered — the invoice stays issued.`,
+    message: `${formatMyr(props.netAmount)} of ${formatMyr(due)} outstanding will be covered — the invoice stays issued.`,
     confirmLabel: 'Link payment',
     variant: 'accent' as const,
   }
@@ -118,9 +119,6 @@ async function submit() {
 // The confirm dialog registers its own Escape handler (z-100, above us).
 onKeyStroke('Escape', () => { if (open.value && !confirmOpen.value) open.value = false })
 
-function fmtMyr(amount: string | number) {
-  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
 </script>
 
 <template>
@@ -163,7 +161,7 @@ v-for="inv in invoices" :key="inv.id" type="button"
                   <AdminStatusPill :status="inv.status" />
                 </span>
                 <span class="text-[12px] shrink-0 max-md:shrink" style="color: var(--color-text-secondary);">
-                  {{ fmtMyr(outstanding(inv)) }} of {{ fmtMyr(inv.amount_total) }} outstanding
+                  {{ formatMyr(outstanding(inv)) }} of {{ formatMyr(inv.amount_total) }} outstanding
                 </span>
               </button>
               <button

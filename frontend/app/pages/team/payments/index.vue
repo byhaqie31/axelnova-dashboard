@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Task 7 — own payments (payroll entries) from the in-system payroll ledger.
 // Team-facing wording is "Payments"; the API path (/v1/team/payslips) and the
 // payroll_entries ledger keep their names. The endpoint is scoped
@@ -97,10 +98,9 @@ function fmtDate(iso: string | null) {
   if (!iso) return null
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-// Whole-ringgit ledger (record-only) — no cents.
+// Null renders "—", not RM 0.00.
 function fmtMyr(amount: number | null) {
-  if (amount == null) return '—'
-  return `RM ${Number(amount).toLocaleString('en-MY')}`
+  return amount == null ? '—' : formatMyr(amount)
 }
 </script>
 

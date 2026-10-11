@@ -1,8 +1,16 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Shared invoice form — used by both the issue page (create) and the edit
 // page. Create posts the full body; edit merges over the stored issue inputs
 // server-side, and when `amountsLocked` (payments recorded) only notes, due
 // date and the display options are submitted — the other fields render disabled.
+//
+// On an instalment / partner order the form follows the quotation's agreed plan
+// (order.payment_plan): an "Instalment" / "Monthly fee" type bills one numbered
+// payment — its amount and due date come from the schedule, and instalments
+// already billed by a live invoice can't be picked again.
+import type { InvoiceType, OrderPlanView } from '~/composables/paymentPlan'
+import { fmtRm, fmtYmd } from '~/composables/paymentPlan'
 
 interface OrderMoney {
   id: number
@@ -14,6 +22,8 @@ interface OrderMoney {
   deposit_due_myr: number
   amount_paid_myr: string
   remaining_myr: number
+  payment_plan?: OrderPlanView | null
+  invoices?: { id: number; type: string; status: string; instalment_no?: number | null }[]
 }
 
 const props = withDefaults(defineProps<{
@@ -41,8 +51,15 @@ const { apiFetch } = useAdminAuth()
 const toast = useAdminToast()
 
 const init = (props.initial ?? {}) as Record<string, any>
+const plan = computed(() => props.order.payment_plan ?? null)
+// A new invoice on a plan order whose deposit is already billed starts on the
+// next instalment; otherwise on the deposit.
+const startType: InvoiceType = init.invoiceType
+  ?? (props.mode === 'create' && plan.value?.deposit_invoice && plan.value.next_instalment_no ? 'instalment' : 'deposit')
 const form = reactive({
-  type: (init.invoiceType ?? 'deposit') as 'deposit' | 'partial' | 'final',
+  type: startType,
+  // 0 = none picked (the select needs a number, never null).
+  instalmentNo: Number(init.instalmentNo ?? (startType === 'instalment' ? plan.value?.next_instalment_no : 0) ?? 0),
   amount: init.amount != null ? String(init.amount) : '',
   discountValue: init.discountValue != null ? String(init.discountValue) : '',
   discountType: (init.discountType ?? 'amount') as 'amount' | 'percent',
@@ -73,6 +90,7 @@ const BILLING_TITLES: Record<string, string> = {
   deposit: 'Deposit on signing and mobilisation',
   partial: 'Progress payment on delivered milestones',
   final: 'Final balance on completion and handover',
+  instalment: 'Monthly payment under the agreed payment plan',
 }
 const SCOPE_MAX = 8
 watch(() => form.describeBilling, (on) => {
@@ -84,37 +102,75 @@ watch(() => form.type, (t, prev) => {
 const scopeItems = computed(() =>
   form.scopeText.split('\n').map(l => l.trim()).filter(Boolean))
 
-// Sensible default per invoice type, drawn from the order: deposit → deposit due,
-// partial / final → outstanding balance. Always editable. (Create mode only —
-// an edit keeps whatever amount the invoice was issued with.)
+// The instalment row an `instalment` invoice bills (from the order's schedule).
+const instalmentRow = computed(() =>
+  plan.value?.schedule.find(r => r.n === form.instalmentNo) ?? null)
+
+// Sensible default per invoice type, drawn from the order: deposit → deposit
+// due, instalment → the plan's monthly figure, partial / final → outstanding
+// balance. Always editable. (Create mode only — an edit keeps whatever amount
+// the invoice was issued with.)
 function defaultAmount(type: string) {
-  const n = type === 'deposit' ? Number(props.order.deposit_due_myr) : Number(props.order.remaining_myr)
+  const n = type === 'deposit'
+    ? Number(props.order.deposit_due_myr)
+    : type === 'instalment'
+      ? Number(plan.value?.monthly_myr ?? 0)
+      : Number(props.order.remaining_myr)
   return n > 0 ? String(Number(n.toFixed(2))) : ''
 }
+// An instalment invoice is due on its scheduled date.
+function syncInstalmentDue() {
+  if (props.mode === 'create' && form.type === 'instalment' && instalmentRow.value) form.dueAt = instalmentRow.value.date
+}
 if (props.mode === 'create' && !form.amount) form.amount = defaultAmount(form.type)
+syncInstalmentDue()
 watch(() => form.type, (t) => {
-  if (props.mode === 'create') form.amount = defaultAmount(t)
+  if (t === 'instalment' && !form.instalmentNo) form.instalmentNo = plan.value?.next_instalment_no ?? 0
+  if (props.mode === 'create') {
+    form.amount = defaultAmount(t)
+    if (t === 'instalment') syncInstalmentDue()
+    else form.dueAt = ''
+  }
 })
+watch(() => form.instalmentNo, syncInstalmentDue)
 
-// A 50% deposit stops fitting once less than half the agreed total remains —
-// grey it out instead of letting a second deposit be issued. Stays selectable
-// when it's already the current type (editing an existing deposit invoice).
+// The deposit can't be billed twice: it greys out once a live deposit invoice
+// exists, or once less than the deposit itself remains to be paid. Stays
+// selectable when it's already the current type (editing that deposit invoice).
 const depositUnavailable = computed(() => {
-  const agreed = Number(props.order.final_amount_myr) || 0
-  return agreed > 0 && Number(props.order.remaining_myr) < agreed / 2
+  const billed = (props.order.invoices ?? []).some(i => i.type === 'deposit' && i.status !== 'void')
+  const due = Number(props.order.deposit_due_myr) || 0
+  return billed || (due > 0 && Number(props.order.remaining_myr) < due)
 })
-const typeItems = computed(() => [
-  {
-    label: props.order.deposit_pct ? `Deposit (${props.order.deposit_pct}%)` : 'Deposit',
+const typeItems = computed(() => {
+  const items: { label: string; value: InvoiceType; disabled?: boolean }[] = [{
+    label: plan.value
+      ? plan.value.deposit_label
+      : props.order.deposit_pct ? `Deposit (${props.order.deposit_pct}%)` : 'Deposit',
     value: 'deposit',
     disabled: depositUnavailable.value && form.type !== 'deposit',
-  },
-  { label: 'Partial', value: 'partial' },
-  { label: 'Final', value: 'final' },
-])
+  }]
+  if (plan.value) {
+    items.push({
+      label: plan.value.plan === 'partner' ? 'Monthly fee' : 'Instalment',
+      value: 'instalment',
+      disabled: plan.value.next_instalment_no === null && form.type !== 'instalment',
+    })
+  }
+  items.push({ label: 'Partial', value: 'partial' }, { label: 'Final', value: 'final' })
+  return items
+})
+// Only payments still to be billed are offered — the list shrinks as each
+// instalment gets its invoice (the plan card above counts what's left). The one
+// this invoice already bills stays listed in edit mode.
+const initialInstalmentNo = Number(init.instalmentNo ?? 0)
+const instalmentItems = computed(() => (plan.value?.schedule ?? [])
+  .filter(r => !r.invoice || r.n === initialInstalmentNo)
+  .map(r => ({ label: `${r.label} · ${fmtYmd(r.date)}`, value: r.n })))
+const billedCount = computed(() => (plan.value?.schedule ?? []).filter(r => r.invoice).length)
 // Don't start a new invoice on an unavailable type.
 if (props.mode === 'create' && depositUnavailable.value && form.type === 'deposit') {
-  form.type = 'partial'
+  form.type = plan.value?.next_instalment_no ? 'instalment' : 'partial'
 }
 
 // Live total — mirrors the server: a percentage comes off the billed amount,
@@ -132,8 +188,11 @@ const netTotal = computed(() => Math.max(baseAmount.value - discountAmt.value - 
 // Payment context mirroring the PDF summary (DocumentMapper::amountDocument):
 // agreed total and ledger-paid frame the bill; deposit/partial show what
 // remains after this payment, final shows what's been paid.
-const billLabel = computed(() =>
-  ({ deposit: 'Deposit', partial: 'Partial payment', final: 'Final balance' })[form.type])
+const billLabel = computed(() => {
+  if (form.type === 'instalment') return instalmentRow.value?.label ?? 'Instalment'
+  if (form.type === 'deposit' && plan.value) return plan.value.deposit_label
+  return ({ deposit: 'Deposit', partial: 'Partial payment', final: 'Final balance' } as Record<string, string>)[form.type] ?? 'Amount'
+})
 const agreedTotal = computed(() => Number(props.order.final_amount_myr) || 0)
 const paidToDate = computed(() => Number(props.order.amount_paid_myr) || 0)
 const remainingAfter = computed(() =>
@@ -144,6 +203,7 @@ const remainingAfter = computed(() =>
 // clears the stored input (absent keys keep their stored value server-side).
 function fullBody(): Record<string, unknown> {
   const body: Record<string, unknown> = { invoiceType: form.type, amount: Number(form.amount) || 0 }
+  body.instalmentNo = form.type === 'instalment' && form.instalmentNo ? form.instalmentNo : null
   if (Number(form.discountValue) > 0) {
     body.discountType = form.discountType
     body.discountValue = Number(form.discountValue)
@@ -233,6 +293,10 @@ function submit() {
     toast.error('Enter an amount', 'The invoice amount must be greater than zero.')
     return
   }
+  if (!props.amountsLocked && form.type === 'instalment' && !instalmentRow.value) {
+    toast.error('Pick an instalment', 'Choose which payment of the plan this invoice bills.')
+    return
+  }
   if (form.addScope && scopeItems.value.length > SCOPE_MAX) {
     toast.error('Too many scope bullets', `Keep it to ${SCOPE_MAX} or fewer — 5 reads best.`)
     return
@@ -244,9 +308,6 @@ function submit() {
   emit('submit', submitBody())
 }
 
-function fmtMyr(amount: string | number) {
-  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
 </script>
 
 <template>
@@ -257,15 +318,15 @@ function fmtMyr(amount: string | number) {
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <div class="max-md:col-span-2">
         <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Agreed total</p>
-        <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ fmtMyr(order.final_amount_myr) }}</p>
+        <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ formatMyr(order.final_amount_myr) }}</p>
       </div>
       <div>
         <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Paid</p>
-        <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-success);">{{ fmtMyr(order.amount_paid_myr) }}</p>
+        <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-success);">{{ formatMyr(order.amount_paid_myr) }}</p>
       </div>
       <div>
         <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Remaining</p>
-        <p class="text-[15px] font-bold tabular-nums" :style="{ color: Number(order.remaining_myr) > 0 ? 'var(--color-warning)' : 'var(--color-success)' }">{{ fmtMyr(order.remaining_myr) }}</p>
+        <p class="text-[15px] font-bold tabular-nums" :style="{ color: Number(order.remaining_myr) > 0 ? 'var(--color-warning)' : 'var(--color-success)' }">{{ formatMyr(order.remaining_myr) }}</p>
       </div>
     </div>
 
@@ -280,14 +341,41 @@ function fmtMyr(amount: string | number) {
         Payments are recorded against this invoice — amounts are locked. Only the note, due date and display options can change.
       </p>
 
+      <!-- The quotation's agreed plan this order is billed against -->
+      <div
+        v-if="plan"
+        class="rounded-xl border px-3.5 py-3 flex items-start gap-2.5 text-[12px] max-md:text-[13px]"
+        :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+        <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0 mt-px" style="color: var(--color-accent);" />
+        <div class="min-w-0 space-y-0.5">
+          <p style="color: var(--color-text);">
+            <span class="font-semibold">{{ plan.plan === 'partner' ? 'Partner plan' : 'Instalment plan' }}</span>
+            <span class="tabular-nums"> · {{ plan.deposit_label }} RM {{ fmtRm(plan.deposit_myr) }} + {{ plan.months }} × RM {{ fmtRm(plan.monthly_myr) }}</span>
+          </p>
+          <p class="tabular-nums" style="color: var(--color-text-tertiary);">
+            <template v-if="plan.next_instalment_no">{{ billedCount }} of {{ plan.months }} billed · next: {{ plan.schedule[plan.next_instalment_no - 1]?.label }} · due {{ fmtYmd(plan.schedule[plan.next_instalment_no - 1]?.date ?? '') }}</template>
+            <template v-else>All {{ plan.months }} payments have an invoice.</template>
+          </p>
+        </div>
+      </div>
+
       <div class="grid sm:grid-cols-2 gap-3">
         <label class="block">
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Invoice type</span>
           <AdminSelect v-model="form.type" class="mt-1" :items="typeItems" :disabled="amountsLocked" />
         </label>
+        <label v-if="form.type === 'instalment'" class="block">
+          <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">{{ plan?.plan === 'partner' ? 'Which month' : 'Which instalment' }}</span>
+          <AdminSelect v-model="form.instalmentNo" class="mt-1" :items="instalmentItems" placeholder="Pick a payment…" :disabled="amountsLocked" />
+        </label>
         <label class="block">
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount (RM)</span>
           <input v-model="form.amount" type="number" min="0" step="0.01" placeholder="0.00" class="contact-input mt-1 w-full" :disabled="amountsLocked">
+          <span
+            v-if="form.type === 'instalment' && instalmentRow && Number(form.amount) !== instalmentRow.amount"
+            class="block text-[11px] mt-1" style="color: var(--color-warning);">
+            The plan's figure is RM {{ fmtRm(instalmentRow.amount) }}.
+          </span>
         </label>
       </div>
 
@@ -389,31 +477,31 @@ function fmtMyr(amount: string | number) {
       <div class="live-total rounded-xl border p-3 text-[12px] max-md:text-[13px] space-y-1.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <div v-if="agreedTotal > 0" class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">Agreed project total</span>
-          <span class="tabular-nums" style="color: var(--color-text);">{{ fmtMyr(agreedTotal) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text);">{{ formatMyr(agreedTotal) }}</span>
         </div>
         <div v-if="paidToDate > 0" class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">Paid to date</span>
-          <span class="tabular-nums" style="color: var(--color-success);">−{{ fmtMyr(paidToDate) }}</span>
+          <span class="tabular-nums" style="color: var(--color-success);">−{{ formatMyr(paidToDate) }}</span>
         </div>
         <div class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">{{ billLabel }}</span>
-          <span class="tabular-nums" style="color: var(--color-text);">{{ fmtMyr(baseAmount) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text);">{{ formatMyr(baseAmount) }}</span>
         </div>
         <div v-if="discountAmt > 0" class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">{{ form.discountLabel || 'Discount' }}<span v-if="form.discountType === 'percent'" style="color: var(--color-text-tertiary);"> ({{ Number(form.discountValue) }}%)</span></span>
-          <span class="tabular-nums" style="color: var(--color-text);">−{{ fmtMyr(discountAmt) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text);">−{{ formatMyr(discountAmt) }}</span>
         </div>
         <div v-if="promoAmt > 0" class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">Promo<span v-if="form.promoCode" style="color: var(--color-text-tertiary);"> ({{ form.promoCode }})</span></span>
-          <span class="tabular-nums" style="color: var(--color-text);">−{{ fmtMyr(promoAmt) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text);">−{{ formatMyr(promoAmt) }}</span>
         </div>
         <div class="flex items-center justify-between pt-1.5 border-t font-semibold" style="border-color: var(--color-border);">
           <span style="color: var(--color-text);">Total due</span>
-          <span class="tabular-nums" :style="{ color: form.type === 'final' ? 'var(--color-danger)' : 'var(--color-text)' }">{{ fmtMyr(netTotal) }}</span>
+          <span class="tabular-nums" :style="{ color: form.type === 'final' ? 'var(--color-danger)' : 'var(--color-text)' }">{{ formatMyr(netTotal) }}</span>
         </div>
         <div v-if="remainingAfter > 0.009" class="flex items-center justify-between">
           <span style="color: var(--color-text-tertiary);">Remaining after this payment</span>
-          <span class="tabular-nums" style="color: var(--color-text-tertiary);">{{ fmtMyr(remainingAfter) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text-tertiary);">{{ formatMyr(remainingAfter) }}</span>
         </div>
       </div>
 

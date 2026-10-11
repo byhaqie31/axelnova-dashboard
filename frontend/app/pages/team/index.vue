@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Team Home (Task 4, revamped) — from a plain announcements board into a
 // friendly personal base: a time-aware greeting, an availability toggle, a row
 // of at-a-glance work tiles, the next deadline, then the announcements feed.
@@ -93,7 +94,6 @@ const hypeLines = [
 const hype = ref(hypeLines[0])
 
 // ── Snapshot tiles ─────────────────────────────────────────────────────────
-const money = new Intl.NumberFormat('ms-MY', { maximumFractionDigits: 0 })
 
 function startOfToday(): Date {
   const d = now.value ?? new Date()
@@ -131,7 +131,7 @@ const tiles = computed(() => [
   { key: 'open', label: 'Open tasks', value: String(openCount.value), icon: 'i-lucide-list-todo', fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)', to: '/team/tasks' },
   { key: 'due', label: 'Due this week', value: String(dueThisWeek.value), icon: 'i-lucide-alarm-clock', fg: 'var(--color-warning)', bg: 'var(--color-warning-soft)', to: '/team/calendar' },
   { key: 'done', label: 'Completed this month', value: String(completedThisMonth.value), icon: 'i-lucide-circle-check', fg: 'var(--color-success)', bg: 'var(--color-success-soft)', to: '/team/calendar' },
-  { key: 'pay', label: 'Pending pay', value: `RM ${money.format(pendingPay.value)}`, icon: 'i-lucide-banknote', fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)', to: '/team/payments' },
+  { key: 'pay', label: 'Pending pay', value: formatMyr(pendingPay.value), icon: 'i-lucide-banknote', fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)', to: '/team/payments' },
 ])
 
 // ── Next up (soonest upcoming, still-open deadline) ────────────────────────

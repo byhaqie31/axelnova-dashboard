@@ -26,6 +26,7 @@ class InvoiceResource extends JsonResource
             'name' => $this->whenLoaded('order', fn () => $this->order?->client?->name),
             'email' => $this->whenLoaded('order', fn () => $this->order?->client?->email),
             'type' => $this->type,
+            'instalment_no' => $this->instalment_no,
             'status' => $this->status,
             'amount_total' => $this->amount_total,
             'amount_paid' => $this->amount_paid,

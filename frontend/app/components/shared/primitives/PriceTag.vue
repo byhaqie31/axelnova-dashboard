@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 const props = withDefaults(defineProps<{
   min: number
   max?: number
@@ -8,10 +9,8 @@ const props = withDefaults(defineProps<{
   compact: false,
 })
 
-const formatter = new Intl.NumberFormat('ms-MY', { maximumFractionDigits: 0 })
-
-const minLabel = computed(() => `RM ${formatter.format(props.min)}`)
-const maxLabel = computed(() => props.max != null ? `RM ${formatter.format(props.max)}` : null)
+const minLabel = computed(() => formatMyr(props.min))
+const maxLabel = computed(() => props.max != null ? formatMyr(props.max) : null)
 </script>
 
 <template>

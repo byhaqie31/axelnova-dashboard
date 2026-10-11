@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
 import DetailedQuotationView from '~/components/admin/DetailedQuotationView.vue'
 import { PAYMENT_PLANS, fmtRm, fmtYmd } from '~/composables/paymentPlan'
@@ -196,15 +197,6 @@ watch(() => quotation.value?.order_id, async (orderId) => {
 
 onMounted(fetchQuotation)
 
-// `k` shorthand for the min–max estimate range only.
-function fmtMyr(amount: string | number) {
-  const n = Number(amount)
-  return n >= 1000 ? `RM ${(n / 1000).toFixed(0)}k` : `RM ${n.toLocaleString()}`
-}
-// Precise — for exact single values (e.g. an add-on price).
-function fmtMyrExact(amount: string | number) {
-  return `RM ${Math.round(Number(amount) || 0).toLocaleString('en-US')}`
-}
 function fmtDate(iso?: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -364,7 +356,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 ma
           <div class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Estimate</p>
             <p class="text-[30px] max-md:text-[24px] font-bold tracking-tight mb-1" style="color: var(--color-text);">
-              {{ fmtMyr(quotation.estimate_min_myr) }} – {{ fmtMyr(quotation.estimate_max_myr) }}
+              {{ formatMyr(quotation.estimate_min_myr) }} – {{ formatMyr(quotation.estimate_max_myr) }}
             </p>
             <p class="text-[13px]" style="color: var(--color-text-secondary);">
               {{ formatEta(quotation.estimate_eta_value, quotation.estimate_eta_unit) }} ·
@@ -377,7 +369,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 ma
             <div class="space-y-2">
               <div v-for="(it, i) in quotation.document.items" :key="i" class="flex justify-between items-baseline gap-4">
                 <span class="text-[13px]" style="color: var(--color-text);">{{ it.title }}<span v-if="it.qty > 1" class="text-[12px]" style="color: var(--color-text-tertiary);"> × {{ it.qty }}</span></span>
-                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">RM {{ ((Number(it.qty) || 0) * (Number(it.rate) || 0)).toLocaleString() }}</span>
+                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ formatMyr((Number(it.qty) || 0) * (Number(it.rate) || 0)) }}</span>
               </div>
             </div>
           </div>
@@ -387,7 +379,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 ma
             <div class="space-y-2">
               <div v-for="addon in quotation.addons" :key="addon.key" class="flex justify-between items-center max-md:gap-3">
                 <span class="text-[13px]" style="color: var(--color-text);">{{ addon.label }}</span>
-                <span class="text-[13px] font-semibold max-md:whitespace-nowrap" style="color: var(--color-text);">{{ fmtMyrExact(addon.amount_myr) }}</span>
+                <span class="text-[13px] font-semibold max-md:whitespace-nowrap" style="color: var(--color-text);">{{ formatMyr(addon.amount_myr) }}</span>
               </div>
             </div>
           </div>
@@ -470,7 +462,7 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 ma
                   <span class="text-[11px] capitalize" style="color: var(--color-text-tertiary);">{{ inv.type }}</span>
                 </div>
                 <div class="text-right shrink-0">
-                  <span class="text-[12px] font-semibold tabular-nums block" style="color: var(--color-text);">{{ fmtMyrExact(inv.amount_total) }}</span>
+                  <span class="text-[12px] font-semibold tabular-nums block" style="color: var(--color-text);">{{ formatMyr(inv.amount_total) }}</span>
                   <AdminStatusPill :status="inv.status" />
                 </div>
               </NuxtLink>

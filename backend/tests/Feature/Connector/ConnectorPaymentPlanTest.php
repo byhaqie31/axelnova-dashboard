@@ -116,28 +116,33 @@ class ConnectorPaymentPlanTest extends TestCase
         // The PDF data (what DocumentController serves the renderer).
         $pdf = DocumentMapper::toDocumentData($q->fresh());
         $this->assertSame('detailed', $pdf['layout']);
+        $this->assertSame('en', $pdf['locale']);
         $this->assertSame(2700.0, $pdf['panels'][0]['value']);
+        $this->assertSame('inst_deposit', $pdf['panels'][0]['role']);
         $this->assertSame(970.0, $pdf['panels'][1]['value']);
-        $this->assertSame('Ansuran bulanan · 12 bulan', $pdf['panels'][1]['label']);
+        $this->assertSame('inst_monthly', $pdf['panels'][1]['role']);
+        $this->assertSame(12, $pdf['panels'][1]['months']);
 
         $block = $pdf['paymentPlan'];
-        $this->assertSame('Pelan pembayaran', $block['title']);
+        $this->assertSame('instalment', $block['plan']);
         $this->assertSame(2700.0, $block['deposit']);
         $this->assertSame(970.0, $block['monthly']);
         $this->assertSame(12, $block['months']);
         $this->assertSame(20, $block['billingDay']);
-        $this->assertSame('20 November 2026', $block['firstDate']);
-        $this->assertSame('20 Oktober 2027', $block['lastDate']);
+        $this->assertSame('2026-11-20', $block['firstDate']);
+        $this->assertSame('2027-10-20', $block['lastDate']);
         $this->assertSame(14340.0, $block['total']);
         $this->assertTrue($block['includesCarePlan']);
         $this->assertCount(12, $block['schedule']);
-        $this->assertSame('20 November 2026', $block['schedule'][0]['date']);
-        $this->assertSame('20 Oktober 2027', $block['schedule'][11]['date']);
-        $this->assertStringContainsString('termasuk Care Plan', $block['intro']);
+        $this->assertSame('2026-11-20', $block['schedule'][0]['date']);
+        $this->assertSame('2027-10-20', $block['schedule'][11]['date']);
+        // The founder's BM content prints as authored; no BM chrome is baked by the backend.
+        $this->assertSame('Sistem Bengkel — Pakej B · Ansuran 12 bulan', $pdf['project']);
+        $this->assertStringNotContainsString('Pelan pembayaran', json_encode($pdf));
 
         // The terms bullet names the agreed figures, not a pct.
-        $this->assertStringContainsString('RM 2,700 deposit to commence', $pdf['paymentTerms']['items'][0]);
-        $this->assertStringContainsString('12 monthly instalments of RM 970', $pdf['paymentTerms']['items'][0]);
+        $this->assertStringContainsString('RM 2,700.00 deposit to commence', $pdf['paymentTerms']['items'][0]);
+        $this->assertStringContainsString('12 monthly instalments of RM 970.00', $pdf['paymentTerms']['items'][0]);
 
         // And nowhere in the whole PDF payload do the stale figures survive.
         $json = json_encode($pdf, JSON_UNESCAPED_UNICODE);
@@ -174,10 +179,11 @@ class ConnectorPaymentPlanTest extends TestCase
         }
 
         $pdf = DocumentMapper::toDocumentData($q->fresh());
-        $this->assertSame('Deposit (30%)', $pdf['panels'][0]['label']);
-        $this->assertEquals(4302, $pdf['panels'][0]['value']); // writer-baked, JSON round-trip
-        $this->assertSame('Balance on completion', $pdf['panels'][1]['label']);
-        $this->assertArrayNotHasKey('paymentPlan', $pdf);
+        // Cards are derived on read (role + figures); the renderer labels them per locale.
+        $this->assertSame(['role' => 'lump_deposit', 'value' => 4302.0, 'pctLabel' => '30%'], $pdf['panels'][0]);
+        $this->assertSame('lump_balance', $pdf['panels'][1]['role']);
+        $this->assertSame('lump_sum', $pdf['paymentPlan']['plan']);
+        $this->assertSame([], $pdf['paymentPlan']['schedule']);
         $this->assertStringStartsWith('30% deposit to commence;', $pdf['paymentTerms']['items'][0]);
     }
 
@@ -195,10 +201,10 @@ class ConnectorPaymentPlanTest extends TestCase
 
         $q = Quotation::where('reference_code', $res->json('data.reference_code'))->firstOrFail();
         $pdf = DocumentMapper::toDocumentData($q);
-        $this->assertSame('Deposit (18.8%)', $pdf['panels'][0]['label']);
+        $this->assertSame('18.8%', $pdf['panels'][0]['pctLabel']);
         $this->assertSame(2700.0, $pdf['panels'][0]['value']);
         $this->assertSame(11640.0, $pdf['panels'][1]['value']);
-        $this->assertStringStartsWith('RM 2,700 deposit (18.8%) to commence;', $pdf['paymentTerms']['items'][0]);
+        $this->assertStringStartsWith('RM 2,700.00 deposit (18.8%) to commence;', $pdf['paymentTerms']['items'][0]);
         $this->assertStringNotContainsString('19%', json_encode($pdf));
     }
 
@@ -240,9 +246,11 @@ class ConnectorPaymentPlanTest extends TestCase
 
         $q = Quotation::where('reference_code', $res->json('data.reference_code'))->firstOrFail();
         $pdf = DocumentMapper::toDocumentData($q);
-        $this->assertSame('Yuran penyediaan', $pdf['panels'][0]['label']);
-        $this->assertSame('Jumlah keseluruhan (24 bulan)', $pdf['paymentPlan']['totalLabel']);
-        $this->assertStringStartsWith('RM 2,340 setup fee to commence; then RM 500 monthly for 24 months', $pdf['paymentTerms']['items'][0]);
+        $this->assertSame('partner_setup', $pdf['panels'][0]['role']);
+        $this->assertSame('partner_monthly', $pdf['panels'][1]['role']);
+        $this->assertSame(24, $pdf['paymentPlan']['months']);
+        $this->assertSame('partner', $pdf['paymentPlan']['plan']);
+        $this->assertStringStartsWith('RM 2,340.00 setup fee to commence; then RM 500.00 monthly for 24 months', $pdf['paymentTerms']['items'][0]);
     }
 
     public function test_update_re_derives_the_plan_from_the_new_inputs(): void
@@ -258,5 +266,63 @@ class ConnectorPaymentPlanTest extends TestCase
         $res->assertJsonPath('data.payment_plan.instalment_months', 6)
             ->assertJsonPath('data.payment_plan.plan_total_myr', 14340)
             ->assertJsonPath('data.payment_plan.last_instalment_date', '2027-04-20');
+    }
+
+    // ── Document locale ──────────────────────────────────────────────────────
+
+    public function test_locale_defaults_to_en_and_is_stored_when_sent(): void
+    {
+        $en = $this->draft($this->mAutomobileDetailed())->assertCreated();
+        $en->assertJsonPath('data.locale', 'en');
+
+        $res = $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Pengurusan M Automobile Service', 'email' => 'm-auto@example.com'],
+            'project' => 'Sistem Bengkel — Pakej B · Ansuran 12 bulan',
+            'locale' => 'bm',
+            'detailed' => $this->mAutomobileDetailed(),
+        ], $this->connectorHeader())->assertCreated();
+
+        $ref = $res->json('data.reference_code');
+        $res->assertJsonPath('data.locale', 'bm');
+        $this->getJson("/api/v1/connector/quotations/{$ref}", $this->connectorHeader())
+            ->assertOk()
+            ->assertJsonPath('data.locale', 'bm');
+
+        $q = Quotation::where('reference_code', $ref)->firstOrFail();
+        $this->assertSame('bm', $q->locale);
+        $this->assertSame('bm', DocumentMapper::toDocumentData($q)['locale']);
+    }
+
+    public function test_update_keeps_the_locale_unless_a_new_one_is_sent(): void
+    {
+        $ref = $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Pengurusan M Automobile Service', 'email' => 'm-auto@example.com'],
+            'locale' => 'bm',
+            'detailed' => $this->mAutomobileDetailed(),
+        ], $this->connectorHeader())->assertCreated()->json('data.reference_code');
+
+        $this->putJson("/api/v1/connector/quotations/{$ref}", [
+            'reseed_document' => true,
+            'client' => ['name' => 'Pengurusan M Automobile Service', 'email' => 'm-auto@example.com'],
+            'detailed' => $this->mAutomobileDetailed(['instalment_months' => 6, 'instalment_amount_myr' => 1940]),
+        ], $this->connectorHeader())->assertOk()->assertJsonPath('data.locale', 'bm');
+
+        $this->putJson("/api/v1/connector/quotations/{$ref}", [
+            'reseed_document' => true,
+            'client' => ['name' => 'Pengurusan M Automobile Service', 'email' => 'm-auto@example.com'],
+            'locale' => 'en',
+            'detailed' => $this->mAutomobileDetailed(),
+        ], $this->connectorHeader())->assertOk()->assertJsonPath('data.locale', 'en');
+    }
+
+    public function test_unknown_locale_is_rejected(): void
+    {
+        $this->postJson('/api/v1/connector/quotations/draft', [
+            'client' => ['name' => 'Pengurusan M Automobile Service', 'email' => 'm-auto@example.com'],
+            'locale' => 'fr',
+            'detailed' => $this->mAutomobileDetailed(),
+        ], $this->connectorHeader())
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['locale']);
     }
 }

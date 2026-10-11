@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatAmount } from '~/utils/money'
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
@@ -97,17 +98,12 @@ function pickCurrency(code: CurrencyCode) {
   currencyOpen.value = false
 }
 
+// MYR is the exact price; other currencies are an indicative conversion,
+// rounded to the nearest 50. Both print in the house 2-decimal format.
 function convertAmt(myr: number): string {
   const { rate } = currencyMeta[activeCurrency.value]
-  const isMYR = activeCurrency.value === 'MYR'
-  const v = isMYR
-    ? Math.round(myr / 100) * 100
-    : Math.round(myr * rate / 50) * 50
-  if (v >= 1000) {
-    const k = v / 1000
-    return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}k`
-  }
-  return v.toLocaleString()
+  const v = activeCurrency.value === 'MYR' ? myr : Math.round(myr * rate / 50) * 50
+  return formatAmount(v)
 }
 
 function fmtAmt(myr: number): string {

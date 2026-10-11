@@ -1,11 +1,51 @@
 // TS port of the backend `App\Services\Quoting\PaymentPlan` — the deposit +
 // payment-plan arithmetic the admin builder needs LIVE while editing (the
 // fixed-wins rule, pct → amount rounding, the effective pct display, plan total
-// / variance, schedule dates). The PHP class is the source of truth: the PDF,
-// the resource and the order flow all read it server-side; this mirror only
-// drives the form's read-only displays. KEEP THE TWO IN SYNC.
+// / variance, schedule dates, the terms bullet). The PHP class is the source of
+// truth: the PDF, the resource and the order flow all read it server-side; this
+// mirror only drives the form's read-only displays. KEEP THE TWO IN SYNC.
+//
+// Nothing here words the PDF: the deposit / monthly cards and the Payment plan
+// section are derived by the mapper at render time and labelled from the
+// renderer's locale file (server/utils/pdf/locales.ts), so no PDF chrome —
+// English or BM — is baked into a stored document by the builder.
+
+import { formatAmount } from '~/utils/money'
 
 export type PaymentPlanKind = 'lump_sum' | 'instalment' | 'partner'
+
+/** Invoice types; `instalment` bills one numbered payment of an order's plan. */
+export type InvoiceType = 'deposit' | 'partial' | 'final' | 'instalment'
+
+/** "Instalment 3" / "Deposit" — a short invoice-type chip label. */
+export function invoiceTypeLabel(type: string, instalmentNo?: number | null): string {
+  if (type === 'instalment') return instalmentNo ? `Instalment ${instalmentNo}` : 'Instalment'
+  return ({ deposit: 'Deposit', partial: 'Partial', final: 'Final' } as Record<string, string>)[type] ?? type
+}
+
+/** A live invoice reference on an order's plan view. */
+export interface PlanInvoiceRef { id: number; number: string; status: 'issued' | 'paid' | 'void' }
+
+/**
+ * The order's agreed instalment / partner plan (OrderResource `payment_plan`,
+ * built by Order::planView) — each instalment with the live invoice billing it.
+ */
+export interface OrderPlanView {
+  plan: 'instalment' | 'partner'
+  /** "Deposit" / "Setup fee" */
+  deposit_label: string
+  deposit_myr: number
+  deposit_invoice: PlanInvoiceRef | null
+  months: number
+  monthly_myr: number
+  billing_day: number
+  includes_care_plan: boolean
+  first_date: string | null
+  last_date: string | null
+  plan_total_myr: number
+  next_instalment_no: number | null
+  schedule: { n: number; label: string; date: string; amount: number; invoice: PlanInvoiceRef | null }[]
+}
 
 export const PAYMENT_PLANS: { value: PaymentPlanKind; label: string; hint: string }[] = [
   { value: 'lump_sum', label: 'Lump sum', hint: 'Deposit to commence, balance on completion.' },
@@ -108,13 +148,12 @@ export function pctLabel(total: number, amount: number): string {
   return `${Number.isInteger(pct) ? pct.toFixed(0) : pct.toFixed(1)}%`
 }
 
-/** "2,700" / "970.50" — whole ringgit when integral. */
+/** "2,700.00" / "970.50" — always two decimals (mirrors PHP `PaymentPlan::fmt()`). */
 export function fmtRm(n: number): string {
-  const v = Number(n) || 0
-  return Number.isInteger(v) ? v.toLocaleString('en-US') : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return formatAmount(n)
 }
 
-/** "RM 2,700 · 18.8%" */
+/** "RM 2,700.00 · 18.8%" */
 export function depositLabel(total: number, amount: number): string {
   return `RM ${fmtRm(amount)} · ${pctLabel(total, amount)}`
 }
@@ -176,13 +215,13 @@ export function scheduleDates(p: PaymentPlanInputs, anchor = new Date()): string
   return Array.from({ length: planMonths(p) }, (_, i) => ymd(scheduleDate(first, i, p.billing_day)))
 }
 
-/** "20 Nov 2026" for the admin UI (the PDF formats its own dates, in BM, server-side). */
+/** "20 Nov 2026" for the admin UI (the PDF formats its own dates per document locale). */
 export function fmtYmd(s: string): string {
   const d = parseYmd(s)
   return d ? d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : s
 }
 
-// ── Terms + panels (mirror PaymentPlan::depositTerm / panels) ────────────────
+// ── Terms (mirror PaymentPlan::depositTerm / alignTerms) ─────────────────────
 
 function ordinal(n: number): string {
   const r = n % 100
@@ -234,38 +273,3 @@ export function alignDepositTerms(lines: string[], total: number, pct: number, p
   })
 }
 
-/** The deposit / balance (or deposit / monthly) panels the detailed layout bakes — mirror of PaymentPlan::panels. */
-export function detailedPanels(total: number, pct: number, p: PaymentPlanInputs): Record<string, unknown>[] {
-  if (total <= 0) return []
-  const dep = depositAmountFor(total, pct, p.deposit_amount_myr)
-  const monthly = Number(p.instalment_amount_myr) || 0
-  const months = planMonths(p)
-  const dates = scheduleDates(p)
-  const span = dates.length ? `, ${bmDate(dates[0]!)} hingga ${bmDate(dates[dates.length - 1]!)}` : ''
-  const billing = `Dibil pada ${p.billing_day} haribulan setiap bulan${span}.`
-  if (p.payment_plan === 'instalment') {
-    return [
-      { label: 'Deposit semasa penerimaan', value: dep, note: 'Dibayar sebelum kerja bermula.' },
-      { label: `Ansuran bulanan · ${months} bulan`, value: monthly, accent: true, note: billing },
-    ]
-  }
-  if (p.payment_plan === 'partner') {
-    return [
-      { label: 'Yuran penyediaan', value: dep, note: 'Dibayar semasa penerimaan.' },
-      { label: `Bayaran bulanan · ${months} bulan`, value: monthly, accent: true, note: billing },
-    ]
-  }
-  if (dep <= 0) return []
-  return [
-    { label: `Deposit (${pctLabel(total, dep)})`, value: dep, note: 'Payable to commence work.' },
-    { label: 'Balance on completion', value: Math.round((total - dep) * 100) / 100, accent: true, note: 'Due before handover.' },
-  ]
-}
-
-const BM_MONTHS = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember']
-
-/** "20 November 2026" — mirrors PaymentPlan::bmDate for the baked panel notes. */
-export function bmDate(s: string): string {
-  const d = parseYmd(s)
-  return d ? `${d.getUTCDate()} ${BM_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}` : s
-}

@@ -91,15 +91,46 @@ a `:root` token; nothing below it uses a literal hex.
   (uppercase, letter-spaced) with `SSM Registration: 202603119899 (CA0420977-U)`
   under it. **No tagline in the header.** Right side: the kind word (`Invoice` /
   `Receipt`), then one line per meta pair, label and value on one baseline
-  (`NO.  AXNI-2026-0005`, `DATE …`, `STATUS …`).
+  (`NO.  AXNI-2026-0005`, `DATE …`, `STATUS …`). The pairs share a two-column
+  grid (`.doc` + `subgrid`): labels start on one common left edge, values stay
+  flush right.
   The identity strings come from `STUDIO_IDENTITY` in `template.ts`, **not** from
   `data.studio`: payloads are frozen, and older ones carry `reg: "Reg. …"`. Same
   reasoning as `STUDIO_PAY` below. `DocumentMapper::STUDIO['reg']` holds the same
   string — keep the two in sync. `data.studio.name` is only the logo's `alt`.
 - **Shared chrome** — gradient top hairline, the letterhead above, a rule with a
   primary leading segment, rounded-square section markers, dot lists,
-  ITEM·DETAIL·PRICE tables, a "Designed by …" credit block (with the tagline), and
-  a running page-foot (`studio · tagline · number` left, `Page X of Y` right).
+  ITEM·DETAIL·PRICE tables, a closing credit block ("Designed by Qie," /
+  "Axel Nova Ventures" on two lines, then the tagline and contact line — owned by
+  the renderer's `STUDIO_CREDIT`, never read from the payload), and
+  a running page-foot (`Axel Nova Ventures · SSM No : 202603119899 (CA0420977-U) · AXNQ-…`
+  left, `Page X of Y` right). The footer's SSM number comes from the renderer's
+  `STUDIO_IDENTITY` (same source as the letterhead), the `SSM No :` label from
+  `locales.ts` (`page.ssm`); the tagline stays in the "Designed by" credit block.
+
+### Language model — chrome vs content
+
+Every piece of **template chrome** — eyebrows, section headings, table captions,
+column headers, row labels (Deposit, Monthly instalment, Billing day, First / Last
+instalment, Total), panel labels, the footer words, `Page x of y`, and the month
+names dates are formatted with — comes from ONE locale file,
+[locales.ts](../../frontend/server/utils/pdf/locales.ts). Default `en`; `bm`
+(Bahasa Melayu) is the second locale. `LocaleStrings` is the typed contract (a
+missing `bm` key is a `vue-tsc` error) and `locales.test.ts` checks coverage at
+runtime.
+
+The locale is picked by `DocumentData.locale`, mapped from the quotation row's
+`locale` column (`en` | `bm`, default `en`). It is set **explicitly** — the
+builder's "Document language" select or the connector's `locale` field — and
+**never detected from content**. Frozen invoice / receipt payloads predate the
+field and render as `en`.
+
+**Content the founder authored is never touched**: the project title, intro,
+section / row titles and details, included items, option cards, care rows and
+notes print exactly as entered, whatever language they are in. The backend
+therefore sends **data, not copy**: ISO dates (`issued`, `validUntil`, the
+schedule), numbers, and `role`s on the deposit / monthly cards — the template
+words them. Currency is `RM 2,700.00` in both locales.
 
 > **Header and footer are chrome; the payload freezes data.** Because PDFs are
 > never stored, every past document picks up the current letterhead the next time
@@ -115,7 +146,9 @@ maps a row to this shape; the renderer consumes it. Key fields:
 ```
 layout      "standard" | "detailed"
 kind        "quotation" | "invoice" | "receipt"
-number, issued, validUntil, status, currency
+locale      "en" | "bm"            # template chrome language; absent = en (frozen payloads)
+number, status, currency
+issued, validUntil                 # ISO "2026-10-10" (quotations — formatted per locale) or a frozen "22 June 2026" (printed as-is)
 studio      { name, tagline, logo?, email, site, reg, designedBy }   # reg not read by the header
 client      { name, company?, attn?, address?, email? }
 project, subtitle?, intro?
@@ -125,7 +158,7 @@ items[]     { title, desc?, qty, unit?, rate }
 terms[]
 discount?, taxLabel?, taxRate?, depositPct?
 depositAmount?, depositPctLabel?      # quotes: the derived deposit (fixed wins) + "18.8%" label for the card
-paymentPlan?                          # quotes on an instalment / partner plan — see "Payment plan block"
+paymentPlan?                          # quotes — see "Payment plan section" (standard layout: scheduled plans only)
 
 # detailed
 sections[]      { title, rows[ {title, detail?, price|priceText, priceWas?} ], totalLabel?, total?, note? }
@@ -136,7 +169,8 @@ provide, notIncluded   { title?, items[], columns? }
 timeline        { title?, text }
 paymentTerms    { title?, items[] }
 summary         { rows[ {label, price|priceText, negative?, total?, red?, priceMuted?, role?} ] }
-panels[]        { label, value, note?, accent?, role? }     # deposit / balance cards
+panels[]        { role, value, accent?, pctLabel?, months?, billingDay?, firstDate?, lastDate? }   # quotation cards: role + figures, labelled per locale
+                { label, value, note?, accent?, role? }     # invoice / receipt cards: frozen label + note
 display         { summary?, remaining? }                    # render-time switches; absent = shown
 billingFor      { title, label?, text? }                    # right half of the accent amount panel
 scope           { title?, items[], columns?, note? }        # bullets between panels and How to pay
@@ -147,27 +181,59 @@ pay             { online?, bank?, holder?, acct?, note? }
 A full `payload` can also be passed straight through (the "customized builder"
 override path — see Roadmap).
 
-### Payment plan block (quotations)
+### Payment plan section (quotations)
 
-`paymentPlan` is emitted by `DocumentMapper::toDocumentData` for an **instalment /
-partner** quotation (absent on a lump sum, which keeps the deposit card / panels +
-terms). It is fully derived server-side by `PaymentPlan::documentBlock()` — copy
-(BM: *Pelan pembayaran*), formatted dates (`20 November 2026`), totals and the dated
-schedule — and the template only lays it out (`paymentPlanHTML`): intro sentence,
-label/value rows, the plan total, then a Bayaran · Tarikh · Jumlah schedule table.
+`paymentPlan` is emitted by `DocumentMapper::toDocumentData` for every
+**detailed** quotation (lump sum included) and for a **standard**-layout quotation
+on an instalment / partner plan (a standard lump sum keeps its deposit card). It is
+**data only**, derived by `PaymentPlan::documentBlock()` — figures, ISO dates and
+the dated schedule:
 
 ```
-paymentPlan   { plan, title, intro?, rows[ {label, amount?, detail?} | {label, text} ],
-                deposit, monthly, months, billingDay, firstDate?, lastDate?, includesCarePlan,
-                total, totalLabel, scheduleTitle?, schedule[ {label, date, amount} ] }
+paymentPlan   { plan, deposit, depositPctLabel, balance, monthly, months, billingDay,
+                firstDate?, lastDate?, includesCarePlan, total, schedule[ {n, date, amount} ] }
 ```
 
-Standard layout: the block replaces the deposit card and sits under the totals.
-Detailed layout: it follows the deposit / monthly panels (which the mapper derives
-and substitutes for the writer-baked ones whenever the document carries the new plan
-keys). The deposit card's pct label comes from `depositPctLabel` (e.g. `18.8%` for a
-fixed RM 2,700 on RM 14,340) and `computeTotals` prefers `depositAmount` over the
-pct. Rules and rounding: [QUOTE_BUILDER.md → Deposit & payment plan](./QUOTE_BUILDER.md#deposit--payment-plan--paymentplan).
+`paymentPlanHTML` (exported from `template.ts`) renders it as ONE titled
+`.payment-plan` container, in the document locale:
+
+1. eyebrow `PAYMENT PLAN` / `PELAN PEMBAYARAN` + an `h2` per plan —
+   `12-Month Instalment Plan` / `Pelan Ansuran 12 Bulan` (from `months`),
+   `Technology Partner · 24 months` / `Rakan Teknologi · 24 bulan`,
+   `One-Time Payment` / `Bayaran Sekali Gus`;
+2. one summary line built from the fields, omitting parts that don't apply —
+   `Deposit RM 2,700.00 · 12 × RM 970.00 · billed on the 20th · total RM 14,340.00`;
+3. the deposit / monthly **cards** (`panels`, by `role` — they live inside the
+   section, not before it);
+4. scheduled plans only: the `.summary` rows (Deposit / Monthly instalment ×
+   months, includes Care Plan / Billing day / First / Last instalment / Total) and
+   the `.schedule` table under the caption `PAYMENT SCHEDULE` / `JADUAL BAYARAN`,
+   columns Payment · Date · Amount / Bayaran · Tarikh · Jumlah, rows `Instalment n` /
+   `Ansuran n` (partner: `Month n` / `Bulan n`), dates per locale
+   (`20 Disember 2026`), money `RM 970.00`.
+
+**Page handling.** Instalment / partner sections open on their own page and never
+split; a lump sum (`.payment-plan.inline`) keeps flowing. Both the modern and legacy
+properties are set:
+
+```css
+.payment-plan { break-before: page; page-break-before: always; }
+.payment-plan.inline { break-before: auto; page-break-before: auto; }
+.payment-plan .summary, .payment-plan .schedule { break-inside: avoid; page-break-inside: avoid; }
+.payment-plan .schedule thead { display: table-header-group; }
+.payment-plan .schedule tr { break-inside: avoid; page-break-inside: avoid; }
+```
+
+**Cards are derived, never baked.** No writer (admin builder, connector
+`DetailedDocumentBuilder`, seeder) stores `payload.panels` any more; the mapper
+always derives them from the plan on read (`PaymentPlan::panels()` → `role` +
+figures: `lump_deposit` / `lump_balance` / `inst_deposit` / `inst_monthly` /
+`partner_setup` / `partner_monthly`), so a stale `Deposit (19%) · RM 2,725` pair
+can never outlive the agreed figure and no English / BM label is frozen into a
+quotation. Legacy stored panels are simply overridden. The deposit card's pct label
+comes from `depositPctLabel` (e.g. `18.8%` for a fixed RM 2,700 on RM 14,340) and
+`computeTotals` prefers `depositAmount` over the pct. Rules and rounding:
+[QUOTE_BUILDER.md → Deposit & payment plan](./QUOTE_BUILDER.md#deposit--payment-plan--paymentplan).
 
 ---
 
@@ -177,6 +243,8 @@ pct. Rules and rounding: [QUOTE_BUILDER.md → Deposit & payment plan](./QUOTE_B
 | File | Role |
 |---|---|
 | `types.ts` | the `DocumentData` contract |
+| `locales.ts` | `LOCALES` (`en` / `bm`) — every string of template chrome + `formatDate` / `fmt` |
+| `locales.test.ts`, `template.test.ts` | vitest: locale coverage, month names per locale, Payment plan snapshots per plan × locale |
 | `fonts.ts` | `FONT_FACES` — Satoshi 400/500/700, base64 woff2 |
 | `logo.ts` | `STUDIO_LOGO` — base64 logomark |
 | `qr.ts` | `DUITNOW_QR` — base64 DuitNow QR payment card (invoices only) |
@@ -241,6 +309,23 @@ a deposit invoice when the deposit lands, and a receipt on full payment,
 entering the paid amount + method + ref. `DocumentMapper::forOrder` builds the
 panels from those: invoice → "Deposit received" + accent "Balance due on
 completion"; receipt → "Paid in full".
+
+### Instalment / partner invoices
+
+An order accepted from an instalment or partner quotation carries the agreed
+plan (`orders.payment_plan`, see [QUOTE_BUILDER.md → Deposit & payment plan](./QUOTE_BUILDER.md#deposit--payment-plan--paymentplan)).
+Its invoices follow that plan:
+
+| Invoice | `invoiceType` | Label on the PDF | Amount / due date pre-filled from |
+|---|---|---|---|
+| Up-front payment | `deposit` | `Deposit` (partner: `Setup fee`) | `Order::deposit_due_myr` |
+| One monthly payment | `instalment` + `instalmentNo` | `Instalment 3 of 12` / `Monthly fee 3 of 24` | the plan's monthly figure / that instalment's scheduled date |
+| Anything else | `partial` / `final` | `Partial payment` / `Final balance` | the remaining balance |
+
+Each instalment can carry only one live invoice (void it to re-issue). The deposit
+type greys out once a live deposit invoice exists or less than the deposit
+remains. Labels are worked out by `DocumentMapper::billLabel()` and frozen into
+the payload like any other invoice text.
 
 ### Invoice display options
 
@@ -371,7 +456,15 @@ further to save page space; crop the card instead (below).
 ### Add a detailed section type
 Add the interface to `types.ts`, a render partial + CSS in `template.ts`, and
 push it into `renderDetailed`'s `parts[]`. Re-render a fixture to check one-page
-fit before reflowing spacing.
+fit before reflowing spacing. Any heading, caption or label the partial prints
+on its own goes into `locales.ts` (both `en` and `bm`) — never a literal in the
+template.
+
+### Run the renderer tests
+```bash
+docker compose -f docker-compose.dev.yml exec frontend npm test        # vitest run
+docker compose -f docker-compose.dev.yml exec frontend npx vitest run -u   # refresh snapshots after an intended change
+```
 
 ---
 
@@ -381,8 +474,12 @@ fit before reflowing spacing.
   Chrome positions `fixed` relative to the content box in print, so a fixed bar
   repeats *inside* the body on later pages. The page-foot + page numbers repeat
   correctly because they're `@page` margin boxes.
-- **Money formatting** — table/summary use no decimals (`RM1,800`); panels use 2
-  (`RM1,300.00`). `money(n, cur, dec)`.
+- **Money formatting** — every figure the PDF prints uses one format,
+  `RM 2,700.00`: currency, a space, comma thousands, always two decimals (line
+  items, section totals, summary rows, panels, option cards, care rows, the
+  payment plan). One helper, `money(n, cur)`. The backend's generated text (the
+  terms bullet via `PaymentPlan::fmt()`, the seeder's notes, the emails) uses the
+  same two decimals; founder-authored content prints as typed.
 - **Letterhead identity is not in the payload** — `STUDIO_IDENTITY` in
   `template.ts`, kept in sync with `DocumentMapper::STUDIO['reg']`. Nothing in the
   header may break the name onto two lines.
@@ -390,7 +487,12 @@ fit before reflowing spacing.
   `.kind-big` uses `margin-bottom:10px` to land NO./DATE/STATUS at 100.5 / 114.75 /
   128.25pt. Re-measure (pdfplumber, char matrix) after touching header spacing.
 - **CSS string injection** — the page-foot identity goes through a `--pgfoot-l`
-  custom property; values are escaped for a CSS string literal (`cssStr`).
+  custom property, and the localized "Page" / "of" words through `--pg-page` /
+  `--pg-of`; values are escaped for a CSS string literal (`cssStr`).
+- **No literal chrome in the template.** Every heading, caption, label, footer
+  word and month name is read from `locales.ts`; the only strings `template.ts`
+  prints verbatim are the founder's content fields. Dates arrive as ISO and are
+  formatted by `formatDate` — a non-ISO string (frozen invoice) passes through.
 
 ---
 

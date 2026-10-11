@@ -37,8 +37,6 @@ const REFERRAL_STATUS_PILLS: Record<string, ReferralPillStyle> = {
 
 export const referralPill = (status: string): ReferralPillStyle => REFERRAL_STATUS_PILLS[status] ?? PILL_NEW
 
-export const myr = (n: number) => new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(n || 0)
-
 export function usePartnerDashboard() {
   const data = useState<PartnerDashboard | null>('partner-dashboard', () => null)
   const loadError = useState<boolean>('partner-dashboard-error', () => false)

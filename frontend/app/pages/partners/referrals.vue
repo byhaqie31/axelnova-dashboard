@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Referrer-only (Task 9): the referral list + "refer another" form, split out
 // of the old single portal page. Wrong-type visitors bounce to /partners/home
 // (partner-type middleware); the API 403s investor tokens regardless.
@@ -103,7 +104,7 @@ async function submitReferral() {
           <div class="min-w-0">
             <p class="text-[14px] font-medium truncate" style="color: var(--color-text);">{{ r.business_name }}</p>
             <p class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">
-              {{ r.commission_pct }}% commission<span v-if="r.earned_myr != null" style="color: var(--color-success);"> · {{ myr(r.earned_myr) }} earned</span><span v-else-if="r.has_order"> · Estimated once your client pays</span>
+              {{ r.commission_pct }}% commission<span v-if="r.earned_myr != null" style="color: var(--color-success);"> · {{ formatMyr(r.earned_myr) }} earned</span><span v-else-if="r.has_order"> · Estimated once your client pays</span>
             </p>
           </div>
           <span

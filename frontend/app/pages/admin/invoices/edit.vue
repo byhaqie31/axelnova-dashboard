@@ -3,6 +3,8 @@
 // issue; saving re-runs the server-side mapper over the stored issue inputs
 // and re-freezes the payload — same AXNI number, same PDF link. Amount fields
 // lock (and are withheld from the request) once payments are recorded.
+import type { OrderPlanView } from '~/composables/paymentPlan'
+
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -27,6 +29,8 @@ interface Order {
   deposit_due_myr: number
   amount_paid_myr: string
   remaining_myr: number
+  payment_plan?: OrderPlanView | null
+  invoices?: { id: number; type: string; status: string; instalment_no?: number | null }[]
 }
 
 const invoiceId = computed(() => route.query.id ? String(route.query.id) : '')

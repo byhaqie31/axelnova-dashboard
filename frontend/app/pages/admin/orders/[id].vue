@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
+import type { InvoiceType, OrderPlanView } from '~/composables/paymentPlan'
+import { fmtRm, fmtYmd, invoiceTypeLabel } from '~/composables/paymentPlan'
+
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -26,6 +30,8 @@ interface Order {
   deposit_pct: number | null
   deposit_amount_myr: number | string | null
   deposit_due_myr: number
+  /** The quotation's agreed instalment / partner plan (null for a lump sum). */
+  payment_plan?: OrderPlanView | null
   amount_paid_myr: string
   remaining_myr: number
   payment_status: 'unpaid' | 'deposit_paid' | 'paid'
@@ -50,7 +56,8 @@ interface Order {
 
 interface OrderInvoice {
   id: number
-  type: 'deposit' | 'partial' | 'final'
+  type: InvoiceType
+  instalment_no: number | null
   number: string
   status: 'issued' | 'paid' | 'void'
   amount_total: string
@@ -186,16 +193,6 @@ onMounted(() => {
   loadConfig()
 })
 
-function fmtMyr(amount: string | number) {
-  const n = Number(amount)
-  return n >= 1000 ? `RM ${(n / 1000).toFixed(0)}k` : `RM ${n.toLocaleString()}`
-}
-
-// Exact, non-abbreviated — for payment figures where every ringgit matters.
-function fmtMyrExact(amount: string | number) {
-  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
 function fmtDate(iso?: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -263,7 +260,7 @@ const docSections = computed(() => {
 })
 
 // A detailed/bespoke quote is an agreed price (min == max), not a range —
-// show the exact figure instead of a degenerate "RM 153k – RM 153k".
+// show the exact figure instead of a degenerate "RM 153,000.00 – RM 153,000.00".
 const agreedAmount = computed(() => {
   const min = Number(order.value?.estimate_min_myr)
   const max = Number(order.value?.estimate_max_myr)
@@ -320,7 +317,7 @@ class="rounded-2xl border p-6 max-md:p-5"
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Total value</p>
               <p class="text-[13px] font-semibold" style="color: var(--color-text);">
-                {{ fmtMyrExact(order.final_amount_myr) }}
+                {{ formatMyr(order.final_amount_myr) }}
               </p>
             </div>
           </div>
@@ -349,8 +346,8 @@ v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold
             <span v-if="packageLabel" class="font-medium" style="color: var(--color-text);">{{ packageLabel }}</span>
             <code v-if="order.package_key" class="font-mono text-[12px]" style="color: var(--color-text-tertiary);">{{ order.package_key }}</code>
             <span v-if="order.estimate_eta_value && order.estimate_eta_unit">· {{ formatEta(order.estimate_eta_value, order.estimate_eta_unit) }}</span>
-            <span v-if="agreedAmount">· Agreed <span class="font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(agreedAmount) }}</span></span>
-            <span v-else-if="order.estimate_min_myr && order.estimate_max_myr">· Est. {{ fmtMyr(order.estimate_min_myr) }} – {{ fmtMyr(order.estimate_max_myr) }}</span>
+            <span v-if="agreedAmount">· Agreed <span class="font-semibold tabular-nums" style="color: var(--color-text);">{{ formatMyr(agreedAmount) }}</span></span>
+            <span v-else-if="order.estimate_min_myr && order.estimate_max_myr">· Est. {{ formatMyr(order.estimate_min_myr) }} – {{ formatMyr(order.estimate_max_myr) }}</span>
           </div>
 
           <!-- Detailed quotation: priced scope sections, mirroring the PDF summary. -->
@@ -359,7 +356,7 @@ v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold
             <div class="space-y-2">
               <div v-for="(s, i) in docSections" :key="i" class="flex justify-between items-baseline gap-4">
                 <span class="text-[13px]" style="color: var(--color-text);">{{ s.title }}</span>
-                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ fmtMyrExact(s.total) }}</span>
+                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ formatMyr(s.total) }}</span>
               </div>
             </div>
           </div>
@@ -369,7 +366,7 @@ v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold
             <div class="space-y-2">
               <div v-for="(it, i) in lineItems" :key="i" class="flex justify-between items-baseline gap-4">
                 <span class="text-[13px]" style="color: var(--color-text);">{{ it.title }}<span v-if="Number(it.qty) > 1" class="text-[12px]" style="color: var(--color-text-tertiary);"> × {{ it.qty }}</span></span>
-                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ fmtMyrExact((Number(it.qty) || 0) * (Number(it.rate) || 0)) }}</span>
+                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ formatMyr((Number(it.qty) || 0) * (Number(it.rate) || 0)) }}</span>
               </div>
             </div>
           </div>
@@ -379,7 +376,7 @@ v-if="confirmed" class="inline-flex items-center gap-1 text-[10px] font-semibold
             <div class="space-y-2">
               <div v-for="a in order.quotation_addons" :key="a.key" class="flex justify-between items-center gap-4">
                 <span class="text-[13px]" style="color: var(--color-text);">{{ a.label }}</span>
-                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ fmtMyrExact(a.amount_myr) }}</span>
+                <span class="text-[13px] font-semibold tabular-nums whitespace-nowrap" style="color: var(--color-text);">{{ formatMyr(a.amount_myr) }}</span>
               </div>
             </div>
           </div>
@@ -411,19 +408,19 @@ class="text-[11px] font-semibold px-2.5 py-1 rounded-full"
           <div class="grid grid-cols-2 gap-x-4 gap-y-4">
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Total</p>
-              <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(order.final_amount_myr) }}</p>
+              <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ formatMyr(order.final_amount_myr) }}</p>
             </div>
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Deposit{{ order.deposit_amount_myr != null ? ' (fixed)' : ` (${order.deposit_pct ?? 0}%)` }}</p>
-              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text-secondary);">{{ fmtMyrExact(order.deposit_due_myr) }}</p>
+              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text-secondary);">{{ formatMyr(order.deposit_due_myr) }}</p>
             </div>
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Paid</p>
-              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-success);">{{ fmtMyrExact(order.amount_paid_myr) }}</p>
+              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-success);">{{ formatMyr(order.amount_paid_myr) }}</p>
             </div>
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Remaining</p>
-              <p class="text-[15px] font-bold tabular-nums" :style="{ color: Number(order.remaining_myr) > 0 ? 'var(--color-warning)' : 'var(--color-success)' }">{{ fmtMyrExact(order.remaining_myr) }}</p>
+              <p class="text-[15px] font-bold tabular-nums" :style="{ color: Number(order.remaining_myr) > 0 ? 'var(--color-warning)' : 'var(--color-success)' }">{{ formatMyr(order.remaining_myr) }}</p>
             </div>
           </div>
 
@@ -452,7 +449,7 @@ v-for="p in order.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
                 <p class="text-[11px] mt-1 capitalize" style="color: var(--color-text-tertiary);">{{ p.method.replace('_', ' ') }} · {{ fmtDate(p.paid_at) }}</p>
               </div>
               <span class="text-[13px] font-semibold shrink-0" :style="{ color: Number(p.amount_myr) < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">
-                {{ Number(p.amount_myr) < 0 ? '−' : '' }}{{ fmtMyrExact(Math.abs(Number(p.amount_myr))) }}
+                {{ Number(p.amount_myr) < 0 ? '−' : '' }}{{ formatMyr(Math.abs(Number(p.amount_myr))) }}
               </span>
             </NuxtLink>
           </div>
@@ -465,6 +462,66 @@ v-for="p in order.payments" :key="p.id" :to="`/admin/payments/${p.id}`"
             <NuxtLink :to="`/admin/payments?order_id=${order.id}`" class="btn-pill btn-pill-ghost text-[12px] max-md:flex-1 max-md:h-10!" style="height: 34px; padding: 0 16px;">
               View all payments
             </NuxtLink>
+          </div>
+        </div>
+
+        <!-- Payment plan — the quotation's agreed schedule, each payment with its invoice -->
+        <div
+          v-if="order.payment_plan"
+          class="rounded-2xl border p-6 max-md:p-5"
+          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+          <div class="flex items-center justify-between gap-3 mb-1">
+            <p class="text-[11px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Payment plan</p>
+            <span
+              class="text-[11px] font-semibold uppercase tracking-wider rounded-full px-2.5 py-1"
+              :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ order.payment_plan.plan === 'partner' ? 'Partner' : 'Instalment' }}</span>
+          </div>
+          <p class="text-[12px] tabular-nums mb-4" style="color: var(--color-text-secondary);">
+            {{ order.payment_plan.deposit_label }} RM {{ fmtRm(order.payment_plan.deposit_myr) }} + {{ order.payment_plan.months }} × RM {{ fmtRm(order.payment_plan.monthly_myr) }}
+            on the {{ order.payment_plan.billing_day }}{{ order.payment_plan.includes_care_plan ? ' · includes care plan' : '' }} · total RM {{ fmtRm(order.payment_plan.plan_total_myr) }}
+          </p>
+
+          <div data-lenis-prevent class="max-h-[24rem] overflow-y-auto overscroll-contain rounded-xl border" :style="{ borderColor: 'var(--color-border)' }">
+            <table class="w-full text-[12px] max-md:text-[13px] tabular-nums">
+              <thead class="sticky top-0" :style="{ background: 'var(--color-bg)' }">
+                <tr class="text-left text-[10px] font-semibold uppercase tracking-wide" style="color: var(--color-text-tertiary);">
+                  <th class="px-3 py-2 font-semibold">Payment</th>
+                  <th class="px-3 py-2 font-semibold">Due</th>
+                  <th class="px-3 py-2 font-semibold text-right">Amount</th>
+                  <th class="px-3 py-2 font-semibold text-right">Invoice</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-t" :style="{ borderColor: 'var(--color-border)' }">
+                  <td class="px-3 py-2 font-medium whitespace-nowrap" style="color: var(--color-text);">{{ order.payment_plan.deposit_label }}</td>
+                  <td class="px-3 py-2 whitespace-nowrap" style="color: var(--color-text-secondary);">On acceptance</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap" style="color: var(--color-text);">RM {{ fmtRm(order.payment_plan.deposit_myr) }}</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap">
+                    <NuxtLink v-if="order.payment_plan.deposit_invoice" :to="`/admin/invoices/${order.payment_plan.deposit_invoice.id}`" class="inline-flex items-center gap-1.5 font-mono" style="color: var(--color-accent);">
+                      {{ order.payment_plan.deposit_invoice.number }} <AdminStatusPill :status="order.payment_plan.deposit_invoice.status" />
+                    </NuxtLink>
+                    <NuxtLink v-else :to="`/admin/invoices/new?order_id=${order.id}`" class="font-medium" style="color: var(--color-accent);">Issue</NuxtLink>
+                  </td>
+                </tr>
+                <tr
+                  v-for="r in order.payment_plan.schedule" :key="r.n"
+                  class="border-t" :style="{ borderColor: 'var(--color-border)' }">
+                  <td class="px-3 py-2 whitespace-nowrap" style="color: var(--color-text-secondary);">{{ r.label }}</td>
+                  <td class="px-3 py-2 whitespace-nowrap" style="color: var(--color-text-secondary);">{{ fmtYmd(r.date) }}</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap" style="color: var(--color-text);">RM {{ fmtRm(r.amount) }}</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap">
+                    <NuxtLink v-if="r.invoice" :to="`/admin/invoices/${r.invoice.id}`" class="inline-flex items-center gap-1.5 font-mono" style="color: var(--color-accent);">
+                      {{ r.invoice.number }} <AdminStatusPill :status="r.invoice.status" />
+                    </NuxtLink>
+                    <NuxtLink
+                      v-else :to="`/admin/invoices/new?order_id=${order.id}&instalment=${r.n}`"
+                      class="font-medium" :style="{ color: r.n === order.payment_plan.next_instalment_no ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }">
+                      Issue
+                    </NuxtLink>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -484,11 +541,11 @@ v-for="d in order.invoices" :key="d.id" :to="`/admin/invoices/${d.id}`"
                   <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ d.number }}</span>
                   <span
 class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                    :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ d.type }}</span>
+                    :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ invoiceTypeLabel(d.type, d.instalment_no) }}</span>
                   <AdminStatusPill :status="d.status" />
                 </div>
                 <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
-                  {{ fmtMyrExact(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ fmtMyrExact(d.amount_paid) }}</span> · {{ fmtDate(d.issued_at) }}
+                  {{ formatMyr(d.amount_total) }}<span v-if="d.amount_paid"> · paid {{ formatMyr(d.amount_paid) }}</span> · {{ fmtDate(d.issued_at) }}
                 </p>
               </div>
               <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0" :style="{ color: 'var(--color-text-tertiary)' }" />
@@ -521,7 +578,7 @@ v-for="r in order.receipts" :key="r.id"
               <div class="min-w-0">
                 <span class="font-mono text-[13px] font-semibold" style="color: var(--color-text);">{{ r.number }}</span>
                 <p class="text-[11px] mt-1" style="color: var(--color-text-tertiary);">
-                  {{ fmtMyrExact(r.amount) }}<span v-if="r.invoice_number"> · for {{ r.invoice_number }}</span> · {{ fmtDate(r.issued_at) }}
+                  {{ formatMyr(r.amount) }}<span v-if="r.invoice_number"> · for {{ r.invoice_number }}</span> · {{ fmtDate(r.issued_at) }}
                 </p>
               </div>
               <a

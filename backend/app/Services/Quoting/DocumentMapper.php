@@ -27,7 +27,9 @@ class DocumentMapper
         'reg' => 'SSM Registration: 202603119899 (CA0420977-U)',
         'email' => 'baihaqie@axelnova.tech',
         'site' => 'axelnovaventures.com',
-        'designedBy' => 'Designed by Qie / Axel Nova Ventures',
+        // Frozen into payloads for reference only — the PDF signature renders
+        // from STUDIO_CREDIT in frontend/server/utils/pdf/template.ts.
+        'designedBy' => 'Designed by Qie, Axel Nova Ventures',
     ];
 
     /**
@@ -114,27 +116,29 @@ class DocumentMapper
                 );
             }
 
-            // A document that carries the new plan keys (fixed deposit, or an
-            // instalment / partner plan) has its deposit / balance panels derived
-            // HERE, replacing whatever the writer baked — so a stale "Deposit
-            // (19%) · RM 2,725" pair can never outlive the agreed RM 2,700.
-            // Legacy pct-only documents keep their stored panels untouched.
-            if ($plan->isExplicit()) {
-                $panels = $plan->panels();
-                if ($panels === []) {
-                    unset($payload['panels']);
-                } else {
-                    $payload['panels'] = $panels;
-                }
+            // The deposit / balance (or deposit / monthly) cards are ALWAYS
+            // derived here from the plan (role + figures, labelled by the
+            // renderer per locale), replacing whatever an older writer baked —
+            // so a stale "Deposit (19%) · RM 2,725" pair can never outlive the
+            // agreed RM 2,700, and no baked English/BM label reaches the PDF.
+            $panels = $plan->panels();
+            if ($panels === []) {
+                unset($payload['panels']);
+            } else {
+                $payload['panels'] = $panels;
             }
 
             return array_filter(array_merge($payload, [
+                // A detailed quotation always gets the Payment plan section —
+                // lump sum included (heading + cards, no schedule, no page break).
                 'paymentPlan' => $plan->documentBlock(),
+                'locale' => self::locale($quotation),
                 'layout' => 'detailed',
                 'kind' => 'quotation',
                 'number' => $quotation->reference_code,
-                'issued' => $issuedAt->format('d F Y'),
-                'validUntil' => $validUntil->format('d F Y'),
+                // ISO dates — the template formats them per document locale.
+                'issued' => $issuedAt->toDateString(),
+                'validUntil' => $validUntil->toDateString(),
                 'currency' => 'RM',
                 'studio' => array_merge(self::STUDIO, array_filter([
                     'logo' => config('services.studio.logo_url') ?: null,
@@ -149,10 +153,11 @@ class DocumentMapper
             // non-customized projects. The detailed/customized layout is built
             // from the customized quotation builder with richer data.
             'layout' => $doc['layout'] ?? 'standard',
+            'locale' => self::locale($quotation),
             'kind' => 'quotation',
             'number' => $quotation->reference_code,
-            'issued' => $issuedAt->format('d F Y'),
-            'validUntil' => $validUntil->format('d F Y'),
+            'issued' => $issuedAt->toDateString(),
+            'validUntil' => $validUntil->toDateString(),
             'currency' => 'RM',
             'studio' => array_merge(self::STUDIO, array_filter([
                 // URL or base64 data URI; null/blank falls back to the bundled mark.
@@ -171,7 +176,9 @@ class DocumentMapper
             'depositPct' => $plan->depositPct(),
             'depositAmount' => $plan->depositAmount(),
             'depositPctLabel' => $plan->depositPctLabel(),
-            'paymentPlan' => $plan->documentBlock(),
+            // Standard layout: a lump sum keeps its deposit card; only a
+            // scheduled plan swaps it for the Payment plan section.
+            'paymentPlan' => $plan->isScheduled() ? $plan->documentBlock() : null,
             'terms' => $terms,
             'pay' => [
                 'online' => self::BANK['online'],
@@ -326,8 +333,7 @@ class DocumentMapper
             ])];
             $status = $input['statusLabel'] ?? 'Payment received';
         } else {
-            $labels = ['deposit' => 'Deposit', 'partial' => 'Partial payment', 'final' => 'Final balance'];
-            $billLabel = $labels[$input['invoiceType'] ?? ''] ?? 'Amount';
+            $billLabel = self::billLabel($order, $input);
 
             // Payment context from the order: the agreed total and the ledger-paid
             // cache frame this bill — deposit/partial show what remains after it,
@@ -420,6 +426,26 @@ class DocumentMapper
             'scope' => $scope,
             'notes' => self::noteLines($input['notes'] ?? null),
         ], fn ($v) => $v !== null && $v !== []);
+    }
+
+    /**
+     * What this bill is, as printed in its summary row and status: "Deposit",
+     * "Partial payment", "Final balance" — and on an instalment / partner order,
+     * "Setup fee" (partner deposit) or "Instalment 3 of 12" / "Monthly fee 3 of 24".
+     */
+    private static function billLabel(Order $order, array $input): string
+    {
+        $type = $input['invoiceType'] ?? '';
+        $plan = $order->isScheduled() ? $order->paymentPlan() : null;
+
+        if ($type === 'instalment' && $plan && ! empty($input['instalmentNo'])) {
+            return $plan->instalmentLabel((int) $input['instalmentNo']);
+        }
+        if ($type === 'deposit' && $plan) {
+            return $plan->upfrontLabel();
+        }
+
+        return ['deposit' => 'Deposit', 'partial' => 'Partial payment', 'final' => 'Final balance', 'instalment' => 'Instalment'][$type] ?? 'Amount';
     }
 
     /** A display switch: absent/null means shown; only an explicit false hides. */
@@ -526,6 +552,14 @@ class DocumentMapper
             'email' => $quotation->email,
             'phone' => $quotation->phone,
         ]);
+    }
+
+    /** The document language (template chrome only); unknown / unset → en. */
+    private static function locale(Quotation $quotation): string
+    {
+        $locale = (string) ($quotation->locale ?? 'en');
+
+        return in_array($locale, Quotation::LOCALES, true) ? $locale : 'en';
     }
 
     private static function defaultProject(Quotation $quotation): string

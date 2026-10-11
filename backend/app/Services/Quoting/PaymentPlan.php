@@ -51,11 +51,6 @@ final class PaymentPlan
         'instalment_amount_myr', 'billing_day', 'first_instalment_date', 'includes_care_plan',
     ];
 
-    private const BM_MONTHS = [
-        1 => 'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
-        'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember',
-    ];
-
     private const STANDARD_TAIL = '; balance due on delivery before handover.';
 
     private function __construct(
@@ -202,9 +197,24 @@ final class PaymentPlan
     /** Fixed amount wins; else pct × total rounded to the nearest ringgit. Never above the total. */
     public function depositAmount(): float
     {
-        $amount = $this->fixedDeposit ?? round($this->total * $this->depositPct / 100);
+        if ($this->fixedDeposit === null) {
+            return self::pctDepositAmount($this->total, $this->depositPct);
+        }
 
-        return (float) min(max($amount, 0), $this->total);
+        return (float) min(max($this->fixedDeposit, 0), $this->total);
+    }
+
+    /**
+     * THE percentage-deposit rule, shared by the quotation (depositAmount) and the
+     * order (Order::deposit_due_myr) so the deposit invoice never differs from the
+     * quoted figure: total × pct / 100 rounded to the NEAREST RINGGIT (halves away
+     * from zero), clamped to 0…total. 19% of RM 14,340 = RM 2,724.60 → RM 2,725.
+     */
+    public static function pctDepositAmount(float $total, int $pct): float
+    {
+        $total = max($total, 0);
+
+        return (float) min(max(round($total * $pct / 100), 0), $total);
     }
 
     public function balance(): float
@@ -319,6 +329,52 @@ final class PaymentPlan
     }
 
     /**
+     * The plan inputs an ORDER keeps once the quotation is accepted — null for a
+     * lump sum. The first date is RESOLVED (a blank one would otherwise drift with
+     * the order's own dates), so the order's schedule is fixed at acceptance.
+     *
+     * @return array{payment_plan: string, instalment_months: int, instalment_amount_myr: float, billing_day: int, first_instalment_date: ?string, includes_care_plan: bool}|null
+     */
+    public function orderSnapshot(): ?array
+    {
+        if (! $this->isScheduled() || $this->months <= 0) {
+            return null;
+        }
+
+        return [
+            'payment_plan' => $this->plan,
+            'instalment_months' => $this->months,
+            'instalment_amount_myr' => $this->instalmentAmount,
+            'billing_day' => $this->billingDay,
+            'first_instalment_date' => $this->firstInstalmentDate()?->toDateString(),
+            'includes_care_plan' => $this->includesCarePlan,
+        ];
+    }
+
+    /** "Instalment 3 of 12" / "Monthly fee 3 of 24" — the invoice label for instalment n. */
+    public function instalmentLabel(int $n): string
+    {
+        return ($this->plan === self::PARTNER ? 'Monthly fee' : 'Instalment')." {$n} of {$this->months}";
+    }
+
+    /** "Deposit" / "Setup fee" — what the up-front payment is called on this plan. */
+    public function upfrontLabel(): string
+    {
+        return $this->plan === self::PARTNER ? 'Setup fee' : 'Deposit';
+    }
+
+    /** The due date of instalment n (1-based), or null outside the schedule. */
+    public function instalmentDate(int $n): ?CarbonImmutable
+    {
+        $first = $this->firstInstalmentDate();
+        if ($first === null || $n < 1 || $n > $this->months) {
+            return null;
+        }
+
+        return self::scheduleDate($first, $n - 1, $this->billingDay);
+    }
+
+    /**
      * The derived instalment list (the deposit is not an instalment — it's due
      * on acceptance and shown separately).
      *
@@ -375,9 +431,17 @@ final class PaymentPlan
     }
 
     /**
-     * The deposit / balance panels for the detailed layout. Lump sum keeps the
-     * existing English cards; a scheduled plan shows deposit + monthly, in BM
-     * to match its Payment plan block.
+     * The deposit / balance (or deposit / monthly) cards for the PDF — DATA
+     * ONLY: a `role` plus the figures the renderer needs to label the card from
+     * its locale file (en / bm). No label, note or month name is baked here,
+     * so the same payload prints in either language. Roles:
+     *
+     *   lump_deposit    { value, pctLabel }                 "Deposit (18.8%)"
+     *   lump_balance    { value, accent }                   "Balance on completion"
+     *   inst_deposit    { value }                           "Deposit on acceptance"
+     *   inst_monthly    { value, accent, months, billingDay, firstDate, lastDate }
+     *   partner_setup   { value }                           "Setup fee"
+     *   partner_monthly { value, accent, months, billingDay, firstDate, lastDate }
      *
      * @return list<array<string, mixed>>
      */
@@ -388,26 +452,19 @@ final class PaymentPlan
             return [];
         }
 
-        if ($this->plan === self::INSTALMENT) {
-            return [
-                ['label' => 'Deposit semasa penerimaan', 'value' => $deposit, 'note' => 'Dibayar sebelum kerja bermula.'],
-                [
-                    'label' => "Ansuran bulanan · {$this->months} bulan",
-                    'value' => $this->instalmentAmount,
-                    'accent' => true,
-                    'note' => $this->billingSentence(),
-                ],
-            ];
-        }
+        if ($this->isScheduled()) {
+            $partner = $this->plan === self::PARTNER;
 
-        if ($this->plan === self::PARTNER) {
             return [
-                ['label' => 'Yuran penyediaan', 'value' => $deposit, 'note' => 'Dibayar semasa penerimaan.'],
+                ['role' => $partner ? 'partner_setup' : 'inst_deposit', 'value' => $deposit],
                 [
-                    'label' => "Bayaran bulanan · {$this->months} bulan",
+                    'role' => $partner ? 'partner_monthly' : 'inst_monthly',
                     'value' => $this->instalmentAmount,
                     'accent' => true,
-                    'note' => $this->billingSentence(),
+                    'months' => $this->months,
+                    'billingDay' => $this->billingDay,
+                    'firstDate' => $this->firstInstalmentDate()?->toDateString(),
+                    'lastDate' => $this->lastInstalmentDate()?->toDateString(),
                 ],
             ];
         }
@@ -417,80 +474,43 @@ final class PaymentPlan
         }
 
         return [
-            ['label' => "Deposit ({$this->depositPctLabel()})", 'value' => $deposit, 'note' => 'Payable to commence work.'],
-            ['label' => 'Balance on completion', 'value' => $this->balance(), 'accent' => true, 'note' => 'Due before handover.'],
+            ['role' => 'lump_deposit', 'value' => $deposit, 'pctLabel' => $this->depositPctLabel()],
+            ['role' => 'lump_balance', 'value' => $this->balance(), 'accent' => true],
         ];
     }
 
     /**
-     * The client-facing "Pelan pembayaran" block for the PDF (BM copy). Null
-     * for a lump sum — that keeps today's deposit card / panels + terms.
+     * The Payment plan section's data for the PDF (`DocumentData.paymentPlan`)
+     * — figures, ISO dates and the dated schedule ONLY. Every heading, row
+     * label, caption and month name comes from the renderer's locale file, so
+     * nothing language-specific is derived here. Lump sum carries deposit +
+     * balance and an empty schedule (it gets the section heading, no page
+     * break); instalment / partner carry the monthly figures + schedule. Null
+     * when there is nothing to pay.
      *
      * @return array<string, mixed>|null
      */
     public function documentBlock(): ?array
     {
-        if (! $this->isScheduled() || $this->months <= 0) {
+        if ($this->total <= 0) {
             return null;
         }
 
-        $deposit = $this->depositAmount();
-        $monthly = $this->instalmentAmount;
-        $first = $this->firstInstalmentDate();
-        $last = $this->lastInstalmentDate();
-        $firstText = $first ? self::bmDate($first) : null;
-        $lastText = $last ? self::bmDate($last) : null;
-        $span = $firstText && $lastText ? ", bermula {$firstText} hingga {$lastText}" : '';
-        $partner = $this->plan === self::PARTNER;
-
-        $intro = $partner
-            ? 'Yuran penyediaan RM '.self::fmt($deposit).' dibayar semasa penerimaan, diikuti bayaran bulanan RM '
-                .self::fmt($monthly)." selama {$this->months} bulan, dibil pada {$this->billingDay} haribulan setiap bulan{$span}."
-            : 'Deposit RM '.self::fmt($deposit).' dibayar semasa penerimaan sebut harga. Bakinya dijelaskan melalui '
-                ."{$this->months} ansuran bulanan sebanyak RM ".self::fmt($monthly)
-                ." setiap satu, dibil pada {$this->billingDay} haribulan setiap bulan{$span}.";
-        if ($this->includesCarePlan) {
-            $intro .= $partner ? ' Bayaran bulanan ini sudah termasuk Care Plan.' : ' Ansuran bulanan ini sudah termasuk Care Plan.';
-        }
-
-        $rows = [
-            ['label' => $partner ? 'Yuran penyediaan' : 'Deposit semasa penerimaan', 'amount' => $deposit],
-            [
-                'label' => $partner ? 'Bayaran bulanan' : 'Ansuran bulanan',
-                'amount' => $monthly,
-                'detail' => "× {$this->months} bulan".($this->includesCarePlan ? ', termasuk Care Plan' : ''),
-            ],
-            ['label' => 'Tarikh bil', 'text' => "{$this->billingDay} haribulan setiap bulan"],
-        ];
-        if ($firstText) {
-            $rows[] = ['label' => $partner ? 'Bayaran pertama' : 'Ansuran pertama', 'text' => $firstText];
-        }
-        if ($lastText) {
-            $rows[] = ['label' => $partner ? 'Bayaran terakhir' : 'Ansuran terakhir', 'text' => $lastText];
-        }
-
-        $schedule = array_map(fn (array $row): array => [
-            'label' => ($partner ? 'Bulan ' : 'Ansuran ').$row['n'],
-            'date' => $row['date'] ? self::bmDate(CarbonImmutable::parse($row['date'])) : '',
-            'amount' => $row['amount'],
-        ], $this->schedule());
+        $scheduled = $this->isScheduled() && $this->months > 0;
 
         return [
             'plan' => $this->plan,
-            'title' => 'Pelan pembayaran',
-            'intro' => $intro,
-            'rows' => $rows,
-            'deposit' => $deposit,
-            'monthly' => $monthly,
-            'months' => $this->months,
+            'deposit' => $this->depositAmount(),
+            'depositPctLabel' => $this->depositPctLabel(),
+            'balance' => $this->balance(),
+            'monthly' => $scheduled ? $this->instalmentAmount : 0.0,
+            'months' => $scheduled ? $this->months : 0,
             'billingDay' => $this->billingDay,
-            'firstDate' => $firstText,
-            'lastDate' => $lastText,
-            'includesCarePlan' => $this->includesCarePlan,
+            'firstDate' => $this->firstInstalmentDate()?->toDateString(),
+            'lastDate' => $this->lastInstalmentDate()?->toDateString(),
+            'includesCarePlan' => $scheduled && $this->includesCarePlan,
             'total' => $this->planTotal(),
-            'totalLabel' => $partner ? "Jumlah keseluruhan ({$this->months} bulan)" : 'Jumlah keseluruhan',
-            'scheduleTitle' => $partner ? 'Jadual bayaran' : 'Jadual ansuran',
-            'schedule' => $schedule,
+            'schedule' => $this->schedule(),
         ];
     }
 
@@ -550,25 +570,14 @@ final class PaymentPlan
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private function billingSentence(): string
-    {
-        $first = $this->firstInstalmentDate();
-        $last = $this->lastInstalmentDate();
-        $span = $first && $last ? ', '.self::bmDate($first).' hingga '.self::bmDate($last) : '';
-
-        return "Dibil pada {$this->billingDay} haribulan setiap bulan{$span}.";
-    }
-
-    /** "20 November 2026" with the Malay month name. */
-    public static function bmDate(CarbonInterface $date): string
-    {
-        return $date->day.' '.self::BM_MONTHS[$date->month].' '.$date->year;
-    }
-
-    /** "2,700" / "970.50" — whole ringgit when integral. */
+    /**
+     * "2,700.00" / "970.50" — the house money format: comma thousands, always two
+     * decimals. Mirrored by fmtRm() in frontend/app/composables/paymentPlan.ts
+     * (the builder words the same terms bullet live) — KEEP IN SYNC.
+     */
     public static function fmt(float $n): string
     {
-        return floor($n) === $n ? number_format($n, 0) : number_format($n, 2);
+        return number_format($n, 2);
     }
 
     private static function ordinal(int $n): string
