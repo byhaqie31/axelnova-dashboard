@@ -1,16 +1,16 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // The task payment badge (UI-STANDARDS §12.14) — payment is a card BADGE, never
 // a kanban column, because most tasks carry no extra pay. Renders nothing for
-// state 'none'; 'pending'/'paid' render the amount (PriceTag-compatible ms-MY
-// formatting) + a state chip. Shared by the admin table, the kanban card, and
+// state 'none'; 'pending'/'paid' render the amount (house `formatMyr`, as
+// PriceTag) + a state chip. Shared by the admin table, the kanban card, and
 // the calendar's completed log.
 const props = defineProps<{
   state: 'none' | 'pending' | 'paid'
   amount: number | null
 }>()
 
-const formatter = new Intl.NumberFormat('ms-MY', { maximumFractionDigits: 0 })
-const amountLabel = computed(() => props.amount != null ? `RM ${formatter.format(props.amount)}` : '')
+const amountLabel = computed(() => props.amount != null ? formatMyr(props.amount) : '')
 
 const styles = computed(() => props.state === 'paid'
   ? { color: 'var(--color-success)', background: 'var(--color-success-soft)' }

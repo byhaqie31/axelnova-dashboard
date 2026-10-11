@@ -124,7 +124,7 @@ class DetailedDocumentBuilderTest extends TestCase
         // Deposit / balance cards are derived by the PDF mapper at render time
         // (and labelled from the renderer's locale file) — never baked here.
         $this->assertArrayNotHasKey('panels', $p);
-        $this->assertStringStartsWith('RM 2,700 deposit (18.8%) to commence;', $p['paymentTerms']['items'][0]);
+        $this->assertStringStartsWith('RM 2,700.00 deposit (18.8%) to commence;', $p['paymentTerms']['items'][0]);
         $this->assertStringNotContainsString('19%', json_encode($p));
     }
 
@@ -151,6 +151,6 @@ class DetailedDocumentBuilderTest extends TestCase
 
         $p = $doc['payload'];
         $this->assertArrayNotHasKey('panels', $p);
-        $this->assertStringContainsString('12 monthly instalments of RM 970', $p['paymentTerms']['items'][0]);
+        $this->assertStringContainsString('12 monthly instalments of RM 970.00', $p['paymentTerms']['items'][0]);
     }
 }

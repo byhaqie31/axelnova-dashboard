@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Workspace › Payroll (Task 7) — a PERSON-FIRST roster with a dashboard header.
 // Pick a period (month + year); the tiles summarise it (projected payroll,
 // generated/pending, paid year-to-date, headcount) and each teammate is a row:
@@ -220,9 +221,9 @@ async function confirmOneTime() {
   }
 }
 
+// Null renders "—", not RM 0.00.
 function fmtMyr(amount: number | null) {
-  if (amount == null) return '—'
-  return `RM ${Number(amount).toLocaleString('en-MY')}`
+  return amount == null ? '—' : formatMyr(amount)
 }
 function roleLabel(role: string) {
   return role.charAt(0).toUpperCase() + role.slice(1)

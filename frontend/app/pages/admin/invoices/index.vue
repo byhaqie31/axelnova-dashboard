@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 import type { InvoiceType } from '~/composables/paymentPlan'
 import { invoiceTypeLabel } from '~/composables/paymentPlan'
 
@@ -111,11 +112,6 @@ function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-
-// Full amount, two decimals — accurate, transaction-style (e.g. RM 12,000.00).
-function fmtMyr(amount: string | number) {
-  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
 </script>
 
 <template>
@@ -190,9 +186,9 @@ class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                 :style="{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }">{{ invoiceTypeLabel(i.type, i.instalment_no) }}</span>
             </td>
             <td class="px-4 py-3.5">
-              <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ fmtMyr(i.amount_total) }}</p>
+              <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ formatMyr(i.amount_total) }}</p>
               <p v-if="i.amount_paid && Number(i.amount_paid) > 0" class="text-[11px]" :style="{ color: 'var(--color-success)' }">
-                paid {{ fmtMyr(i.amount_paid) }}
+                paid {{ formatMyr(i.amount_paid) }}
               </p>
             </td>
             <td class="px-4 py-3.5">
@@ -238,9 +234,9 @@ class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded 
         <p class="text-[11px] mb-3 truncate" :style="{ color: 'var(--color-text-tertiary)' }">{{ i.email ?? '' }}</p>
         <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3">
-            <p class="text-[13px] font-semibold tabular-nums" :style="{ color: 'var(--color-text)' }">{{ fmtMyr(i.amount_total) }}</p>
+            <p class="text-[13px] font-semibold tabular-nums" :style="{ color: 'var(--color-text)' }">{{ formatMyr(i.amount_total) }}</p>
             <p v-if="i.amount_paid && Number(i.amount_paid) > 0" class="text-[11px] text-right" :style="{ color: 'var(--color-success)' }">
-              paid {{ fmtMyr(i.amount_paid) }}
+              paid {{ formatMyr(i.amount_paid) }}
             </p>
           </div>
           <div class="flex items-center justify-between flex-wrap gap-x-3 gap-y-0.5 text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">

@@ -474,8 +474,12 @@ docker compose -f docker-compose.dev.yml exec frontend npx vitest run -u   # ref
   Chrome positions `fixed` relative to the content box in print, so a fixed bar
   repeats *inside* the body on later pages. The page-foot + page numbers repeat
   correctly because they're `@page` margin boxes.
-- **Money formatting** — table/summary use no decimals (`RM1,800`); panels use 2
-  (`RM1,300.00`). `money(n, cur, dec)`.
+- **Money formatting** — every figure the PDF prints uses one format,
+  `RM 2,700.00`: currency, a space, comma thousands, always two decimals (line
+  items, section totals, summary rows, panels, option cards, care rows, the
+  payment plan). One helper, `money(n, cur)`. The backend's generated text (the
+  terms bullet via `PaymentPlan::fmt()`, the seeder's notes, the emails) uses the
+  same two decimals; founder-authored content prints as typed.
 - **Letterhead identity is not in the payload** — `STUDIO_IDENTITY` in
   `template.ts`, kept in sync with `DocumentMapper::STUDIO['reg']`. Nothing in the
   header may break the name onto two lines.

@@ -570,10 +570,14 @@ final class PaymentPlan
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    /** "2,700" / "970.50" — whole ringgit when integral. */
+    /**
+     * "2,700.00" / "970.50" — the house money format: comma thousands, always two
+     * decimals. Mirrored by fmtRm() in frontend/app/composables/paymentPlan.ts
+     * (the builder words the same terms bullet live) — KEEP IN SYNC.
+     */
     public static function fmt(float $n): string
     {
-        return floor($n) === $n ? number_format($n, 0) : number_format($n, 2);
+        return number_format($n, 2);
     }
 
     private static function ordinal(int $n): string

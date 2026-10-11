@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Shared invoice form — used by both the issue page (create) and the edit
 // page. Create posts the full body; edit merges over the stored issue inputs
 // server-side, and when `amountsLocked` (payments recorded) only notes, due
@@ -307,9 +308,6 @@ function submit() {
   emit('submit', submitBody())
 }
 
-function fmtMyr(amount: string | number) {
-  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
 </script>
 
 <template>
@@ -320,15 +318,15 @@ function fmtMyr(amount: string | number) {
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <div class="max-md:col-span-2">
         <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Agreed total</p>
-        <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ fmtMyr(order.final_amount_myr) }}</p>
+        <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-text);">{{ formatMyr(order.final_amount_myr) }}</p>
       </div>
       <div>
         <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Paid</p>
-        <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-success);">{{ fmtMyr(order.amount_paid_myr) }}</p>
+        <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-success);">{{ formatMyr(order.amount_paid_myr) }}</p>
       </div>
       <div>
         <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Remaining</p>
-        <p class="text-[15px] font-bold tabular-nums" :style="{ color: Number(order.remaining_myr) > 0 ? 'var(--color-warning)' : 'var(--color-success)' }">{{ fmtMyr(order.remaining_myr) }}</p>
+        <p class="text-[15px] font-bold tabular-nums" :style="{ color: Number(order.remaining_myr) > 0 ? 'var(--color-warning)' : 'var(--color-success)' }">{{ formatMyr(order.remaining_myr) }}</p>
       </div>
     </div>
 
@@ -479,31 +477,31 @@ function fmtMyr(amount: string | number) {
       <div class="live-total rounded-xl border p-3 text-[12px] max-md:text-[13px] space-y-1.5" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <div v-if="agreedTotal > 0" class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">Agreed project total</span>
-          <span class="tabular-nums" style="color: var(--color-text);">{{ fmtMyr(agreedTotal) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text);">{{ formatMyr(agreedTotal) }}</span>
         </div>
         <div v-if="paidToDate > 0" class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">Paid to date</span>
-          <span class="tabular-nums" style="color: var(--color-success);">−{{ fmtMyr(paidToDate) }}</span>
+          <span class="tabular-nums" style="color: var(--color-success);">−{{ formatMyr(paidToDate) }}</span>
         </div>
         <div class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">{{ billLabel }}</span>
-          <span class="tabular-nums" style="color: var(--color-text);">{{ fmtMyr(baseAmount) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text);">{{ formatMyr(baseAmount) }}</span>
         </div>
         <div v-if="discountAmt > 0" class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">{{ form.discountLabel || 'Discount' }}<span v-if="form.discountType === 'percent'" style="color: var(--color-text-tertiary);"> ({{ Number(form.discountValue) }}%)</span></span>
-          <span class="tabular-nums" style="color: var(--color-text);">−{{ fmtMyr(discountAmt) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text);">−{{ formatMyr(discountAmt) }}</span>
         </div>
         <div v-if="promoAmt > 0" class="flex items-center justify-between">
           <span style="color: var(--color-text-secondary);">Promo<span v-if="form.promoCode" style="color: var(--color-text-tertiary);"> ({{ form.promoCode }})</span></span>
-          <span class="tabular-nums" style="color: var(--color-text);">−{{ fmtMyr(promoAmt) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text);">−{{ formatMyr(promoAmt) }}</span>
         </div>
         <div class="flex items-center justify-between pt-1.5 border-t font-semibold" style="border-color: var(--color-border);">
           <span style="color: var(--color-text);">Total due</span>
-          <span class="tabular-nums" :style="{ color: form.type === 'final' ? 'var(--color-danger)' : 'var(--color-text)' }">{{ fmtMyr(netTotal) }}</span>
+          <span class="tabular-nums" :style="{ color: form.type === 'final' ? 'var(--color-danger)' : 'var(--color-text)' }">{{ formatMyr(netTotal) }}</span>
         </div>
         <div v-if="remainingAfter > 0.009" class="flex items-center justify-between">
           <span style="color: var(--color-text-tertiary);">Remaining after this payment</span>
-          <span class="tabular-nums" style="color: var(--color-text-tertiary);">{{ fmtMyr(remainingAfter) }}</span>
+          <span class="tabular-nums" style="color: var(--color-text-tertiary);">{{ formatMyr(remainingAfter) }}</span>
         </div>
       </div>
 

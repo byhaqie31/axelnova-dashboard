@@ -6,10 +6,10 @@ exports[`paymentPlanHTML snapshots (plan × locale) > instalment · bm 1`] = `
     <h2 class="pp-title">Pelan Ansuran 12 Bulan</h2>
     <div class="pp-line">Deposit RM 2,700.00 · 12 × RM 970.00 · dibil pada 20 haribulan · jumlah RM 14,340.00</div>
     <div class="panels"><div class="panel">
-    <div class="val">RM2,700.00</div>
+    <div class="val">RM 2,700.00</div>
     <div class="label">Deposit semasa penerimaan</div><div class="note">Dibayar sebelum kerja bermula.</div>
   </div><div class="panel accent">
-    <div class="val">RM970.00</div>
+    <div class="val">RM 970.00</div>
     <div class="label">Ansuran bulanan · 12 bulan</div><div class="note">Dibil pada 20 haribulan setiap bulan, 20 November 2026 hingga 20 Oktober 2027.</div>
   </div></div><div class="summary"><div class="sum-row"><span class="l">Deposit</span><span class="v">RM 2,700.00</span></div><div class="sum-row"><span class="l">Ansuran bulanan</span><span class="v">RM 970.00<span class="dt">× 12 bulan, termasuk Care Plan</span></span></div><div class="sum-row"><span class="l">Tarikh bil</span><span class="v">20 haribulan setiap bulan</span></div><div class="sum-row"><span class="l">Ansuran pertama</span><span class="v">20 November 2026</span></div><div class="sum-row"><span class="l">Ansuran terakhir</span><span class="v">20 Oktober 2027</span></div><div class="sum-row total redv"><span class="l">Jumlah</span><span class="v">RM 14,340.00</span></div></div><div class="caption">Jadual bayaran</div>
     <div class="schedule"><table>
@@ -75,10 +75,10 @@ exports[`paymentPlanHTML snapshots (plan × locale) > instalment · en 1`] = `
     <h2 class="pp-title">12-Month Instalment Plan</h2>
     <div class="pp-line">Deposit RM 2,700.00 · 12 × RM 970.00 · billed on the 20th · total RM 14,340.00</div>
     <div class="panels"><div class="panel">
-    <div class="val">RM2,700.00</div>
+    <div class="val">RM 2,700.00</div>
     <div class="label">Deposit on acceptance</div><div class="note">Payable before work begins.</div>
   </div><div class="panel accent">
-    <div class="val">RM970.00</div>
+    <div class="val">RM 970.00</div>
     <div class="label">Monthly instalment · 12 months</div><div class="note">Billed on the 20th of each month, 20 November 2026 to 20 October 2027.</div>
   </div></div><div class="summary"><div class="sum-row"><span class="l">Deposit</span><span class="v">RM 2,700.00</span></div><div class="sum-row"><span class="l">Monthly instalment</span><span class="v">RM 970.00<span class="dt">× 12 months, includes Care Plan</span></span></div><div class="sum-row"><span class="l">Billing day</span><span class="v">20th of each month</span></div><div class="sum-row"><span class="l">First instalment</span><span class="v">20 November 2026</span></div><div class="sum-row"><span class="l">Last instalment</span><span class="v">20 October 2027</span></div><div class="sum-row total redv"><span class="l">Total</span><span class="v">RM 14,340.00</span></div></div><div class="caption">Payment schedule</div>
     <div class="schedule"><table>
@@ -144,10 +144,10 @@ exports[`paymentPlanHTML snapshots (plan × locale) > lump_sum · bm 1`] = `
     <h2 class="pp-title">Bayaran Sekali Gus</h2>
     <div class="pp-line">Deposit RM 5,000.00 (50%) · baki RM 5,000.00 selepas siap · jumlah RM 10,000.00</div>
     <div class="panels"><div class="panel">
-    <div class="val">RM5,000.00</div>
+    <div class="val">RM 5,000.00</div>
     <div class="label">Deposit (50%)</div><div class="note">Dibayar untuk memulakan kerja.</div>
   </div><div class="panel accent">
-    <div class="val">RM5,000.00</div>
+    <div class="val">RM 5,000.00</div>
     <div class="label">Baki selepas siap</div><div class="note">Perlu dijelaskan sebelum penyerahan.</div>
   </div></div>
   </div>"
@@ -159,10 +159,10 @@ exports[`paymentPlanHTML snapshots (plan × locale) > lump_sum · en 1`] = `
     <h2 class="pp-title">One-Time Payment</h2>
     <div class="pp-line">Deposit RM 5,000.00 (50%) · balance RM 5,000.00 on completion · total RM 10,000.00</div>
     <div class="panels"><div class="panel">
-    <div class="val">RM5,000.00</div>
+    <div class="val">RM 5,000.00</div>
     <div class="label">Deposit (50%)</div><div class="note">Payable to commence work.</div>
   </div><div class="panel accent">
-    <div class="val">RM5,000.00</div>
+    <div class="val">RM 5,000.00</div>
     <div class="label">Balance on completion</div><div class="note">Due before handover.</div>
   </div></div>
   </div>"
@@ -174,10 +174,10 @@ exports[`paymentPlanHTML snapshots (plan × locale) > partner · bm 1`] = `
     <h2 class="pp-title">Rakan Teknologi · 24 bulan</h2>
     <div class="pp-line">Yuran penyediaan RM 1,000.00 · 24 × RM 500.00 · dibil pada 20 haribulan · jumlah RM 13,000.00</div>
     <div class="panels"><div class="panel">
-    <div class="val">RM1,000.00</div>
+    <div class="val">RM 1,000.00</div>
     <div class="label">Yuran penyediaan</div><div class="note">Dibayar semasa penerimaan.</div>
   </div><div class="panel accent">
-    <div class="val">RM500.00</div>
+    <div class="val">RM 500.00</div>
     <div class="label">Bayaran bulanan · 24 bulan</div><div class="note">Dibil pada 20 haribulan setiap bulan, 20 Januari 2027 hingga 20 Disember 2028.</div>
   </div></div><div class="summary"><div class="sum-row"><span class="l">Yuran penyediaan</span><span class="v">RM 1,000.00</span></div><div class="sum-row"><span class="l">Bayaran bulanan</span><span class="v">RM 500.00<span class="dt">× 24 bulan</span></span></div><div class="sum-row"><span class="l">Tarikh bil</span><span class="v">20 haribulan setiap bulan</span></div><div class="sum-row"><span class="l">Bayaran pertama</span><span class="v">20 Januari 2027</span></div><div class="sum-row"><span class="l">Bayaran terakhir</span><span class="v">20 Disember 2028</span></div><div class="sum-row total redv"><span class="l">Jumlah (24 bulan)</span><span class="v">RM 13,000.00</span></div></div><div class="caption">Jadual bayaran</div>
     <div class="schedule"><table>
@@ -291,10 +291,10 @@ exports[`paymentPlanHTML snapshots (plan × locale) > partner · en 1`] = `
     <h2 class="pp-title">Technology Partner · 24 months</h2>
     <div class="pp-line">Setup fee RM 1,000.00 · 24 × RM 500.00 · billed on the 20th · total RM 13,000.00</div>
     <div class="panels"><div class="panel">
-    <div class="val">RM1,000.00</div>
+    <div class="val">RM 1,000.00</div>
     <div class="label">Setup fee</div><div class="note">Payable on acceptance.</div>
   </div><div class="panel accent">
-    <div class="val">RM500.00</div>
+    <div class="val">RM 500.00</div>
     <div class="label">Monthly fee · 24 months</div><div class="note">Billed on the 20th of each month, 20 January 2027 to 20 December 2028.</div>
   </div></div><div class="summary"><div class="sum-row"><span class="l">Setup fee</span><span class="v">RM 1,000.00</span></div><div class="sum-row"><span class="l">Monthly fee</span><span class="v">RM 500.00<span class="dt">× 24 months</span></span></div><div class="sum-row"><span class="l">Billing day</span><span class="v">20th of each month</span></div><div class="sum-row"><span class="l">First payment</span><span class="v">20 January 2027</span></div><div class="sum-row"><span class="l">Last payment</span><span class="v">20 December 2028</span></div><div class="sum-row total redv"><span class="l">Total (24 months)</span><span class="v">RM 13,000.00</span></div></div><div class="caption">Payment schedule</div>
     <div class="schedule"><table>

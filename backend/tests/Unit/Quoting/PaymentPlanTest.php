@@ -60,7 +60,7 @@ class PaymentPlanTest extends TestCase
         // 2700 / 14340 = 18.828…% — displayed to one decimal, never stored.
         $this->assertEqualsWithDelta(18.828, $plan->effectiveDepositPct(), 0.001);
         $this->assertSame('18.8%', $plan->depositPctLabel());
-        $this->assertSame('RM 2,700 · 18.8%', $plan->depositLabel());
+        $this->assertSame('RM 2,700.00 · 18.8%', $plan->depositLabel());
         // The stored pct is still readable (legacy consumers), but is not what renders.
         $this->assertSame(19, $plan->depositPct());
     }
@@ -69,7 +69,7 @@ class PaymentPlanTest extends TestCase
     {
         $this->assertSame('50%', PaymentPlan::fromDocument(['deposit_pct' => 50], 10000)->depositPctLabel());
         $this->assertSame('25%', PaymentPlan::fromDocument(['deposit_amount_myr' => 2500], 10000)->depositPctLabel());
-        $this->assertSame('RM 5,000 · 50%', PaymentPlan::fromDocument(['deposit_pct' => 50], 10000)->depositLabel());
+        $this->assertSame('RM 5,000.00 · 50%', PaymentPlan::fromDocument(['deposit_pct' => 50], 10000)->depositLabel());
     }
 
     public function test_fixed_amount_is_clamped_to_the_total(): void
@@ -398,18 +398,18 @@ class PaymentPlanTest extends TestCase
             PaymentPlan::fromDocument(['deposit_pct' => 50], 10000)->depositTerm(),
         );
         $this->assertSame(
-            'RM 2,700 deposit (18.8%) to commence; balance due on delivery before handover.',
+            'RM 2,700.00 deposit (18.8%) to commence; balance due on delivery before handover.',
             PaymentPlan::fromDocument(['deposit_amount_myr' => 2700], 14340)->depositTerm(),
         );
         $this->assertSame(
-            'RM 2,700 deposit to commence; balance of RM 11,640 payable in 12 monthly instalments of RM 970, billed on the 20th of each month.',
+            'RM 2,700.00 deposit to commence; balance of RM 11,640.00 payable in 12 monthly instalments of RM 970.00, billed on the 20th of each month.',
             PaymentPlan::fromDocument([
                 'payment_plan' => 'instalment', 'deposit_amount_myr' => 2700,
                 'instalment_months' => 12, 'instalment_amount_myr' => 970, 'billing_day' => 20,
             ], 14340)->depositTerm(),
         );
         $this->assertSame(
-            'RM 1,000 setup fee to commence; then RM 500 monthly for 24 months, billed on the 20th of each month.',
+            'RM 1,000.00 setup fee to commence; then RM 500.00 monthly for 24 months, billed on the 20th of each month.',
             PaymentPlan::fromDocument([
                 'payment_plan' => 'partner', 'deposit_amount_myr' => 1000, 'instalment_amount_myr' => 500,
             ], 13000)->depositTerm(),

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: false })
 
 useSeoMeta({ robots: 'noindex, nofollow' })
@@ -108,14 +109,14 @@ useHead({ title: () => proposal.value ? `Proposal — ${proposal.value.client}` 
               :style="{ borderTop: i === 0 ? 'none' : '1px solid var(--color-border)' }"
             >
               <span>{{ l.name }}</span>
-              <span>RM {{ l.amount.toLocaleString() }}</span>
+              <span>{{ formatMyr(l.amount) }}</span>
             </div>
             <div
               class="flex items-center justify-between px-6 py-6 border-t"
               :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)' }"
             >
               <span class="text-[13px] font-medium" style="color: var(--color-text-secondary);">Total</span>
-              <span class="text-3xl font-semibold tracking-tight">RM {{ total.toLocaleString() }}</span>
+              <span class="text-3xl font-semibold tracking-tight">{{ formatMyr(total) }}</span>
             </div>
           </div>
         </section>

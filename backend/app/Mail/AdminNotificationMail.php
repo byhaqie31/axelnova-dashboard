@@ -17,8 +17,8 @@ class AdminNotificationMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $minFmt = 'RM '.number_format((float) $this->quote->estimate_min_myr / 1000, 0).'k';
-        $maxFmt = 'RM '.number_format((float) $this->quote->estimate_max_myr / 1000, 0).'k';
+        $minFmt = 'RM '.number_format((float) $this->quote->estimate_min_myr, 2);
+        $maxFmt = 'RM '.number_format((float) $this->quote->estimate_max_myr, 2);
 
         return new Envelope(
             subject: "New lead: {$this->quote->reference_code} — {$minFmt}–{$maxFmt}",

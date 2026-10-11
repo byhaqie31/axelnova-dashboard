@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
@@ -79,10 +80,8 @@ const totalPackages = computed(() => categories.value.reduce((s, c) => s + c.pac
 const featuredPackages = computed(() => categories.value.reduce((s, c) => s + c.packages.filter(p => p.featured).length, 0))
 
 function fmtPrice(min: string | number, max: string | number | null) {
-  const f = (n: number) => n >= 1000 ? `RM ${(n / 1000).toFixed(0)}k` : `RM ${n}`
-  const minN = Number(min)
-  if (max === null) return `${f(minN)}+`
-  return `${f(minN)} – ${f(Number(max))}`
+  if (max === null) return `${formatMyr(min)}+`
+  return `${formatMyr(min)} – ${formatMyr(max)}`
 }
 </script>
 

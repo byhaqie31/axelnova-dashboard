@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -51,7 +52,7 @@ const methodOptions = [
 
 const invoiceItems = computed(() => [
   { label: '— Not allocated —', value: '' },
-  ...(order.value?.invoices ?? []).map(d => ({ label: `${d.number} (${fmtMyr(d.amount_total)})`, value: String(d.id) })),
+  ...(order.value?.invoices ?? []).map(d => ({ label: `${d.number} (${formatMyr(d.amount_total)})`, value: String(d.id) })),
 ])
 
 async function fetchOrder() {
@@ -132,9 +133,6 @@ async function record() {
 
 onMounted(fetchOrder)
 
-function fmtMyr(amount: string | number) {
-  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
 </script>
 
 <template>
@@ -152,7 +150,7 @@ function fmtMyr(amount: string | number) {
       <h1 class="text-[24px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Record payment</h1>
       <p class="text-[14px] mb-8 max-md:mb-6" style="color: var(--color-text-secondary);">
         For order <span class="font-mono" style="color: var(--color-accent);">{{ order.order_number }}</span> · {{ order.name ?? '—' }}
-        <span v-if="Number(order.remaining_myr) > 0"> · {{ fmtMyr(order.remaining_myr) }} remaining</span>
+        <span v-if="Number(order.remaining_myr) > 0"> · {{ formatMyr(order.remaining_myr) }} remaining</span>
       </p>
 
       <div

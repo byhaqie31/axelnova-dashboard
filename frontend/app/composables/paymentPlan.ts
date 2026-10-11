@@ -10,6 +10,8 @@
 // renderer's locale file (server/utils/pdf/locales.ts), so no PDF chrome —
 // English or BM — is baked into a stored document by the builder.
 
+import { formatAmount } from '~/utils/money'
+
 export type PaymentPlanKind = 'lump_sum' | 'instalment' | 'partner'
 
 /** Invoice types; `instalment` bills one numbered payment of an order's plan. */
@@ -146,13 +148,12 @@ export function pctLabel(total: number, amount: number): string {
   return `${Number.isInteger(pct) ? pct.toFixed(0) : pct.toFixed(1)}%`
 }
 
-/** "2,700" / "970.50" — whole ringgit when integral. */
+/** "2,700.00" / "970.50" — always two decimals (mirrors PHP `PaymentPlan::fmt()`). */
 export function fmtRm(n: number): string {
-  const v = Number(n) || 0
-  return Number.isInteger(v) ? v.toLocaleString('en-US') : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return formatAmount(n)
 }
 
-/** "RM 2,700 · 18.8%" */
+/** "RM 2,700.00 · 18.8%" */
 export function depositLabel(total: number, amount: number): string {
   return `RM ${fmtRm(amount)} · ${pctLabel(total, amount)}`
 }

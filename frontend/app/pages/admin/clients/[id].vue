@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 import ClientFormModal from '~/components/admin/ClientFormModal.vue'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
@@ -66,9 +67,6 @@ function onDeleted(replacementId: number | null) {
 function fmtDate(iso?: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-function fmtRm(n: string | number | null) {
-  return `RM ${(Number(n) || 0).toLocaleString()}`
 }
 </script>
 
@@ -159,7 +157,7 @@ v-for="q in client.quotations" :key="q.id" :to="`/admin/quotations/${q.id}`"
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ fmtDate(q.submitted_at) }}</p>
               </div>
               <div class="flex items-center gap-3 shrink-0">
-                <span class="text-[12px] font-medium tabular-nums" style="color: var(--color-text-secondary);">{{ fmtRm(q.estimate_max_myr) }}</span>
+                <span class="text-[12px] font-medium tabular-nums" style="color: var(--color-text-secondary);">{{ formatMyr(q.estimate_max_myr) }}</span>
                 <AdminStatusPill :status="q.status" />
               </div>
             </NuxtLink>
@@ -180,7 +178,7 @@ v-for="o in client.orders" :key="o.id" :to="`/admin/orders/${o.id}`"
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ fmtDate(o.created_at) }}</p>
               </div>
               <div class="flex items-center gap-3 shrink-0">
-                <span class="text-[12px] font-medium tabular-nums" style="color: var(--color-text-secondary);">{{ fmtRm(o.final_amount_myr) }}</span>
+                <span class="text-[12px] font-medium tabular-nums" style="color: var(--color-text-secondary);">{{ formatMyr(o.final_amount_myr) }}</span>
                 <AdminStatusPill :status="o.status" />
               </div>
             </NuxtLink>

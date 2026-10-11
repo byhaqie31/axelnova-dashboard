@@ -136,7 +136,7 @@ class AdminQuotationBuilderTest extends TestCase
         $this->assertSame(2000, $items[0]['rate']); // midpoint(1500, 2500)
         $this->assertContains('Addon: SEO setup', array_column($items, 'title'));
         $this->assertContains(600, array_map('intval', array_column($items, 'rate'))); // seo, exact
-        $this->assertStringContainsString('midpoint RM 2,000', $res->json('assumptions.0'));
+        $this->assertStringContainsString('midpoint RM 2,000.00', $res->json('assumptions.0'));
     }
 
     public function test_standard_store_without_a_package_is_rejected(): void

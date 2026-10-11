@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
@@ -102,12 +103,6 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function fmtMyr(amount: string | number) {
-  const n = Number(amount)
-  if (n >= 1000) return `RM ${(n / 1000).toFixed(0)}k`
-  return `RM ${n.toLocaleString()}`
-}
-
 // Soft-delete flow (shared composable) — confirm dialog, 409 order-attached block,
 // linked-record cleanup. Row clicks navigate, so the trigger uses @click.stop.
 const {
@@ -198,7 +193,7 @@ v-for="q in quotations" :key="q.id"
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-semibold" style="color: var(--color-text);">
-                {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
+                {{ formatMyr(q.estimate_min_myr) }} – {{ formatMyr(q.estimate_max_myr) }}
               </p>
             </td>
             <td class="px-4 py-3.5">
@@ -237,7 +232,7 @@ v-for="q in quotations" :key="q.id"
         <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3">
             <p class="text-[13px] font-semibold tabular-nums shrink-0" :style="{ color: 'var(--color-text)' }">
-              {{ fmtMyr(q.estimate_min_myr) }} – {{ fmtMyr(q.estimate_max_myr) }}
+              {{ formatMyr(q.estimate_min_myr) }} – {{ formatMyr(q.estimate_max_myr) }}
             </p>
             <p class="text-[11px] text-right min-w-0 break-words" :style="{ color: 'var(--color-text-tertiary)' }">
               <template v-if="q.custom_package">

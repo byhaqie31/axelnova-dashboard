@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 // One month of the Revenue overview, broken down: the orders won (sales
@@ -80,8 +81,6 @@ onMounted(fetchMonth)
 // Prev/next reuse this page component, so follow the param.
 watch(() => route.params.month, fetchMonth)
 
-const myrExact = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR', minimumFractionDigits: 2 })
-
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
 }
@@ -109,9 +108,9 @@ const tiles = computed(() => {
   if (!s) return []
   return [
     { key: 'orders', label: 'Sales closed', value: String(s.orders), hint: s.orders === 1 ? 'Order won this month' : 'Orders won this month' },
-    { key: 'booked', label: 'Booked', value: myrExact.format(s.booked), hint: 'Contracted value of those orders', swatch: 'var(--chart-secondary)' },
-    { key: 'collected', label: 'Collected', value: myrExact.format(s.collected), hint: s.fees > 0 ? `Net of fees ${myrExact.format(s.net)}` : 'Cash received, net of refunds', swatch: 'var(--chart-primary)' },
-    { key: 'outstanding', label: 'Outstanding', value: myrExact.format(s.outstanding), hint: 'Still owed on this month’s orders' },
+    { key: 'booked', label: 'Booked', value: formatMyr(s.booked), hint: 'Contracted value of those orders', swatch: 'var(--chart-secondary)' },
+    { key: 'collected', label: 'Collected', value: formatMyr(s.collected), hint: s.fees > 0 ? `Net of fees ${formatMyr(s.net)}` : 'Cash received, net of refunds', swatch: 'var(--chart-primary)' },
+    { key: 'outstanding', label: 'Outstanding', value: formatMyr(s.outstanding), hint: 'Still owed on this month’s orders' },
   ]
 })
 
@@ -162,7 +161,7 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
         </section>
       </div>
       <p v-if="detail.summary.refunded > 0" class="text-[12px] mb-4" style="color: var(--color-danger);">
-        {{ myrExact.format(detail.summary.refunded) }} refunded this month — already netted off Collected.
+        {{ formatMyr(detail.summary.refunded) }} refunded this month — already netted off Collected.
       </p>
 
       <!-- Empty month -->
@@ -202,12 +201,12 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
                       </td>
                       <td class="px-4 py-3.5 text-[13px]" style="color: var(--color-text-secondary);">{{ o.client?.name ?? '—' }}</td>
                       <td class="px-4 py-3.5"><AdminStatusPill :status="o.status" /></td>
-                      <td class="px-4 py-3.5 text-right text-[13px] tabular-nums" style="color: var(--color-text);">{{ myrExact.format(o.value) }}</td>
-                      <td class="px-4 py-3.5 text-right text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ myrExact.format(o.paid) }}</td>
+                      <td class="px-4 py-3.5 text-right text-[13px] tabular-nums" style="color: var(--color-text);">{{ formatMyr(o.value) }}</td>
+                      <td class="px-4 py-3.5 text-right text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ formatMyr(o.paid) }}</td>
                       <td
                         class="px-4 py-3.5 text-right text-[13px] tabular-nums"
                         :style="{ color: o.balance > 0 ? 'var(--color-text)' : 'var(--color-success)' }">
-                        {{ o.balance > 0 ? myrExact.format(o.balance) : 'Paid' }}
+                        {{ o.balance > 0 ? formatMyr(o.balance) : 'Paid' }}
                       </td>
                     </tr>
                   </tbody>
@@ -224,9 +223,9 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
                 </div>
                 <p class="text-[12px] mb-3" style="color: var(--color-text-secondary);">{{ o.client?.name ?? '—' }} · {{ o.label }}</p>
                 <div class="pt-2 border-t flex items-center justify-between gap-3 text-[12px] tabular-nums" :style="{ borderColor: 'var(--color-border)' }">
-                  <span style="color: var(--color-text);">{{ myrExact.format(o.value) }}</span>
+                  <span style="color: var(--color-text);">{{ formatMyr(o.value) }}</span>
                   <span :style="{ color: o.balance > 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }">
-                    {{ o.balance > 0 ? `${myrExact.format(o.balance)} owed` : 'Paid' }}
+                    {{ o.balance > 0 ? `${formatMyr(o.balance)} owed` : 'Paid' }}
                   </span>
                 </div>
               </NuxtLink>
@@ -270,11 +269,11 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
                       <td
                         class="px-4 py-3.5 text-right text-[13px] tabular-nums font-medium"
                         :style="{ color: p.amount < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">
-                        {{ myrExact.format(p.amount) }}
+                        {{ formatMyr(p.amount) }}
                         <span v-if="p.amount < 0" class="block text-[11px] font-normal">Refund</span>
                       </td>
                       <td class="px-4 py-3.5 text-right text-[12px] tabular-nums" style="color: var(--color-text-tertiary);">
-                        {{ p.fee > 0 ? myrExact.format(p.fee) : '—' }}
+                        {{ p.fee > 0 ? formatMyr(p.fee) : '—' }}
                       </td>
                     </tr>
                   </tbody>
@@ -289,7 +288,7 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
                   <span class="text-[13px] font-semibold min-w-0 wrap-break-word" style="color: var(--color-text);">{{ p.client?.name ?? '—' }}</span>
                   <span
                     class="text-[13px] font-semibold tabular-nums shrink-0"
-                    :style="{ color: p.amount < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">{{ myrExact.format(p.amount) }}</span>
+                    :style="{ color: p.amount < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">{{ formatMyr(p.amount) }}</span>
                 </div>
                 <p class="text-[11px]" style="color: var(--color-text-tertiary);">
                   {{ fmtDate(p.paid_at) }} · {{ methodLabels[p.method] ?? p.method }} · {{ p.order_number ?? '—' }}<span v-if="earlierOrderMonth(p)"> (from {{ earlierOrderMonth(p) }})</span>
@@ -320,8 +319,8 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
                   <tr v-for="c in detail.clients" :key="c.id" class="admin-table-row" @click="navigateTo(`/admin/clients/${c.id}`)">
                     <td class="px-4 py-3.5 text-[13px] font-medium" style="color: var(--color-text);">{{ c.name }}</td>
                     <td class="px-4 py-3.5 text-right text-[13px] tabular-nums" style="color: var(--color-text-secondary);">{{ c.orders }}</td>
-                    <td class="px-4 py-3.5 text-right text-[13px] tabular-nums" style="color: var(--color-text);">{{ myrExact.format(c.booked) }}</td>
-                    <td class="px-4 py-3.5 text-right text-[13px] tabular-nums" style="color: var(--color-text);">{{ myrExact.format(c.collected) }}</td>
+                    <td class="px-4 py-3.5 text-right text-[13px] tabular-nums" style="color: var(--color-text);">{{ formatMyr(c.booked) }}</td>
+                    <td class="px-4 py-3.5 text-right text-[13px] tabular-nums" style="color: var(--color-text);">{{ formatMyr(c.collected) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -339,11 +338,11 @@ const cardStyle = { borderColor: 'var(--color-border)', background: 'var(--color
               <div class="pt-2 border-t grid grid-cols-2 gap-3 text-[12px] tabular-nums" :style="{ borderColor: 'var(--color-border)' }">
                 <div>
                   <p class="text-[11px]" style="color: var(--color-text-tertiary);">Booked</p>
-                  <p class="font-medium" style="color: var(--color-text);">{{ myrExact.format(c.booked) }}</p>
+                  <p class="font-medium" style="color: var(--color-text);">{{ formatMyr(c.booked) }}</p>
                 </div>
                 <div class="text-right">
                   <p class="text-[11px]" style="color: var(--color-text-tertiary);">Collected</p>
-                  <p class="font-medium" style="color: var(--color-text);">{{ myrExact.format(c.collected) }}</p>
+                  <p class="font-medium" style="color: var(--color-text);">{{ formatMyr(c.collected) }}</p>
                 </div>
               </div>
             </NuxtLink>

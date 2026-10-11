@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 import QuoteScopeFields from '~/components/shared/QuoteScopeFields.vue'
 import DetailedProposalFields from '~/components/admin/DetailedProposalFields.vue'
 import type { QuoteScopeState, NormalizedPackage } from '~/composables/quoteScope'
@@ -44,7 +45,7 @@ const emit = defineEmits<{
 }>()
 
 const { apiFetch } = useAdminAuth()
-const { config, loadConfig, invalidateConfig, fmtMyr, formatEta, calculate } = usePricingEngine()
+const { config, loadConfig, invalidateConfig, formatEta, calculate } = usePricingEngine()
 // The builder is the authoring surface — always reflect the current catalog
 // (package / add-on prices edited in /admin/services). Drop the session cache in
 // setup, before the scope child mounts and refetches, so it's one fresh fetch.
@@ -1076,13 +1077,13 @@ type="button"
               </button>
               <div class="flex items-baseline gap-2">
                 <span class="text-[12px]" style="color: var(--color-text-tertiary);">Total</span>
-                <span class="text-[14px] font-semibold tabular-nums" style="color: var(--color-text);">RM {{ ((Number(it.qty) || 0) * (Number(it.rate) || 0)).toLocaleString() }}</span>
+                <span class="text-[14px] font-semibold tabular-nums" style="color: var(--color-text);">{{ formatMyr((Number(it.qty) || 0) * (Number(it.rate) || 0)) }}</span>
               </div>
             </div>
           </div>
           <div v-if="doc.items.length" class="flex justify-end items-center gap-3 pt-1">
             <span class="text-[12px]" style="color: var(--color-text-tertiary);">Document total</span>
-            <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-text);">RM {{ grandTotal.toLocaleString() }}</span>
+            <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-text);">{{ formatMyr(grandTotal) }}</span>
           </div>
         </div>
 
@@ -1128,7 +1129,7 @@ type="button"
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Estimate (guide)</p>
         <div v-if="headlineEstimate">
           <p class="text-[26px] max-md:text-[22px] font-bold tracking-tight leading-none max-md:leading-tight mb-1" style="color: var(--color-text);">
-            {{ fmtMyr(headlineEstimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ fmtMyr(headlineEstimate.maxMyr) }}
+            {{ formatMyr(headlineEstimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ formatMyr(headlineEstimate.maxMyr) }}
           </p>
           <p class="text-[12px]" style="color: var(--color-text-secondary);">
             {{ formatEta(headlineEstimate.etaValue, headlineEstimate.etaUnit) }} · {{ showLiveEstimate ? 'engine estimate' : 'stored estimate' }}
@@ -1139,7 +1140,7 @@ type="button"
             <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Per package</p>
             <div v-for="(line, i) in packageBreakdown" :key="i" class="flex items-center justify-between gap-3 text-[12px]">
               <span class="truncate" style="color: var(--color-text-secondary);">{{ line.name }}</span>
-              <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ fmtMyr(line.estimate.minMyr) }}–{{ fmtMyr(line.estimate.maxMyr) }}</span>
+              <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ formatMyr(line.estimate.minMyr) }}–{{ formatMyr(line.estimate.maxMyr) }}</span>
             </div>
           </div>
           <p v-else-if="!showLiveEstimate" class="text-[11px] mt-2" style="color: var(--color-text-tertiary);">Edit a package to re-price.</p>
@@ -1147,7 +1148,7 @@ type="button"
         <p v-else class="text-[13px]" style="color: var(--color-text-secondary);">Pick a package to see the engine estimate.</p>
         <div class="mt-4 pt-4 border-t flex items-center justify-between" style="border-color: var(--color-border);">
           <span class="text-[12px]" style="color: var(--color-text-tertiary);">Document total</span>
-          <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-text);">RM {{ grandTotal.toLocaleString() }}</span>
+          <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-text);">{{ formatMyr(grandTotal) }}</span>
         </div>
       </div>
 

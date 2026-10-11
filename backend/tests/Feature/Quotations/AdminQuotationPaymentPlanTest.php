@@ -91,7 +91,7 @@ class AdminQuotationPaymentPlanTest extends TestCase
         $this->assertSame(2700.0, $pdf['panels'][0]['value']);
         $this->assertSame(970.0, $pdf['panels'][1]['value']);
         $this->assertSame(14340.0, $pdf['paymentPlan']['total']);
-        $this->assertStringStartsWith('RM 2,700 deposit to commence;', $pdf['paymentTerms']['items'][0]);
+        $this->assertStringStartsWith('RM 2,700.00 deposit to commence;', $pdf['paymentTerms']['items'][0]);
         $json = json_encode($pdf);
         $this->assertStringNotContainsString('19%', $json);
         $this->assertStringNotContainsString('2725', $json);
@@ -149,7 +149,7 @@ class AdminQuotationPaymentPlanTest extends TestCase
         $this->assertSame(2700.0, $pdf['depositAmount']);
         $this->assertSame('27%', $pdf['depositPctLabel']);
         $this->assertSame(50, $pdf['depositPct']); // legacy key still served
-        $this->assertStringStartsWith('RM 2,700 deposit (27%) to commence;', $pdf['terms'][0]);
+        $this->assertStringStartsWith('RM 2,700.00 deposit (27%) to commence;', $pdf['terms'][0]);
         $this->assertNull($pdf['paymentPlan']);
     }
 

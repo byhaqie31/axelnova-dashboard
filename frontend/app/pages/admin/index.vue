@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 import { MOTION } from '~/utils/motion'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
@@ -41,7 +42,9 @@ const error = ref('')
 // the number the user came for should be readable almost immediately.
 const shown = reactive({ total: 0, refs: 0, orders: 0, inq: 0, draft: 0, views: 0, revenue: 0, collected: 0, pending: 0 })
 
-function countTo(key: keyof typeof shown, end: number) {
+// `step` is the snap unit: 1 for counts, 0.01 for money (counts to the sen, so
+// the settled figure matches the 2-decimal house format).
+function countTo(key: keyof typeof shown, end: number, step = 1) {
   if (!import.meta.client || motion.reduced) {
     shown[key] = end
     return
@@ -51,8 +54,8 @@ function countTo(key: keyof typeof shown, end: number) {
     v: end,
     duration: 0.45,
     ease: MOTION.ease.settle,
-    snap: { v: 1 },
-    onUpdate: () => { shown[key] = Math.round(proxy.v) },
+    snap: { v: step },
+    onUpdate: () => { shown[key] = Math.round(proxy.v / step) * step },
   })
 }
 
@@ -104,9 +107,9 @@ async function load() {
       ordersRevenue.value = st.revenue
       ordersCollected.value = st.collected
       ordersPending.value = st.pending
-      countTo('revenue', Math.round(st.revenue))
-      countTo('collected', Math.round(st.collected))
-      countTo('pending', Math.round(st.pending))
+      countTo('revenue', Number(st.revenue) || 0, 0.01)
+      countTo('collected', Number(st.collected) || 0, 0.01)
+      countTo('pending', Number(st.pending) || 0, 0.01)
     }
     catch { /* leave the figures as — */ }
   })()
@@ -161,11 +164,6 @@ onMounted(() => {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
-}
-
-// Full ringgit with separators — for the headline orders figures.
-function fmtMoney(n: number) {
-  return `RM ${Math.round(n).toLocaleString('en-MY')}`
 }
 
 const ordersSummary = computed(() => [
@@ -278,7 +276,7 @@ const tiles = computed<StatTile[]>(() => [
             :style="{ color: s.color }"
           >
             <span v-if="loading || !s.ready" class="opacity-40">—</span>
-            <span v-else>{{ fmtMoney(s.value) }}</span>
+            <span v-else>{{ formatMyr(s.value) }}</span>
           </p>
           <p class="text-[12px] mt-1" style="color: var(--color-text-secondary);">{{ s.hint }}</p>
         </div>

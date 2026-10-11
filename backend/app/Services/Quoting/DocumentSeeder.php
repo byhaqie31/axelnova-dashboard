@@ -58,7 +58,7 @@ final class DocumentSeeder
                 'unit' => 'project',
                 'rate' => $rate,
             ];
-            $assumptions[] = "{$name} seeded at range midpoint RM ".number_format($rate).' — adjust before sending.';
+            $assumptions[] = "{$name} seeded at range midpoint RM ".number_format($rate, 2).' — adjust before sending.';
 
             // Remaining lines = modifiers + add-ons at their EXACT amount (min == max);
             // the rush [·, 0, 0] line (if any) is skipped by the > 0 guard.

@@ -141,8 +141,8 @@ class ConnectorPaymentPlanTest extends TestCase
         $this->assertStringNotContainsString('Pelan pembayaran', json_encode($pdf));
 
         // The terms bullet names the agreed figures, not a pct.
-        $this->assertStringContainsString('RM 2,700 deposit to commence', $pdf['paymentTerms']['items'][0]);
-        $this->assertStringContainsString('12 monthly instalments of RM 970', $pdf['paymentTerms']['items'][0]);
+        $this->assertStringContainsString('RM 2,700.00 deposit to commence', $pdf['paymentTerms']['items'][0]);
+        $this->assertStringContainsString('12 monthly instalments of RM 970.00', $pdf['paymentTerms']['items'][0]);
 
         // And nowhere in the whole PDF payload do the stale figures survive.
         $json = json_encode($pdf, JSON_UNESCAPED_UNICODE);
@@ -204,7 +204,7 @@ class ConnectorPaymentPlanTest extends TestCase
         $this->assertSame('18.8%', $pdf['panels'][0]['pctLabel']);
         $this->assertSame(2700.0, $pdf['panels'][0]['value']);
         $this->assertSame(11640.0, $pdf['panels'][1]['value']);
-        $this->assertStringStartsWith('RM 2,700 deposit (18.8%) to commence;', $pdf['paymentTerms']['items'][0]);
+        $this->assertStringStartsWith('RM 2,700.00 deposit (18.8%) to commence;', $pdf['paymentTerms']['items'][0]);
         $this->assertStringNotContainsString('19%', json_encode($pdf));
     }
 
@@ -250,7 +250,7 @@ class ConnectorPaymentPlanTest extends TestCase
         $this->assertSame('partner_monthly', $pdf['panels'][1]['role']);
         $this->assertSame(24, $pdf['paymentPlan']['months']);
         $this->assertSame('partner', $pdf['paymentPlan']['plan']);
-        $this->assertStringStartsWith('RM 2,340 setup fee to commence; then RM 500 monthly for 24 months', $pdf['paymentTerms']['items'][0]);
+        $this->assertStringStartsWith('RM 2,340.00 setup fee to commence; then RM 500.00 monthly for 24 months', $pdf['paymentTerms']['items'][0]);
     }
 
     public function test_update_re_derives_the_plan_from_the_new_inputs(): void

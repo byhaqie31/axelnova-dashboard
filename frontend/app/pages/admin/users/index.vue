@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Workspace › Users (Task 8) — the founder's provisioning screen. Founder-only
 // (backend Gate `manage-users`, plus the nav item itself is `roles: ['founder']`).
 // Create is marketer|engineer only — founder accounts aren't provisioned here,
@@ -110,9 +111,9 @@ function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
+// Null renders "—", not RM 0.00.
 function fmtMyr(amount: number | null) {
-  if (amount == null) return '—'
-  return `RM ${Number(amount).toLocaleString('en-MY')}`
+  return amount == null ? '—' : formatMyr(amount)
 }
 
 // ── Create / edit slideover (§12.13). One panel, two modes — editingUser null

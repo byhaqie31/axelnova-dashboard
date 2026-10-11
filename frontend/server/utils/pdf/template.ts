@@ -49,13 +49,12 @@ function group(n: number, dec: number): string {
   });
 }
 
-/** Document money: "RM1,800" (line items) or "RM1,300.00" (panels, dec=2). */
-function money(n: number, cur: string, dec = 0): string {
-  return `${cur}${group(n, dec)}`;
-}
-
-/** Payment plan money: "RM 2,700.00" — spaced, two decimals, in every locale. */
-function rm(n: number, cur: string): string {
+/**
+ * THE document money format, used for every figure the PDF prints: "RM 2,700.00"
+ * — currency, one space, comma thousands, always two decimals (line items,
+ * totals, panels, option cards, care rows, the payment plan alike).
+ */
+function money(n: number, cur: string): string {
   return `${cur} ${group(n, 2)}`;
 }
 
@@ -514,14 +513,14 @@ export function paymentPlanHTML(
   // One summary line under the heading — only the parts that apply to the plan.
   const line: string[] = [];
   if (scheduled) {
-    line.push(fmt(partner ? L.plan.line.setup : L.plan.line.deposit, { amount: rm(block.deposit, cur) }));
-    line.push(fmt(L.plan.line.instalments, { months: block.months, amount: rm(block.monthly, cur) }));
+    line.push(fmt(partner ? L.plan.line.setup : L.plan.line.deposit, { amount: money(block.deposit, cur) }));
+    line.push(fmt(L.plan.line.instalments, { months: block.months, amount: money(block.monthly, cur) }));
     line.push(fmt(L.plan.line.billed, { day }));
   } else {
-    line.push(fmt(L.plan.line.depositPct, { amount: rm(block.deposit, cur), pct: block.depositPctLabel }));
-    if (block.balance > 0) line.push(fmt(L.plan.line.balance, { amount: rm(block.balance, cur) }));
+    line.push(fmt(L.plan.line.depositPct, { amount: money(block.deposit, cur), pct: block.depositPctLabel }));
+    if (block.balance > 0) line.push(fmt(L.plan.line.balance, { amount: money(block.balance, cur) }));
   }
-  line.push(fmt(L.plan.line.total, { amount: rm(block.total, cur) }));
+  line.push(fmt(L.plan.line.total, { amount: money(block.total, cur) }));
 
   const cards = panels.length
     ? `<div class="panels">${panels.map((p) => panelHTML(p, cur, L)).join("")}</div>`
@@ -536,10 +535,10 @@ export function paymentPlanHTML(
       fmt(L.plan.rows.months, { months: block.months }) +
       (block.includesCarePlan ? `, ${L.plan.rows.includesCare}` : "");
     summary = `<div class="summary">${[
-      row(partner ? L.plan.rows.setup : L.plan.rows.deposit, rm(block.deposit, cur)),
+      row(partner ? L.plan.rows.setup : L.plan.rows.deposit, money(block.deposit, cur)),
       row(
         partner ? L.plan.rows.monthlyFee : L.plan.rows.monthly,
-        `${rm(block.monthly, cur)}<span class="dt">${esc(monthlyDetail)}</span>`,
+        `${money(block.monthly, cur)}<span class="dt">${esc(monthlyDetail)}</span>`,
       ),
       row(L.plan.rows.billingDay, esc(fmt(L.plan.rows.eachMonth, { day }))),
       block.firstDate
@@ -550,7 +549,7 @@ export function paymentPlanHTML(
         : "",
       row(
         partner ? fmt(L.plan.rows.totalMonths, { months: block.months }) : L.plan.rows.total,
-        rm(block.total, cur),
+        money(block.total, cur),
         " total redv",
       ),
     ].join("")}</div>`;
@@ -559,7 +558,7 @@ export function paymentPlanHTML(
     const schedRows: DetailRow[] = block.schedule.map((r) => ({
       title: fmt(partner ? L.plan.schedule.month : L.plan.schedule.instalment, { n: r.n }),
       detail: formatDate(r.date, L),
-      priceText: rm(r.amount, cur),
+      priceText: money(r.amount, cur),
       priceMuted: true,
     }));
     if (schedRows.length) {
@@ -644,14 +643,14 @@ function panelHTML(p: Panel, cur: string, L: LocaleStrings, billingFor?: Documen
       ? `<div class="note">${esc(billingFor.text).replace(/\n/g, "<br>")}</div>`
       : "<div></div>";
     return `<div class="panel split${p.accent ? " accent" : ""}">
-    <div class="val">${money(p.value, cur, 2)}</div>
+    <div class="val">${money(p.value, cur)}</div>
     <div class="label">${esc(copy.label)}</div>${note || "<div></div>"}
     <div class="bf-t">${esc(billingFor.title)}</div>
     <div class="label bf-l">${esc(billingFor.label || L.sections.scopeCovered)}</div>${bfNote}
   </div>`;
   }
   return `<div class="panel${p.accent ? " accent" : ""}">
-    <div class="val">${money(p.value, cur, 2)}</div>
+    <div class="val">${money(p.value, cur)}</div>
     <div class="label">${esc(copy.label)}</div>${note}
   </div>`;
 }
@@ -777,9 +776,9 @@ function renderStandard(data: DocumentData): string {
   const depositCard =
     hasDeposit && !data.paymentPlan
       ? `<div class="deposit">
-           <div class="val">${money(t.deposit, cur, 2)}</div>
+           <div class="val">${money(t.deposit, cur)}</div>
            <div class="label">${esc(L.deposit.toCommence)} · ${esc(data.depositPctLabel ?? `${data.depositPct}%`)}</div>
-           <div class="bal">${esc(L.deposit.balanceOnDelivery)}&nbsp;&nbsp;${money(t.balance, cur, 2)}</div>
+           <div class="bal">${esc(L.deposit.balanceOnDelivery)}&nbsp;&nbsp;${money(t.balance, cur)}</div>
          </div>`
       : "";
   const planBlock = data.paymentPlan ? paymentPlanHTML(data.paymentPlan, cur, data.locale) : "";
