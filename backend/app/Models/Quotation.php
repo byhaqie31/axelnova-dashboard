@@ -299,19 +299,44 @@ class Quotation extends Model
             return $detailed;
         }
 
-        $doc = $this->document;
-
-        if (is_array($doc) && ! empty($doc['items']) && is_array($doc['items'])) {
-            $subtotal = 0.0;
-            foreach ($doc['items'] as $item) {
-                $subtotal += (float) ($item['qty'] ?? 0) * (float) ($item['rate'] ?? 0);
-            }
-            $taxRate = (float) ($doc['tax_rate'] ?? 0);
-
-            return round($subtotal * (1 + $taxRate / 100), 2);
+        $totals = self::documentTotals($this->document);
+        if ($totals !== null) {
+            return $totals['total'];
         }
 
         return (float) $this->estimate_max_myr;
+    }
+
+    /**
+     * Totals of an item-based quotation document, computed exactly like the
+     * PDF the client signs (computeTotals in frontend/server/utils/pdf/template.ts):
+     * subtotal − discount, then tax on that at `tax_rate` — a FRACTION (0..1,
+     * as AdminQuotationRequest validates), not a percentage. The quotation
+     * email reads the same numbers. Null when the document has no items.
+     *
+     * @return array{subtotal: float, discount: float, tax: float, total: float}|null
+     */
+    public static function documentTotals(?array $doc): ?array
+    {
+        if (! is_array($doc) || empty($doc['items']) || ! is_array($doc['items'])) {
+            return null;
+        }
+
+        $subtotal = 0.0;
+        foreach ($doc['items'] as $item) {
+            $subtotal += (float) ($item['qty'] ?? 0) * (float) ($item['rate'] ?? 0);
+        }
+
+        $discount = (float) ($doc['discount'] ?? 0);
+        $base = $subtotal - $discount;
+        $tax = round($base * (float) ($doc['tax_rate'] ?? 0), 2);
+
+        return [
+            'subtotal' => round($subtotal, 2),
+            'discount' => round($discount, 2),
+            'tax' => $tax,
+            'total' => round($base + $tax, 2),
+        ];
     }
 
     /**
