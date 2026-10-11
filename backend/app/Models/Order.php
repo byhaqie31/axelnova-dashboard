@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Quoting\PaymentPlan;
+use App\Services\Quoting\ScheduleNetting;
 use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 class Order extends Model
 {
@@ -26,6 +28,8 @@ class Order extends Model
         'deposit_pct',
         'deposit_amount_myr',
         'payment_plan',
+        'schedule_netting',
+        'revision_flags',
         'amount_paid_myr',
         'status',
         'started_at',
@@ -45,6 +49,8 @@ class Order extends Model
             'deposit_pct' => 'integer',
             'deposit_amount_myr' => 'decimal:2',
             'payment_plan' => 'array',
+            'schedule_netting' => 'array',
+            'revision_flags' => 'array',
             'amount_paid_myr' => 'decimal:2',
             'started_at' => 'datetime',
             'delivered_at' => 'datetime',
@@ -88,10 +94,58 @@ class Order extends Model
         return $this->quotation?->paymentPlan()->orderSnapshot();
     }
 
-    /** True when the order is paid by deposit + a monthly schedule. */
+    /** True when the order is paid by deposit + a monthly schedule (instalment / partner). */
     public function isScheduled(): bool
     {
-        return $this->planInputs() !== null;
+        $inputs = $this->planInputs();
+
+        return $inputs !== null && in_array($inputs['payment_plan'] ?? null, [PaymentPlan::INSTALMENT, PaymentPlan::PARTNER], true);
+    }
+
+    /** True when the order is a lump sum billed by phase (40/40/20, 50/50, …). */
+    public function isPhased(): bool
+    {
+        return ! empty($this->planInputs()['phases'] ?? null);
+    }
+
+    /**
+     * The netting of the CURRENT revision's schedule against what was paid when
+     * it superseded the previous one (QuotationRevisions §4.3), or null when the
+     * order never was revised (or the netting belongs to an older revision).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function currentNetting(): ?array
+    {
+        $netting = $this->schedule_netting;
+
+        return is_array($netting) && ($netting['revision_id'] ?? null) === $this->current_revision_id ? $netting : null;
+    }
+
+    /**
+     * The netting entry for one schedule item (`deposit`, `balance`, `phase:n`,
+     * `instalment:n`) — settled / adjustment / due — or null when not netted.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function nettedItem(string $key): ?array
+    {
+        return collect($this->currentNetting()['items'] ?? [])->firstWhere('key', $key);
+    }
+
+    /**
+     * Invoices that bill the CURRENT revision's terms — live (non-void) ones
+     * tagged with it (untagged legacy rows count as current). A superseded
+     * revision's paid instalment 1 must never read as the new schedule's #1.
+     *
+     * @return Collection<int, Invoice>
+     */
+    public function currentInvoices(): Collection
+    {
+        $invoices = $this->relationLoaded('invoices') ? $this->invoices : $this->invoices()->get();
+
+        return $invoices->filter(fn (Invoice $i) => $i->status !== 'void'
+            && ($i->revision_id === null || $this->current_revision_id === null || $i->revision_id === $this->current_revision_id));
     }
 
     /**
@@ -113,48 +167,95 @@ class Order extends Model
     }
 
     /**
-     * The order-page / invoice-form view of a scheduled plan: figures, and every
-     * instalment with the live (non-void) invoice issued for it. Null for a lump sum.
+     * The order-page / invoice-form view of the plan: figures, every instalment
+     * or phase with the live invoice billing it (current revision only), and —
+     * after a revise — the netting state of each item (settled by prior payment
+     * / adjustment / due). Null for a plain lump sum that was never revised.
      *
      * @return array<string, mixed>|null
      */
     public function planView(): ?array
     {
-        if (! $this->isScheduled()) {
+        $netting = $this->currentNetting();
+        if (! $this->isScheduled() && ! $this->isPhased() && $netting === null) {
             return null;
         }
 
         $plan = $this->paymentPlan();
-        $invoices = $this->relationLoaded('invoices') ? $this->invoices : $this->invoices()->get();
-        $live = $invoices->where('status', '!=', 'void');
-        $byNo = $live->where('type', 'instalment')->keyBy('instalment_no');
-        $deposit = $live->firstWhere('type', 'deposit');
+        $live = $this->currentInvoices();
+        $all = $this->relationLoaded('invoices') ? $this->invoices : $this->invoices()->get();
         $ref = fn (?Invoice $i): ?array => $i ? ['id' => $i->id, 'number' => $i->invoice_number, 'status' => $i->status] : null;
+        $netted = function (string $key) use ($all, $ref): ?array {
+            $item = $this->nettedItem($key);
+            if ($item === null) {
+                return null;
+            }
 
+            return [
+                'state' => $item['state'],
+                'covered_myr' => $item['covered_myr'],
+                'due_myr' => $item['due_myr'],
+                'invoice' => $ref(isset($item['invoice_id']) ? $all->firstWhere('id', $item['invoice_id']) : null),
+            ];
+        };
+        $open = fn (?array $state, ?array $invoice): bool => $invoice === null
+            && ! in_array($state['state'] ?? null, [ScheduleNetting::SETTLED, ScheduleNetting::ADJUSTMENT], true);
+
+        $byNo = $live->where('type', 'instalment')->keyBy('instalment_no');
         $schedule = array_map(fn (array $row): array => [
             'n' => $row['n'],
             'label' => $plan->instalmentLabel($row['n']),
             'date' => $row['date'],
             'amount' => $row['amount'],
             'invoice' => $ref($byNo->get($row['n'])),
-        ], $plan->schedule());
+            'netting' => $netted("instalment:{$row['n']}"),
+        ], $plan->isScheduled() ? $plan->schedule() : []);
 
-        $next = collect($schedule)->first(fn (array $row) => $row['invoice'] === null);
+        $byPhase = $live->where('type', 'phase')->keyBy('instalment_no');
+        $phases = array_map(fn (array $row): array => array_merge($row, [
+            'label' => $plan->phaseLabel($row['n']),
+            'name' => $row['label'],
+            'invoice' => $ref($byPhase->get($row['n'])),
+            'netting' => $netted("phase:{$row['n']}"),
+        ]), $plan->phaseRows());
+
+        $nextOpen = fn (array $rows) => collect($rows)->first(fn (array $row) => $open($row['netting'], $row['invoice']))['n'] ?? null;
 
         return [
             'plan' => $plan->plan(),
+            'phased' => $plan->isPhased(),
             'deposit_label' => $plan->upfrontLabel(),
             'deposit_myr' => $this->deposit_due_myr,
-            'deposit_invoice' => $ref($deposit),
+            'deposit_invoice' => $ref($live->firstWhere('type', 'deposit')),
+            'deposit_netting' => $netted('deposit'),
+            'balance_netting' => $netted('balance'),
             'months' => $plan->months(),
             'monthly_myr' => $plan->instalmentAmount(),
             'billing_day' => $plan->billingDay(),
             'includes_care_plan' => $plan->includesCarePlan(),
+            'care_plan_monthly_myr' => $plan->carePlanMonthly(),
             'first_date' => $plan->firstInstalmentDate()?->toDateString(),
             'last_date' => $plan->lastInstalmentDate()?->toDateString(),
-            'plan_total_myr' => round((float) $this->deposit_due_myr + $plan->months() * $plan->instalmentAmount(), 2),
-            'next_instalment_no' => $next['n'] ?? null,
+            'plan_total_myr' => $plan->isScheduled()
+                ? round((float) $this->deposit_due_myr + $plan->months() * $plan->instalmentAmount(), 2)
+                : (float) $this->final_amount_myr,
+            'next_instalment_no' => $nextOpen($schedule),
+            'next_phase_no' => $nextOpen($phases),
             'schedule' => $schedule,
+            'phases' => $phases,
+            'netting' => $netting === null ? null : [
+                'from_revision' => $netting['from_revision'] ?? null,
+                'revision' => $netting['revision'] ?? null,
+                'netted_at' => $netting['netted_at'] ?? null,
+                'paid_myr' => $netting['paid_myr'],
+                'total_myr' => $netting['total_myr'],
+                'overpaid_myr' => $netting['overpaid_myr'],
+                'adjustment_myr' => $netting['adjustment_myr'],
+                'voided_invoices' => $netting['voided_invoices'] ?? [],
+                'items' => array_map(fn (array $item) => array_merge($item, [
+                    'invoice' => $ref(isset($item['invoice_id']) ? $all->firstWhere('id', $item['invoice_id']) : null),
+                ]), $netting['items']),
+            ],
         ];
     }
 
@@ -207,6 +308,12 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class)->latest('paid_at');
+    }
+
+    /** Care Plan coverage periods (QuotationRevisions §3.5), oldest first. */
+    public function carePlans(): HasMany
+    {
+        return $this->hasMany(OrderCarePlan::class)->orderBy('starts_on')->orderBy('id');
     }
 
     /** Legacy combined documents (pre invoices/receipts split). */

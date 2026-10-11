@@ -186,7 +186,10 @@ class QuotationRevisionLifecycleTest extends TestCase
         $this->assertNotNull($order->revised_at);
 
         $log = ActivityLog::where('action', 'order.revised')->where('subject_id', $order->id)->firstOrFail();
-        $this->assertEquals(['from_revision' => 1, 'to_revision' => 2, 'change_reason' => 'Client switched to the 40/40/20 plan'], $log->changes);
+        $this->assertEquals(
+            ['from_revision' => 1, 'to_revision' => 2, 'change_reason' => 'Client switched to the 40/40/20 plan'],
+            array_intersect_key($log->changes, array_flip(['from_revision', 'to_revision', 'change_reason'])),
+        );
         $this->assertSame($this->founder->id, $log->actor_id);
     }
 

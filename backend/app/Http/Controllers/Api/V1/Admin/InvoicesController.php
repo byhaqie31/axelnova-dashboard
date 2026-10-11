@@ -115,7 +115,7 @@ class InvoicesController extends Controller
         $invoice->loadMissing('order.quotation');
         DocumentIssuer::assertPlanFits($invoice->order, array_replace(
             DocumentIssuer::effectiveInputs($invoice),
-            array_intersect_key($data, array_flip(['invoiceType', 'instalmentNo'])),
+            array_intersect_key($data, array_flip(['invoiceType', 'instalmentNo', 'carePeriod'])),
         ), $invoice);
 
         $invoice = DocumentIssuer::updateInvoice($invoice, $data);

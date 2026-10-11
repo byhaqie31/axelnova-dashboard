@@ -86,6 +86,12 @@ class AdminQuotationRequest extends FormRequest
             'document.billing_day' => ['nullable', 'integer', 'min:1', 'max:28'],
             'document.first_instalment_date' => ['nullable', 'date_format:Y-m-d'],
             'document.includes_care_plan' => ['nullable', 'boolean'],
+            // Lump sum by phase (dynamic split — 40/40/20, 50/50, 20×5 …) and a
+            // separate monthly Care Plan subscription. See PaymentPlan.
+            'document.phases' => ['nullable', 'array', 'min:'.PaymentPlan::MIN_PHASES, 'max:'.PaymentPlan::MAX_PHASES],
+            'document.phases.*.label' => ['nullable', 'string', 'max:80'],
+            'document.phases.*.pct' => ['required_with:document.phases', 'numeric', 'gt:0', 'max:100'],
+            'document.care_plan_monthly_myr' => ['nullable', 'numeric', 'min:0'],
             'document.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:1'],
 
             // Layout selector + the detailed/customized presentation blob. The
@@ -119,6 +125,16 @@ class AdminQuotationRequest extends FormRequest
                     'package_key',
                     'A package is required unless the document layout is "detailed". Provide packages[] or package_key.',
                 );
+            }
+
+            // Phases only split a lump sum, and must add up to the whole of it.
+            $phases = $this->input('document.phases');
+            if (is_array($phases) && $phases !== []) {
+                if (in_array($this->input('document.payment_plan'), [PaymentPlan::INSTALMENT, PaymentPlan::PARTNER], true)) {
+                    $validator->errors()->add('document.phases', 'Phases split a lump sum — an instalment or partner plan has its own schedule.');
+                } elseif (abs(array_sum(array_map(fn ($p) => (float) ($p['pct'] ?? 0), $phases)) - 100) >= 0.01) {
+                    $validator->errors()->add('document.phases', 'The phases must add up to 100%.');
+                }
             }
 
             // A scheduled plan needs its schedule: months and a monthly figure.

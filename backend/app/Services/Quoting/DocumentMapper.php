@@ -4,6 +4,7 @@ namespace App\Services\Quoting;
 
 use App\Models\Order;
 use App\Models\Quotation;
+use Carbon\CarbonImmutable;
 
 /**
  * Maps a Quotation row to the `DocumentData` shape consumed by the Axel Nova PDF
@@ -436,16 +437,26 @@ class DocumentMapper
     private static function billLabel(Order $order, array $input): string
     {
         $type = $input['invoiceType'] ?? '';
-        $plan = $order->isScheduled() ? $order->paymentPlan() : null;
+        $plan = $order->isScheduled() || $order->isPhased() ? $order->paymentPlan() : null;
 
-        if ($type === 'instalment' && $plan && ! empty($input['instalmentNo'])) {
+        if ($type === 'instalment' && $plan?->isScheduled() && ! empty($input['instalmentNo'])) {
             return $plan->instalmentLabel((int) $input['instalmentNo']);
+        }
+        if ($type === 'phase' && $plan?->isPhased() && ! empty($input['instalmentNo'])) {
+            return $plan->phaseLabel((int) $input['instalmentNo']);
         }
         if ($type === 'deposit' && $plan) {
             return $plan->upfrontLabel();
         }
+        if ($type === 'adjustment') {
+            return filled($input['adjustmentLabel'] ?? null) ? (string) $input['adjustmentLabel'] : 'Adjustment';
+        }
+        if ($type === 'care_plan' && ! empty($input['carePeriod'])) {
+            return 'Care Plan · '.CarbonImmutable::createFromFormat('Y-m-d', "{$input['carePeriod']}-01")->format('F Y');
+        }
 
-        return ['deposit' => 'Deposit', 'partial' => 'Partial payment', 'final' => 'Final balance', 'instalment' => 'Instalment'][$type] ?? 'Amount';
+        return ['deposit' => 'Deposit', 'partial' => 'Partial payment', 'final' => 'Final balance', 'instalment' => 'Instalment',
+            'phase' => 'Phase payment', 'care_plan' => 'Care Plan', 'adjustment' => 'Adjustment'][$type] ?? 'Amount';
     }
 
     /** A display switch: absent/null means shown; only an explicit false hides. */

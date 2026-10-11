@@ -21,6 +21,14 @@ use Carbon\CarbonInterface;
  *   billing_day             int 1–28       default 20
  *   first_instalment_date   Y-m-d|null     null → the first billing day after the anchor
  *   includes_care_plan      bool
+ *   phases                  list<{label, pct}>|null  lump sum only: a DYNAMIC by-phase split
+ *                           (40/40/20, 50/50, 20×5 …) — ≥ 2 phases, pcts summing to 100.
+ *                           Phase 1 is the up-front payment; each phase is round(total ×
+ *                           pct / 100) to the ringgit and the LAST phase takes the rounding
+ *                           remainder, so the phases always sum to the total exactly.
+ *   care_plan_monthly_myr   float|null     a SEPARATE Care Plan subscription (RM / month),
+ *                           billed month by month on its own invoices — distinct from
+ *                           includes_care_plan (care folded into the instalment figure)
  *
  * Rounding rule (documented once, here): a percentage deposit is `round(total ×
  * pct / 100)` to the NEAREST RINGGIT, halves away from zero (PHP's default
@@ -49,7 +57,13 @@ final class PaymentPlan
     public const DOCUMENT_KEYS = [
         'deposit_pct', 'deposit_amount_myr', 'payment_plan', 'instalment_months',
         'instalment_amount_myr', 'billing_day', 'first_instalment_date', 'includes_care_plan',
+        'phases', 'care_plan_monthly_myr',
     ];
+
+    /** A phased lump sum has between MIN_PHASES and MAX_PHASES phases. */
+    public const MIN_PHASES = 2;
+
+    public const MAX_PHASES = 10;
 
     private const STANDARD_TAIL = '; balance due on delivery before handover.';
 
@@ -65,6 +79,9 @@ final class PaymentPlan
         private readonly bool $includesCarePlan,
         private readonly bool $explicit,
         private readonly CarbonImmutable $anchor,
+        /** @var list<array{label: string, pct: float}> */
+        private readonly array $phases = [],
+        private readonly ?float $carePlanMonthly = null,
     ) {}
 
     /**
@@ -102,6 +119,7 @@ final class PaymentPlan
         }
 
         $explicit = array_key_exists('payment_plan', $doc) || $fixed !== null;
+        $phases = $plan === self::LUMP_SUM ? self::normalisePhases($doc['phases'] ?? null) : [];
 
         return new self(
             plan: $plan,
@@ -113,9 +131,38 @@ final class PaymentPlan
             billingDay: $billingDay,
             firstDate: $first,
             includesCarePlan: filter_var($doc['includes_care_plan'] ?? false, FILTER_VALIDATE_BOOL),
-            explicit: $explicit,
+            explicit: $explicit || $phases !== [],
             anchor: ($anchor ? CarbonImmutable::instance($anchor) : CarbonImmutable::now())->startOfDay(),
+            phases: $phases,
+            carePlanMonthly: ($care = self::nullableFloat($doc['care_plan_monthly_myr'] ?? null)) !== null && $care > 0 ? $care : null,
         );
+    }
+
+    /**
+     * A usable phase list, or [] (→ the classic deposit + balance lump sum):
+     * MIN_PHASES…MAX_PHASES rows, each pct > 0, summing to 100 (±0.01). Labels
+     * are the founder's content and print as authored; a blank one falls back
+     * to "Phase n".
+     *
+     * @return list<array{label: string, pct: float}>
+     */
+    public static function normalisePhases(mixed $raw): array
+    {
+        if (! is_array($raw) || count($raw) < self::MIN_PHASES || count($raw) > self::MAX_PHASES) {
+            return [];
+        }
+
+        $phases = [];
+        foreach (array_values($raw) as $i => $row) {
+            $pct = is_array($row) && is_numeric($row['pct'] ?? null) ? round((float) $row['pct'], 2) : 0.0;
+            if ($pct <= 0) {
+                return [];
+            }
+            $label = is_array($row) ? trim((string) ($row['label'] ?? '')) : '';
+            $phases[] = ['label' => $label !== '' ? $label : 'Phase '.($i + 1), 'pct' => $pct];
+        }
+
+        return abs(array_sum(array_column($phases, 'pct')) - 100) < 0.01 ? $phases : [];
     }
 
     /**
@@ -152,6 +199,12 @@ final class PaymentPlan
         }
         if (array_key_exists('includes_care_plan', $source) && $source['includes_care_plan'] !== null) {
             $out['includes_care_plan'] = filter_var($source['includes_care_plan'], FILTER_VALIDATE_BOOL);
+        }
+        if (($phases = self::normalisePhases($source['phases'] ?? null)) !== []) {
+            $out['phases'] = $phases;
+        }
+        if (($care = self::nullableFloat($source['care_plan_monthly_myr'] ?? null)) !== null && $care > 0) {
+            $out['care_plan_monthly_myr'] = $care;
         }
 
         return $out;
@@ -194,9 +247,12 @@ final class PaymentPlan
         return $this->fixedDeposit !== null;
     }
 
-    /** Fixed amount wins; else pct × total rounded to the nearest ringgit. Never above the total. */
+    /** Phase 1 of a phased lump sum; else the fixed amount; else pct × total to the ringgit. Never above the total. */
     public function depositAmount(): float
     {
+        if ($this->phases !== []) {
+            return $this->phaseAmounts()[0];
+        }
         if ($this->fixedDeposit === null) {
             return self::pctDepositAmount($this->total, $this->depositPct);
         }
@@ -337,18 +393,26 @@ final class PaymentPlan
      */
     public function orderSnapshot(): ?array
     {
+        if ($this->isPhased() || (! $this->isScheduled() && $this->carePlanMonthly !== null)) {
+            return array_filter([
+                'payment_plan' => self::LUMP_SUM,
+                'phases' => $this->phases ?: null,
+                'care_plan_monthly_myr' => $this->carePlanMonthly,
+            ], fn ($v) => $v !== null);
+        }
         if (! $this->isScheduled() || $this->months <= 0) {
             return null;
         }
 
-        return [
+        return array_filter([
             'payment_plan' => $this->plan,
             'instalment_months' => $this->months,
             'instalment_amount_myr' => $this->instalmentAmount,
             'billing_day' => $this->billingDay,
             'first_instalment_date' => $this->firstInstalmentDate()?->toDateString(),
             'includes_care_plan' => $this->includesCarePlan,
-        ];
+            'care_plan_monthly_myr' => $this->carePlanMonthly,
+        ], fn ($v) => $v !== null);
     }
 
     /** "Instalment 3 of 12" / "Monthly fee 3 of 24" — the invoice label for instalment n. */
@@ -399,6 +463,114 @@ final class PaymentPlan
         return $rows;
     }
 
+    // ── Phases (dynamic lump sum) ────────────────────────────────────────────
+
+    /** A lump sum split into founder-defined phases (40/40/20, 50/50, 20×5 …). */
+    public function isPhased(): bool
+    {
+        return $this->phases !== [];
+    }
+
+    /** @return list<array{label: string, pct: float}> */
+    public function phases(): array
+    {
+        return $this->phases;
+    }
+
+    /**
+     * Each phase's ringgit amount: round(total × pct / 100) to the nearest
+     * ringgit (the deposit rule), the LAST phase taking the remainder so the
+     * phases sum to the total exactly. 40/40/20 of RM 10,800 → 4,320 / 4,320 / 2,160.
+     *
+     * @return list<float>
+     */
+    public function phaseAmounts(): array
+    {
+        $amounts = [];
+        $running = 0.0;
+        $last = count($this->phases) - 1;
+        foreach ($this->phases as $i => $phase) {
+            $amount = $i === $last
+                ? round($this->total - $running, 2)
+                : (float) round($this->total * $phase['pct'] / 100);
+            $amounts[] = max($amount, 0.0);
+            $running += $amount;
+        }
+
+        return $amounts;
+    }
+
+    /** "Phase 2 of 3 · At demo" — the invoice label for phase n (1-based). */
+    public function phaseLabel(int $n): string
+    {
+        $count = count($this->phases);
+        $label = $this->phases[$n - 1]['label'] ?? null;
+
+        return "Phase {$n} of {$count}".($label !== null && $label !== "Phase {$n}" ? " · {$label}" : '');
+    }
+
+    /** "40%" — a phase's share, trimmed when integral. */
+    public static function pctLabel(float $pct): string
+    {
+        return (floor($pct) === $pct ? number_format($pct, 0) : rtrim(rtrim(number_format($pct, 2), '0'), '.')).'%';
+    }
+
+    // ── Care Plan ────────────────────────────────────────────────────────────
+
+    /** A separate monthly Care Plan subscription (RM / month), or null. */
+    public function carePlanMonthly(): ?float
+    {
+        return $this->carePlanMonthly;
+    }
+
+    /** "included" (inside the monthly figure), "separate" (own subscription) or null (none). */
+    public function careKind(): ?string
+    {
+        if ($this->isScheduled() && $this->months > 0 && $this->includesCarePlan) {
+            return 'included';
+        }
+
+        return $this->carePlanMonthly !== null ? 'separate' : null;
+    }
+
+    // ── Netting ──────────────────────────────────────────────────────────────
+
+    /**
+     * The plan's payments in the order they fall due (up-front first) — the
+     * schedule a revision's paid-to-date is netted against (ScheduleNetting).
+     * Keys are stable ids: `deposit`, `balance`, `phase:n`, `instalment:n`.
+     *
+     * @return list<array{key: string, label: string, amount: float, date: ?string}>
+     */
+    public function scheduleItems(): array
+    {
+        if ($this->isPhased()) {
+            return array_map(fn (array $phase, float $amount, int $i) => [
+                'key' => 'phase:'.($i + 1),
+                'label' => $this->phaseLabel($i + 1),
+                'amount' => $amount,
+                'date' => null,
+            ], $this->phases, $this->phaseAmounts(), array_keys($this->phases));
+        }
+
+        $items = [['key' => 'deposit', 'label' => $this->upfrontLabel(), 'amount' => $this->depositAmount(), 'date' => null]];
+
+        if (! $this->isScheduled()) {
+            $items[] = ['key' => 'balance', 'label' => 'Balance on completion', 'amount' => $this->balance(), 'date' => null];
+        } else {
+            foreach ($this->schedule() as $row) {
+                $items[] = [
+                    'key' => 'instalment:'.$row['n'],
+                    'label' => $this->instalmentLabel($row['n']),
+                    'amount' => $row['amount'],
+                    'date' => $row['date'],
+                ];
+            }
+        }
+
+        return array_values(array_filter($items, fn (array $item) => $item['amount'] > 0));
+    }
+
     // ── Projections ──────────────────────────────────────────────────────────
 
     /**
@@ -427,7 +599,27 @@ final class PaymentPlan
             'variance_myr' => $this->variance(),
             'reconciles' => $this->reconciles(),
             'schedule' => $this->schedule(),
+            'phases' => $this->phaseRows(),
+            'care_plan_monthly_myr' => $this->carePlanMonthly,
         ];
+    }
+
+    /**
+     * The phases with their amounts — what the admin, connector and PDF show.
+     *
+     * @return list<array{n: int, label: string, pct: float, pct_label: string, amount: float}>
+     */
+    public function phaseRows(): array
+    {
+        $amounts = $this->phaseAmounts();
+
+        return array_map(fn (array $phase, int $i) => [
+            'n' => $i + 1,
+            'label' => $phase['label'],
+            'pct' => $phase['pct'],
+            'pct_label' => self::pctLabel($phase['pct']),
+            'amount' => $amounts[$i],
+        ], $this->phases, array_keys($this->phases));
     }
 
     /**
@@ -449,6 +641,11 @@ final class PaymentPlan
     {
         $deposit = $this->depositAmount();
         if ($this->total <= 0) {
+            return [];
+        }
+
+        // A phased lump sum prints its phases as a table (documentBlock), not cards.
+        if ($this->isPhased()) {
             return [];
         }
 
@@ -511,6 +708,12 @@ final class PaymentPlan
             'includesCarePlan' => $scheduled && $this->includesCarePlan,
             'total' => $this->planTotal(),
             'schedule' => $this->schedule(),
+            // Phased lump sum: one row per phase (label as authored, pct, amount).
+            'phases' => array_map(fn (array $row) => [
+                'n' => $row['n'], 'label' => $row['label'], 'pct' => $row['pct'], 'amount' => $row['amount'],
+            ], $this->phaseRows()),
+            // A separate Care Plan subscription (RM / month), printed under the plan.
+            'carePlanMonthly' => $this->carePlanMonthly,
         ];
     }
 
@@ -520,6 +723,7 @@ final class PaymentPlan
         $deposit = 'RM '.self::fmt($this->depositAmount());
 
         return match (true) {
+            $this->isPhased() => "{$deposit} (".self::pctLabel($this->phases[0]['pct']).') to commence',
             $this->plan === self::PARTNER => "{$deposit} setup fee to commence",
             $this->plan === self::INSTALMENT => "{$deposit} deposit to commence",
             $this->isFixedDeposit() => "{$deposit} deposit ({$this->depositPctLabel()}) to commence",
@@ -531,6 +735,16 @@ final class PaymentPlan
     public function depositTerm(): string
     {
         $opening = $this->depositTermOpening();
+
+        if ($this->isPhased()) {
+            $amounts = $this->phaseAmounts();
+            $rest = [];
+            foreach (array_slice($this->phases, 1, null, true) as $i => $phase) {
+                $rest[] = 'RM '.self::fmt($amounts[$i]).' ('.self::pctLabel($phase['pct']).") {$phase['label']}";
+            }
+
+            return "{$opening}; then ".implode('; ', $rest).'.';
+        }
 
         return match ($this->plan) {
             self::INSTALMENT => "{$opening}; balance of RM ".self::fmt($this->balance())
@@ -554,13 +768,14 @@ final class PaymentPlan
      */
     public function alignTerms(array $terms): array
     {
-        $opening = '(?:\d+(?:\.\d+)?%|RM ?[\d,]+(?:\.\d+)?) (?:deposit(?: \([\d.]+%\))?|setup fee) to commence';
+        $opening = '(?:\d+(?:\.\d+)?%|RM ?[\d,]+(?:\.\d+)?) (?:deposit(?: \([\d.]+%\))?|setup fee|\([\d.]+%\)) to commence';
         $standard = '/^'.$opening.preg_quote(self::STANDARD_TAIL, '/').'$/';
         $instalment = '/^'.$opening.'; (?:balance of RM ?[\d,]+(?:\.\d+)? payable in \d+ monthly instalments|then RM ?[\d,]+(?:\.\d+)? monthly for \d+ months)\b.*$/';
+        $phased = '/^'.$opening.'; then RM ?[\d,]+(?:\.\d+)? \([\d.]+%\) .*$/';
 
-        return array_values(array_map(function ($term) use ($opening, $standard, $instalment): string {
+        return array_values(array_map(function ($term) use ($opening, $standard, $instalment, $phased): string {
             $term = (string) $term;
-            if (preg_match($standard, $term) || preg_match($instalment, $term)) {
+            if (preg_match($standard, $term) || preg_match($instalment, $term) || preg_match($phased, $term)) {
                 return $this->depositTerm();
             }
 
