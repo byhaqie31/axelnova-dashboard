@@ -305,7 +305,7 @@ GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer �
 
 ## Frontend routes
 
-Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/collaborations{,/**}`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. A live blog change purges the cache on demand (`BlogPostObserver` → `SiteCache` → Nuxt `POST /_cache/purge`). See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
+Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/collaborations{,/**}`, `/support`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. A live blog change purges the cache on demand (`BlogPostObserver` → `SiteCache` → Nuxt `POST /_cache/purge`). See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
 
 
 ```
@@ -318,6 +318,7 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 /services             Services & pricing
 /about                About page
 /contact              Contact form → POST /v1/inquiries (origin=contact) — same pipeline as /quote
+/support              "Support Our Work" (footer) — DuitNow QR + OCBC account (data/studioPayment.ts), copy button
 /collaborations       Studio partners (NOT the /partners referral programme) — co-branded partner cards,
                       the three ways of working, "Partner with us" → POST /v1/inquiries (origin=collaboration)
 /collaborations/trlabs  Axel Nova × TRLabs — hand-built co-branded page (.collab-trlabs scope); enquiry form

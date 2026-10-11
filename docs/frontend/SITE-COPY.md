@@ -345,6 +345,23 @@ No tagline or availability status — the footer carries only the link directory
 
 **Company identity and registration:** Keep the current legal name and registration number only after confirming they match official records.
 
+**Support links:**
+- **Support Our Work** → `/support`, which replaced Ko-fi.
+- **Give Feedback** → the Google Business Profile review link (`share.google/E4dCt3twNxrFlVKRm`, opens in a new tab).
+
+## Support `/support`
+
+**SEO title:** Support Our Work | Axel Nova Ventures
+
+**Eyebrow / H1:** Support · *Support our work.*
+
+**Intro:** If a project, tool or note here has helped you, you can support the studio with a contribution of any amount. Scan the DuitNow QR, or transfer straight to our OCBC account.
+
+**Content:**
+- **QR card:** the static DuitNow QR. Caption: *Scan with any banking or e-wallet app that supports DuitNow, then key in the amount yourself.* Plus "Download QR".
+- **Bank card:** OCBC Bank, account number (with Copy), account name Axel Nova Ventures. The details come from `app/data/studioPayment.ts`.
+- **Thanks:** *Thank you for your support. It helps keep the projects and notes on this site going. If you'd like a thank-you note, send your transfer slip to baihaqie@axelnova.tech.*
+
 ## SEO setup and implementation priorities
 
 1. **Publish consistent facts first.** Check the phone number, reply promise, package names, referral eligibility, payment terms, support periods and all named integrations. The cached live page showed `+60 17-710 9486`; the checked-in contact page and business schema say `+60 18-317 3103`. Confirm the correct number, then use it consistently in visible copy, click links and structured data.

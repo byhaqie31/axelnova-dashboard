@@ -37,7 +37,8 @@ class DocumentMapper
      * Bank / payment details shown on quotations, invoices, and receipts.
      *
      * KEEP IN SYNC with `STUDIO_PAY` in frontend/server/utils/pdf/template.ts,
-     * which renders the same account in the invoice "How to pay" block.
+     * which renders the same account in the invoice "How to pay" block, and
+     * `STUDIO_BANK` in frontend/app/data/studioPayment.ts (the /support page).
      */
     private const BANK = [
         'name' => 'OCBC Bank',

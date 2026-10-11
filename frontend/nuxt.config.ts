@@ -84,10 +84,11 @@ export default defineNuxtConfig({
   fonts: {
     families: [
       { name: 'Inter', weights: [400, 500, 600, 700, 800], global: true },  // body face
-      { name: 'Outfit', weights: [400, 500, 600], global: true },           // display face (hero headline)
-      // Apple system faces in the --font-* fallback stacks: never download.
-      { name: 'SF Pro Display', provider: 'none' },
-      { name: 'SF Pro Text', provider: 'none' },
+      // Display face (hero headline). 700 is never used on the site; it's here
+      // because nuxt-og-image pairs every family on an OG card with every weight
+      // on it (the cards' Inter 700 label → "Outfit 700 not configured" warning
+      // on each render). @font-face is lazy, so browsers never download it.
+      { name: 'Outfit', weights: [400, 500, 600, 700], global: true },
     ],
     defaults: { styles: ['normal'], subsets: ['latin'] },
   },
@@ -159,6 +160,7 @@ export default defineNuxtConfig({
     '/projects/**': swr(300),
     '/collaborations': swr(300),
     '/collaborations/**': swr(300),
+    '/support': swr(300),
     '/blog': swr(300),
     '/blog/**': swr(300),
     // Legal copy changes on the order of never.

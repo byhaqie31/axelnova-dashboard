@@ -292,7 +292,7 @@ The public **layout** (`public.vue`) wraps every storefront page:
 | `/investor/roofly` | **Investor brief** | `noindex`. Roofly investor materials hub — pitch deck / investment package / financial summary cards + "request a walkthrough" mailto. |
 | `/legal/privacy-policy` · `/legal/terms` · `/legal/cookies` · `/legal/disclaimer` · `/legal/refund` | **Legal** | Five PDPA-aware policy pages with cross-links and "last updated" dates. |
 
-**Storefront integrations:** Web3Forms (partner referral form only, access key `a9100b0c-…`), Calendly (`calendly.com/baihaqie` discovery-call link), Ko-fi (support link). Sitemap excludes `/admin/**`, `/portal/**`, `/proposals/**`, `/quote/preview`, `/quote/success`, `/investor/**`.
+**Storefront integrations:** Web3Forms (partner referral form only, access key `a9100b0c-…`), Calendly (`calendly.com/baihaqie` discovery-call link), the footer's "Support Our Work" → `/support` (DuitNow QR + OCBC account; replaced Ko-fi), "Give Feedback" → the Google Business Profile review link. Sitemap excludes `/admin/**`, `/portal/**`, `/proposals/**`, `/quote/preview`, `/quote/success`, `/investor/**`.
 
 ---
 

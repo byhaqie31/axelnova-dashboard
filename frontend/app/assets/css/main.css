@@ -2,7 +2,10 @@
 @import "@nuxt/ui";
 
 @theme static {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  /* No named 'SF Pro …' entries: -apple-system / BlinkMacSystemFont already
+     resolve to SF Pro on Apple devices, and nuxt-og-image would otherwise try
+     (and fail) to download those names for the OG cards on every build. */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   /* Display face — Outfit. Used on signature headlines (.font-display). Falls
      back to Inter so headings never render in a system face mid-swap. */
   --font-display: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;

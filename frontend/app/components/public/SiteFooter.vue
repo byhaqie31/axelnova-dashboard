@@ -41,8 +41,10 @@ const sections = computed<{ key: string, title: string, links: FooterLink[] }[]>
     title: 'Support',
     links: [
       { label: 'Contact Us',       to: '/contact' },
-      { label: 'Support Our Work', to: 'https://ko-fi.com/axelnova', external: true },
-      { label: 'Give Feedback',    to: 'mailto:baihaqie@axelnova.tech?subject=Feedback%20—%20axelnovaventures.com' },
+      // DuitNow QR + OCBC account (pages/public/support.vue) — replaced Ko-fi.
+      { label: 'Support Our Work', to: '/support' },
+      // The Google Business Profile review link — public feedback where it counts.
+      { label: 'Give Feedback',    to: 'https://share.google/E4dCt3twNxrFlVKRm', external: true },
       { label: 'Report an Issue',  to: 'mailto:baihaqie@axelnova.tech?subject=Issue%20Report%20—%20axelnovaventures.com' },
     ],
   },
