@@ -3,7 +3,7 @@
 Lets Claude (claude.ai / Cowork / Claude Code) drive the **quotation pipeline** in `axelnova-dashboard` straight from a client brief, and **draft blog posts**, without giving it a login to the cockpit. Two halves:
 
 1. **Laravel** — a scoped `/api/v1/connector/*` route group, gated by Sanctum token *abilities*, not admin role.
-2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes the tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it). Its `CONNECTOR_VERSION` (advertised as the MCP server version in the initialize handshake) tags the contract — **v4** adds blog drafts to v3's read-open reads + lifecycle-gated update.
+2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes the tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it). Its `CONNECTOR_VERSION` (advertised as the MCP server version in the initialize handshake) tags the contract — **v5** adds quotation revisions (`create_revision`, revision-aware `get_quotation` / `update_draft_quotation`) to v4's blog drafts + v3's read-open reads.
 
 ```
 Claude (claude.ai)  ──OAuth──▶  mcp.axelnova.tech  ──Bearer CONNECTOR_TOKEN──▶  /api/v1/connector/*  (Laravel)
@@ -17,8 +17,8 @@ Claude (claude.ai)  ──OAuth──▶  mcp.axelnova.tech  ──Bearer CONNEC
 **The abilities are universal, not per-module.** `connector:read` opens every module's read routes and `connector:draft` every module's draft-write routes — quotations, the blog, and any module added later. A new module adds routes under the existing abilities (no new ability, so **no token rotation** to ship it); its guardrails live in its controller.
 
 - ✅ **READ everything** — the catalog, a slim **list** of ANY non-deleted quotation, and full **read-back** of ANY non-deleted quotation (whatever created it — funnel, admin, or connector). The blog writing guide, a slim list, and the full Markdown record of ANY non-deleted blog post (draft or published).
-- ✅ **WRITE with a gate** — create a **draft** quotation; **update** any quotation while it is a **pre-send draft** (status `draft`), locked once `sent` (or accepted/rejected/expired). Create a blog post (**always** `draft`); **partially update** a post while it is a **draft**, refused once published (its edits would go live without the founder's preview).
-- ❌ **never** — change status, send/accept a quote, **publish/unpublish** a post, create orders, touch clients/services/payments, or **delete** anything. Deletion and publishing are **portal-only, by hand** — there is no delete or publish tool (irreversible and public-facing actions stay human-only).
+- ✅ **WRITE with a gate** — create a **draft** quotation; open a new **draft revision** of a sent / accepted quotation (`create_revision`, with a change reason); **update** a quotation's **draft revision** only — a sent / accepted revision is never edited ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)). Create a blog post (**always** `draft`); **partially update** a post while it is a **draft**, refused once published (its edits would go live without the founder's preview).
+- ❌ **never** — send/accept a quote or a revision, **publish/unpublish** a post, create orders, touch clients/services/payments, or **delete** anything. (Revising a *sent* revision does withdraw it — the client gets the replacement — but the founder can undo that by discarding the new draft in the admin.) Deletion and publishing are **portal-only, by hand** — there is no delete or publish tool (irreversible and public-facing actions stay human-only).
 
 A connector token is rejected by every `/v1/admin/*` route (they demand `abilities:cockpit`); the admin cockpit token is likewise rejected by `/v1/connector/*`. **Soft-deleted quotations and posts never surface through any connector read.** Read endpoints are throttled 60/min, writes 30/min.
 
@@ -30,7 +30,8 @@ A connector token is rejected by every `/v1/admin/*` route (they demand `abiliti
 | GET | `/v1/connector/quotations` | `connector:read` | 60/min | Slim list of non-deleted quotations — `status[]`, `q`, `from`/`to`, `page`/`per_page` (default 10, capped 25), newest first |
 | GET | `/v1/connector/quotations/{reference_code}` | `connector:read` | 60/min | Read back ANY non-deleted quotation by AXNQ code |
 | POST | `/v1/connector/quotations/draft` | `connector:draft` | 30/min | Create a draft quotation (contract below) |
-| PUT | `/v1/connector/quotations/{reference_code}` | `connector:draft` | 30/min | Update a PRE-SEND draft (same body as draft + `reseed_document`) |
+| PUT | `/v1/connector/quotations/{reference_code}` | `connector:draft` | 30/min | Update the quotation's DRAFT revision (same body as draft + `reseed_document`); 422 pointing at `create_revision` when there is none |
+| POST | `/v1/connector/quotations/{reference_code}/revisions` | `connector:draft` | 30/min | `create_revision` — `{change_reason, from_revision?}` → a new DRAFT revision (R2, R3 …). 422 while another revision is open or once the order is completed / cancelled |
 | GET | `/v1/connector/blog/guide` | `connector:read` | 60/min | The writing guide: voice + structure + CTA defaults (from `config/blog.php`), the two drafting modes, formats, categories/tags in use (case-deduped; a draft's category/tags are snapped to these spellings on save — `BlogTaxonomy::snap()`), section shape, limits, image rules |
 | GET | `/v1/connector/blog/posts` | `connector:read` | 60/min | Slim list of non-deleted posts — `status`, `q` (title), `page`/`per_page` (default 10, capped 25), newest updated first; `admin_url` + `public_url` (published only) |
 | GET | `/v1/connector/blog/posts/{id}` | `connector:read` | 60/min | Full editable record (Markdown sections with ids) + URLs |
@@ -49,9 +50,10 @@ Blog code: `app/Http/Controllers/Api/V1/Connector/BlogPostController.php`, savin
 |---|---|---|---|
 | `list_catalog` | `GET /catalog` | read | **Call first.** Returns valid package/modifier/add-on keys. |
 | `list_quotations` | `GET /quotations` | read (any) | Browse/filter slim rows to find a quotation without its code. No `form_payload`/`document`. |
-| `get_quotation` | `GET /quotations/{ref}` | read (any) | Full read-back of ANY quotation by reference code. |
+| `get_quotation` | `GET /quotations/{ref}[?revision=N]` | read (any) | Full read-back of ANY quotation by reference code: `family` (status, current / open / draft revision numbers), `current_revision`, `revisions[]` (number, status, estimate, dates, change_reason), and the working revision's full record (named in `revision`; `?revision=N` for another). |
 | `create_draft_quotation` | `POST /quotations/draft` | write | Creates a DRAFT only. Single-package (`package_key`), multi-package (`packages[]`), bespoke (`line_items`), or `detailed`. |
-| `update_draft_quotation` | `PUT /quotations/{ref}` | write · **gate: pre-send draft** | Re-specifies + re-prices a pre-send draft. Refused 422 once sent. `reseed_document` controls document regeneration. |
+| `create_revision` | `POST /quotations/{ref}/revisions` | write | A new DRAFT revision of a sent / accepted quotation, with a required `change_reason` (printed on the new PDF, shown on the order timeline). Nothing is sent or accepted. |
+| `update_draft_quotation` | `PUT /quotations/{ref}` | write · **gate: draft revision** | Re-specifies + re-prices the family's draft revision. Refused 422 when none is open (call `create_revision`). `reseed_document` controls document regeneration. |
 
 There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v1/admin/quotations/{id}`, soft delete, blocked 409 when an order is attached).
 
@@ -123,6 +125,8 @@ There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v
 
 **Detailed path (`detailed` set).** The connector's richest mode — a self-priced, presentation-grade proposal: grouped scope `sections` (each `rows[].amount_myr` priced), plus optional `included` tick-list groups, `options` cards, and a `care` plan. Priced from the section totals (`estimate_min = estimate_max = Σ section amounts`), NOT the engine — so `detailed` is **mutually exclusive** with `package_key`/`packages`/`line_items`. Built by [`DetailedDocumentBuilder`](../../backend/app/Services/Quoting/DetailedDocumentBuilder.php) into the same `layout: 'detailed'` `document.payload` shape the admin detailed builder produces, so it re-opens in the admin builder's detailed mode and the PDF renders the full proposal. ETA left as the `0`/`week` sentinel. `deposit_pct` defaults to 50.
 
+**Phases & a separate Care Plan (v5, `detailed` only).** `phases: [{label, pct}]` bills a `lump_sum` by phase — any split totalling 100% (40/40/20, 50/50, 20×5 …; 2–10 phases); phase 1 is the up-front payment and the last phase takes the rounding remainder. 422 when the phases don't total 100% or are combined with an instalment / partner plan. `care_plan_monthly_myr` adds a separate monthly Care Plan (billed month by month on its own invoices). The read-back's `payment_plan` carries `phases` (with amounts) and `care_plan_monthly_myr`.
+
 **Deposit & payment plan (v4.1, `detailed` only).** `deposit_amount_myr` sets a **fixed** deposit that wins over `deposit_pct` (old clients sending only `deposit_pct` keep working — none of the new keys are written). `payment_plan` picks `lump_sum` (default), `instalment` (deposit on acceptance, then `instalment_months × instalment_amount_myr` on `billing_day` from `first_instalment_date`) or `partner` (`deposit_amount_myr` is the setup fee, then `instalment_amount_myr` monthly for `instalment_months`, default 24). A scheduled plan **requires** the months (instalment) and the monthly amount (422 otherwise). `deposit + months × monthly` is compared with the section total: a mismatch is **accepted** but the response message carries a `NOTE:` with the variance, and `data.payment_plan.variance_myr` reports it — the founder may round the monthly figure on purpose. The read-back (`get_quotation` / create / update responses) includes the derived `payment_plan` block (`deposit_amount_myr`, `deposit_pct_label`, `plan_total_myr`, `variance_myr`, `first/last_instalment_date`, `schedule[]`). Rules, rounding and the PDF block are documented in [QUOTE_BUILDER.md → Deposit & payment plan](./QUOTE_BUILDER.md#deposit--payment-plan--paymentplan).
 
 **Document title / intro (any mode).** `project` and `intro` set `document.project` / `document.intro` (the quotation's title + lead-in on the PDF). Optional — the mapper falls back to a default project title when `project` is omitted.
@@ -189,7 +193,7 @@ Non-deploy checks that are safe to run any time: `npm run typecheck`, `npx wrang
 1. **Settings → Connectors → Add custom connector** (Customize → Connectors).
 2. **URL:** `https://mcp.axelnova.tech/mcp`
 3. Connect → you'll be redirected to the connector login → enter `ACCESS_USERNAME` / `ACCESS_PASSWORD` → authorize.
-4. The ten tools appear — five quotation (`list_catalog`, `list_quotations`, `get_quotation`, `create_draft_quotation`, `update_draft_quotation`) and five blog (`get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft`, `update_blog_draft`). Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Ask it to "show pending quotes from this month" and it uses `list_quotations`; ask it to tweak a draft and it uses `update_draft_quotation`. Review everything in `/admin/quotations`. Ask it to "write a guide about X, cover image <url>" (or hand it your own text) and it calls `get_blog_guide`, then `create_blog_draft`; preview and publish in `/admin/blog`.
+4. The eleven tools appear — six quotation (`list_catalog`, `list_quotations`, `get_quotation`, `create_draft_quotation`, `create_revision`, `update_draft_quotation`) and five blog (`get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft`, `update_blog_draft`). Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Ask it to "show pending quotes from this month" and it uses `list_quotations`; ask it to tweak a draft and it uses `update_draft_quotation`. Review everything in `/admin/quotations`. Ask it to "write a guide about X, cover image <url>" (or hand it your own text) and it calls `get_blog_guide`, then `create_blog_draft`; preview and publish in `/admin/blog`.
 5. After a Worker deploy that changes the tool list, refresh/reconnect the connector so claude.ai picks up the new tools.
 
 **Claude Code** gets the same tools through the synced **"claude.ai Axel Nova MCP"** connector when signed in with the same claude.ai account — authorize it once via `/mcp` (same `ACCESS_USERNAME` / `ACCESS_PASSWORD`).
@@ -202,10 +206,11 @@ Non-deploy checks that are safe to run any time: `npm run typecheck`, `npx wrang
 
 ## Out of scope
 
-Still no status/accept/order tools, no publish/unpublish tool for posts, no image search, no delete tool (portal-only), no client-management surface, no multi-user OAuth, and no post-send "revision" concept (a sent quote is locked to the connector). In-dashboard AI UI is a separate, API-billed phase.
+Still no send/accept/order tools (a revision is sent and accepted by the founder in the admin — `send_revision` from the revisions spec is deliberately not built), no publish/unpublish tool for posts, no image search, no delete tool (portal-only), no client-management surface, no multi-user OAuth. In-dashboard AI UI is a separate, API-billed phase.
 
 ## Version history
 
+- **v5** — quotation revisions ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)): `create_revision`; `update_draft_quotation` targets the family's draft revision (422 → call `create_revision`); `get_quotation` returns `family` / `current_revision` / `revisions` and takes `revision`; list rows carry `revision_number` / `open_revision`, and `status=draft` also finds families with a draft revision open; `detailed.phases` (lump sum by phase) and `detailed.care_plan_monthly_myr`.
 - **v4.2** — `locale` (en | bm) on `create_draft_quotation` / `update_draft_quotation` (any mode) and in `get_quotation`: the PDF's template-chrome language, never the content.
 - **v4.1** — `detailed.deposit_amount_myr` (fixed deposit, wins over `deposit_pct`) and `detailed.payment_plan` (lump_sum | instalment | partner) with the instalment fields; the derived `payment_plan` block in read-backs.
 - **v4** — blog drafts: `get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft` (always draft), `update_blog_draft` (partial, drafts only). Reuses the universal `connector:read` / `connector:draft` abilities — no token rotation needed.

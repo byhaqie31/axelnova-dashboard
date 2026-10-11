@@ -126,6 +126,10 @@ UI: "Allocate to invoice" / "Change invoice allocation" on the payment detail pa
 (`AdminPaymentAllocateModal`, outcome-stating confirm popup). The record-payment form also
 preselects the order's only `issued` invoice when exactly one exists.
 
+## Quotation revisions — supersede money rules
+
+When a later quotation revision supersedes the accepted one ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)), the **same order** moves onto the new terms. Every invoice carries `revision_id` (the revision whose terms it billed); on supersede, unpaid and part-paid `issued` invoices are **voided** (`void_reason`, number kept in the register) — part-paid payments stay on the ledger and count toward paid-to-date — paid ones are untouched, and `care_plan` invoices are left alone. The new schedule is **netted** against paid-to-date (`ScheduleNetting`): settled items need nothing, the first part-covered one gets an **`adjustment`** invoice for the difference, and a paid-to-date above the new total flags the order **overpaid** (credit note by hand). The supersede never writes `amount_paid_myr` — this observer stays the only writer. New invoice types: `adjustment`, `phase` (a phased lump sum), `care_plan` (one month of a separate Care Plan, `care_period`).
+
 ## Out of scope (by design)
 
 MyInvois / LHDN e-invoicing (invoice-side, separate), multi-currency (MYR only), installment scheduling, dunning/reminders.

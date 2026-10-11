@@ -88,6 +88,12 @@ class DraftQuotationRequest extends FormRequest
             'detailed.billing_day' => ['nullable', 'integer', 'min:1', 'max:28'],
             'detailed.first_instalment_date' => ['nullable', 'date_format:Y-m-d'],
             'detailed.includes_care_plan' => ['nullable', 'boolean'],
+            // Lump sum billed by phase (any split totalling 100% — 40/40/20, 50/50,
+            // 20×5 …) and a separate monthly Care Plan subscription. See PaymentPlan.
+            'detailed.phases' => ['nullable', 'array', 'min:'.PaymentPlan::MIN_PHASES, 'max:'.PaymentPlan::MAX_PHASES],
+            'detailed.phases.*.label' => ['nullable', 'string', 'max:80'],
+            'detailed.phases.*.pct' => ['required_with:detailed.phases', 'numeric', 'gt:0', 'max:100'],
+            'detailed.care_plan_monthly_myr' => ['nullable', 'numeric', 'min:0'],
             'detailed.sections' => ['required_with:detailed', 'array', 'min:1'],
             'detailed.sections.*.title' => ['required', 'string', 'max:200'],
             'detailed.sections.*.rows' => ['required', 'array', 'min:1'],
@@ -146,6 +152,16 @@ class DraftQuotationRequest extends FormRequest
                         'detailed',
                         'A detailed proposal is self-priced from its own sections — do not also send package_key / packages / modifiers / addon_keys / line_items. Use one pricing mode per draft.',
                     );
+                }
+
+                // Phases split a LUMP SUM, and must cover all of it.
+                $phases = $this->input('detailed.phases');
+                if (is_array($phases) && $phases !== []) {
+                    if (in_array($this->input('detailed.payment_plan'), [PaymentPlan::INSTALMENT, PaymentPlan::PARTNER], true)) {
+                        $validator->errors()->add('detailed.phases', 'detailed.phases split a lump_sum — an instalment or partner plan has its own monthly schedule. Drop phases or use payment_plan "lump_sum".');
+                    } elseif (abs(array_sum(array_map(fn ($p) => (float) ($p['pct'] ?? 0), $phases)) - 100) >= 0.01) {
+                        $validator->errors()->add('detailed.phases', 'detailed.phases must add up to 100% (e.g. 40 / 40 / 20). Phase 1 is billed on acceptance; the last phase absorbs the rounding.');
+                    }
                 }
 
                 // A scheduled plan needs its schedule: months (instalment) and a monthly figure.

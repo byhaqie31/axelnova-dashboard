@@ -123,21 +123,14 @@ class QuotationsController extends Controller
         // The list never serializes form_payload/document, so select scalars only
         // — the two JSON blobs are the widest columns in the schema — plus the
         // two extracted scalars customPackageLean() derives the "Custom" label from.
-        $query = QuotationIndexQuery::fromAdminRequest($request)->builder()
+        $query = QuotationIndexQuery::withRevisionColumns(QuotationIndexQuery::fromAdminRequest($request)->builder()
             ->select([
                 'id', 'reference_code', 'source', 'client_id', 'name', 'email', 'phone',
                 'company', 'package_key', 'status', 'locale', 'referral_partner_id',
                 'estimate_min_myr', 'estimate_max_myr', 'estimate_eta_value', 'estimate_eta_unit',
                 'submitted_at', 'issued_at', 'viewed_at', 'sent_at', 'expires_at',
                 'created_at', 'updated_at', 'current_revision_id',
-            ])
-            // The family's current revision number + any open (draft / sent) one,
-            // for the "AXNQ-… · R2" label and the "R3 draft" chip.
-            ->selectSub(fn ($q) => $q->from('quotation_revisions')->select('number')
-                ->whereColumn('quotation_revisions.id', 'quotations.current_revision_id'), 'current_revision_number')
-            ->selectSub(fn ($q) => $q->from('quotation_revisions')->selectRaw("CONCAT(number, ':', status)")
-                ->whereColumn('quotation_revisions.quotation_id', 'quotations.id')
-                ->whereIn('status', ['draft', 'sent'])->orderByDesc('number')->limit(1), 'open_revision')
+            ]))
             ->selectRaw("JSON_UNQUOTE(COALESCE(JSON_EXTRACT(document, '$.project'), JSON_EXTRACT(document, '$.payload.project'))) as custom_project")
             ->selectRaw("JSON_UNQUOTE(COALESCE(JSON_EXTRACT(form_payload, '$.source_meta.created_via'), JSON_EXTRACT(form_payload, '$.created_via'), JSON_EXTRACT(document, '$.created_via'))) as custom_created_via")
             ->with('addons');

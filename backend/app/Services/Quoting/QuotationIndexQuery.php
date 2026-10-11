@@ -80,6 +80,27 @@ final class QuotationIndexQuery
         );
     }
 
+    /**
+     * Add the two revision scalars a list row shows without extra queries: the
+     * family's current revision number and its open (draft / sent) revision as
+     * "number:status" — for "AXNQ-… · R2" and the "R3 draft" chip.
+     */
+    public static function withRevisionColumns(Builder $query): Builder
+    {
+        // A sub-select alone would REPLACE the implicit `*` — keep every column
+        // unless the caller already chose its own (the admin list does).
+        if ($query->getQuery()->columns === null) {
+            $query->select('quotations.*');
+        }
+
+        return $query
+            ->selectSub(fn ($q) => $q->from('quotation_revisions')->select('number')
+                ->whereColumn('quotation_revisions.id', 'quotations.current_revision_id'), 'current_revision_number')
+            ->selectSub(fn ($q) => $q->from('quotation_revisions')->selectRaw("CONCAT(number, ':', status)")
+                ->whereColumn('quotation_revisions.quotation_id', 'quotations.id')
+                ->whereIn('status', QuotationRevision::OPEN)->orderByDesc('number')->limit(1), 'open_revision');
+    }
+
     /** Build the filtered, newest-first query (soft-deleted rows excluded by scope). */
     public function builder(): Builder
     {

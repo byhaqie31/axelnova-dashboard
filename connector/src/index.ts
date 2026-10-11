@@ -6,17 +6,18 @@
  * bearer token (CONNECTOR_TOKEN) and adds it to every upstream call — Claude
  * never sees it. Access is gated by workers-oauth-provider (see auth.ts).
  *
- * Access model (v4), enforced by the Laravel token abilities (connector:read +
+ * Access model (v5), enforced by the Laravel token abilities (connector:read +
  * connector:draft, never cockpit). The two abilities are UNIVERSAL — they cover
  * every module's read / draft-write routes; there is no per-module ability.
  *   • READ everything  — list_catalog, list_quotations, get_quotation (ANY
- *     non-deleted quotation, whatever created it); get_blog_guide,
- *     list_blog_posts, get_blog_post (ANY non-deleted post).
- *   • WRITE with a gate — create_draft_quotation, update_draft_quotation (any
- *     quotation while it is PRE-SEND; refused once sent); create_blog_draft,
- *     update_blog_draft (a post while it is a DRAFT; refused once published).
- *   • DESTROY never     — there is NO delete, publish, or send tool; those are
- *     portal-only, by hand.
+ *     non-deleted quotation, whatever created it, any revision);
+ *     get_blog_guide, list_blog_posts, get_blog_post (ANY non-deleted post).
+ *   • WRITE with a gate — create_draft_quotation, create_revision (a new DRAFT
+ *     revision of a sent / accepted quote), update_draft_quotation (the
+ *     quotation's DRAFT revision only); create_blog_draft, update_blog_draft
+ *     (a post while it is a DRAFT; refused once published).
+ *   • DESTROY never     — there is NO delete, publish, send, or accept tool;
+ *     those are portal-only, by hand.
  */
 
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
@@ -37,8 +38,13 @@ import { authApp } from "./auth";
  * v4.2: `locale` (en | bm) — the PDF's template-chrome language, settable on
  * create / update (any mode) and returned by get_quotation. Content is never
  * translated or language-detected.
+ * v5: quotation REVISIONS — create_revision (a new draft revision with a
+ * change_reason), update_draft_quotation targets the family's draft revision,
+ * get_quotation returns family / current_revision / revisions (and takes an
+ * optional revision number); detailed.phases (a lump sum billed by phase —
+ * 40/40/20, 50/50, 20×5 …) and detailed.care_plan_monthly_myr.
  */
-const CONNECTOR_VERSION = "4.2.0";
+const CONNECTOR_VERSION = "5.0.0";
 
 const CATALOG_PATH = "/api/v1/connector/catalog";
 const QUOTATIONS_PATH = "/api/v1/connector/quotations";
@@ -150,7 +156,7 @@ const draftInputShape = {
         .enum(["lump_sum", "instalment", "partner"])
         .optional()
         .describe(
-          "lump_sum (default): deposit now, balance on completion. instalment: deposit on acceptance then instalment_months × instalment_amount_myr. partner: monthly partnership — deposit_amount_myr is the setup fee, then instalment_amount_myr monthly for instalment_months (default 24).",
+          "lump_sum (default): deposit now, balance on completion — or, with `phases`, billed by phase (40/40/20 …). instalment: deposit on acceptance then instalment_months × instalment_amount_myr. partner: monthly partnership — deposit_amount_myr is the setup fee, then instalment_amount_myr monthly for instalment_months (default 24).",
         ),
       instalment_months: z
         .number()
@@ -182,6 +188,26 @@ const draftInputShape = {
         .boolean()
         .optional()
         .describe("instalment / partner: true when the monthly figure already includes the care plan (printed on the PDF)."),
+      phases: z
+        .array(
+          z.object({
+            label: z.string().optional().describe("What triggers this payment, e.g. 'On acceptance', 'At demo', 'At go-live' — printed as written."),
+            pct: z.number().positive().max(100).describe("This phase's share of the total, in percent."),
+          }),
+        )
+        .min(2)
+        .max(10)
+        .optional()
+        .describe(
+          "lump_sum only: bill the total in phases — ANY split that adds up to 100%, e.g. 40/40/20, 50/50, 20/20/20/20/20. Phase 1 is the up-front payment (it replaces deposit_pct / deposit_amount_myr); amounts round to the ringgit and the last phase takes the remainder. The PDF prints a phases table.",
+        ),
+      care_plan_monthly_myr: z
+        .number()
+        .nonnegative()
+        .optional()
+        .describe(
+          "A SEPARATE monthly Care Plan subscription (RM / month), billed month by month on its own invoices — use this when the care plan is NOT folded into an instalment figure (includes_care_plan). Printed under the payment plan.",
+        ),
       sections: z
         .array(
           z.object({
@@ -352,7 +378,8 @@ export class AxelNovaMCP extends McpAgent<Env> {
         "READ-ONLY. Browse quotations, newest first — use this to find a quotation without knowing its reference code.",
         "Filter by status[] (any of draft/sent/accepted/rejected/expired; omit for all), q (matches name / email / reference code), and from/to (created-date range, ISO YYYY-MM-DD).",
         "Paginated: per_page defaults to 10, max 25; pass page to walk further.",
-        "Returns SLIM rows (reference code, client, status, layout/package label, estimate range, dates, admin URL) — no full document or scope. Call get_quotation with a reference_code for the full detail.",
+        "One row per quotation (a revised quote is still ONE row): status is the quotation's overall status; revision_number is the revision it currently presents and open_revision a newer draft/sent revision in progress (status draft also finds accepted quotes with a draft revision open).",
+        "Returns SLIM rows (reference code, client, status, revision, layout/package label, estimate range, dates, admin URL) — no full document or scope. Call get_quotation with a reference_code for the full detail.",
       ].join(" "),
       {
         status: z
@@ -387,7 +414,7 @@ export class AxelNovaMCP extends McpAgent<Env> {
         "When package_key is set, modifiers/addon_keys/rush price it through the same engine as the public quote funnel; any line_items are stored as extras and NOT added to that estimate.",
         "For a quote spanning several catalog packages, pass packages[] (each entry its own package_key + modifiers + addon_keys) INSTEAD of the top-level package_key — the estimate sums the packages and the ETA is the longest. rush is still one flag for the whole quote.",
         "For a rich, presentation-grade proposal (grouped scope sections + What's included + option cards + a care plan), pass the `detailed` object INSTEAD — it is self-priced from its section amounts and must not be combined with package_key/packages/line_items.",
-        "Deposit: detailed.deposit_pct (whole %) OR detailed.deposit_amount_myr (a fixed ringgit figure — wins over the pct, use it for any agreed round amount). Payment plan: detailed.payment_plan lump_sum (default) | instalment (deposit, then instalment_months × instalment_amount_myr on billing_day from first_instalment_date) | partner (setup fee + monthly × months, default 24). The PDF prints the schedule; the response's payment_plan shows the derived figures and any variance from the section total.",
+        "Deposit: detailed.deposit_pct (whole %) OR detailed.deposit_amount_myr (a fixed ringgit figure — wins over the pct, use it for any agreed round amount). Payment plan: detailed.payment_plan lump_sum (default) | instalment (deposit, then instalment_months × instalment_amount_myr on billing_day from first_instalment_date) | partner (setup fee + monthly × months, default 24). A lump sum can instead be billed by phase: detailed.phases — any split totalling 100% (40/40/20, 50/50, 20×5 …), phase 1 is the up-front payment. A separate monthly Care Plan: detailed.care_plan_monthly_myr. The PDF prints the schedule / phases; the response's payment_plan shows the derived figures and any variance from the section total.",
         "project and intro set the document's title + lead-in on the PDF for any mode.",
         "locale (en, default | bm) picks the language of the PDF's template chrome (headings, captions, labels, footer, dates) — never of the content, which prints as written. Set bm when the founder wants a Bahasa Melayu document.",
         "Put every guess in assumptions and every unknown in open_questions so the founder can verify them.",
@@ -401,8 +428,8 @@ export class AxelNovaMCP extends McpAgent<Env> {
     this.server.tool(
       "update_draft_quotation",
       [
-        "Update an existing quotation that is still a PRE-SEND draft (status: draft) — identified by its reference_code. Any draft works, whoever created it (public funnel, admin, or this connector).",
-        "Refused (422) once the quote has been sent/accepted/rejected/expired: the client has seen it, so a change is a manual admin revision, out of scope here.",
+        "Update the DRAFT REVISION of a quotation — identified by its reference_code. A new quotation's R1 is a draft until sent; a sent or accepted quotation gets a draft revision (R2, R3 …) from create_revision. Any draft works, whoever created it (public funnel, admin, or this connector).",
+        "Refused (422) when the quotation has no draft revision (it was sent / accepted / rejected / expired and no revision is open): call create_revision with a change_reason first, then update that draft. A sent or accepted revision itself is never edited — the client saw (or agreed to) it.",
         "Takes the SAME input as create_draft_quotation — it fully re-specifies the pricing basis (package/packages/modifiers/add-ons/rush, or line_items, or a detailed proposal) and the client — so send the complete intended state, not a partial patch.",
         "It re-prices the estimate. The seeded document is regenerated from the new scope ONLY when it is still untouched (or you pass reseed_document: true); a document a human has edited by hand is preserved and only the estimate is re-priced (the response's document_reseeded tells you which happened).",
         "Pass reseed_document: true to force the document to be regenerated from the new scope even if it was hand-edited.",
@@ -431,15 +458,61 @@ export class AxelNovaMCP extends McpAgent<Env> {
 
     this.server.tool(
       "get_quotation",
-      "Read back ANY quotation by its reference code (e.g. AXNQ-2026-0007) — not only connector-created ones. Returns the full stored estimate, line items, assumptions, open questions, provenance (created_via / last_updated_via), and the admin URL. To browse or filter without a reference code, use list_quotations.",
+      [
+        "Read back ANY quotation by its reference code (e.g. AXNQ-2026-0007) — not only connector-created ones.",
+        "A quotation keeps one reference for life; its terms live in numbered REVISIONS (R1, R2 …). `family` (overall status, current / open / draft revision numbers), `current_revision` (the accepted or latest terms) and `revisions` (number, status — draft / sent / accepted / superseded / rejected / expired / discarded — estimate, dates, change_reason) describe the whole quotation.",
+        "The rest of the record (estimate, line items, payment_plan, assumptions, open questions, provenance, admin URL) is ONE revision, named in `revision`: by default the working one — the open draft / sent revision if any, else the current — or pass `revision` for a specific one.",
+        "To browse or filter without a reference code, use list_quotations.",
+      ].join(" "),
       {
         reference_code: z
           .string()
           .describe("An AXNQ reference code (from create_draft_quotation, list_quotations, or the admin)."),
+        revision: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("Read this revision number (1 = R1). Omit for the working revision (open draft/sent, else current)."),
       },
-      async ({ reference_code }) =>
+      async ({ reference_code, revision }) =>
         this.passthrough(
-          await apiFetch(this.env, `${QUOTATIONS_PATH}/${encodeURIComponent(reference_code)}`),
+          await apiFetch(
+            this.env,
+            `${QUOTATIONS_PATH}/${encodeURIComponent(reference_code)}${revision ? `?revision=${revision}` : ""}`,
+          ),
+        ),
+    );
+
+    this.server.tool(
+      "create_revision",
+      [
+        "Open a NEW DRAFT REVISION of a quotation that was already sent or accepted — the way to change terms after the client has seen them (e.g. they switch payment plan).",
+        "It copies the latest sent / accepted revision into a new draft (R2, R3 …) carrying your change_reason, which is printed on the new revision's PDF and shown on the order timeline. Then call update_draft_quotation to change the terms.",
+        "Nothing is sent and nothing is accepted: the founder sends or accepts the revision in the admin. Accepting a revision of an ACCEPTED quotation supersedes the old terms on the SAME order (unpaid invoices voided, paid ones kept, the new schedule netted against what was paid).",
+        "Revising a SENT revision withdraws it (the client gets the replacement; the founder can undo by discarding the new draft).",
+        "Refused (422, naming it) while another revision is still draft or sent, and once the order is completed or cancelled. A brand-new quotation that has never been sent needs no revision — just update_draft_quotation.",
+      ].join(" "),
+      {
+        reference_code: z.string().describe("The AXNQ reference code of the quotation to revise."),
+        change_reason: z
+          .string()
+          .min(1)
+          .max(500)
+          .describe("Why the quotation is changing, in the founder's words — e.g. 'Client switched to the 40/40/20 plan'."),
+        from_revision: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("Revise this revision number. Omit to revise the sent one, else the accepted one."),
+      },
+      async ({ reference_code, ...body }) =>
+        this.passthrough(
+          await apiFetch(this.env, `${QUOTATIONS_PATH}/${encodeURIComponent(reference_code)}/revisions`, {
+            method: "POST",
+            body: JSON.stringify(body),
+          }),
         ),
     );
 

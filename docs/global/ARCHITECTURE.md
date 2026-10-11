@@ -45,6 +45,15 @@ axelnova-dashboard/
 | `documents` | Issued invoices & receipts — frozen `DocumentData` snapshots, rendered on demand. See [DOCUMENT-GENERATION.md](./DOCUMENT-GENERATION.md) |
 | `projects` | Active project tracking |
 
+### Quotation revisions (see [QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md))
+
+| Table | Purpose |
+|---|---|
+| `quotation_revisions` | Numbered revisions (R1, R2 …) of a quotation family — status (`draft/sent/accepted/superseded/rejected/expired/discarded`), `change_reason`, `replaces_revision_id`, own `public_token`, the content snapshot (`document`, `form_payload`, `estimate_*`, `locale`, `addons` JSON) and lifecycle dates. `quotations.current_revision_id` points at the current one; the `quotations` row mirrors its content |
+| `order_care_plans` | Care Plan coverage periods per order (`included` / `separate`, monthly RM, `starts_on` / `ends_on`, `ended_at`) — closed and reopened on supersede so no month is billed twice or skipped |
+
+`orders` gained `current_revision_id`, `revised_at`, `schedule_netting`, `revision_flags`; `invoices` gained `revision_id`, `void_reason`, `care_period` and the `adjustment` / `phase` / `care_plan` types.
+
 ### Analytics (Phase B — see [ANALYTICS.md](./ANALYTICS.md))
 
 | Table | Purpose |
@@ -215,13 +224,22 @@ PATCH  /v1/admin/announcements/{id}  Edit title/body/audience and/or toggle `pub
 GET  /v1/connector/catalog                connector:read  — merged quote catalog (packages/modifiers/addons/rush)
 GET  /v1/connector/quotations             connector:read  — slim list of any non-deleted quotation
 POST /v1/connector/quotations/draft       connector:draft — create a DRAFT quotation (priced or bespoke)
-GET  /v1/connector/quotations/{ref}       connector:read  — read back any quotation (AXNQ code)
-PUT  /v1/connector/quotations/{ref}       connector:draft — update a PRE-SEND draft
+GET  /v1/connector/quotations/{ref}       connector:read  — read back any quotation (AXNQ code; ?revision=N)
+PUT  /v1/connector/quotations/{ref}       connector:draft — update the quotation's DRAFT revision
+POST /v1/connector/quotations/{ref}/revisions  connector:draft — create_revision (new draft revision + change_reason)
 GET  /v1/connector/blog/guide             connector:read  — blog writing guide (voice, structure, CTA defaults, formats, …)
 GET  /v1/connector/blog/posts             connector:read  — slim list of any non-deleted post
 GET  /v1/connector/blog/posts/{id}        connector:read  — full Markdown record
 POST /v1/connector/blog/posts             connector:draft — create a post (always draft)
 PUT  /v1/connector/blog/posts/{id}        connector:draft — partial update of a DRAFT (published → 422)
+
+# Quotation revisions (see QUOTATION-REVISIONS.md) — cockpit
+GET  /v1/admin/quotations/{id}?revision=N           Sanctum — one family, shown through revision N (default: open, else current)
+POST /v1/admin/quotations/{id}/revisions            Sanctum — "Revise": {change_reason, from_revision?} → new draft revision
+POST /v1/admin/quotations/{id}/revisions/{n}/discard Sanctum — discard a draft revision (R2+)
+POST /v1/admin/quotations/{id}/accept               Sanctum — {revision?}: first acceptance creates the order;
+                                                    a later revision SUPERSEDES the accepted one on the same order
+POST /v1/admin/quotations/{id}/status               Sanctum — only {status: rejected} (re-opening in place → 422 "use Revise")
 
 # Document generation (see DOCUMENT-GENERATION.md)
 POST /v1/admin/orders/{order}/documents   Sanctum — issue an invoice/receipt
