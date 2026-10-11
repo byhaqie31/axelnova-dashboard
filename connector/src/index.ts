@@ -10,7 +10,8 @@
  * connector:draft, never cockpit). The two abilities are UNIVERSAL — they cover
  * every module's read / draft-write routes; there is no per-module ability.
  *   • READ everything  — list_catalog, list_quotations, get_quotation (ANY
- *     non-deleted quotation, whatever created it, any revision);
+ *     non-deleted quotation, whatever created it, any revision), get_order (an
+ *     order's money view — read-only; invoices are issued / edited by hand);
  *     get_blog_guide, list_blog_posts, get_blog_post (ANY non-deleted post).
  *   • WRITE with a gate — create_draft_quotation, create_revision (a new DRAFT
  *     revision of a sent / accepted quote), update_draft_quotation (the
@@ -43,12 +44,16 @@ import { authApp } from "./auth";
  * get_quotation returns family / current_revision / revisions (and takes an
  * optional revision number); detailed.phases (a lump sum billed by phase —
  * 40/40/20, 50/50, 20×5 …) and detailed.care_plan_monthly_myr.
+ * v5.1: get_order — READ-ONLY money view of an order (tally: paid + open
+ * invoiced + still to bill vs the agreed total, the netted plan, every invoice
+ * with its status / void reason, payments, Care Plan periods, revisions).
  */
-const CONNECTOR_VERSION = "5.0.0";
+const CONNECTOR_VERSION = "5.1.0";
 
 const CATALOG_PATH = "/api/v1/connector/catalog";
 const QUOTATIONS_PATH = "/api/v1/connector/quotations";
 const DRAFT_PATH = "/api/v1/connector/quotations/draft";
+const ORDERS_PATH = "/api/v1/connector/orders";
 const BLOG_GUIDE_PATH = "/api/v1/connector/blog/guide";
 const BLOG_POSTS_PATH = "/api/v1/connector/blog/posts";
 
@@ -482,6 +487,24 @@ export class AxelNovaMCP extends McpAgent<Env> {
             `${QUOTATIONS_PATH}/${encodeURIComponent(reference_code)}${revision ? `?revision=${revision}` : ""}`,
           ),
         ),
+    );
+
+    this.server.tool(
+      "get_order",
+      [
+        "READ-ONLY. The money view of an order — use it to check an order TALLIES, e.g. after the founder accepts a revised quotation.",
+        "Pass the AXNO order number, or the AXNQ reference of the accepted quotation it came from (404 with a hint while the quotation has no order yet).",
+        "`tally`: agreed_total_myr = paid_to_date_myr + open_invoiced_myr + still_to_bill_myr when it tallies; over_billed_myr > 0 means live invoices ask for more than is left; overpaid_myr flags money paid beyond the total (a credit note, handled by hand).",
+        "`payment_plan`: each instalment / phase with its invoice and, after a revision, its netting state (settled by earlier payments / adjustment / due). Also every invoice (status, void_reason, which revision it billed), the payments, Care Plan periods, the revision chain and flags.",
+        "You cannot issue, edit, void or send invoices or record payments — tell the founder what to do in the admin (admin_url).",
+      ].join(" "),
+      {
+        reference: z
+          .string()
+          .describe("An AXNO order number (e.g. AXNO-2026-0012) or the AXNQ reference of the quotation it came from."),
+      },
+      async ({ reference }) =>
+        this.passthrough(await apiFetch(this.env, `${ORDERS_PATH}/${encodeURIComponent(reference)}`)),
     );
 
     this.server.tool(

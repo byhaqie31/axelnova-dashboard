@@ -16,7 +16,7 @@ Claude (claude.ai)  ──OAuth──▶  mcp.axelnova.tech  ──Bearer CONNEC
 
 **The abilities are universal, not per-module.** `connector:read` opens every module's read routes and `connector:draft` every module's draft-write routes — quotations, the blog, and any module added later. A new module adds routes under the existing abilities (no new ability, so **no token rotation** to ship it); its guardrails live in its controller.
 
-- ✅ **READ everything** — the catalog, a slim **list** of ANY non-deleted quotation, and full **read-back** of ANY non-deleted quotation (whatever created it — funnel, admin, or connector). The blog writing guide, a slim list, and the full Markdown record of ANY non-deleted blog post (draft or published).
+- ✅ **READ everything** — the catalog, a slim **list** of ANY non-deleted quotation, and full **read-back** of ANY non-deleted quotation (whatever created it — funnel, admin, or connector) — and an order's **money view** (`get_order`, v5.1: the tally, netted plan, invoices, payments; read-only). The blog writing guide, a slim list, and the full Markdown record of ANY non-deleted blog post (draft or published).
 - ✅ **WRITE with a gate** — create a **draft** quotation; open a new **draft revision** of a sent / accepted quotation (`create_revision`, with a change reason); **update** a quotation's **draft revision** only — a sent / accepted revision is never edited ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)). Create a blog post (**always** `draft`); **partially update** a post while it is a **draft**, refused once published (its edits would go live without the founder's preview).
 - ❌ **never** — send/accept a quote or a revision, **publish/unpublish** a post, create orders, touch clients/services/payments, or **delete** anything. (Revising a *sent* revision does withdraw it — the client gets the replacement — but the founder can undo that by discarding the new draft in the admin.) Deletion and publishing are **portal-only, by hand** — there is no delete or publish tool (irreversible and public-facing actions stay human-only).
 
@@ -31,6 +31,7 @@ A connector token is rejected by every `/v1/admin/*` route (they demand `abiliti
 | GET | `/v1/connector/quotations/{reference_code}` | `connector:read` | 60/min | Read back ANY non-deleted quotation by AXNQ code |
 | POST | `/v1/connector/quotations/draft` | `connector:draft` | 30/min | Create a draft quotation (contract below) |
 | PUT | `/v1/connector/quotations/{reference_code}` | `connector:draft` | 30/min | Update the quotation's DRAFT revision (same body as draft + `reseed_document`); 422 pointing at `create_revision` when there is none |
+| GET | `/v1/connector/orders/{reference}` | `connector:read` | 60/min | `get_order` — read-only money view of an order, by AXNO or the AXNQ it came from (404 with a hint before acceptance) |
 | POST | `/v1/connector/quotations/{reference_code}/revisions` | `connector:draft` | 30/min | `create_revision` — `{change_reason, from_revision?}` → a new DRAFT revision (R2, R3 …). 422 while another revision is open or once the order is completed / cancelled |
 | GET | `/v1/connector/blog/guide` | `connector:read` | 60/min | The writing guide: voice + structure + CTA defaults (from `config/blog.php`), the two drafting modes, formats, categories/tags in use (case-deduped; a draft's category/tags are snapped to these spellings on save — `BlogTaxonomy::snap()`), section shape, limits, image rules |
 | GET | `/v1/connector/blog/posts` | `connector:read` | 60/min | Slim list of non-deleted posts — `status`, `q` (title), `page`/`per_page` (default 10, capped 25), newest updated first; `admin_url` + `public_url` (published only) |
@@ -52,6 +53,7 @@ Blog code: `app/Http/Controllers/Api/V1/Connector/BlogPostController.php`, savin
 | `list_quotations` | `GET /quotations` | read (any) | Browse/filter slim rows to find a quotation without its code. No `form_payload`/`document`. |
 | `get_quotation` | `GET /quotations/{ref}[?revision=N]` | read (any) | Full read-back of ANY quotation by reference code: `family` (status, current / open / draft revision numbers), `current_revision`, `revisions[]` (number, status, estimate, dates, change_reason), and the working revision's full record (named in `revision`; `?revision=N` for another). |
 | `create_draft_quotation` | `POST /quotations/draft` | write | Creates a DRAFT only. Single-package (`package_key`), multi-package (`packages[]`), bespoke (`line_items`), or `detailed`. |
+| `get_order` | `GET /orders/{reference}` | read | The order's money view — `tally` (agreed total = paid + open invoiced + still to bill; `over_billed_myr`, `overpaid_myr`, `tallies`), the plan with each payment's invoice and netting state, every invoice (status, `void_reason`, revision), payments, Care Plan periods, revisions. No public PDF tokens. Use it to confirm an order tallies after a revision is accepted; issuing / editing invoices stays in the admin. |
 | `create_revision` | `POST /quotations/{ref}/revisions` | write | A new DRAFT revision of a sent / accepted quotation, with a required `change_reason` (printed on the new PDF, shown on the order timeline). Nothing is sent or accepted. |
 | `update_draft_quotation` | `PUT /quotations/{ref}` | write · **gate: draft revision** | Re-specifies + re-prices the family's draft revision. Refused 422 when none is open (call `create_revision`). `reseed_document` controls document regeneration. |
 
@@ -193,16 +195,16 @@ Non-deploy checks that are safe to run any time: `npm run typecheck`, `npx wrang
 1. **Settings → Connectors → Add custom connector** (Customize → Connectors).
 2. **URL:** `https://mcp.axelnova.tech/mcp`
 3. Connect → you'll be redirected to the connector login → enter `ACCESS_USERNAME` / `ACCESS_PASSWORD` → authorize.
-4. The eleven tools appear — six quotation (`list_catalog`, `list_quotations`, `get_quotation`, `create_draft_quotation`, `create_revision`, `update_draft_quotation`) and five blog (`get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft`, `update_blog_draft`). Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Ask it to "show pending quotes from this month" and it uses `list_quotations`; ask it to tweak a draft and it uses `update_draft_quotation`. Review everything in `/admin/quotations`. Ask it to "write a guide about X, cover image <url>" (or hand it your own text) and it calls `get_blog_guide`, then `create_blog_draft`; preview and publish in `/admin/blog`.
+4. The twelve tools appear — seven quotation / order (`list_catalog`, `list_quotations`, `get_quotation`, `create_draft_quotation`, `create_revision`, `update_draft_quotation`, `get_order`) and five blog (`get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft`, `update_blog_draft`). Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Ask it to "show pending quotes from this month" and it uses `list_quotations`; ask it to tweak a draft and it uses `update_draft_quotation`. Review everything in `/admin/quotations`. Ask it to "write a guide about X, cover image <url>" (or hand it your own text) and it calls `get_blog_guide`, then `create_blog_draft`; preview and publish in `/admin/blog`.
 5. After a Worker deploy that changes the tool list, refresh/reconnect the connector so claude.ai picks up the new tools.
 
 **Claude Code** gets the same tools through the synced **"claude.ai Axel Nova MCP"** connector when signed in with the same claude.ai account — authorize it once via `/mcp` (same `ACCESS_USERNAME` / `ACCESS_PASSWORD`).
 
 ## File map
 
-- Backend: `app/Http/Controllers/Api/V1/Connector/*` (incl. `BlogPostController`), `app/Http/Requests/Connector/DraftQuotationRequest.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Services/Blog/BlogPostInput.php`, `app/Support/BlogGuide.php`, `config/blog.php`, `app/Console/Commands/MintConnectorToken.php`, route group in [`routes/api.php`](../../backend/routes/api.php).
+- Backend: `app/Http/Controllers/Api/V1/Connector/*` (incl. `BlogPostController`, `OrderController` — `get_order`), `app/Http/Requests/Connector/DraftQuotationRequest.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Services/Blog/BlogPostInput.php`, `app/Support/BlogGuide.php`, `config/blog.php`, `app/Console/Commands/MintConnectorToken.php`, route group in [`routes/api.php`](../../backend/routes/api.php).
 - Worker: `connector/src/{index,api,auth}.ts`, `connector/wrangler.toml`, `connector/package.json`, `connector/rotate-token.sh` (one-command token rotation).
-- Tests: `backend/tests/Feature/Connector/ConnectorDraftTest.php`, `backend/tests/Feature/Connector/ConnectorBlogTest.php`.
+- Tests: `backend/tests/Feature/Connector/ConnectorDraftTest.php`, `ConnectorBlogTest.php`, `ConnectorRevisionTest.php`, `ConnectorOrderTest.php`.
 
 ## Out of scope
 
@@ -210,6 +212,7 @@ Still no send/accept/order tools (a revision is sent and accepted by the founder
 
 ## Version history
 
+- **v5.1** — `get_order`: read-only money view of an order (tally, netted plan, invoices with void reasons, payments, Care Plan periods, revisions) so Claude can confirm an order tallies after a revision is accepted. No invoice or payment writes.
 - **v5** — quotation revisions ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)): `create_revision`; `update_draft_quotation` targets the family's draft revision (422 → call `create_revision`); `get_quotation` returns `family` / `current_revision` / `revisions` and takes `revision`; list rows carry `revision_number` / `open_revision`, and `status=draft` also finds families with a draft revision open; `detailed.phases` (lump sum by phase) and `detailed.care_plan_monthly_myr`.
 - **v4.2** — `locale` (en | bm) on `create_draft_quotation` / `update_draft_quotation` (any mode) and in `get_quotation`: the PDF's template-chrome language, never the content.
 - **v4.1** — `detailed.deposit_amount_myr` (fixed deposit, wins over `deposit_pct`) and `detailed.payment_plan` (lump_sum | instalment | partner) with the instalment fields; the derived `payment_plan` block in read-backs.

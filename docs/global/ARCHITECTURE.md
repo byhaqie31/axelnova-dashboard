@@ -227,6 +227,7 @@ POST /v1/connector/quotations/draft       connector:draft — create a DRAFT quo
 GET  /v1/connector/quotations/{ref}       connector:read  — read back any quotation (AXNQ code; ?revision=N)
 PUT  /v1/connector/quotations/{ref}       connector:draft — update the quotation's DRAFT revision
 POST /v1/connector/quotations/{ref}/revisions  connector:draft — create_revision (new draft revision + change_reason)
+GET  /v1/connector/orders/{reference}     connector:read  — get_order: read-only money view (AXNO or AXNQ) — tally, netted plan, invoices
 GET  /v1/connector/blog/guide             connector:read  — blog writing guide (voice, structure, CTA defaults, formats, …)
 GET  /v1/connector/blog/posts             connector:read  — slim list of any non-deleted post
 GET  /v1/connector/blog/posts/{id}        connector:read  — full Markdown record

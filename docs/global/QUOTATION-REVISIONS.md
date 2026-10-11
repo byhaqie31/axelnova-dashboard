@@ -148,6 +148,9 @@ M Automobile: R1 care included from Nov 2026, nothing paid → R1's period close
 | `get_quotation` | `GET /v1/connector/quotations/{ref}[?revision=N]` | `family`, `current_revision`, `revisions[]` + the working revision's full record (`revision` names it). |
 | `update_draft_quotation` | `PUT /v1/connector/quotations/{ref}` | Edits the family's **draft revision**; 422 (pointing at `create_revision`) when there is none. |
 | `list_quotations` | `GET /v1/connector/quotations` | Rows add `display_reference`, `revision_number`, `open_revision`. |
+| `get_order` (v5.1) | `GET /v1/connector/orders/{AXNO or AXNQ}` | **Read-only** money view to confirm the order tallies after the founder accepts: `tally` (agreed total = paid + open invoiced + still to bill; `over_billed_myr`, `overpaid_myr`), the netted plan, every invoice with its status / void reason / revision, payments, Care Plan periods. |
+
+The connector never issues, edits or voids invoices — the supersede does the voiding and the adjustment automatically on accept, and the remaining payments are issued from the order page. `get_order` lets Claude check the result and tell the founder what is left to bill.
 
 `send_revision` (optional in the spec) is not built — sending and accepting stay in the admin. `detailed.phases` and `detailed.care_plan_monthly_myr` are accepted on create / update. Full contract: [MCP-CONNECTOR.md](./MCP-CONNECTOR.md).
 
