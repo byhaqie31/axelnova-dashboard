@@ -11,6 +11,7 @@ use App\Models\Client;
 use App\Models\Inquiry;
 use App\Models\Order;
 use App\Models\Quotation;
+use App\Models\QuotationRevision;
 use App\Models\Referral;
 use App\Services\Quoting\DocumentMapper;
 use App\Services\Quoting\DocumentSeeder;
@@ -57,6 +58,19 @@ class QuotationsController extends Controller
         ]);
         // Avoid a lazy-load on the unsaved model when the standard layout maps items.
         $quotation->setRelation('addons', collect());
+
+        // Previewing a revision of an existing quotation: its header shows the
+        // family reference + "· R2" and the revision's reason line, as the PDF will.
+        if ($request->filled('quotation_id') && $request->filled('revision')) {
+            $revision = QuotationRevision::where('quotation_id', $request->integer('quotation_id'))
+                ->where('number', $request->integer('revision'))
+                ->with('quotation')
+                ->first();
+            if ($revision) {
+                $quotation->reference_code = $revision->quotation->reference_code;
+                $quotation->revisionView = $revision;
+            }
+        }
 
         return response()->json(DocumentMapper::toDocumentData($quotation));
     }
@@ -115,8 +129,15 @@ class QuotationsController extends Controller
                 'company', 'package_key', 'status', 'locale', 'referral_partner_id',
                 'estimate_min_myr', 'estimate_max_myr', 'estimate_eta_value', 'estimate_eta_unit',
                 'submitted_at', 'issued_at', 'viewed_at', 'sent_at', 'expires_at',
-                'created_at', 'updated_at',
+                'created_at', 'updated_at', 'current_revision_id',
             ])
+            // The family's current revision number + any open (draft / sent) one,
+            // for the "AXNQ-… · R2" label and the "R3 draft" chip.
+            ->selectSub(fn ($q) => $q->from('quotation_revisions')->select('number')
+                ->whereColumn('quotation_revisions.id', 'quotations.current_revision_id'), 'current_revision_number')
+            ->selectSub(fn ($q) => $q->from('quotation_revisions')->selectRaw("CONCAT(number, ':', status)")
+                ->whereColumn('quotation_revisions.quotation_id', 'quotations.id')
+                ->whereIn('status', ['draft', 'sent'])->orderByDesc('number')->limit(1), 'open_revision')
             ->selectRaw("JSON_UNQUOTE(COALESCE(JSON_EXTRACT(document, '$.project'), JSON_EXTRACT(document, '$.payload.project'))) as custom_project")
             ->selectRaw("JSON_UNQUOTE(COALESCE(JSON_EXTRACT(form_payload, '$.source_meta.created_via'), JSON_EXTRACT(form_payload, '$.created_via'), JSON_EXTRACT(document, '$.created_via'))) as custom_created_via")
             ->with('addons');

@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\PageView;
 use App\Models\Quotation;
 use App\Models\Referral;
+use App\Services\Quoting\QuotationIndexQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
@@ -21,8 +22,16 @@ class DashboardController extends Controller
     public function counts(): JsonResponse
     {
         $data = Cache::remember('admin:dashboard:counts', 60, fn () => [
+            // One row per quotation FAMILY, however many revisions it has — so a
+            // revised quote counts once everywhere below.
             'quotations_total' => Quotation::count(),
             'quotations_draft' => Quotation::where('status', 'draft')->count(),
+            // Conversion: families whose current revision is accepted, over every
+            // family that has gone out to a client (sent / accepted / rejected / expired).
+            'quotations_accepted' => $accepted = Quotation::where('status', 'accepted')->count(),
+            'quotations_decided' => $decided = Quotation::whereIn('status', ['sent', 'accepted', 'rejected', 'expired'])->count(),
+            'quotations_conversion_pct' => $decided > 0 ? round($accepted / $decided * 100, 1) : null,
+            'quotations_revised' => (new QuotationIndexQuery(revisedAfterAcceptance: true))->builder()->count(),
             'referrals_active' => Referral::where('status', '!=', 'rejected')->count(),
             'orders_total' => Order::count(),
             'inquiries_new' => Inquiry::where('status', 'new')->count(),

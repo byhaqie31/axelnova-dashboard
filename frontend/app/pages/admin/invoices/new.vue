@@ -18,14 +18,21 @@ interface Order {
   amount_paid_myr: string
   remaining_myr: number
   payment_plan?: OrderPlanView | null
-  invoices?: { id: number; type: string; status: string; instalment_no?: number | null }[]
+  invoices?: { id: number; type: string; status: string; instalment_no?: number | null; care_period?: string | null }[]
+  care_plans?: { kind: 'included' | 'separate'; monthly_myr: number | null; starts_on: string; ends_on: string | null }[]
 }
 
 const orderId = computed(() => route.query.order_id ? String(route.query.order_id) : '')
-// ?instalment=N (from the order's schedule) opens the form on that instalment.
+// ?instalment=N / ?phase=N / ?care=YYYY-MM (from the order's plan card) open the
+// form on that instalment, phase, or Care Plan month.
 const initial = computed(() => route.query.instalment
   ? { invoiceType: 'instalment', instalmentNo: Number(route.query.instalment) }
-  : null)
+  : route.query.phase
+    ? { invoiceType: 'phase', instalmentNo: Number(route.query.phase) }
+    : route.query.care
+      // care=next lets the form pick the first month not billed yet.
+      ? { invoiceType: 'care_plan', ...(route.query.care !== 'next' ? { carePeriod: String(route.query.care) } : {}) }
+      : null)
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref('')
@@ -55,12 +62,19 @@ async function issueInvoice(body: Record<string, unknown>) {
     toast.success('Invoice issued', 'Record payments against it from the Payments module.')
     await navigateTo(`/admin/invoices/${res.document.id}`)
   }
-  catch {
-    toast.error('Couldn’t issue invoice', 'Please try again.')
+  catch (e: any) {
+    toast.error('Couldn’t issue invoice', apiError(e, 'Please try again.'))
   }
   finally {
     issuing.value = false
   }
+}
+
+// The API's own words for a refusal (e.g. "Phase 1 was settled by payments made
+// before the revision") — the first validation error, else the message.
+function apiError(e: any, fallback: string): string {
+  const errors = e?.data?.errors as Record<string, string[]> | undefined
+  return (errors && Object.values(errors)[0]?.[0]) || e?.data?.message || fallback
 }
 
 onMounted(fetchOrder)

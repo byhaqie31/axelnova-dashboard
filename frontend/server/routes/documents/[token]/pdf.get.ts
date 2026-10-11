@@ -9,6 +9,7 @@
 // quotation email), then renders it through headless Chromium and streams the PDF.
 
 import { renderDocumentPDF } from '../../../utils/pdf/pdf'
+import { documentFileName } from '../../../utils/pdf/template'
 import type { DocumentData } from '../../../utils/pdf/types'
 
 export default defineEventHandler(async (event) => {
@@ -31,7 +32,8 @@ export default defineEventHandler(async (event) => {
   const pdf = await renderDocumentPDF(doc)
 
   setHeader(event, 'Content-Type', 'application/pdf')
-  setHeader(event, 'Content-Disposition', `inline; filename="${doc.number}.pdf"`)
+  // "AXNQ-2026-0017-R2.pdf" from a quotation's second revision on.
+  setHeader(event, 'Content-Disposition', `inline; filename="${documentFileName(doc)}"`)
   setHeader(event, 'Cache-Control', 'private, no-store')
   return pdf
 })

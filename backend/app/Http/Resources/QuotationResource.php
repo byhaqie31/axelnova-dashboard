@@ -66,7 +66,28 @@ class QuotationResource extends JsonResource
                 'label' => $a->addon_label,
                 'amount_myr' => $a->amount_myr,
             ])),
-            ...($listRoute ? [] : $this->revisionFields()),
+            ...($listRoute ? $this->listRevisionFields() : $this->revisionFields()),
+        ];
+    }
+
+    /**
+     * The list row's revision scalars (selected by the index query — no extra
+     * queries): the current revision's label and any open revision in progress.
+     *
+     * @return array<string, mixed>
+     */
+    private function listRevisionFields(): array
+    {
+        $number = (int) ($this->getAttribute('current_revision_number') ?? 1);
+        $open = $this->getAttribute('open_revision');
+        [$openNumber, $openStatus] = $open ? explode(':', (string) $open, 2) : [null, null];
+
+        return [
+            'display_reference' => QuotationRevision::displayReference((string) $this->reference_code, $number),
+            'revision_number' => $number,
+            'open_revision' => $openNumber !== null && (int) $openNumber !== $number
+                ? ['number' => (int) $openNumber, 'status' => $openStatus]
+                : null,
         ];
     }
 

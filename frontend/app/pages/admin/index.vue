@@ -30,6 +30,10 @@ const activeReferrals = ref<number | null>(null)
 const activeOrders = ref<number | null>(null)
 const openInquiries = ref<number | null>(null)
 const draftQuotations = ref<number | null>(null)
+// Family-level conversion: quotations whose current revision is accepted, over
+// every quotation that has gone out — a revised quote counts once.
+const conversionPct = ref<number | null>(null)
+const revisedQuotations = ref<number | null>(null)
 const pageViews7d = ref<number | null>(null)
 const ordersRevenue = ref<number | null>(null)
 const ordersCollected = ref<number | null>(null)
@@ -62,6 +66,8 @@ function countTo(key: keyof typeof shown, end: number, step = 1) {
 interface DashboardCounts {
   quotations_total: number
   quotations_draft: number
+  quotations_conversion_pct: number | null
+  quotations_revised: number
   referrals_active: number
   orders_total: number
   inquiries_new: number
@@ -84,6 +90,8 @@ async function load() {
       activeOrders.value = c.orders_total
       openInquiries.value = c.inquiries_new
       draftQuotations.value = c.quotations_draft
+      conversionPct.value = c.quotations_conversion_pct
+      revisedQuotations.value = c.quotations_revised
       pageViews7d.value = c.views_7d
       countTo('total', c.quotations_total)
       countTo('refs', c.referrals_active)
@@ -202,7 +210,9 @@ const tiles = computed<StatTile[]>(() => [
   {
     label: 'Total quotations',
     value: totalQuotations.value === null ? '—' : String(shown.total),
-    hint: 'All-time inquiries',
+    hint: conversionPct.value === null
+      ? 'All-time inquiries'
+      : `${conversionPct.value}% converted${revisedQuotations.value ? ` · ${revisedQuotations.value} revised after acceptance` : ''}`,
     icon: 'i-lucide-file-text',
     to: '/admin/quotations',
     cta: 'View quotations',

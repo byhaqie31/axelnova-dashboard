@@ -221,6 +221,35 @@ export interface PaymentPlanBlock {
   /** the plan total (deposit + months × monthly, or the quotation total) */
   total: number;
   schedule: PaymentPlanScheduleRow[];
+  /** A lump sum billed by phase (40/40/20, 50/50, 20×5 …) — the phase label is
+   *  the founder's CONTENT (printed as authored); the rest is data. Absent or
+   *  empty on frozen / older payloads. */
+  phases?: PaymentPlanPhase[];
+  /** A separate monthly Care Plan subscription (RM / month), billed on its own. */
+  carePlanMonthly?: number | null;
+}
+
+export interface PaymentPlanPhase {
+  n: number;
+  label: string;
+  pct: number;
+  amount: number;
+}
+
+/**
+ * Which revision a quotation PDF shows (R2 onwards — R1 has none and prints
+ * exactly as before). DATA ONLY: the template words it per locale, e.g. en
+ * "Revision 2 — replaces Revision 1 (accepted 11 October 2026). Reason: …",
+ * bm "Semakan 2 — menggantikan Semakan 1 (diterima …). Sebab: …". The reason
+ * is the founder's content, printed as typed.
+ */
+export interface DocumentRevision {
+  number: number;
+  replaces?: number | null;
+  /** what happened to the replaced revision, dated by `replacedDate` (ISO) */
+  replacedEvent?: "accepted" | "sent" | null;
+  replacedDate?: string | null;
+  reason?: string | null;
 }
 
 /* ---------------------------------------------------------------- document */
@@ -233,6 +262,8 @@ export interface DocumentData {
 
   /** document number, e.g. "AXN-011" or "INV-AXN-011" */
   number: string;
+  /** quotations from R2 on: the revision label + reason line (see DocumentRevision) */
+  revision?: DocumentRevision | null;
   /** ISO "2026-10-10" (quotations — formatted per locale by the template) or a
    *  pre-formatted "22 June 2026" (frozen invoice/receipt payloads, printed as-is) */
   issued: string;

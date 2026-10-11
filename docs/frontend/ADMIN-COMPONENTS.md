@@ -37,6 +37,17 @@ The admin quotation generator. Used by `pages/admin/quotations/new.vue` (create)
 - Saves the **canonical multi-package payload** (`packages[]` + `rush`); the backend re-prices via `PricingEngine::calculateMulti()`, resolves `service_package_id`, and the committed **`document.items`** drive the PDF (`DocumentMapper` → `DocumentData`). Import explicitly (auto-name would be `<AdminQuotationBuilder>`).
 - **Deposit & payment plan.** The plan inputs (`deposit_amount_myr`, `payment_plan`, `instalment_*`, `billing_day`, `first_instalment_date`, `includes_care_plan`) are written onto `document` beside `deposit_pct` via `toDocumentKeys()` — a pct-only lump sum writes none of them, so an untouched legacy draft re-saves in its legacy shape. Live figures (fixed-wins deposit, `RM 2,700 · 18.8%`, plan total / variance, schedule dates, the detailed layout's baked panels, and the boilerplate deposit bullet realigned in the terms textarea) come from [`composables/paymentPlan.ts`](../../frontend/app/composables/paymentPlan.ts), the TS mirror of the backend `PaymentPlan` class — keep the two in sync. The read view (`/admin/quotations/[id]`, non-draft) shows a **Deposit & payment plan** card from the resource's server-derived `payment_plan` block, schedule included. See [QUOTE_BUILDER.md → Deposit & payment plan](../global/QUOTE_BUILDER.md#deposit--payment-plan--paymentplan).
 
+### Quotation revisions — `QuotationRevisionTabs.vue`, `ReviseQuotationModal.vue`, `OrderPlanCard.vue`, `OrderRevisionTimeline.vue`
+
+The admin surfaces of [QUOTATION-REVISIONS.md](../global/QUOTATION-REVISIONS.md):
+
+- **`AdminQuotationRevisionTabs`** — R1 · R2 · … tabs on `/admin/quotations/[id]` (UI-STANDARDS §12.17). The page fetches `?revision=N`; a draft revision opens the builder, anything else the read view.
+- **`AdminReviseQuotationModal`** — the "Revise" dialog (replaces the old in-place "Mark as Draft"): a required change reason (printed on the new revision's PDF and shown on the order timeline) and a one-line statement of what happens to the source (a sent one is withdrawn; an accepted one is superseded on the same order once the new revision is accepted). `POST /v1/admin/quotations/{id}/revisions`. Draft revisions R2+ get a **Discard** button in the builder header.
+- **`AdminOrderPlanCard`** — the order's payment plan row by row (instalment / partner schedule, or a lump sum's phases) with each payment's invoice or "Issue" link — and, after a revise, its netting state: *Settled by earlier payments*, the adjustment invoice that tops it up, or due as normal. Care Plan coverage periods sit underneath with a "Bill next month" shortcut. Replaces the instalment-only card on `/admin/orders/[id]`.
+- **`AdminOrderRevisionTimeline`** — the order's revision chain ("Revised to R2 — <reason> — by <user>", accepted / superseded dates), shown once an order has been revised. Overpaid / Care-Plan-changed flags render as a banner above the Payment card.
+
+`AdminInvoiceForm` gained the `phase`, `care_plan` (a month picker bounded by the separate Care Plan period) and — edit only — `adjustment` types, and greys out anything the netting already settled.
+
 ### `components/admin/ClientPicker.vue`
 
 Search-and-pick an existing client, or switch to "create a new client" fields.

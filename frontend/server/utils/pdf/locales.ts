@@ -54,15 +54,33 @@ export interface LocaleStrings {
     billed: string;
     billedNoSpan: string;
   };
+  /** A revised quotation's small print under its title (R2 onwards). */
+  revision: {
+    /** "Revision {n} — replaces Revision {prev}" */
+    replaces: string;
+    /** "Revision {n}" — when the replaced revision is unknown */
+    only: string;
+    /** " (accepted {date})" / " (sent {date})" — appended to `replaces` */
+    accepted: string;
+    sent: string;
+    /** ". Reason: {reason}" — the reason prints as the founder typed it */
+    reason: string;
+  };
   /** The titled Payment plan section. */
   plan: {
     eyebrow: string;
-    title: { instalment: string; partner: string; lump_sum: string };
+    title: { instalment: string; partner: string; lump_sum: string; phased: string };
     /** One summary line under the heading, joined by `separator`. */
     line: {
       deposit: string; depositPct: string; setup: string; instalments: string;
       billed: string; balance: string; total: string; separator: string;
+      /** "{count} phases" */
+      phases: string;
     };
+    /** The phases table of a lump sum billed by phase; `row` is "Phase {n}". */
+    phases: { caption: string; phase: string; share: string; amount: string; row: string };
+    /** A separate Care Plan subscription line under the plan. */
+    care: string;
     rows: {
       deposit: string; setup: string; monthly: string; monthlyFee: string; months: string;
       includesCare: string; billingDay: string; eachMonth: string; first: string; firstPayment: string;
@@ -116,14 +134,23 @@ const en: LocaleStrings = {
     billed: "Billed on the {day} of each month, {first} to {last}.",
     billedNoSpan: "Billed on the {day} of each month.",
   },
+  revision: {
+    replaces: "Revision {n} — replaces Revision {prev}",
+    only: "Revision {n}",
+    accepted: " (accepted {date})",
+    sent: " (sent {date})",
+    reason: ". Reason: {reason}",
+  },
   plan: {
     eyebrow: "Payment plan",
-    title: { instalment: "{months}-Month Instalment Plan", partner: "Technology Partner · {months} months", lump_sum: "One-Time Payment" },
+    title: { instalment: "{months}-Month Instalment Plan", partner: "Technology Partner · {months} months", lump_sum: "One-Time Payment", phased: "Payment by Phase" },
     line: {
       deposit: "Deposit {amount}", depositPct: "Deposit {amount} ({pct})", setup: "Setup fee {amount}",
       instalments: "{months} × {amount}", billed: "billed on the {day}", balance: "balance {amount} on completion",
-      total: "total {amount}", separator: " · ",
+      total: "total {amount}", separator: " · ", phases: "{count} phases",
     },
+    phases: { caption: "Payment phases", phase: "Phase", share: "Share", amount: "Amount", row: "Phase {n}" },
+    care: "Care Plan: {amount} per month, billed separately",
     rows: {
       deposit: "Deposit", setup: "Setup fee", monthly: "Monthly instalment", monthlyFee: "Monthly fee",
       months: "× {months} months", includesCare: "includes Care Plan", billingDay: "Billing day",
@@ -174,14 +201,23 @@ const bm: LocaleStrings = {
     billed: "Dibil pada {day} setiap bulan, {first} hingga {last}.",
     billedNoSpan: "Dibil pada {day} setiap bulan.",
   },
+  revision: {
+    replaces: "Semakan {n} — menggantikan Semakan {prev}",
+    only: "Semakan {n}",
+    accepted: " (diterima {date})",
+    sent: " (dihantar {date})",
+    reason: ". Sebab: {reason}",
+  },
   plan: {
     eyebrow: "Pelan pembayaran",
-    title: { instalment: "Pelan Ansuran {months} Bulan", partner: "Rakan Teknologi · {months} bulan", lump_sum: "Bayaran Sekali Gus" },
+    title: { instalment: "Pelan Ansuran {months} Bulan", partner: "Rakan Teknologi · {months} bulan", lump_sum: "Bayaran Sekali Gus", phased: "Bayaran Berperingkat" },
     line: {
       deposit: "Deposit {amount}", depositPct: "Deposit {amount} ({pct})", setup: "Yuran penyediaan {amount}",
       instalments: "{months} × {amount}", billed: "dibil pada {day}", balance: "baki {amount} selepas siap",
-      total: "jumlah {amount}", separator: " · ",
+      total: "jumlah {amount}", separator: " · ", phases: "{count} peringkat",
     },
+    phases: { caption: "Peringkat bayaran", phase: "Peringkat", share: "Bahagian", amount: "Jumlah", row: "Peringkat {n}" },
+    care: "Care Plan: {amount} sebulan, dibil berasingan",
     rows: {
       deposit: "Deposit", setup: "Yuran penyediaan", monthly: "Ansuran bulanan", monthlyFee: "Bayaran bulanan",
       months: "× {months} bulan", includesCare: "termasuk Care Plan", billingDay: "Tarikh bil",

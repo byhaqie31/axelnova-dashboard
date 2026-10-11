@@ -7,6 +7,7 @@ type StatusKey =
   | 'draft' | 'sent' | 'declined' | 'expired'
   | 'issued' | 'paid' | 'void'
   | 'succeeded' | 'refunded' | 'failed'
+  | 'superseded' | 'discarded'
 
 const props = withDefaults(defineProps<{
   status: string | null | undefined
@@ -45,6 +46,8 @@ const statusLabels: Record<StatusKey, string> = {
   succeeded: 'Succeeded',
   refunded: 'Refunded',
   failed: 'Failed',
+  superseded: 'Superseded',
+  discarded: 'Discarded',
 }
 
 const resolved = computed<StatusKey>(() => {

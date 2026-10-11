@@ -27,7 +27,11 @@ class InvoiceResource extends JsonResource
             'email' => $this->whenLoaded('order', fn () => $this->order?->client?->email),
             'type' => $this->type,
             'instalment_no' => $this->instalment_no,
+            'care_period' => $this->care_period?->format('Y-m'),
             'status' => $this->status,
+            // Why a supersede voided it ("Superseded by R2"), and the revision it billed.
+            'void_reason' => $this->void_reason,
+            'revision_number' => $this->whenLoaded('revision', fn () => $this->revision?->number),
             'amount_total' => $this->amount_total,
             'amount_paid' => $this->amount_paid,
             'due_at' => $this->due_at?->toDateString(),

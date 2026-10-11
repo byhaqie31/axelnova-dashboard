@@ -8,9 +8,12 @@ import { formatMyr } from '~/utils/money'
 // On an instalment / partner order the form follows the quotation's agreed plan
 // (order.payment_plan): an "Instalment" / "Monthly fee" type bills one numbered
 // payment — its amount and due date come from the schedule, and instalments
-// already billed by a live invoice can't be picked again.
+// already billed by a live invoice can't be picked again. A lump sum billed by
+// phase works the same way with "Phase n"; a separate Care Plan bills one month
+// at a time. After a revision, anything the netting already settled (or its
+// adjustment invoice covers) is greyed out — the server refuses it anyway.
 import type { InvoiceType, OrderPlanView } from '~/composables/paymentPlan'
-import { fmtRm, fmtYmd } from '~/composables/paymentPlan'
+import { fmtRm, fmtYm, fmtYmd } from '~/composables/paymentPlan'
 
 interface OrderMoney {
   id: number
@@ -23,7 +26,9 @@ interface OrderMoney {
   amount_paid_myr: string
   remaining_myr: number
   payment_plan?: OrderPlanView | null
-  invoices?: { id: number; type: string; status: string; instalment_no?: number | null }[]
+  invoices?: { id: number; type: string; status: string; instalment_no?: number | null; care_period?: string | null }[]
+  /** Care Plan coverage periods — a `separate` one makes Care Plan invoices billable. */
+  care_plans?: { kind: 'included' | 'separate'; monthly_myr: number | null; starts_on: string; ends_on: string | null }[]
 }
 
 const props = withDefaults(defineProps<{
@@ -52,14 +57,27 @@ const toast = useAdminToast()
 
 const init = (props.initial ?? {}) as Record<string, any>
 const plan = computed(() => props.order.payment_plan ?? null)
-// A new invoice on a plan order whose deposit is already billed starts on the
-// next instalment; otherwise on the deposit.
+const phased = computed(() => !!plan.value?.phased)
+const scheduledPlan = computed(() => !!plan.value && (plan.value.plan === 'instalment' || plan.value.plan === 'partner'))
+// Netted away by a revision: settled by earlier payments, or covered by its adjustment invoice.
+const nettedAway = (n?: { state: string } | null) => n?.state === 'settled' || n?.state === 'adjustment'
+// A new invoice starts on the next payment the plan still needs: the next phase
+// of a phased lump sum; the next instalment once the deposit is billed (or netted).
 const startType: InvoiceType = init.invoiceType
-  ?? (props.mode === 'create' && plan.value?.deposit_invoice && plan.value.next_instalment_no ? 'instalment' : 'deposit')
+  ?? (props.mode !== 'create'
+    ? 'deposit'
+    : phased.value
+      ? (plan.value?.next_phase_no ? 'phase' : 'partial')
+      : scheduledPlan.value && (plan.value?.deposit_invoice || nettedAway(plan.value?.deposit_netting)) && plan.value?.next_instalment_no ? 'instalment' : 'deposit')
 const form = reactive({
   type: startType,
-  // 0 = none picked (the select needs a number, never null).
-  instalmentNo: Number(init.instalmentNo ?? (startType === 'instalment' ? plan.value?.next_instalment_no : 0) ?? 0),
+  // 0 = none picked (the select needs a number, never null). Numbers an
+  // instalment, or a phase of a phased lump sum.
+  instalmentNo: Number(init.instalmentNo ?? (startType === 'instalment' ? plan.value?.next_instalment_no : startType === 'phase' ? plan.value?.next_phase_no : 0) ?? 0),
+  // care_plan: the month billed, YYYY-MM.
+  carePeriod: (init.carePeriod ?? '') as string,
+  // adjustment: its printed label ("Deposit top-up, R1 → R2") — kept as issued.
+  adjustmentLabel: (init.adjustmentLabel ?? '') as string,
   amount: init.amount != null ? String(init.amount) : '',
   discountValue: init.discountValue != null ? String(init.discountValue) : '',
   discountType: (init.discountType ?? 'amount') as 'amount' | 'percent',
@@ -91,6 +109,9 @@ const BILLING_TITLES: Record<string, string> = {
   partial: 'Progress payment on delivered milestones',
   final: 'Final balance on completion and handover',
   instalment: 'Monthly payment under the agreed payment plan',
+  phase: 'Phase payment under the agreed payment plan',
+  care_plan: 'Care Plan — monthly support and maintenance',
+  adjustment: 'Top-up after the quotation was revised',
 }
 const SCOPE_MAX = 8
 watch(() => form.describeBilling, (on) => {
@@ -102,9 +123,33 @@ watch(() => form.type, (t, prev) => {
 const scopeItems = computed(() =>
   form.scopeText.split('\n').map(l => l.trim()).filter(Boolean))
 
-// The instalment row an `instalment` invoice bills (from the order's schedule).
+// The instalment row an `instalment` invoice bills (from the order's schedule),
+// and the phase a `phase` invoice bills.
 const instalmentRow = computed(() =>
   plan.value?.schedule.find(r => r.n === form.instalmentNo) ?? null)
+const phaseRow = computed(() =>
+  form.type === 'phase' ? plan.value?.phases.find(p => p.n === form.instalmentNo) ?? null : null)
+
+// The separate Care Plan subscription that care_plan invoices bill (open-ended or dated).
+const carePeriod = computed(() => (props.order.care_plans ?? []).filter(p => p.kind === 'separate').at(-1) ?? null)
+const careBilled = computed(() => new Set((props.order.invoices ?? [])
+  .filter(i => i.type === 'care_plan' && i.status !== 'void' && i.care_period)
+  .map(i => String(i.care_period).slice(0, 7))))
+// The first month of the subscription not billed yet — the natural next one.
+const nextCareMonth = computed(() => {
+  const p = carePeriod.value
+  if (!p) return ''
+  const [y0, m0] = p.starts_on.slice(0, 7).split('-').map(Number) as [number, number]
+  for (let i = 0; i < 120; i++) {
+    const y = y0 + Math.floor((m0 - 1 + i) / 12)
+    const m = ((m0 - 1 + i) % 12) + 1
+    const ym = `${y}-${String(m).padStart(2, '0')}`
+    if (p.ends_on && ym > p.ends_on.slice(0, 7)) return ''
+    if (!careBilled.value.has(ym)) return ym
+  }
+  return ''
+})
+if (props.mode === 'create' && form.type === 'care_plan' && !form.carePeriod) form.carePeriod = nextCareMonth.value
 
 // Sensible default per invoice type, drawn from the order: deposit → deposit
 // due, instalment → the plan's monthly figure, partial / final → outstanding
@@ -115,7 +160,11 @@ function defaultAmount(type: string) {
     ? Number(props.order.deposit_due_myr)
     : type === 'instalment'
       ? Number(plan.value?.monthly_myr ?? 0)
-      : Number(props.order.remaining_myr)
+      : type === 'phase'
+        ? Number(phaseRow.value?.netting?.due_myr ?? phaseRow.value?.amount ?? 0)
+        : type === 'care_plan'
+          ? Number(carePeriod.value?.monthly_myr ?? 0)
+          : Number(props.order.remaining_myr)
   return n > 0 ? String(Number(n.toFixed(2))) : ''
 }
 // An instalment invoice is due on its scheduled date.
@@ -126,13 +175,18 @@ if (props.mode === 'create' && !form.amount) form.amount = defaultAmount(form.ty
 syncInstalmentDue()
 watch(() => form.type, (t) => {
   if (t === 'instalment' && !form.instalmentNo) form.instalmentNo = plan.value?.next_instalment_no ?? 0
+  if (t === 'phase') form.instalmentNo = plan.value?.next_phase_no ?? 0
+  if (t === 'care_plan' && !form.carePeriod) form.carePeriod = nextCareMonth.value
   if (props.mode === 'create') {
     form.amount = defaultAmount(t)
     if (t === 'instalment') syncInstalmentDue()
     else form.dueAt = ''
   }
 })
-watch(() => form.instalmentNo, syncInstalmentDue)
+watch(() => form.instalmentNo, () => {
+  syncInstalmentDue()
+  if (props.mode === 'create' && form.type === 'phase') form.amount = defaultAmount('phase')
+})
 
 // The deposit can't be billed twice: it greys out once a live deposit invoice
 // exists, or once less than the deposit itself remains to be paid. Stays
@@ -140,24 +194,36 @@ watch(() => form.instalmentNo, syncInstalmentDue)
 const depositUnavailable = computed(() => {
   const billed = (props.order.invoices ?? []).some(i => i.type === 'deposit' && i.status !== 'void')
   const due = Number(props.order.deposit_due_myr) || 0
-  return billed || (due > 0 && Number(props.order.remaining_myr) < due)
+  return billed || nettedAway(plan.value?.deposit_netting) || (due > 0 && Number(props.order.remaining_myr) < due)
 })
 const typeItems = computed(() => {
-  const items: { label: string; value: InvoiceType; disabled?: boolean }[] = [{
-    label: plan.value
-      ? plan.value.deposit_label
-      : props.order.deposit_pct ? `Deposit (${props.order.deposit_pct}%)` : 'Deposit',
-    value: 'deposit',
-    disabled: depositUnavailable.value && form.type !== 'deposit',
-  }]
-  if (plan.value) {
+  const items: { label: string; value: InvoiceType; disabled?: boolean }[] = []
+  // A phased lump sum's up-front payment IS phase 1 — no separate deposit.
+  if (!phased.value) {
     items.push({
-      label: plan.value.plan === 'partner' ? 'Monthly fee' : 'Instalment',
-      value: 'instalment',
-      disabled: plan.value.next_instalment_no === null && form.type !== 'instalment',
+      label: plan.value
+        ? plan.value.deposit_label
+        : props.order.deposit_pct ? `Deposit (${props.order.deposit_pct}%)` : 'Deposit',
+      value: 'deposit',
+      disabled: depositUnavailable.value && form.type !== 'deposit',
     })
   }
+  if (scheduledPlan.value) {
+    items.push({
+      label: plan.value!.plan === 'partner' ? 'Monthly fee' : 'Instalment',
+      value: 'instalment',
+      disabled: plan.value!.next_instalment_no === null && form.type !== 'instalment',
+    })
+  }
+  if (phased.value) {
+    items.push({ label: 'Phase', value: 'phase', disabled: plan.value!.next_phase_no === null && form.type !== 'phase' })
+  }
+  if (carePeriod.value || form.type === 'care_plan') {
+    items.push({ label: 'Care Plan (month)', value: 'care_plan' })
+  }
   items.push({ label: 'Partial', value: 'partial' }, { label: 'Final', value: 'final' })
+  // Issued only by a revision's netting; listed so an existing one can be edited.
+  if (form.type === 'adjustment') items.push({ label: 'Adjustment', value: 'adjustment' })
   return items
 })
 // Only payments still to be billed are offered — the list shrinks as each
@@ -165,9 +231,12 @@ const typeItems = computed(() => {
 // this invoice already bills stays listed in edit mode.
 const initialInstalmentNo = Number(init.instalmentNo ?? 0)
 const instalmentItems = computed(() => (plan.value?.schedule ?? [])
-  .filter(r => !r.invoice || r.n === initialInstalmentNo)
+  .filter(r => (!r.invoice && !nettedAway(r.netting)) || r.n === initialInstalmentNo)
   .map(r => ({ label: `${r.label} · ${fmtYmd(r.date)}`, value: r.n })))
-const billedCount = computed(() => (plan.value?.schedule ?? []).filter(r => r.invoice).length)
+const phaseItems = computed(() => (plan.value?.phases ?? [])
+  .filter(p => (!p.invoice && !nettedAway(p.netting)) || p.n === initialInstalmentNo)
+  .map(p => ({ label: `${p.label} · ${p.pct_label}`, value: p.n })))
+const billedCount = computed(() => (plan.value?.schedule ?? []).filter(r => r.invoice || nettedAway(r.netting)).length)
 // Don't start a new invoice on an unavailable type.
 if (props.mode === 'create' && depositUnavailable.value && form.type === 'deposit') {
   form.type = plan.value?.next_instalment_no ? 'instalment' : 'partial'
@@ -190,6 +259,9 @@ const netTotal = computed(() => Math.max(baseAmount.value - discountAmt.value - 
 // remains after this payment, final shows what's been paid.
 const billLabel = computed(() => {
   if (form.type === 'instalment') return instalmentRow.value?.label ?? 'Instalment'
+  if (form.type === 'phase') return phaseRow.value?.label ?? 'Phase payment'
+  if (form.type === 'care_plan') return form.carePeriod ? `Care Plan · ${fmtYm(form.carePeriod)}` : 'Care Plan'
+  if (form.type === 'adjustment') return form.adjustmentLabel || 'Adjustment'
   if (form.type === 'deposit' && plan.value) return plan.value.deposit_label
   return ({ deposit: 'Deposit', partial: 'Partial payment', final: 'Final balance' } as Record<string, string>)[form.type] ?? 'Amount'
 })
@@ -203,7 +275,9 @@ const remainingAfter = computed(() =>
 // clears the stored input (absent keys keep their stored value server-side).
 function fullBody(): Record<string, unknown> {
   const body: Record<string, unknown> = { invoiceType: form.type, amount: Number(form.amount) || 0 }
-  body.instalmentNo = form.type === 'instalment' && form.instalmentNo ? form.instalmentNo : null
+  body.instalmentNo = (form.type === 'instalment' || form.type === 'phase') && form.instalmentNo ? form.instalmentNo : null
+  body.carePeriod = form.type === 'care_plan' && form.carePeriod ? form.carePeriod : null
+  if (form.type === 'adjustment' && form.adjustmentLabel) body.adjustmentLabel = form.adjustmentLabel
   if (Number(form.discountValue) > 0) {
     body.discountType = form.discountType
     body.discountValue = Number(form.discountValue)
@@ -297,6 +371,14 @@ function submit() {
     toast.error('Pick an instalment', 'Choose which payment of the plan this invoice bills.')
     return
   }
+  if (!props.amountsLocked && form.type === 'phase' && !phaseRow.value) {
+    toast.error('Pick a phase', 'Choose which phase of the plan this invoice bills.')
+    return
+  }
+  if (!props.amountsLocked && form.type === 'care_plan' && !form.carePeriod) {
+    toast.error('Pick a month', 'Choose which month of the Care Plan this invoice bills.')
+    return
+  }
   if (form.addScope && scopeItems.value.length > SCOPE_MAX) {
     toast.error('Too many scope bullets', `Keep it to ${SCOPE_MAX} or fewer — 5 reads best.`)
     return
@@ -343,7 +425,24 @@ function submit() {
 
       <!-- The quotation's agreed plan this order is billed against -->
       <div
-        v-if="plan"
+        v-if="plan && phased"
+        class="rounded-xl border px-3.5 py-3 flex items-start gap-2.5 text-[12px] max-md:text-[13px]"
+        :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+        <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0 mt-px" style="color: var(--color-accent);" />
+        <div class="min-w-0 space-y-0.5">
+          <p style="color: var(--color-text);">
+            <span class="font-semibold">Billed by phase</span>
+            <span class="tabular-nums"> · {{ plan.phases.map(p => p.pct_label).join(' / ') }} of RM {{ fmtRm(plan.plan_total_myr) }}</span>
+          </p>
+          <p class="tabular-nums" style="color: var(--color-text-tertiary);">
+            <template v-if="plan.next_phase_no">Next: {{ plan.phases[plan.next_phase_no - 1]?.label }}</template>
+            <template v-else>Every phase is billed or settled.</template>
+            <template v-if="plan.netting"> · netted on R{{ plan.netting.revision }} against RM {{ fmtRm(plan.netting.paid_myr) }} already paid</template>
+          </p>
+        </div>
+      </div>
+      <div
+        v-else-if="plan && scheduledPlan"
         class="rounded-xl border px-3.5 py-3 flex items-start gap-2.5 text-[12px] max-md:text-[13px]"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0 mt-px" style="color: var(--color-accent);" />
@@ -368,6 +467,20 @@ function submit() {
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">{{ plan?.plan === 'partner' ? 'Which month' : 'Which instalment' }}</span>
           <AdminSelect v-model="form.instalmentNo" class="mt-1" :items="instalmentItems" placeholder="Pick a payment…" :disabled="amountsLocked" />
         </label>
+        <label v-if="form.type === 'phase'" class="block">
+          <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Which phase</span>
+          <AdminSelect v-model="form.instalmentNo" class="mt-1" :items="phaseItems" placeholder="Pick a phase…" :disabled="amountsLocked" />
+        </label>
+        <label v-if="form.type === 'care_plan'" class="block">
+          <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Which month</span>
+          <input v-model="form.carePeriod" type="month" :min="carePeriod?.starts_on.slice(0, 7)" :max="carePeriod?.ends_on?.slice(0, 7)" class="contact-input mt-1 w-full" :disabled="amountsLocked">
+          <span v-if="carePeriod" class="block text-[11px] mt-1" style="color: var(--color-text-tertiary);">
+            Care Plan from {{ fmtYm(carePeriod.starts_on) }}{{ carePeriod.ends_on ? ` to ${fmtYm(carePeriod.ends_on)}` : '' }} · RM {{ fmtRm(Number(carePeriod.monthly_myr) || 0) }} / month
+          </span>
+          <span v-if="form.carePeriod && careBilled.has(form.carePeriod) && form.carePeriod !== init.carePeriod" class="block text-[11px] mt-1" style="color: var(--color-danger);">
+            {{ fmtYm(form.carePeriod) }} is already billed.
+          </span>
+        </label>
         <label class="block">
           <span class="text-[11px] font-medium uppercase tracking-wider" style="color: var(--color-text-tertiary);">Amount (RM)</span>
           <input v-model="form.amount" type="number" min="0" step="0.01" placeholder="0.00" class="contact-input mt-1 w-full" :disabled="amountsLocked">
@@ -375,6 +488,11 @@ function submit() {
             v-if="form.type === 'instalment' && instalmentRow && Number(form.amount) !== instalmentRow.amount"
             class="block text-[11px] mt-1" style="color: var(--color-warning);">
             The plan's figure is RM {{ fmtRm(instalmentRow.amount) }}.
+          </span>
+          <span
+            v-if="form.type === 'phase' && phaseRow && Number(form.amount) !== Number(phaseRow.netting?.due_myr ?? phaseRow.amount)"
+            class="block text-[11px] mt-1" style="color: var(--color-warning);">
+            The plan's figure for this phase is RM {{ fmtRm(Number(phaseRow.netting?.due_myr ?? phaseRow.amount)) }}.
           </span>
         </label>
       </div>

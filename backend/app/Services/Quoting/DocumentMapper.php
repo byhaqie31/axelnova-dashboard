@@ -133,6 +133,7 @@ class DocumentMapper
                 // A detailed quotation always gets the Payment plan section —
                 // lump sum included (heading + cards, no schedule, no page break).
                 'paymentPlan' => $plan->documentBlock(),
+                'revision' => self::revision($quotation),
                 'locale' => self::locale($quotation),
                 'layout' => 'detailed',
                 'kind' => 'quotation',
@@ -154,6 +155,7 @@ class DocumentMapper
             // non-customized projects. The detailed/customized layout is built
             // from the customized quotation builder with richer data.
             'layout' => $doc['layout'] ?? 'standard',
+            'revision' => self::revision($quotation),
             'locale' => self::locale($quotation),
             'kind' => 'quotation',
             'number' => $quotation->reference_code,
@@ -177,9 +179,9 @@ class DocumentMapper
             'depositPct' => $plan->depositPct(),
             'depositAmount' => $plan->depositAmount(),
             'depositPctLabel' => $plan->depositPctLabel(),
-            // Standard layout: a lump sum keeps its deposit card; only a
-            // scheduled plan swaps it for the Payment plan section.
-            'paymentPlan' => $plan->isScheduled() ? $plan->documentBlock() : null,
+            // Standard layout: a plain lump sum keeps its deposit card; a
+            // scheduled or phased plan gets the Payment plan section.
+            'paymentPlan' => $plan->isScheduled() || $plan->isPhased() ? $plan->documentBlock() : null,
             'terms' => $terms,
             'pay' => [
                 'online' => self::BANK['online'],
@@ -566,6 +568,38 @@ class DocumentMapper
     }
 
     /** The document language (template chrome only); unknown / unset → en. */
+    /**
+     * The revision a quotation PDF shows — DATA ONLY, worded by the renderer per
+     * locale ("Revision 2 — replaces Revision 1 (accepted 11 Oct 2026). Reason: …"
+     * / "Semakan 2 — menggantikan Semakan 1 …"). Null on R1 (it replaces nothing
+     * and prints exactly as before). The reason is the founder's content, as typed.
+     *
+     * @return array{number: int, replaces: ?int, replacedEvent: ?string, replacedDate: ?string, reason: ?string}|null
+     */
+    private static function revision(Quotation $quotation): ?array
+    {
+        $revision = $quotation->revisionView
+            ?? ($quotation->exists && $quotation->current_revision_id ? $quotation->revision() : null);
+        if (! $revision || $revision->number <= 1) {
+            return null;
+        }
+
+        $replaced = $revision->replaces;
+        [$event, $date] = match (true) {
+            $replaced?->accepted_at !== null => ['accepted', $replaced->accepted_at],
+            $replaced?->sent_at !== null => ['sent', $replaced->sent_at],
+            default => [null, null],
+        };
+
+        return [
+            'number' => $revision->number,
+            'replaces' => $replaced?->number,
+            'replacedEvent' => $event,
+            'replacedDate' => $date?->toDateString(),
+            'reason' => $revision->change_reason,
+        ];
+    }
+
     private static function locale(Quotation $quotation): string
     {
         $locale = (string) ($quotation->locale ?? 'en');

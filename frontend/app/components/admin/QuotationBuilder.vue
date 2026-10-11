@@ -30,6 +30,11 @@ interface QuotationLike {
   referrer?: { name: string; relationship_tier: string; commission_pct: number } | null
   /** PDF template language (en | bm) — chrome only, never the content. */
   locale?: string | null
+  /** The revision being edited (R2+ when revising) and the order it would supersede on. */
+  display_reference?: string
+  revision?: { number: number; label: string } | null
+  order_id?: number | null
+  order_number?: string | null
 }
 
 const props = defineProps<{
@@ -640,7 +645,11 @@ watch(fingerprint, () => { previewStale.value = true })
 async function fetchPreview() {
   previewLoading.value = true
   try {
-    previewData.value = await apiFetch('/api/v1/admin/quotations/preview', { method: 'POST', body: buildPayload() })
+    // A revision previews with the family reference + "· R2" and its reason line.
+    const revisionRef = props.quotation?.revision && props.quotation.revision.number > 1
+      ? { quotation_id: props.quotation.id, revision: props.quotation.revision.number }
+      : {}
+    previewData.value = await apiFetch('/api/v1/admin/quotations/preview', { method: 'POST', body: { ...buildPayload(), ...revisionRef } })
     previewStale.value = false
   }
   catch {
@@ -705,7 +714,7 @@ async function deliver(channel: 'email' | 'download') {
   const ok = await confirm(channel === 'email'
     ? {
         title: 'Send this quotation to the client?',
-        message: `This emails ${props.quotation?.reference_code ?? 'the quote'} to ${client.email || 'the client'} and marks it sent.`,
+        message: `This emails ${props.quotation?.display_reference ?? props.quotation?.reference_code ?? 'the quote'} to ${client.email || 'the client'} and marks it sent.`,
         confirmLabel: 'Send to client',
       }
     : {
@@ -752,17 +761,27 @@ watch(() => props.quotation?.referral_partner_id, () => {
 
 async function accept() {
   if (!isEdit.value) return
-  if (!(await confirm({
-    title: 'Create an order from this quote?',
-    message: `This accepts ${props.quotation?.reference_code ?? 'the quotation'} and creates a new order — you can’t undo it here.`,
-    confirmLabel: 'Proceed & create order',
-  }))) return
+  const q = props.quotation!
+  const label = q.revision?.label ?? 'R1'
+  // An order already exists → accepting this revision supersedes the accepted one on it.
+  const superseding = !!q.order_id
+  if (!(await confirm(superseding
+    ? {
+        title: `Accept ${label} on order ${q.order_number}?`,
+        message: `${label} supersedes the accepted revision on the same order: its unpaid invoices are voided, paid ones kept, and the new schedule is netted against what was paid (an adjustment invoice is issued for any top-up). You can’t undo it here.`,
+        confirmLabel: `Accept ${label}`,
+      }
+    : {
+        title: 'Create an order from this quote?',
+        message: `This accepts ${q.display_reference ?? q.reference_code} and creates a new order — you can’t undo it here.`,
+        confirmLabel: 'Proceed & create order',
+      }))) return
   accepting.value = true
   error.value = ''
   try {
-    const body = isReferralAttributed.value ? { commission_pct: commissionPct.value } : undefined
-    const res = await apiFetch<{ order_id: number }>(`/api/v1/admin/quotations/${props.quotation!.id}/accept`, { method: 'POST', body })
-    toast.success('Order created', 'Quotation accepted and converted to an order.')
+    const body = { revision: q.revision?.number, ...(isReferralAttributed.value && !superseding ? { commission_pct: commissionPct.value } : {}) }
+    const res = await apiFetch<{ order_id: number, message: string }>(`/api/v1/admin/quotations/${q.id}/accept`, { method: 'POST', body })
+    toast.success(superseding ? `${label} accepted` : 'Order created', res.message)
     emit('accepted', res.order_id)
   }
   catch (e: any) {

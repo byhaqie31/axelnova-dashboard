@@ -55,6 +55,13 @@ All colors are semantic CSS variables defined in `:root` (light) and `.dark` (da
 | `--color-warning` | `#FF9F0A` | (same) | In-progress |
 | `--color-danger` | `#FF3B30` | (same) | Destructive |
 
+**Status pill tokens** (`--status-<key>-fg` / `-bg`, read by `.status-pill[data-status="<key>"]` and `AdminStatusPill.vue`). The quotation-revision pair:
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--status-superseded-fg` / `-bg` | `#A855F7` / `rgba(168,85,247,0.10)` | `#C77DFF` / `rgba(199,125,255,0.16)` | A revision a later accepted one replaced — history, not an error (same family as `viewed`) |
+| `--status-discarded-fg` / `-bg` | `#86868B` / `rgba(134,134,139,0.14)` | `#A1A1A6` / `rgba(161,161,166,0.18)` | A draft revision thrown away (same neutral as `void` / `archived`) |
+
 ### Chart series
 
 For two-series charts (currently `/admin/revenue`). **Never reuse the status colors
@@ -735,6 +742,10 @@ Row action buttons in the admin data tables (§12.9) use `.btn-table-action` (in
 - Any table with row actions carries an **"Actions"** column in its `<th>` list (last column).
 - `:disabled` is handled by the class (opacity + `not-allowed`) — don't add manual `opacity-*` / `cursor-not-allowed` utilities.
 - Applies today to `/admin/{users, tasks, referrals, announcements}` — the only admin tables with per-row buttons (every other list opens on row-click).
+
+### 12.17 Revision tabs
+
+A record with numbered versions (a quotation's R1 · R2 · …, [QUOTATION-REVISIONS.md](../global/QUOTATION-REVISIONS.md)) shows one tab per version above the page body — `AdminQuotationRevisionTabs`: a row of small bordered pills, each the mono label + its `AdminStatusPill`. The **current** version (the one the record presents / the order runs on) is **bold**; the **selected** one takes `--color-accent` border + `--color-accent-soft` fill. Hidden while there is only one version. Overflow scrolls horizontally (`data-lenis-prevent`) rather than wrapping; mobile taps are `py-2`. Selecting a tab re-fetches that version (`?revision=N`) in place — the URL deep-links it. Version-changing actions (Revise / Discard) live in the page's own action area, never on the tabs.
 
 ---
 
