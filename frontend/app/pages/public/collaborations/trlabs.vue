@@ -239,7 +239,7 @@ useScrollReveal('.reveal')
         <p data-hero class="relative collab-hero-hold eyebrow mt-12 mb-5">
           Collaboration<template v-if="sinceYear"> · Since {{ sinceYear }}</template>
         </p>
-        <p data-hero class="relative collab-hero-hold max-w-xl text-[18px] leading-relaxed" style="color: var(--color-text-secondary);">
+        <p data-hero class="relative collab-hero-hold max-w-xl text-balance md:max-w-none md:whitespace-nowrap text-[18px] leading-relaxed" style="color: var(--color-text-secondary);">
           Two founder-led studios in Malaysia. One build team for projects that need both.
         </p>
         <a data-hero href="#start" class="relative collab-hero-hold btn-pill btn-pill-accent mt-9">

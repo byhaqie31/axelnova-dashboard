@@ -29,6 +29,8 @@ The current copy for the public site, written and adopted 29 September 2026 from
 
 **Featured mockups intro:** Explore working prototypes and open a preview without leaving this page. Use “client prototypes” only where the client has agreed to public display.
 
+**Collaborations (above the blog):** eyebrow "Collaborations", H2 *Built with trusted studios.*, intro *When a project needs more than one studio, Axel Nova Ventures brings in partners it trusts. You still get one team and one point of contact.*, action "All collaborations" → `/collaborations`, then the partner card(s).
+
 **Blog intro:** Notes on website design, business systems and the choices behind a useful interface.
 
 **Referral body:** Know a business that needs a website or custom system? Introduce them to Axel Nova Ventures. If the referral becomes a paid project, you may earn a commission under the Partner Program terms.
@@ -200,7 +202,7 @@ Studio partners, **not** the referral programme (`/partners`). "We" is right her
 
 **Intro:** Some projects need more skills than one studio carries. Axel Nova Ventures works with a small circle of trusted studios, so you get one accountable team without gaps.
 
-**Partner cards:** "Collaboration · Since {year}", "Axel Nova × {partner}", the partner summary, service chips, "See the collaboration →".
+**Partner cards:** heading = the two named logo cards "Axel Nova" × "{partner}" (no text title), "Collaboration · Since {year}", the partner summary, service chips, "See the collaboration →".
 
 **How it works H2:** Three ways we work with partners. *Every collaboration starts from the project, not the org chart. We pick the arrangement that gets you the right people.*
 

@@ -95,15 +95,22 @@ One post in the `/blog` grid, the article's "More from the blog" row and the hom
 ### `BlogArticle`
 The one article layout, shared by `pages/public/blog/[slug].vue` and the admin editor's preview (`preview` prop hides share + related and makes the CTA inert). Renders backend-sanitised `body_html` into `.blog-prose` via `v-html` — never raw Markdown or user HTML. Header (format eyebrow, title, lede, byline) and cover span the full width; below them a `[220px pane][≤78ch text]` grid puts a sticky left pane (`BlogToc`, from 2 sections up) beside the text; the text column closes with a rule + the share row. The closing CTA card then spans both tracks (copy left, button right from `md`; stacked below), followed by related posts — so the sticky pane stops at the share row. The pane is inline above the first section below `lg`. See [BLOG.md](../global/BLOG.md).
 
-### `CollabLockup` / `CollabModes` / `CollabInquiryForm`
+### `CollabLockup` / `CollabPartnerCard` / `CollabsLatest` / `CollabModes` / `CollabInquiryForm`
 
 The `/collaborations` building blocks (see [COLLABORATIONS.md](../global/COLLABORATIONS.md)). All three inherit the accent of the scope they sit in, so inside `.collab-trlabs` they take the co-brand ([UI-STANDARDS § Partner co-branding](UI-STANDARDS.md#partner-co-branding)).
 
-- **`CollabLockup`:** "Axel Nova × {partner}", the two marks on matching `.collab-logo-plate` tiles with ONE `.text-gradient` × between them. Props: `partnerName`, `partnerSymbol` (the square `symbol_url`; falls back to an initial), `size` `md` (cards) | `lg` (page hero), `named`, `as` (`div` | `h1`).
-  - **Bare** (default): one picture (`role="img"` + label), used on the index card.
-  - **`named`:** each tile sits in an equal-size, theme-aware card with the studio name under it ("Axel Nova" / the partner). On the partner page it renders `as="h1"`: the cards ARE the heading ("Axel Nova × TRLabs"), with no second headline repeating the pair. The name pins its own letter-spacing against main.css's unlayered `h1 {}` rule.
+- **`CollabLockup`:** "Axel Nova × {partner}", the two marks on matching `.collab-logo-plate` tiles with ONE `.text-gradient` × between them. Props: `partnerName`, `partnerSymbol` (the square `symbol_url`; falls back to an initial), `size` `md` | `lg`, `named`, `as` (`div` | `h1` | `h2`).
+  - **Bare** (default): one picture (`role="img"` + label). Not currently used on a page.
+  - **`named`:** each tile sits in an equal-size, theme-aware card with the studio name under it ("Axel Nova" / the partner). Wherever the pair appears it IS the heading, so no text title repeats the pair and its ×:
+    - `lg` + `as="h1"`: the partner-page hero.
+    - `md` + `as="h2"`: the `/collaborations` card. Compact cards, sized against the viewport so two cards + the × fit inside the padded card on a 320px phone.
+  - The heading text reads "Axel Nova × TRLabs". The × carries its own spaces because Vue condenses the whitespace between tags, which would give "Nova×TRLabs". Names pin their own letter-spacing against main.css's unlayered `h1 {}` rule.
   - **Hover** (named, pointer devices, motion allowed; CSS only): the card lifts 6px on `--shadow-lg`, its mark scales to 1.06, and the × makes a quarter turn while either card is hovered (`:has()`).
   - **Entrance hooks:** `data-lockup="left|x|right"`, `data-lockup-plate`, `data-lockup-chrome` (the card surface, a separate layer) and `data-lockup-name`. An entrance must not resize the card. Grow the chrome with `clip-path` and move the plate with a transform, so nothing re-lays out. Suspend the hover transitions inline while animating (MOTION rule 10).
+- **`CollabPartnerCard`:** one partner as a full-width co-branded link card: the named lockup as its heading, then the eyebrow, summary, service chips and "See the collaboration →".
+  - Props: `partner`, `headingLevel` (`h2` on `/collaborations`, `h3` under a section's h2).
+  - It wears `collab-{slug}`. The parent puts `reveal` on a wrapper, never on the card, because GSAP's leftover inline transform would cancel the hover lift.
+- **`CollabsLatest`:** the homepage section above the blog ("Built with trusted studios." + cards + "All collaborations"). It shares the `/collaborations` fetch key and renders nothing when no partner is active, like `BlogLatest`.
 - **`CollabModes`:** the three ways of working (co-build / subcontract / referral) as three `reveal` cards. Shared copy, used by the index and the partner page.
 - **`CollabInquiryForm`:** one form, two variants, both posting to `POST /v1/inquiries`.
   - `partner` (needs `partnerSlug` + `partnerName`): a client hiring the partner through Axel Nova, sent with `origin=partner` and `partner={slug}`. It collects name, email, phone, company, a project-type pill and a message.

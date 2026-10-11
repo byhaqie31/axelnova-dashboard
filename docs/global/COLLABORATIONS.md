@@ -96,7 +96,7 @@ GET /v1/projects/{slug}        Now also partners[] {slug, name, symbol_url, mode
 
 - **`/collaborations`** (`pages/public/collaborations/index.vue`) has four parts:
   1. hero
-  2. one co-branded card per active partner, linking to `/collaborations/{slug}`
+  2. one co-branded card per active partner, linking to `/collaborations/{slug}`. Its heading is the named `CollabLockup` (`as="h2"`, compact cards): centred on its own row on phones, the left column on desktop. There is no separate text title, so there's one ×
   3. `CollabModes` (co-build / subcontract / referral)
   4. "Partner with us" (`CollabInquiryForm variant="collaboration"`) plus a note pointing referrers to `/partners`
 - **`/collaborations/trlabs`** (`pages/public/collaborations/trlabs.vue`) is **hand-built**, not templated. Its sections, in order:
@@ -115,7 +115,8 @@ GET /v1/projects/{slug}        Now also partners[] {slug, name, symbol_url, mode
 - **Logo plates:** every partner mark sits on `.collab-logo-plate`, a light tile in both themes, so a dark-ink logo stays legible in dark mode.
 - **Caching:** `/collaborations` and `/collaborations/**` are `swr(300)`. There is no purge observer, because partner data only changes through a migration, which ships with a deploy.
 - **Never create `frontend/public/collaborations/`.** A static folder named like a page route makes the server answer `/collaborations` with a 301 to `/collaborations/`. Partner assets live in `public/logos/`. `TrlabsSeedTest` guards this.
-- **Navigation:** header link **"Collabs"**, placed after Projects and kept apart from "Partners" (the referral programme). It is also in the homepage hero pill's mirrored `navLinks` (`HeroEpoch.vue`), the mobile menu and the footer's Explore column, plus the cross-link on `/partners`.
+- **Homepage:** `CollabsLatest` sits between Featured mockups and the blog: "Built with trusted studios." plus the partner card(s), linking to `/collaborations`. It shares the index's fetch (same `collaborations` key) and renders nothing when no partner is active.
+- **Navigation:** header link **"Collabs"**, in the order Collabs · Projects · Blog, kept apart from "Partners" (the referral programme). It is also in the homepage hero pill's mirrored `navLinks` (`HeroEpoch.vue`), the mobile menu and the footer's Explore column, plus the cross-link on `/partners`.
   - With nine links, the header shows them only from `lg` (1024px), with `gap-5` until `xl`. Below that, the menu button takes over.
   - Measured: eight links already overflowed the bar by 47px at 768px. At 1024px there are now 52px of slack each side.
   - The hero pill's link list uses the same `lg` breakpoint.

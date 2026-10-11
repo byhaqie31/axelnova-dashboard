@@ -4,9 +4,10 @@
 // partner logo in dark ink stays legible on the navy dark-mode page).
 //
 // `named` wraps each plate in a theme-aware card with the studio name under
-// it — the partner-page hero, where the pair IS the page heading (pass
-// as="h1"; its text reads "Axel Nova × {partner}"). Named cards lift on hover
-// and the × turns a quarter (CSS only, after any entrance has let go).
+// it — wherever the pair IS the heading (the partner-page hero as="h1", the
+// partner card as="h2"/"h3"; its text reads "Axel Nova × {partner}"), so
+// no text title repeats the pair and its ×. Named cards lift on hover and the
+// × turns a quarter (CSS only, after any entrance has let go).
 //
 // Entrance hooks for the page: `data-lockup="left|x|right"` on the halves,
 // `data-lockup-plate` on each tile, `data-lockup-chrome` on each card's
@@ -18,10 +19,17 @@ const props = withDefaults(defineProps<{
   partnerSymbol: string | null
   size?: 'md' | 'lg'
   named?: boolean
-  as?: 'div' | 'h1'
+  as?: 'div' | 'h1' | 'h2' | 'h3'
 }>(), { size: 'md', named: false, as: 'div' })
 
 const lg = computed(() => props.size === 'lg')
+// Named cards: the hero size (lg), or the compact phone size (md) that fits
+// two cards + the × inside a p-7 card on a 320px screen (the /collaborations
+// index card on phones).
+const cardClass = computed(() => lg.value
+  ? 'collab-lockup-card self-stretch'
+  : 'collab-lockup-card collab-lockup-card-md self-stretch')
+const nameClass = computed(() => lg.value ? 'collab-lockup-name relative' : 'collab-lockup-name collab-lockup-name-md relative')
 const plateClass = computed(() => lg.value ? 'size-20 sm:size-28 rounded-3xl' : 'size-14 rounded-2xl')
 // A bare (unnamed) lockup is one picture; a named one is real heading text.
 const pictureAttrs = computed(() => props.named
@@ -33,13 +41,13 @@ const pictureAttrs = computed(() => props.named
   <component
     :is="as"
     class="inline-flex items-center"
-    :class="[lg ? 'gap-3 sm:gap-7' : 'gap-3', named && 'collab-lockup-named']"
+    :class="[lg ? 'gap-3 sm:gap-7' : (named ? 'gap-2' : 'gap-3'), named && 'collab-lockup-named']"
     v-bind="pictureAttrs"
   >
     <span
       data-lockup="left"
       class="flex flex-col items-center shrink-0"
-      :class="named && 'collab-lockup-card self-stretch'"
+      :class="named && cardClass"
     >
       <span v-if="named" data-lockup-chrome class="collab-lockup-chrome" aria-hidden="true" />
       <span data-lockup-plate class="collab-logo-plate relative flex items-center justify-center shrink-0" :class="plateClass">
@@ -47,7 +55,7 @@ const pictureAttrs = computed(() => props.named
              sized down to match its visual weight. -->
         <img src="/favicon/web-app-manifest-512x512.png" alt="" class="size-full object-contain">
       </span>
-      <span v-if="named" data-lockup-name class="collab-lockup-name relative">Axel Nova</span>
+      <span v-if="named" data-lockup-name :class="nameClass">Axel Nova</span>
     </span>
 
     <span
@@ -55,19 +63,24 @@ const pictureAttrs = computed(() => props.named
       :aria-hidden="named ? undefined : 'true'"
       class="collab-lockup-x text-gradient font-light leading-none"
       :class="lg ? 'text-4xl sm:text-6xl' : 'text-3xl'"
-    >×</span>
+    >
+      <!-- The spaces are for the heading TEXT ("Axel Nova × TRLabs", not
+           "Nova×TRLabs" — Vue condenses the whitespace between tags). They
+           collapse visually inside the flex item. -->
+      {{ ' × ' }}
+    </span>
 
     <span
       data-lockup="right"
       class="flex flex-col items-center shrink-0"
-      :class="named && 'collab-lockup-card self-stretch'"
+      :class="named && cardClass"
     >
       <span v-if="named" data-lockup-chrome class="collab-lockup-chrome" aria-hidden="true" />
       <span data-lockup-plate class="collab-logo-plate relative flex items-center justify-center shrink-0" :class="plateClass">
         <img v-if="partnerSymbol" :src="partnerSymbol" alt="" class="w-[74%] object-contain">
         <span v-else class="text-[22px] font-semibold" style="color: var(--color-accent);">{{ partnerName.charAt(0) }}</span>
       </span>
-      <span v-if="named" data-lockup-name class="collab-lockup-name relative">{{ partnerName }}</span>
+      <span v-if="named" data-lockup-name :class="nameClass">{{ partnerName }}</span>
     </span>
   </component>
 </template>
@@ -91,6 +104,16 @@ const pictureAttrs = computed(() => props.named
     border-radius: 2rem;
   }
 }
+/* Compact (md): sized against the viewport so it never overflows a padded
+   card on a phone — 50vw less the page gutter, the host card's padding and
+   half the × column. */
+.collab-lockup-card.collab-lockup-card-md {
+  width: min(7rem, calc(50vw - 4.5rem));
+  gap: 0.625rem;
+  padding: 0.75rem 0.5rem 0.875rem;
+  border-radius: 1.25rem;
+}
+
 /* The card's surface, as its own layer so an entrance can grow it out of the
    tile (clip-path) without the card itself changing size. */
 .collab-lockup-chrome {
@@ -115,6 +138,7 @@ const pictureAttrs = computed(() => props.named
 @media (min-width: 640px) {
   .collab-lockup-name { font-size: 21px; }
 }
+.collab-lockup-name.collab-lockup-name-md { font-size: 13px; }
 
 /* Hover — the card lifts on a deeper shadow, its mark swells a touch, and the
    × makes a quarter turn while either card is hovered (× is symmetric, so it
