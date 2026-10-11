@@ -449,10 +449,10 @@ Route::middleware(['auth:external', 'abilities:partner'])
 // admin cockpit token is rejected here. The two abilities are UNIVERSAL: they open
 // the read / draft-write routes of every module (quotations, blog, …) — there is
 // no per-module ability. Access model (v5): READ everything (any non-deleted
-// quotation or post, and an order's money view), WRITE drafts only (create a DRAFT; open a new DRAFT
-// revision; update a quotation's DRAFT revision or a DRAFT post), DESTROY never
+// quotation or post, and an order's money view), WRITE drafts only (create a DRAFT;
+// update a quotation's DRAFT revision — opened by the founder — or a DRAFT post), DESTROY never
 // (delete is portal-only, by hand). It
-// still CANNOT change status, send/accept a quote, publish/unpublish a post, or
+// still CANNOT change status, open a revision, send/accept a quote, publish/unpublish a post, or
 // touch orders/clients/payments. Routes deny by default; each ability opens
 // exactly its own endpoints, throttled (authenticated, but never unbounded).
 Route::middleware('auth:sanctum')
@@ -481,9 +481,6 @@ Route::middleware('auth:sanctum')
         Route::middleware(['abilities:connector:draft', 'throttle:30,1'])->group(function () {
             Route::post('/quotations/draft', [ConnectorQuotationDraftController::class, 'store'])->name('quotations.draft');
             Route::put('/quotations/{reference_code}', [ConnectorQuotationDraftController::class, 'update'])->name('quotations.update');
-            // create_revision — a new DRAFT revision of a sent / accepted quote
-            // (change_reason required). Never sends or accepts it.
-            Route::post('/quotations/{reference_code}/revisions', [ConnectorQuotationDraftController::class, 'revise'])->name('quotations.revise');
             Route::post('/blog/posts', [ConnectorBlogPostController::class, 'store'])->name('blog.store');
             Route::put('/blog/posts/{id}', [ConnectorBlogPostController::class, 'update'])->whereNumber('id')->name('blog.update');
         });

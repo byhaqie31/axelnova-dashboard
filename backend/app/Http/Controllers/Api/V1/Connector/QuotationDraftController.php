@@ -136,13 +136,15 @@ class QuotationDraftController extends Controller
         }
 
         // Lifecycle gate — the family's DRAFT revision is the only editable one.
-        // A sent or accepted revision is what the client saw; changing it means
-        // opening a new revision first (create_revision).
+        // A sent or accepted revision is what the client saw; changing it means a
+        // new revision, which only the founder opens ("Revise" in the admin) — the
+        // connector edits drafts, it never opens revisions.
         $draft = $quotation->draftRevision();
         if (! $draft) {
             return response()->json([
                 'message' => "Quotation {$quotation->reference_code} has no draft revision — its current revision ({$quotation->revision()->label()}) is '{$quotation->revision()->status}' and can no longer be edited. "
-                    .'Call create_revision with a change_reason to open a new draft revision, then update that.',
+                    .'Changing sent or accepted terms needs a new revision, which only the founder opens (Revise in the admin, with a change reason). '
+                    .'Ask the founder to revise it; once the draft revision exists, update_draft_quotation can edit it.',
             ], 422);
         }
         // Every read below sees the draft's content, not the family's current revision.
@@ -250,50 +252,6 @@ class QuotationDraftController extends Controller
         }
 
         return response()->json(['data' => self::connectorView($revision->asQuotation($quotation))]);
-    }
-
-    /**
-     * create_revision (§6): open a new DRAFT revision of a quotation from its
-     * accepted / sent (or rejected / expired) revision, with the change reason.
-     * Nothing is sent. Revising a SENT revision withdraws it (the client gets the
-     * replacement; discarding the new draft in the admin restores it). Refused
-     * (422, naming it) while another revision is still open, and once the order
-     * is completed or cancelled. update_draft_quotation then edits the new draft;
-     * the founder sends or accepts it in the admin — the connector never does.
-     */
-    public function revise(Request $request, string $reference_code): JsonResponse
-    {
-        $data = $request->validate([
-            'change_reason' => ['required', 'string', 'max:500'],
-            'from_revision' => ['nullable', 'integer', 'min:1'],
-        ], [
-            'change_reason.required' => 'create_revision needs a change_reason — why the quotation is changing (it is printed on the new revision\'s PDF and shown on the order timeline).',
-        ]);
-
-        $quotation = Quotation::where('reference_code', $reference_code)->with('addons')->first();
-        if (! $quotation) {
-            return response()->json([
-                'message' => "No quotation found with reference_code '{$reference_code}'. Use list_quotations to find it, or the exact AXNQ code.",
-            ], 404);
-        }
-
-        $source = null;
-        if (isset($data['from_revision'])) {
-            $source = $quotation->revisions()->where('number', $data['from_revision'])->first();
-            if (! $source) {
-                return response()->json(['message' => "{$quotation->reference_code} has no revision R{$data['from_revision']}."], 422);
-            }
-        }
-
-        $revision = QuotationRevisions::revise($quotation, $data['change_reason'], $source);
-
-        return response()->json([
-            'message' => "{$revision->label()} of {$quotation->reference_code} opened as a DRAFT revision (from R{$revision->replaces?->number}). "
-                .'Edit it with update_draft_quotation; the founder sends or accepts it in the admin. Nothing has been sent to the client.',
-            'reference_code' => $quotation->reference_code,
-            'revision_number' => $revision->number,
-            'data' => self::connectorView($revision->asQuotation($quotation->fresh(['addons']))),
-        ], 201);
     }
 
     /**

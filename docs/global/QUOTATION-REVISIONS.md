@@ -65,7 +65,7 @@ draft ──send──► sent ──accept──► accepted ──(newer accep
 
 ## 2. Revising
 
-Admin **Revise** (quotation page, on an accepted / sent / rejected / expired revision) or connector `create_revision`. Input: `change_reason` (required, ≤ 500 chars) — shown on the order timeline and printed under the new revision's PDF title.
+Admin **Revise** (quotation page, on an accepted / sent / rejected / expired revision) — **founder only**; the MCP connector cannot open a revision, it only edits the draft one afterwards. Input: `change_reason` (required, ≤ 500 chars) — shown on the order timeline and printed under the new revision's PDF title.
 
 1. Refused (422, naming it) if another revision is draft or sent; if the source isn't revisable; or the order is completed / cancelled.
 2. The source's content is **copied verbatim** into a new draft — hand edits included, never re-priced. The founder can re-seed line items from the builder if wanted.
@@ -140,19 +140,18 @@ M Automobile: R1 care included from Nov 2026, nothing paid → R1's period close
 
 ---
 
-## 7. MCP connector (v5)
+## 7. MCP connector (v5.2)
 
 | Tool | Endpoint | Notes |
 |---|---|---|
-| `create_revision` | `POST /v1/connector/quotations/{ref}/revisions` | `{change_reason, from_revision?}` → new draft revision. 422 while another revision is open. Never sends / accepts. |
 | `get_quotation` | `GET /v1/connector/quotations/{ref}[?revision=N]` | `family`, `current_revision`, `revisions[]` + the working revision's full record (`revision` names it). |
-| `update_draft_quotation` | `PUT /v1/connector/quotations/{ref}` | Edits the family's **draft revision**; 422 (pointing at `create_revision`) when there is none. |
+| `update_draft_quotation` | `PUT /v1/connector/quotations/{ref}` | Edits the family's **draft revision** (one the founder opened with Revise); 422 asking the founder to revise it when there is none. |
 | `list_quotations` | `GET /v1/connector/quotations` | Rows add `display_reference`, `revision_number`, `open_revision`. |
 | `get_order` (v5.1) | `GET /v1/connector/orders/{AXNO or AXNQ}` | **Read-only** money view to confirm the order tallies after the founder accepts: `tally` (agreed total = paid + open invoiced + still to bill; `over_billed_myr`, `overpaid_myr`), the netted plan, every invoice with its status / void reason / revision, payments, Care Plan periods. |
 
 The connector never issues, edits or voids invoices — the supersede does the voiding and the adjustment automatically on accept, and the remaining payments are issued from the order page. `get_order` lets Claude check the result and tell the founder what is left to bill.
 
-`send_revision` (optional in the spec) is not built — sending and accepting stay in the admin. `detailed.phases` and `detailed.care_plan_monthly_myr` are accepted on create / update. Full contract: [MCP-CONNECTOR.md](./MCP-CONNECTOR.md).
+The connector **cannot open a revision** (the spec's `create_revision` shipped in v5 and was removed in v5.2 — revising is the founder's call), and `send_revision` (optional in the spec) is not built — revising, sending and accepting stay in the admin. Flow: founder **Revise** → Claude `update_draft_quotation` → founder sends / **accepts** → Claude `get_order` to check the tally. `detailed.phases` and `detailed.care_plan_monthly_myr` are accepted on create / update. Full contract: [MCP-CONNECTOR.md](./MCP-CONNECTOR.md).
 
 ---
 
@@ -165,7 +164,7 @@ The connector never issues, edits or voids invoices — the supersede does the v
 | 3 | Supersede: atomic flip, same order, unpaid void, paid kept, netting (2,700 → 1,620 → 4,320 → 2,160) | `QuotationRevisionLifecycleTest`, `tests/Unit/Quoting/ScheduleNettingTest.php`, `tests/Feature/Orders/OrderRevisionMoneyTest.php` |
 | 4 | Care Plan boundary: no month twice, none skipped | `tests/Unit/Quoting/CarePlanBoundaryTest.php`, `OrderRevisionMoneyTest` |
 | 5 | PDF revision label + reason in en / bm; `Page x of y` intact | `frontend/server/utils/pdf/revision.test.ts`, `QuotationRevisionSurfacesTest` |
-| 6 | Connector: create_revision → update → admin accept → get_quotation | `tests/Feature/Connector/ConnectorRevisionTest.php` |
+| 6 | Founder Revise → connector update → admin accept → connector get_quotation (and the connector can't open a revision) | `tests/Feature/Connector/ConnectorRevisionTest.php` |
 | 7 | Reports count the family once | `QuotationRevisionSurfacesTest` |
 
 ---
@@ -189,4 +188,5 @@ The connector never issues, edits or voids invoices — the supersede does the v
 | §3.7 founder WhatsApp / email notice (optional) | activity log + order timeline only | Optional in the spec. |
 | §6 publish `deposit_amount_myr` / `payment_plan` / instalment fields / `locale` | already published (v4.1 / v4.2) | Verified against the live tool schema; nothing to add. |
 | §6 `send_revision` (optional) | not built | The connector never sends — sending stays a founder action. |
+| §6 `create_revision` on the connector | removed in v5.2 | Opening a revision is the founder's decision (admin Revise); the connector only edits the draft revision. |
 | Document "re-seeded from the cloned scope" | copied verbatim (no re-price) | Re-seeding would drop hand edits and re-price at today's catalog; the builder's Seed button does it on demand. |
