@@ -94,3 +94,12 @@ One post in the `/blog` grid, the article's "More from the blog" row and the hom
 
 ### `BlogArticle`
 The one article layout, shared by `pages/public/blog/[slug].vue` and the admin editor's preview (`preview` prop hides share + related and makes the CTA inert). Renders backend-sanitised `body_html` into `.blog-prose` via `v-html` — never raw Markdown or user HTML. Header (format eyebrow, title, lede, byline) and cover span the full width; below them a `[220px pane][≤78ch text]` grid puts a sticky left pane (`BlogToc`, from 2 sections up) beside the text; the text column closes with a rule + the share row. The closing CTA card then spans both tracks (copy left, button right from `md`; stacked below), followed by related posts — so the sticky pane stops at the share row. The pane is inline above the first section below `lg`. See [BLOG.md](../global/BLOG.md).
+
+### `SiteFooter`
+The storefront footer, mounted once by `layouts/public.vue` (which passes its nav `links` array, so the **Explore** section always matches the header). Laid out after apple.com's footer:
+
+- **Directory** — Explore · Services · Support · Legal. Below `md` each section is a 44px accordion row (chevron right, hairline between rows) that toggles independently — closing a row above the one just tapped would shift it out from under the finger. From `md` up the same markup shows four always-open columns (12px semibold heading, 12px links). The panel animates `grid-template-rows: 0fr → 1fr` (no height measuring); `visibility` keeps a collapsed row's links out of the tab order. Open rows reset on route change.
+- **Every link is in the SSR markup at every width** — a collapsed row is hidden, not unrendered — so crawlers still reach every `/services/{slug}` page (see [SEO.md](SEO.md)). The Services section reads `GET /v1/services` (`key: 'footer-services'`) and falls back to a single "All services" link if the API is down.
+- **Company identity** — below the directory, three plain lines, no card: "Axel Nova Ventures" set like the section titles (14px → 12px from `md`, semibold, `--color-text`), then Registration No. / Kuala Lumpur, Malaysia in the copyright line's type (12px, `--color-text-secondary`). No tagline or availability badge.
+- **Bottom bar** — copyright left, socials + the discreet `/admin` gear right (centred and stacked on phones). The owner wants this bar kept as is; restyle the sections above it, not this.
+- Honours `definePageMeta({ footerGap: false })` (drops the `mt-32` above it) for pages that end on their own band.

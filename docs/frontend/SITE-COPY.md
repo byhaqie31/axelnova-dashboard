@@ -295,9 +295,7 @@ These pages need a clear service name in the H1, plain-language benefits first a
 
 ## Footer
 
-**Tagline:** Websites and business systems for Malaysian companies, designed and built in Kuala Lumpur.
-
-**Status:** Taking enquiries for new projects.
+No tagline or availability status — the footer carries only the link directory, company identity and the copyright bar.
 
 **Company identity and registration:** Keep the current legal name and registration number only after confirming they match official records.
 

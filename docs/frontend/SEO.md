@@ -11,7 +11,7 @@ How the public site (axelnovaventures.com) is set up for search, and the rules n
 
 ## Service pages
 
-The service list is admin data (`GET /v1/services`). Each category gets `/services/{slug}`; [pages/public/services/[slug].vue](../../frontend/app/pages/public/services/[slug].vue) layers optional per-slug SEO copy (`enrichmentBySlug`: `seoTitle`, `seoDescription`, a keyword-led `h1`, hero copy, FAQs) on top. A category without an entry still renders with its admin name and description. The footer's **Services** column is built from the same API, so every service page is linked from every page of the site — that's how crawlers find them (the `/services` tabs only link the active one).
+The service list is admin data (`GET /v1/services`). Each category gets `/services/{slug}`; [pages/public/services/[slug].vue](../../frontend/app/pages/public/services/[slug].vue) layers optional per-slug SEO copy (`enrichmentBySlug`: `seoTitle`, `seoDescription`, a keyword-led `h1`, hero copy, FAQs) on top. A category without an entry still renders with its admin name and description. The footer's **Services** section is built from the same API, so every service page is linked from every page of the site — that's how crawlers find them (the `/services` tabs only link the active one). On phones that section is a collapsed accordion row, but its links are still in the server-rendered HTML — keep it that way (hide, never `v-if`).
 
 ## Structured data (JSON-LD)
 
