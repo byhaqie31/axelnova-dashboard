@@ -47,6 +47,16 @@ usePublicSeo({
   card: { label: blogFormatLabel(post.value.format).toUpperCase(), headline: post.value.title },
 })
 
+// Overrides the site-wide og:type=website so link previews read it as an article.
+useSeoMeta({
+  ogType: 'article',
+  articlePublishedTime: post.value.published_at ?? undefined,
+  articleModifiedTime: post.value.updated_at ?? post.value.published_at ?? undefined,
+  articleAuthor: [`${siteUrl}/about`],
+  articleSection: post.value.category ?? undefined,
+  articleTag: post.value.tags.length ? post.value.tags : undefined,
+})
+
 useHead({
   script: [
     {
@@ -59,8 +69,16 @@ useHead({
         ...(post.value.cover_image_url && { image: post.value.cover_image_url }),
         'datePublished': post.value.published_at,
         'dateModified': post.value.updated_at ?? post.value.published_at,
-        'author': { '@type': 'Person', 'name': 'Ahmad Baihaqie' },
-        'publisher': { '@type': 'Organization', 'name': 'Axel Nova Ventures', 'url': siteUrl },
+        // Same @ids as the Person on /about and the business on the homepage,
+        // so Google ties every post to one author and one publisher entity.
+        'author': { '@type': 'Person', '@id': `${siteUrl}/about#person`, 'name': 'Ahmad Baihaqie', 'url': `${siteUrl}/about` },
+        'publisher': {
+          '@type': 'Organization',
+          '@id': `${siteUrl}/#business`,
+          'name': 'Axel Nova Ventures',
+          'url': siteUrl,
+          'logo': { '@type': 'ImageObject', 'url': `${siteUrl}/axel_nova_logo.png` },
+        },
         'mainEntityOfPage': pageUrl,
         ...(post.value.category && { articleSection: post.value.category }),
         ...(post.value.tags.length && { keywords: post.value.tags.join(', ') }),

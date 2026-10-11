@@ -79,7 +79,8 @@ async function copyLink() {
 
     <!-- Cover — full width -->
     <figure v-if="post.cover_image_url" class="w-full mb-10 lg:col-span-2 rounded-2xl overflow-hidden border" :style="{ borderColor: 'var(--color-border)' }">
-      <img :src="post.cover_image_url" :alt="post.cover_image_alt ?? post.title" class="w-full aspect-[16/9] object-cover">
+      <!-- The cover is the page's LCP element: fetch it first; width/height reserve the 16:9 box before it loads. -->
+      <img :src="post.cover_image_url" :alt="post.cover_image_alt ?? post.title" width="1600" height="900" fetchpriority="high" class="w-full aspect-[16/9] object-cover">
     </figure>
 
     <!-- Left pane (lg+): section links, sticky -->
