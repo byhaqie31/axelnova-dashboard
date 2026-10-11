@@ -40,7 +40,7 @@ class DocumentMapper
      * which renders the same account in the invoice "How to pay" block, and
      * `STUDIO_BANK` in frontend/app/data/studioPayment.ts (the /support page).
      */
-    private const BANK = [
+    public const BANK = [
         'name' => 'OCBC Bank',
         'acct' => '7051415701',
         'holder' => 'Axel Nova Ventures',

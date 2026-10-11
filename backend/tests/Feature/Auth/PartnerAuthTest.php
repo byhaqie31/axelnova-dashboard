@@ -257,7 +257,7 @@ class PartnerAuthTest extends TestCase
 
         $this->assertNotSame($oldHash, $referrer->account->fresh()->password);
         Mail::assertSent(PartnerPasscodeMail::class);
-        Mail::assertSent(PartnerResetRequestedMail::class);
+        Mail::assertQueued(PartnerResetRequestedMail::class);
     }
 
     public function test_forgot_passcode_is_silent_for_unknown_or_suspended_emails(): void

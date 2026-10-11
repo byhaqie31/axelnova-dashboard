@@ -3,41 +3,44 @@
 namespace App\Mail;
 
 use App\Models\Referral;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
+use App\Support\Mail\EmailFormat;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Sent from the admin commission section once a referral converts: tells the
- * referrer their estimated commission and asks them to reply with the bank
- * details we'll pay it into. Sent synchronously so the admin gets immediate
- * success/failure feedback — no queue worker dependency.
+ * Email 17 — sent from the admin commission section once a referral converts:
+ * tells the referrer their estimated commission and asks them to reply with
+ * the bank details we'll pay it into. Queued like every email (spec §5.7) —
+ * its delivery shows in the referral's email history.
  */
-class ReferralCommissionMail extends Mailable
+class ReferralCommissionMail extends KitMailable implements ShouldQueue
 {
-    use SerializesModels;
+    use Queueable, SerializesModels;
 
     public function __construct(
         public readonly Referral $referral,
         public readonly float $commission,
     ) {}
 
-    public function envelope(): Envelope
+    public static function emailType(): string
     {
-        return new Envelope(
-            subject: 'Your referral commission — Axel Nova Ventures',
-        );
+        return 'referral.commission';
     }
 
-    public function content(): Content
+    public static function relatedProperty(): ?string
     {
-        return new Content(
-            markdown: 'mail.referral-commission',
-            with: [
-                'referral' => $this->referral,
-                'commission' => $this->commission,
-            ],
-        );
+        return 'referral';
+    }
+
+    public function viewData(): array
+    {
+        return [
+            'name' => $this->referral->referrer_name,
+            'businessName' => $this->referral->business_name,
+            'ratePct' => $this->referral->effectivePct(),
+            'cap' => EmailFormat::money(Referral::COMMISSION_CAP_MYR),
+            'commission' => EmailFormat::money($this->commission),
+        ];
     }
 }

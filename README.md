@@ -166,6 +166,6 @@ Production backend deploy isn't wired yet. Plan: PHP-FPM + Nginx, port 8003, que
 
 ### Mailtrap
 
-- **`550 5.7.0 Too many emails per second`.** Mailtrap free caps at 1 email/sec, and a quote submission fires two emails (customer + admin). The admin email is intentionally delayed by 10s in [QuoteRequestController.php](./backend/app/Http/Controllers/Api/V1/QuoteRequestController.php) to dodge this. When you swap to a real provider (Mailgun/Postmark/SES), shrink or remove that delay — they handle hundreds of emails/sec.
+- **`550 5.7.0 Too many emails per second`.** Mailtrap free caps at 1 email/sec, and a quote submission fires two emails (customer + admin). The admin email is intentionally delayed by 10s **outside production** (`NotifyAdminJob::dispatchForNewLead()`) to dodge this; production (Resend) sends it immediately. To eyeball every template without triggering real flows, run `php artisan mail:preview --all` (it paces itself for Mailtrap) — see [EMAIL-SYSTEM.md](docs/global/EMAIL-SYSTEM.md).
 
 - **Email body never lands but worker shows DONE.** Check `MAIL_USERNAME` / `MAIL_PASSWORD` in [backend/.env](./backend/.env) are filled in. With empty creds, Mailtrap silently swallows the message. Fastest sanity check is to switch `MAIL_MAILER=log` temporarily and tail `backend/storage/logs/laravel.log` — the rendered email body dumps there.

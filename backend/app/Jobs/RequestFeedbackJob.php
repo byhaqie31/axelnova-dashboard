@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\FeedbackRequestMail;
 use App\Models\Feedback;
+use App\Services\Mail\EmailLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,6 +12,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class RequestFeedbackJob implements ShouldBeUnique, ShouldQueue
 {
@@ -36,5 +38,16 @@ class RequestFeedbackJob implements ShouldBeUnique, ShouldQueue
         }
 
         Mail::to($feedback->email, $feedback->name)->send(new FeedbackRequestMail($feedback));
+    }
+
+    /** Out of retries — the email never left; record it so the owner sees it (spec §5.4). */
+    public function failed(Throwable $e): void
+    {
+        $feedback = Feedback::find($this->feedbackId);
+        if ($feedback?->email) {
+            app(EmailLogger::class)->recordFailure(
+                FeedbackRequestMail::class, $feedback, $feedback->email, $feedback->name, null, $e,
+            );
+        }
     }
 }

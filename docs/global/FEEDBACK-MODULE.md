@@ -49,7 +49,7 @@ pending ──→ approved ──→ published
    (**database queue — the worker must be running**, same as quote emails);
    otherwise nothing is sent — the admin copies the `public_url` from the
    detail page's review-link card and shares it by hand.
-2. `FeedbackRequestMail` (markdown `mail.feedback-request`) sends the client a
+2. `FeedbackRequestMail` (template `emails.feedback.request`) sends the client a
    CTA to `{PUBLIC_SITE_URL}/feedback/{token}`. Subject: *"How did we do? —
    quick feedback on your Axel Nova project"*. No attachments. Silently
    skipped when the row has no email.

@@ -3,33 +3,35 @@
 namespace App\Mail;
 
 use App\Models\Referral;
+use App\Support\Mail\EmailFormat;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ReferralReceivedMail extends Mailable implements ShouldQueue
+/** Email 15 — thanks to the person who made a referral (not the passcode email). */
+class ReferralReceivedMail extends KitMailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public function __construct(public readonly Referral $referral) {}
 
-    public function envelope(): Envelope
+    public static function emailType(): string
     {
-        return new Envelope(
-            subject: 'Thanks for the referral — Axel Nova Ventures',
-        );
+        return 'referral.received';
     }
 
-    public function content(): Content
+    public static function relatedProperty(): ?string
     {
-        return new Content(
-            markdown: 'mail.referral-received',
-            with: [
-                'referral' => $this->referral,
-            ],
-        );
+        return 'referral';
+    }
+
+    public function viewData(): array
+    {
+        return [
+            'name' => $this->referral->referrer_name,
+            'businessName' => $this->referral->business_name,
+            'tierPct' => $this->referral->commission_tier_pct,
+            'cap' => EmailFormat::money(Referral::COMMISSION_CAP_MYR),
+        ];
     }
 }

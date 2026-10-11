@@ -911,6 +911,7 @@ onMounted(() => {
         </button>
       </aside>
       </div>
+      <AdminEmailHistory related-type="feedback" :related-id="record.id" />
     </template>
 
     <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />

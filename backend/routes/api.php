@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\BlogPostsController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
+use App\Http\Controllers\Api\V1\Admin\EmailLogsController;
 use App\Http\Controllers\Api\V1\Admin\ExpensesController;
 use App\Http\Controllers\Api\V1\Admin\FeedbackController as AdminFeedbackController;
 use App\Http\Controllers\Api\V1\Admin\InquiriesController;
@@ -48,7 +49,9 @@ use App\Http\Controllers\Api\V1\Team\AuthController as TeamAuthController;
 use App\Http\Controllers\Api\V1\Team\PayrollController as TeamPayrollController;
 use App\Http\Controllers\Api\V1\Team\TasksController as TeamTasksController;
 use App\Http\Controllers\Api\V1\TrackingController;
+use App\Http\Controllers\Api\V1\Webhooks\ResendWebhookController;
 use App\Http\Middleware\LogAdminActivity;
+use App\Http\Middleware\RecordMailActor;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
@@ -123,6 +126,12 @@ Route::middleware($trackThrottle)->group(function () {
         ->name('likes.toggle');
 });
 
+// Resend delivery reports (Svix-signed, see ResendWebhookController) — their own
+// bucket, generous because Resend may burst; keyed per IP like every simple throttle.
+Route::middleware('throttle:600,1')->group(function () {
+    Route::post('/v1/webhooks/resend', ResendWebhookController::class)->name('webhooks.resend');
+});
+
 // Admin — login (public, throttled to deter brute-force)
 $loginThrottle = app()->environment('production') ? 'throttle:10,1' : 'throttle:1000,1';
 Route::middleware($loginThrottle)->group(function () {
@@ -155,6 +164,7 @@ Route::middleware([
     'abilities:cockpit',
     'role:cockpit',
     LogAdminActivity::class,
+    RecordMailActor::class,
 ])
     ->prefix('v1/admin')
     ->name('admin.')
@@ -195,6 +205,9 @@ Route::middleware([
 
         // Activity feed — the audit trail (founder, per the cockpit group)
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
+
+        // Email history for a record's "Emails" panel (or every email to an address).
+        Route::get('/emails', [EmailLogsController::class, 'index'])->name('emails.index');
 
         // Payroll ledger (Task 7) — founder-only via the view-all-payroll gate
         // in-controller; everyone else reads their own payslips at
@@ -388,6 +401,7 @@ Route::middleware([
     'auth:sanctum',
     'abilities:workspace',
     'role:workspace',
+    RecordMailActor::class,
 ])
     ->prefix('v1/team')
     ->name('team.')

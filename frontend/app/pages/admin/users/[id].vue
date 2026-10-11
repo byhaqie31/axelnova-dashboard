@@ -338,6 +338,7 @@ const addressBlock = computed(() => {
           </dl>
         </section>
       </div>
+      <AdminEmailHistory related-type="user" :related-id="profile.id" />
     </template>
 
     <!-- Deactivate / reactivate / reset-password confirm -->

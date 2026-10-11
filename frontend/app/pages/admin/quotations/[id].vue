@@ -601,6 +601,7 @@ v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, ''
           </div>
         </div>
       </div>
+      <AdminEmailHistory related-type="quotation" :related-id="quotation.id" />
     </template>
 
     <!-- Delete confirmation — shared dialog (soft delete, or the order-attached block). -->

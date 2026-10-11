@@ -81,6 +81,42 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Laravel scheduler (routes/console.php) — exactly ONE instance, or scheduled
+  # tasks would run twice. Same image as the queue worker; `schedule:work`
+  # runs due tasks every minute. Spec: docs/superpowers/specs/2026-10-11-email-foundation-design.md §5.8.
+  scheduler:
+    image: ghcr.io/byhaqie31/axelnova-dashboard-backend:latest
+    container_name: axelnova-scheduler
+    restart: unless-stopped
+    command:
+      - php
+      - artisan
+      - schedule:work
+    # No HTTP server — the inherited backend HEALTHCHECK would always fail.
+    healthcheck:
+      disable: true
+    env_file:
+      - ./backend/.env.production
+    environment:
+      DB_HOST: mysql
+    volumes:
+      - ~/data/axelnova-dashboard/storage:/app/storage
+    depends_on:
+      - backend
+    networks:
+      - axelnova-shared
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   frontend:
     image: ghcr.io/byhaqie31/axelnova-dashboard-frontend:latest
     container_name: axelnova-frontend

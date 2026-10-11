@@ -2,52 +2,62 @@
 
 namespace App\Mail;
 
+use App\Mail\Concerns\DescribesQuotation;
 use App\Models\Invoice;
+use App\Services\Quoting\DocumentMapper;
+use App\Support\Mail\EmailFormat;
 use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * The client-facing invoice email: summary + "View invoice" PDF link, with the
- * rendered PDF attached when the fetch succeeded (null bytes → link-only).
+ * Email 3 — the client-facing invoice (kit: 03-invoice.html): amount due, how
+ * to pay (the studio's one bank account, DocumentMapper::BANK), the PDF linked
+ * and attached when the fetch succeeded (null bytes → link-only).
  */
-class InvoiceMail extends Mailable
+class InvoiceMail extends KitMailable
 {
-    use Queueable, SerializesModels;
+    use DescribesQuotation, Queueable, SerializesModels;
 
     public function __construct(
         public readonly Invoice $invoice,
         private readonly ?string $pdfBytes = null,
     ) {}
 
-    public function envelope(): Envelope
+    public static function emailType(): string
     {
-        return new Envelope(
-            subject: "Invoice {$this->invoice->invoice_number} from Axel Nova Ventures",
-        );
+        return 'invoice.sent';
     }
 
-    public function content(): Content
+    public static function relatedProperty(): ?string
     {
-        $quotation = $this->invoice->order?->quotation;
+        return 'invoice';
+    }
 
-        return new Content(
-            markdown: 'mail.client-invoice',
-            with: [
-                'invoice' => $this->invoice,
-                'clientName' => $quotation?->name ?: $quotation?->company ?: 'there',
-                'referenceCode' => $quotation?->reference_code,
-                'pdfUrl' => rtrim((string) config('services.frontend.public_url'), '/')
-                    .$this->invoice->pdf_path,
-                'amountDue' => max(
-                    (float) $this->invoice->amount_total - (float) ($this->invoice->amount_paid ?? 0),
-                    0,
-                ),
+    public function viewData(): array
+    {
+        $invoice = $this->invoice;
+        $quotation = $invoice->order?->quotation;
+        $packages = $quotation ? $this->quotePackages($quotation) : [];
+
+        return [
+            'name' => $quotation?->name ?: $quotation?->company ?: 'there',
+            'invoiceNumber' => $invoice->invoice_number,
+            'projectName' => $packages === [] ? null : implode(' + ', array_column($packages, 'name')),
+            'amountDue' => EmailFormat::money(max((float) $invoice->amount_total - (float) ($invoice->amount_paid ?? 0), 0)),
+            'dueDate' => EmailFormat::date($invoice->due_at),
+            'quoteRef' => $quotation?->reference_code,
+            'issuedDate' => EmailFormat::date($invoice->issued_at),
+            'bank' => [
+                'name' => DocumentMapper::BANK['name'],
+                'holder' => DocumentMapper::BANK['holder'],
+                'account' => DocumentMapper::BANK['acct'],
             ],
-        );
+            // No card/FPX gateway is connected yet — the row stays hidden (spec §5.13).
+            'onlinePaymentLink' => null,
+            'pdfUrl' => rtrim((string) config('services.frontend.public_url'), '/').$invoice->pdf_path,
+            'attached' => $this->pdfBytes !== null,
+        ];
     }
 
     /** @return array<int, Attachment> */

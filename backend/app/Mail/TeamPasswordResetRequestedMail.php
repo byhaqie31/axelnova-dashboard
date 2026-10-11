@@ -3,36 +3,43 @@
 namespace App\Mail;
 
 use App\Models\User;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Heads-up to the founder that a team member used "forgot password" on the
- * workspace sign-in. Unlike the partner flow there is NO auto-reset — team
- * passwords are only ever reset by the founder from the Users screen, so this
- * mail is the whole flow. Sent synchronously so it doesn't depend on the
- * queue worker.
+ * Email 27 — heads-up to the founder that a team member used "forgot
+ * password" on the workspace sign-in. Unlike the partner flow there is NO
+ * auto-reset — team passwords are only ever reset by the founder from the
+ * Users screen, so this mail is the whole flow. Queued like every email
+ * (spec §5.7).
  */
-class TeamPasswordResetRequestedMail extends Mailable
+class TeamPasswordResetRequestedMail extends KitMailable implements ShouldQueue
 {
-    use SerializesModels;
+    use Queueable, SerializesModels;
 
     public function __construct(public readonly User $user) {}
 
-    public function envelope(): Envelope
+    public static function emailType(): string
     {
-        return new Envelope(
-            subject: 'Team password reset request — '.$this->user->name,
-        );
+        return 'team.reset_alert';
     }
 
-    public function content(): Content
+    public static function relatedProperty(): ?string
     {
-        return new Content(
-            markdown: 'mail.team-password-reset-requested',
-            with: ['user' => $this->user],
-        );
+        return 'user';
+    }
+
+    public function viewData(): array
+    {
+        return [
+            'userName' => $this->user->name,
+            'rows' => [
+                ['Name', $this->user->name],
+                ['Email', $this->user->email],
+                ['Role', $this->user->role],
+            ],
+            'usersUrl' => rtrim((string) config('services.frontend.url'), '/').'/admin/users',
+        ];
     }
 }

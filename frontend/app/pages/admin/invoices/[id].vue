@@ -273,6 +273,8 @@ class="text-[13px] font-semibold shrink-0"
         <p v-else class="text-[13px]" style="color: var(--color-text-tertiary);">No payments recorded against this invoice yet.</p>
       </div>
 
+      <AdminEmailHistory related-type="invoice" :related-id="invoice.id" />
+
       <AdminInvoiceEmailModal
         :open="emailOpen"
         :invoice-number="invoice.invoice_number"

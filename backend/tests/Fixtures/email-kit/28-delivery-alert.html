@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<title>Email delivery problem</title>
+<!-- Geist loads in Apple Mail and a few others. Gmail and Outlook fall back to the system stack. -->
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  body { margin: 0 !important; padding: 0 !important; width: 100% !important; background: #FFFFFF; }
+  a { color: #4B45D6; }
+
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 24px !important; padding-right: 24px !important; }
+    .pt-top { padding-top: 32px !important; }
+    .h1 { font-size: 28px !important; line-height: 34px !important; }
+    .lead { font-size: 16px !important; line-height: 26px !important; }
+    .amount { font-size: 28px !important; line-height: 34px !important; }
+    .gap-lg { height: 32px !important; }
+    .stack { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+    .step { padding: 14px 0 16px 0 !important; }
+    .step-gap { display: none !important; }
+    .label { width: 108px !important; }
+    .track-label { font-size: 12px !important; line-height: 18px !important; }
+    .cta-box { padding: 20px !important; }
+    .cta-btn-cell { padding: 16px 0 0 0 !important; }
+    .btn { width: 100% !important; }
+    .btn a { display: block !important; text-align: center !important; }
+    .m-hide { display: none !important; }
+    .m-block { display: block !important; }
+  }
+</style>
+</head>
+<body style="margin: 0; padding: 0; background: #FFFFFF;">
+
+<!-- SAMPLE DATA: every name, reference, date and amount in this file is sample data to wire to real variables.
+     Values in [square brackets] are unknowns that need a real source. -->
+
+<!-- Preheader: shows beside the subject in the inbox list, hidden in the body -->
+<div style="display: none; max-height: 0; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #FFFFFF;">Invoice AXNI-2026-0031 bounced for aisyah@example.com.</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #FFFFFF;">
+<tr>
+<td align="center" style="padding: 0;">
+
+<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td><![endif]-->
+<table role="presentation" class="container" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px; margin: 0 auto;">
+  <tr>
+    <td height="3" bgcolor="#14161A" style="height: 3px; background: #14161A; font-size: 0; line-height: 0;">&nbsp;</td>
+  </tr>
+  <tr>
+    <td class="px" style="padding: 28px 40px 36px 40px; font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #14161A;">
+
+      <!-- LAYOUT: internal header -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: -0.01em; color: #14161A;">Axel Nova Ventures</td>
+          <td align="right" style="font-family: 'Geist Mono', ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; line-height: 20px; color: #5E646E;">Internal</td>
+        </tr>
+      </table>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="28" style="height: 28px; font-size: 0; line-height: 0;">&nbsp;</td></tr></table>
+
+      <!-- BLOCK: heading-intro (internal) -->
+      <p style="margin: 0; font-family: 'Geist Mono', ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; line-height: 16px; font-weight: 500; color: #5E646E;">Email delivery problem</p>
+      <h1 style="margin: 10px 0 0 0; font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -0.02em; color: #14161A;">An invoice email bounced</h1>
+      <p style="margin: 10px 0 0 0; font-size: 15px; line-height: 24px; color: #3A3F47;">A client email did not arrive. Fix the address and resend so the client is not left waiting.</p>
+      <!-- /BLOCK: heading-intro (internal) -->
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="20" style="height: 20px; font-size: 0; line-height: 0;">&nbsp;</td></tr></table>
+
+      <!-- BLOCK: warning-box -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: separate; background: #FFF8EB; border: 1px solid #F0D9A8; border-radius: 12px;">
+        <tr>
+          <td class="cta-box" bgcolor="#FFF8EB" style="padding: 20px 24px; border-radius: 12px;">
+            <p style="margin: 0; font-family: 'Geist Mono', ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; line-height: 16px; font-weight: 500; color: #7A5600;">Bounced</p>
+            <p style="margin: 8px 0 0 0; font-size: 15px; line-height: 22px; font-weight: 600; color: #3D2C00;">Invoice AXNI-2026-0031 did not reach the client</p>
+            <p style="margin: 4px 0 0 0; font-size: 14px; line-height: 20px; color: #5C4300;">Reason: mailbox does not exist (550 5.1.1).</p>
+          </td>
+        </tr>
+      </table>
+      <!-- /BLOCK: warning-box -->
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="24" style="height: 24px; font-size: 0; line-height: 0;">&nbsp;</td></tr></table>
+
+      <!-- BLOCK: summary-table -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td class="label" width="128" valign="top" style="width: 128px; padding: 13px 12px 13px 0; border-top: 1px solid #E6E8EC; border-bottom: 1px solid #E6E8EC; font-family: 'Geist Mono', ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; line-height: 20px; color: #5E646E;">Email</td>
+          <td valign="top" style="padding: 13px 0; border-top: 1px solid #E6E8EC; border-bottom: 1px solid #E6E8EC; font-size: 15px; line-height: 20px; font-weight: 500; color: #14161A;">Invoice</td>
+        </tr>
+        <tr>
+          <td class="label" width="128" valign="top" style="width: 128px; padding: 13px 12px 13px 0; border-bottom: 1px solid #E6E8EC; font-family: 'Geist Mono', ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; line-height: 20px; color: #5E646E;">Recipient</td>
+          <td valign="top" style="padding: 13px 0; border-bottom: 1px solid #E6E8EC; font-size: 15px; line-height: 20px; font-weight: 500; color: #14161A;">aisyah@example.com</td>
+        </tr>
+        <tr>
+          <td class="label" width="128" valign="top" style="width: 128px; padding: 13px 12px 13px 0; border-bottom: 1px solid #E6E8EC; font-family: 'Geist Mono', ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; line-height: 20px; color: #5E646E;">Sent</td>
+          <td valign="top" style="padding: 13px 0; border-bottom: 1px solid #E6E8EC; font-size: 15px; line-height: 20px; font-weight: 500; color: #14161A;">11 Oct 2026, 8:46 am</td>
+        </tr>
+        <tr>
+          <td class="label" width="128" valign="top" style="width: 128px; padding: 13px 12px 13px 0; border-bottom: 1px solid #E6E8EC; font-family: 'Geist Mono', ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; line-height: 20px; color: #5E646E;">Problem</td>
+          <td valign="top" style="padding: 13px 0; border-bottom: 1px solid #E6E8EC; font-size: 15px; line-height: 20px; font-weight: 500; color: #14161A;">Bounced</td>
+        </tr>
+        <tr>
+          <td class="label" width="128" valign="top" style="width: 128px; padding: 13px 12px 13px 0; border-bottom: 1px solid #E6E8EC; font-family: 'Geist Mono', ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; line-height: 20px; color: #5E646E;">Fix</td>
+          <td valign="top" style="padding: 13px 0; border-bottom: 1px solid #E6E8EC; font-size: 15px; line-height: 20px; font-weight: 500; color: #14161A;">Confirm the address with the client, update it, then resend.</td>
+        </tr>
+      </table>
+      <!-- /BLOCK: summary-table -->
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="24" style="height: 24px; font-size: 0; line-height: 0;">&nbsp;</td></tr></table>
+
+      <!-- BLOCK: main-button -->
+      <table role="presentation" class="btn" cellpadding="0" cellspacing="0" border="0" style="border-collapse: separate;">
+                    <tr>
+                      <td align="center" bgcolor="#14161A" style="background: #14161A; border-radius: 8px;">
+                        <a href="https://example.com/" target="_blank" style="display: inline-block; padding: 14px 22px; font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 15px; line-height: 20px; font-weight: 500; color: #FFFFFF; text-decoration: none; white-space: nowrap; border-radius: 8px;">Open record&nbsp;&rarr;</a>
+                      </td>
+                    </tr>
+                  </table>
+      <!-- /BLOCK: main-button -->
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="36" style="height: 36px; font-size: 0; line-height: 0;">&nbsp;</td></tr></table>
+      <!-- LAYOUT: internal footer -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="padding: 16px 0 0 0; border-top: 1px solid #E6E8EC; font-size: 12px; line-height: 20px; color: #5E646E;">Sent automatically by the Axel Nova dashboard. Internal only.</td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>

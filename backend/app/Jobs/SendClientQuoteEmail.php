@@ -2,8 +2,10 @@
 
 namespace App\Jobs;
 
-use App\Mail\ClientQuoteMail;
+use App\Mail\ClientEstimateMail;
+use App\Mail\ClientQuotationMail;
 use App\Models\Quotation;
+use App\Services\Mail\EmailLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,6 +13,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class SendClientQuoteEmail implements ShouldBeUnique, ShouldQueue
 {
@@ -39,6 +42,23 @@ class SendClientQuoteEmail implements ShouldBeUnique, ShouldQueue
             ? $family->revisions()->whereKey($this->revisionId)->firstOrFail()
             : $family->revision();
 
-        Mail::to($family->email, $family->name)->send(new ClientQuoteMail($revision->asQuotation($family)));
+        // No revision id = the quote-builder's own R1 → the instant estimate;
+        // an admin Send names the revision → the formal quotation (email 1a / 1b).
+        $quote = $revision->asQuotation($family);
+        $mail = $this->revisionId === null ? new ClientEstimateMail($quote) : new ClientQuotationMail($quote);
+
+        Mail::to($family->email, $family->name)->send($mail);
+    }
+
+    /** Out of retries — the email never left; record it so the owner sees it (spec §5.4). */
+    public function failed(Throwable $e): void
+    {
+        $family = Quotation::find($this->quoteRequestId);
+        if ($family?->email) {
+            app(EmailLogger::class)->recordFailure(
+                $this->revisionId === null ? ClientEstimateMail::class : ClientQuotationMail::class,
+                $family, $family->email, $family->name, null, $e,
+            );
+        }
     }
 }

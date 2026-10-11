@@ -65,7 +65,7 @@ Visitor builds a quote on /quote
 | Database | MySQL 8 (shared via `axelnova-infra`) |
 | Queue | Laravel **database** queue |
 | Cache/session | Database driver |
-| Email | SMTP — Mailtrap in dev, real SMTP in prod |
+| Email | Resend (SMTP) in prod with Hostinger as automatic backup, Mailtrap in dev — see [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md) |
 | Auth | Laravel Sanctum (token-based, admin only) + a `role:admin` middleware |
 | Forms (storefront) | `/contact` + `/quote` → backend `POST /v1/inquiries`; partner referral form still on Web3Forms |
 | Infra/deploy | Docker, Docker Compose, GitHub Actions, GHCR images, nginx + Let's Encrypt on a Hostinger VPS |
@@ -167,7 +167,7 @@ docker compose -f docker-compose.dev.yml down
 | `DB_HOST` | **`mysql`** (docker-network hostname, not `127.0.0.1`) |
 | `DB_DATABASE` / `DB_USERNAME` | `axelnova_dashboard_db` / `axelnova_dashboard_user` |
 | `CACHE_STORE` / `QUEUE_CONNECTION` / `SESSION_DRIVER` | `database` (all three) |
-| `MAIL_*` | SMTP — Mailtrap sandbox in dev, real SMTP in prod |
+| `MAIL_*` | SMTP — Mailtrap sandbox in dev; the Hostinger backup route in prod (`MAIL_MAILER=failover`, plus `RESEND_SMTP_KEY` / `RESEND_WEBHOOK_SECRET`) |
 | `MAIL_FROM_ADDRESS` / `_NAME` | `baihaqie@axelnova.tech` / "Axel Nova Ventures" |
 | `ADMIN_NOTIFICATION_EMAIL` | where new-lead notifications go |
 | `ADMIN_NAME` | "Ahmad Baihaqie" |
@@ -398,7 +398,7 @@ List with status / search filters and per-post page views. The editor (`new` or 
 - `QuoteBuilderConfigController@show` — returns the active pricing config (cached 1h).
 - `PublicServicesController@index` — active categories + active packages, ordered.
 - `PublicProjectsController@index` / `@show` — active projects / single by slug.
-- `QuoteRequestController@store` — the funnel: prices via `PricingEngine`, generates the ref code, upserts the Client by email, creates the Quotation + add-ons, dispatches `SendClientQuoteEmail` and `NotifyAdminJob` (the admin one delayed 10s to dodge Mailtrap's rate limit).
+- `QuoteRequestController@store` — the funnel: prices via `PricingEngine`, generates the ref code, upserts the Client by email, creates the Quotation + add-ons, dispatches `SendClientQuoteEmail` (the estimate) and `NotifyAdminJob::dispatchForNewLead()` (delayed 10s outside production only, for Mailtrap's rate limit).
 
 **Admin (`Admin/`):** `AuthController` (login/logout/me), `QuotationsController` (index/show/updateStatus/accept), `OrdersController` (index/show/updateStatus), `ServiceCategoriesController` + `ServicePackagesController` (full CRUD with `SortOrder` placement), `ProjectsController` (full CRUD).
 
@@ -495,8 +495,8 @@ To change prices: edit packages in the admin UI (cache auto-clears), or insert a
 
 `POST /v1/quote-requests` dispatches two **database-queue** jobs (so the **queue worker must be running** or emails silently never send):
 
-- **`SendClientQuoteEmail`** → `ClientQuoteMail` — subject "Your quote {ref} from Axel Nova Ventures"; markdown template `mail.client-quote`; the **estimate is rendered inline** (ref code, package, modifiers, add-ons, breakdown, valid-until, Calendly link). No PDF, no attachments. (`ShouldBeUnique`, unique 1h per quotation, 5 tries.)
-- **`NotifyAdminJob`** → `AdminNotificationMail` — subject "New lead: {ref} — RM …k–…k"; markdown template `mail.admin-notification`; deep-links to `/admin/quotations/{id}`. Dispatched with a **10s delay** so the customer email clears Mailtrap's 1-email/sec free-tier cap first (shrink/remove this delay on a real provider).
+- **`SendClientQuoteEmail`** → `ClientEstimateMail` (quote-builder submit, no revision id) or `ClientQuotationMail` (admin Send, names the revision) — subject "Your quote {ref} from Axel Nova Ventures"; HTML templates `emails.quotation.estimate` / `emails.quotation.sent` from the design kit ([EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md)). The estimate shows the range, package features and add-ons; the quotation mirrors the PDF's line items and totals, with a PDF link. (`ShouldBeUnique`, unique 1h per revision, 5 tries; a final failure is logged and alerts the owner.)
+- **`NotifyAdminJob`** → `AdminNotificationMail` — subject "New lead: {ref} — RM …–RM …"; template `emails.admin.new-lead` (internal layout); deep-links to `/admin/quotations/{id}`. `dispatchForNewLead()` adds a **10s delay outside production only** so the customer email clears Mailtrap's 1-email/sec free-tier cap first.
 
 ---
 

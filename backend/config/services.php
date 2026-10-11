@@ -8,6 +8,12 @@ return [
         'scheme' => 'https',
     ],
 
+    // Resend — primary email route (SMTP key in config/mail.php) and the
+    // delivery-status webhook (POST /api/v1/webhooks/resend, Svix-signed).
+    'resend' => [
+        'webhook_secret' => env('RESEND_WEBHOOK_SECRET'),
+    ],
+
     'admin' => [
         'email' => env('ADMIN_NOTIFICATION_EMAIL', 'baihaqie@axelnova.tech'),
         'name' => env('ADMIN_NAME', 'Ahmad Baihaqie'),

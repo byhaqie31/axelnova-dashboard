@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\InvoiceMail;
 use App\Models\Invoice;
+use App\Services\Mail\EmailLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -12,6 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class SendInvoiceEmail implements ShouldQueue
 {
@@ -57,7 +59,7 @@ class SendInvoiceEmail implements ShouldQueue
                 && str_starts_with((string) $response->header('Content-Type'), 'application/pdf')) {
                 return $response->body();
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // fall through to the warning below
         }
 
@@ -67,5 +69,13 @@ class SendInvoiceEmail implements ShouldQueue
         ]);
 
         return null;
+    }
+
+    /** Out of retries — the email never left; record it so the owner sees it (spec §5.4). */
+    public function failed(Throwable $e): void
+    {
+        app(EmailLogger::class)->recordFailure(
+            InvoiceMail::class, Invoice::find($this->invoiceId), $this->email, $this->name, null, $e,
+        );
     }
 }

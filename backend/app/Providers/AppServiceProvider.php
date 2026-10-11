@@ -11,10 +11,14 @@ use App\Models\User;
 use App\Observers\BlogPostObserver;
 use App\Observers\FeedbackObserver;
 use App\Observers\PaymentObserver;
+use App\Support\Mail\MailRouteRecorder;
+use App\Support\Mail\RouteTaggingTransport;
 use App\Support\SiteCache;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -37,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         $this->configureRateLimiting();
+        $this->configureMail();
 
         // Throttled last_used_at stamping — otherwise every authenticated
         // request performs an UPDATE on personal_access_tokens.
@@ -86,6 +91,27 @@ class AppServiceProvider extends ServiceProvider
      * Keyed on the client IP, which is only trustworthy because trustProxies()
      * now trusts the real proxy hops instead of '*'.
      */
+    /**
+     * Email templates (owner design kit, docs/global/email-kit/): layouts and
+     * blocks are anonymous components under resources/views/emails, used as
+     * <x-email::layouts.client> / <x-email::blocks.summary-table>. Mail
+     * listeners (app/Listeners/Mail) are auto-discovered — never also
+     * Event::listen() them, or each runs twice.
+     */
+    private function configureMail(): void
+    {
+        Blade::anonymousComponentPath(resource_path('views/emails'), 'email');
+
+        // `tagged` wraps a sending route so the email log knows which one —
+        // Resend or the Hostinger backup — carried each message.
+        $this->app->singleton(MailRouteRecorder::class);
+        Mail::extend('tagged', fn (array $config) => new RouteTaggingTransport(
+            $this->app->make('mail.manager')->createSymfonyTransport($config['inner']),
+            $config['route'],
+            $this->app->make(MailRouteRecorder::class),
+        ));
+    }
+
     private function configureRateLimiting(): void
     {
         RateLimiter::for('api', function (Request $request) {
