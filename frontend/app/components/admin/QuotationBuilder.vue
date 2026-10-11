@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 import QuoteScopeFields from '~/components/shared/QuoteScopeFields.vue'
 import DetailedProposalFields from '~/components/admin/DetailedProposalFields.vue'
 import type { QuoteScopeState, NormalizedPackage } from '~/composables/quoteScope'
 import type { EstimateResult, EtaUnit } from '~/composables/usePricingEngine'
 import { defaultQuoteScope, normalizePackages } from '~/composables/quoteScope'
 import type { PaymentPlanInputs } from '~/composables/paymentPlan'
-import { alignDepositTerms, defaultPlanInputs, detailedPanels, planInputsFromDocument, toDocumentKeys } from '~/composables/paymentPlan'
+import { alignDepositTerms, defaultPlanInputs, planInputsFromDocument, toDocumentKeys } from '~/composables/paymentPlan'
 
 interface QuotationLike {
   id: number
@@ -27,6 +28,8 @@ interface QuotationLike {
   document: Record<string, any> | null
   referral_partner_id?: number | null
   referrer?: { name: string; relationship_tier: string; commission_pct: number } | null
+  /** PDF template language (en | bm) — chrome only, never the content. */
+  locale?: string | null
 }
 
 const props = defineProps<{
@@ -42,7 +45,7 @@ const emit = defineEmits<{
 }>()
 
 const { apiFetch } = useAdminAuth()
-const { config, loadConfig, invalidateConfig, fmtMyr, formatEta, calculate } = usePricingEngine()
+const { config, loadConfig, invalidateConfig, formatEta, calculate } = usePricingEngine()
 // The builder is the authoring surface — always reflect the current catalog
 // (package / add-on prices edited in /admin/services). Drop the session cache in
 // setup, before the scope child mounts and refetches, so it's one fresh fetch.
@@ -220,6 +223,17 @@ const plan = reactive<PaymentPlanInputs>(defaultPlanInputs())
 // valid_for_days after sending.
 const validUntil = ref('')
 
+// PDF template language — the headings, labels, captions, footer and dates the
+// renderer prints around the content (default en; bm = Bahasa Melayu). Chosen
+// here explicitly, never detected: the project title, intro, line items and
+// every other field above print exactly as typed in either language.
+type DocumentLocale = 'en' | 'bm'
+const locale = ref<DocumentLocale>('en')
+const localeItems: { label: string; value: DocumentLocale }[] = [
+  { label: 'English', value: 'en' },
+  { label: 'Bahasa Melayu', value: 'bm' },
+]
+
 // Deposit bullet derived from the doc's deposit_pct — mirrors
 // DocumentMapper::defaultTerms so the prefill never contradicts the deposit field.
 const defaultTerms = (depositPct: number) => [
@@ -344,6 +358,7 @@ function loadFromQuotation(q: QuotationLike) {
   client.phone = q.phone ?? ''
   client.company = q.company ?? ''
   validUntil.value = q.expires_at ? q.expires_at.slice(0, 10) : ''
+  locale.value = q.locale === 'bm' ? 'bm' : 'en'
   hydratePackages(q.form_payload ?? {}, q.package_key)
   const d = q.document ?? {}
   if (d.layout === 'detailed' && d.payload) {
@@ -543,6 +558,7 @@ function buildPayload() {
     packages: canonicalPackages(),
     rush: rush.value,
     expires_at: validUntil.value || null,
+    locale: locale.value,
     inquiry_id: props.inquiryId ?? null,
   }
 
@@ -561,9 +577,8 @@ function buildPayload() {
     const depositPct = Number(doc.deposit_pct) || 0
     const summaryRows: Record<string, any>[] = sections.map(s => ({ label: s.title, price: s.total }))
     summaryRows.push({ label: 'Project total', price: scopeTotal, total: true, red: true })
-    // Deposit / balance (or deposit / monthly) panels from the same derivation the
-    // PDF mapper uses — fixed amount wins over pct, pct rounds to the ringgit.
-    const panels = detailedPanels(scopeTotal, depositPct, plan)
+    // No deposit / balance cards are baked: the PDF mapper derives them on read
+    // from the plan inputs below and labels them per document locale.
     const blocks = detailedRef.value?.buildBlocks() ?? {}
     return {
       ...base,
@@ -575,7 +590,6 @@ function buildPayload() {
           ...blocks,
           sections,
           summary: { rows: summaryRows },
-          ...(panels.length ? { panels } : {}),
           ...(terms.length ? { paymentTerms: { items: terms } } : {}),
         },
         deposit_pct: depositPct,
@@ -1013,6 +1027,13 @@ type="button"
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Intro</label>
             <textarea v-model="doc.intro" rows="2" placeholder="One-line summary shown under the project title…" class="contact-input resize-none w-full" :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
           </div>
+          <div class="grid sm:grid-cols-[14rem_1fr] gap-3 sm:items-end">
+            <div class="space-y-1.5">
+              <label class="block text-[12px] font-medium" style="color: var(--color-text-secondary);">Document language</label>
+              <AdminSelect v-model="locale" :items="localeItems" class="w-full" />
+            </div>
+            <p class="text-[11px] sm:pb-2.5" style="color: var(--color-text-tertiary);">Headings, labels, captions and dates on the PDF. Everything you type here prints exactly as written, in any language.</p>
+          </div>
         </div>
 
         <!-- Line items -->
@@ -1056,13 +1077,13 @@ type="button"
               </button>
               <div class="flex items-baseline gap-2">
                 <span class="text-[12px]" style="color: var(--color-text-tertiary);">Total</span>
-                <span class="text-[14px] font-semibold tabular-nums" style="color: var(--color-text);">RM {{ ((Number(it.qty) || 0) * (Number(it.rate) || 0)).toLocaleString() }}</span>
+                <span class="text-[14px] font-semibold tabular-nums" style="color: var(--color-text);">{{ formatMyr((Number(it.qty) || 0) * (Number(it.rate) || 0)) }}</span>
               </div>
             </div>
           </div>
           <div v-if="doc.items.length" class="flex justify-end items-center gap-3 pt-1">
             <span class="text-[12px]" style="color: var(--color-text-tertiary);">Document total</span>
-            <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-text);">RM {{ grandTotal.toLocaleString() }}</span>
+            <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-text);">{{ formatMyr(grandTotal) }}</span>
           </div>
         </div>
 
@@ -1108,7 +1129,7 @@ type="button"
         <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Estimate (guide)</p>
         <div v-if="headlineEstimate">
           <p class="text-[26px] max-md:text-[22px] font-bold tracking-tight leading-none max-md:leading-tight mb-1" style="color: var(--color-text);">
-            {{ fmtMyr(headlineEstimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ fmtMyr(headlineEstimate.maxMyr) }}
+            {{ formatMyr(headlineEstimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ formatMyr(headlineEstimate.maxMyr) }}
           </p>
           <p class="text-[12px]" style="color: var(--color-text-secondary);">
             {{ formatEta(headlineEstimate.etaValue, headlineEstimate.etaUnit) }} · {{ showLiveEstimate ? 'engine estimate' : 'stored estimate' }}
@@ -1119,7 +1140,7 @@ type="button"
             <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Per package</p>
             <div v-for="(line, i) in packageBreakdown" :key="i" class="flex items-center justify-between gap-3 text-[12px]">
               <span class="truncate" style="color: var(--color-text-secondary);">{{ line.name }}</span>
-              <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ fmtMyr(line.estimate.minMyr) }}–{{ fmtMyr(line.estimate.maxMyr) }}</span>
+              <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ formatMyr(line.estimate.minMyr) }}–{{ formatMyr(line.estimate.maxMyr) }}</span>
             </div>
           </div>
           <p v-else-if="!showLiveEstimate" class="text-[11px] mt-2" style="color: var(--color-text-tertiary);">Edit a package to re-price.</p>
@@ -1127,7 +1148,7 @@ type="button"
         <p v-else class="text-[13px]" style="color: var(--color-text-secondary);">Pick a package to see the engine estimate.</p>
         <div class="mt-4 pt-4 border-t flex items-center justify-between" style="border-color: var(--color-border);">
           <span class="text-[12px]" style="color: var(--color-text-tertiary);">Document total</span>
-          <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-text);">RM {{ grandTotal.toLocaleString() }}</span>
+          <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-text);">{{ formatMyr(grandTotal) }}</span>
         </div>
       </div>
 

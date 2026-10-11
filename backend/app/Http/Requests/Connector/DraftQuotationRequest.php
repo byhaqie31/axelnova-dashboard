@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Connector;
 
+use App\Models\Quotation;
 use App\Services\Connector\ConnectorCatalog;
 use App\Services\Quoting\PaymentPlan;
 use Illuminate\Contracts\Validation\Validator;
@@ -57,6 +58,11 @@ class DraftQuotationRequest extends FormRequest
             // mapper falls back to a sensible default project when omitted.
             'project' => ['nullable', 'string', 'max:200'],
             'intro' => ['nullable', 'string', 'max:2000'],
+
+            // PDF template language (chrome only: headings, labels, schedule
+            // dates) — en (default) | bm. Explicit, never detected from the
+            // content, which prints exactly as given. Omit on update to keep it.
+            'locale' => ['nullable', 'string', Rule::in(Quotation::LOCALES)],
 
             // Bespoke line items (also allowed as extras on a priced quote —
             // stored, never added to the engine estimate).

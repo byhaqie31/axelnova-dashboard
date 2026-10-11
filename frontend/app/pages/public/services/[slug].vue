@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'public' })
 
 import SectionHeader from '~/components/shared/SectionHeader.vue'
@@ -424,8 +425,8 @@ useScrollReveal('.reveal')
             {{ pkg.tagline }}
           </p>
           <p class="text-[12px] mb-4" :style="{ color: 'var(--color-text-secondary)' }">
-            From RM {{ Number(pkg.price_min_myr).toLocaleString() }}
-            <span v-if="pkg.price_max_myr"> – RM {{ Number(pkg.price_max_myr).toLocaleString() }}</span>
+            From {{ formatMyr(pkg.price_min_myr) }}
+            <span v-if="pkg.price_max_myr"> – {{ formatMyr(pkg.price_max_myr) }}</span>
             <span v-else>+</span> · {{ pkg.duration_text }}
           </p>
           <ul class="space-y-1.5 text-[13px] flex-1" :style="{ color: 'var(--color-text)' }">

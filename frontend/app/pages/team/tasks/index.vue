@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Team › Tasks (Task 5) — the workspace kanban. Three WORK columns only:
 // Available → In progress → Complete. Payment is a card badge (none/pending/
 // paid via TaskPayBadge), never a column — most tasks carry no extra pay.
@@ -468,7 +469,7 @@ function deadlineInfo(iso: string | null): { label: string, overdue: boolean } |
             <h2 class="text-[17px] font-bold tracking-tight mb-1" style="color: var(--color-text);">Complete "{{ completing.title }}"?</h2>
             <p class="text-[13px] leading-relaxed mb-4" style="color: var(--color-text-secondary);">
               <template v-if="completing.pay_amount_myr != null">
-                This sends the RM {{ completing.pay_amount_myr }} bonus to the founder as payment pending.
+                This sends the {{ formatMyr(completing.pay_amount_myr) }} bonus to the founder as payment pending.
               </template>
               <template v-else>
                 Marks the task done — it moves to your Complete column.

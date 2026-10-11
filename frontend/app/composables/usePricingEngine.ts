@@ -182,17 +182,5 @@ export function usePricingEngine() {
     return { minMyr: min, maxMyr: max, etaValue, etaUnit, breakdown }
   }
 
-  // Rounded "k" shorthand — ONLY for min–max range estimates (e.g. "RM 7k – RM 10k").
-  function fmtMyr(amount: number): string {
-    if (amount >= 1000) return `RM ${(amount / 1000).toFixed(0)}k`
-    return `RM ${amount.toLocaleString()}`
-  }
-
-  // Precise whole-RM — for any single exact value (add-on price, fixed fee). Never
-  // rounds (RM 1,500 stays RM 1,500, not "RM 2k").
-  function fmtMyrExact(amount: number | string): string {
-    return `RM ${Math.round(Number(amount) || 0).toLocaleString('en-US')}`
-  }
-
-  return { config, configLoading, configError, loadConfig, invalidateConfig, calculate, fmtMyr, fmtMyrExact, formatEta }
+  return { config, configLoading, configError, loadConfig, invalidateConfig, calculate, formatEta }
 }

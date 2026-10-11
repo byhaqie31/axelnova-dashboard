@@ -1,13 +1,10 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Read-only render of a detailed quotation's composed document (the same content
 // the client sees in the PDF), arranged like the builder but not editable.
 const props = defineProps<{ payload: Record<string, any> }>()
 
 const p = computed(() => props.payload ?? {})
-
-function fmtRm(n: unknown) {
-  return `RM ${(Number(n) || 0).toLocaleString()}`
-}
 
 const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }
 </script>
@@ -35,13 +32,13 @@ const cardStyle = { background: 'var(--color-bg-elevated)', borderColor: 'var(--
             <p v-if="r.detail" class="text-[12px] mt-0.5 leading-snug" style="color: var(--color-text-secondary);">{{ r.detail }}</p>
           </div>
           <span class="text-[13px] font-medium tabular-nums whitespace-nowrap" :style="{ color: r.priceText ? 'var(--color-success)' : 'var(--color-text)' }">
-            {{ r.priceText || fmtRm(r.price) }}
+            {{ r.priceText || formatMyr(r.price) }}
           </span>
         </div>
       </div>
       <div v-if="s.totalLabel" class="flex items-center justify-between gap-4 pt-3 mt-1 border-t-2" style="border-color: var(--color-text);">
         <span class="text-[13px] font-semibold" style="color: var(--color-text);">{{ s.totalLabel }}</span>
-        <span class="text-[14px] font-bold tabular-nums" style="color: var(--color-accent);">{{ s.totalText || fmtRm(s.total) }}</span>
+        <span class="text-[14px] font-bold tabular-nums" style="color: var(--color-accent);">{{ s.totalText || formatMyr(s.total) }}</span>
       </div>
       <p v-if="s.note" class="text-[12px] mt-3 leading-snug" style="color: var(--color-text-tertiary);">{{ s.note }}</p>
     </div>
@@ -71,8 +68,8 @@ v-for="(c, ci) in p.options.cards" :key="`opt-${ci}`" class="rounded-xl border p
           <p class="text-[14px] font-semibold mt-1.5" style="color: var(--color-text);">{{ c.title }}</p>
           <p v-if="c.sub" class="text-[12px] mt-1 leading-snug" style="color: var(--color-text-secondary);">{{ c.sub }}</p>
           <div class="flex items-baseline gap-2 mt-3 max-md:flex-wrap max-md:gap-x-2 max-md:gap-y-0.5">
-            <span v-if="c.priceWas != null" class="text-[12px] line-through tabular-nums" style="color: var(--color-text-tertiary);">{{ fmtRm(c.priceWas) }}</span>
-            <span class="text-[18px] font-bold tabular-nums" :style="{ color: c.accent ? 'var(--color-accent)' : 'var(--color-text)' }">{{ fmtRm(c.price) }}</span>
+            <span v-if="c.priceWas != null" class="text-[12px] line-through tabular-nums" style="color: var(--color-text-tertiary);">{{ formatMyr(c.priceWas) }}</span>
+            <span class="text-[18px] font-bold tabular-nums" :style="{ color: c.accent ? 'var(--color-accent)' : 'var(--color-text)' }">{{ formatMyr(c.price) }}</span>
             <span v-if="c.priceNote" class="text-[11px]" style="color: var(--color-text-tertiary);">{{ c.priceNote }}</span>
           </div>
         </div>
@@ -90,7 +87,7 @@ v-for="(c, ci) in p.options.cards" :key="`opt-${ci}`" class="rounded-xl border p
             <p v-if="r.detail" class="text-[12px] mt-0.5" style="color: var(--color-text-secondary);">{{ r.detail }}</p>
           </div>
           <span class="text-[13px] font-medium tabular-nums whitespace-nowrap" style="color: var(--color-text-secondary);">
-            {{ fmtRm(r.price) }}<span v-if="r.period" style="color: var(--color-text-tertiary);"> / {{ r.period }}</span>
+            {{ formatMyr(r.price) }}<span v-if="r.period" style="color: var(--color-text-tertiary);"> / {{ r.period }}</span>
           </span>
         </div>
       </div>
@@ -107,14 +104,14 @@ v-for="(r, ri) in p.summary.rows" :key="ri" class="flex items-center justify-bet
           <span class="text-[13px]" :class="r.total ? 'font-semibold' : ''" style="color: var(--color-text);">{{ r.label }}</span>
           <span
 class="text-[13px] font-medium tabular-nums" :class="r.total ? 'text-[15px] font-bold' : ''"
-            :style="{ color: (r.total || r.red) ? 'var(--color-accent)' : 'var(--color-text)' }">{{ r.priceText || fmtRm(r.price) }}</span>
+            :style="{ color: (r.total || r.red) ? 'var(--color-accent)' : 'var(--color-text)' }">{{ r.priceText || formatMyr(r.price) }}</span>
         </div>
       </div>
       <div v-if="p.panels?.length" class="grid sm:grid-cols-2 gap-3 mt-4">
         <div
 v-for="(pl, pi) in p.panels" :key="pi" class="rounded-xl border p-4"
           :style="{ borderColor: pl.accent ? 'var(--color-accent)' : 'var(--color-border)', background: 'var(--color-bg)' }">
-          <p class="text-[18px] font-bold tabular-nums" :style="{ color: pl.accent ? 'var(--color-accent)' : 'var(--color-text)' }">{{ fmtRm(pl.value) }}</p>
+          <p class="text-[18px] font-bold tabular-nums" :style="{ color: pl.accent ? 'var(--color-accent)' : 'var(--color-text)' }">{{ formatMyr(pl.value) }}</p>
           <p class="text-[11px] font-semibold uppercase tracking-wider mt-1" style="color: var(--color-text-tertiary);">{{ pl.label }}</p>
           <p v-if="pl.note" class="text-[11px] mt-2 leading-snug" style="color: var(--color-text-tertiary);">{{ pl.note }}</p>
         </div>

@@ -47,6 +47,7 @@ class QuotationsController extends Controller
             'package_key' => $request->input('package_key'),
             'reference_code' => 'DRAFT',
             'document' => $request->input('document', []),
+            'locale' => $request->input('locale') ?: 'en',
             'form_payload' => $request->input('form_payload', []),
             'expires_at' => $request->input('expires_at'),
         ]);
@@ -107,7 +108,7 @@ class QuotationsController extends Controller
         $query = QuotationIndexQuery::fromAdminRequest($request)->builder()
             ->select([
                 'id', 'reference_code', 'source', 'client_id', 'name', 'email', 'phone',
-                'company', 'package_key', 'status', 'referral_partner_id',
+                'company', 'package_key', 'status', 'locale', 'referral_partner_id',
                 'estimate_min_myr', 'estimate_max_myr', 'estimate_eta_value', 'estimate_eta_unit',
                 'submitted_at', 'issued_at', 'viewed_at', 'sent_at', 'expires_at',
                 'created_at', 'updated_at',
@@ -382,6 +383,9 @@ class QuotationsController extends Controller
                 'final_amount_myr' => $quotation->finalAmount(),
                 'deposit_pct' => $plan->isFixedDeposit() ? null : $quotation->depositPct(),
                 'deposit_amount_myr' => $plan->isFixedDeposit() ? $plan->depositAmount() : null,
+                // The agreed instalment / partner schedule (null for a lump sum) —
+                // what each monthly invoice's amount, label and due date follow.
+                'payment_plan' => $plan->orderSnapshot(),
                 'amount_paid_myr' => 0,
                 'due_at' => $quotation->dueDateFrom(),
                 'status' => 'pending',
@@ -491,7 +495,7 @@ class QuotationsController extends Controller
         $maxMyr = $detailedTotal ?? ($estimate?->maxMyr ?? 0);
         $first = $packages[0] ?? null;
 
-        return [
+        return array_merge([
             'client_id' => $client->id,
             'name' => $client->name,
             'email' => $client->email,
@@ -516,7 +520,11 @@ class QuotationsController extends Controller
             // Custom validity date (optional). Normalised to end-of-day so the quote
             // stays valid through the whole chosen date, not until its midnight.
             'expires_at' => isset($data['expires_at']) ? Carbon::parse($data['expires_at'])->endOfDay() : null,
-        ];
+        ], filled($data['locale'] ?? null) ? [
+            // PDF template language — only written when sent, so an update that
+            // omits it leaves the stored choice alone (new rows default to en).
+            'locale' => $data['locale'],
+        ] : []);
     }
 
     private function syncAddons(Quotation $quotation, array $addonKeys, PricingEngine $engine): void

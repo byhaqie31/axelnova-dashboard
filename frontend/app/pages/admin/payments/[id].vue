@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -120,8 +121,9 @@ function fmtDateTime(iso?: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
+// Unsigned — callers prefix "−" for refund rows themselves.
 function fmtMyr(amount: string | number) {
-  return `RM ${Math.abs(Number(amount)).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return formatMyr(Math.abs(Number(amount)))
 }
 </script>
 

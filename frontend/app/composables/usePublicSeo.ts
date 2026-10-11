@@ -14,6 +14,8 @@
 // `card` swaps the shared og-image.jpg for a generated per-page preview
 // (components/OgImage/SiteCard.takumi.vue). `image` — a prepared picture such
 // as a blog cover — wins over `card`. See docs/frontend/OG-IMAGES.md.
+import { toValue, type MaybeRefOrGetter } from 'vue'
+
 const SITE_URL = 'https://axelnovaventures.com'
 const OG_IMAGE = `${SITE_URL}/og-image.jpg`
 const OG_IMAGE_ALT = 'Axel Nova Ventures — Crafted by design. Built to last.'
@@ -43,24 +45,26 @@ export function clipText(text: string | null | undefined, max: number): string {
 }
 
 export function usePublicSeo(opts: {
-  title: string
+  /** A getter keeps the tags in step with query-only navigation (e.g. /blog?page=2). */
+  title: MaybeRefOrGetter<string>
   description: string
   /** Route path used for canonical + og:url, e.g. '/projects'. '' = homepage. */
-  path: string
+  path: MaybeRefOrGetter<string>
   /** Override the shared 1200×630 site card when a page has its own image. */
   image?: string
   /** Generate a per-page preview card instead of the shared site card. */
   card?: OgCard
 }) {
-  const url = `${SITE_URL}${opts.path}`
+  const title = () => toValue(opts.title)
+  const url = () => `${SITE_URL}${toValue(opts.path)}`
 
   useSeoMeta({
-    title: opts.title,
+    title,
     description: opts.description,
-    ogTitle: opts.title,
+    ogTitle: title,
     ogDescription: opts.description,
     ogUrl: url,
-    twitterTitle: opts.title,
+    twitterTitle: title,
     twitterDescription: opts.description,
     twitterCard: 'summary_large_image',
   })
@@ -71,7 +75,7 @@ export function usePublicSeo(opts: {
       headline: opts.card.headline,
       subline: opts.card.subline,
       image: opts.card.image,
-      footer: ogFooter(opts.path),
+      footer: ogFooter(toValue(opts.path)),
     }, { alt: opts.card.headline })
   }
   else {
@@ -85,7 +89,7 @@ export function usePublicSeo(opts: {
       // Dimensions/alt are only known for the shared site card.
       ogImageWidth: isDefaultCard ? 1200 : undefined,
       ogImageHeight: isDefaultCard ? 630 : undefined,
-      ogImageAlt: isDefaultCard ? OG_IMAGE_ALT : opts.title,
+      ogImageAlt: isDefaultCard ? OG_IMAGE_ALT : title,
       twitterImage: image,
     })
   }

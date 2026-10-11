@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Shared /partners/home dashboard (Task 9) — one landing for both partner
 // kinds, moved off bare /partners because that route is owned by the public
 // marketing landing (pages/public/partners/index.vue). Referrers get the
@@ -89,7 +90,7 @@ const firstName = computed(() => me.value?.profile?.name?.split(' ')[0] ?? '')
         <p class="text-[13px] mt-1" style="color: var(--color-text-secondary);">
           Commission is earned <span style="color: var(--color-text);">per referral</span> — {{ tierPcts.map(p => `${p}%`).join(' / ') }} of the collected
           project value, depending on how closely you're connected to each business you refer,
-          capped at {{ myr(data.partner.commission_cap_myr) }} per referral.
+          capped at {{ formatMyr(data.partner.commission_cap_myr) }} per referral.
           Payouts are arranged manually; we'll email you when a referral converts.
         </p>
       </div>
@@ -98,11 +99,11 @@ const firstName = computed(() => me.value?.profile?.name?.split(' ')[0] ?? '')
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }">
           <p class="text-[12px] font-medium mb-1.5" style="color: var(--color-text-tertiary);">Earned (collected)</p>
-          <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-success);">{{ myr(data.stats.earned_myr) }}</p>
+          <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-success);">{{ formatMyr(data.stats.earned_myr) }}</p>
         </div>
         <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }">
           <p class="text-[12px] font-medium mb-1.5" style="color: var(--color-text-tertiary);">Estimated</p>
-          <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-text);">{{ myr(data.stats.estimated_myr) }}</p>
+          <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-text);">{{ formatMyr(data.stats.estimated_myr) }}</p>
         </div>
         <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }">
           <p class="text-[12px] font-medium mb-1.5" style="color: var(--color-text-tertiary);">Referrals</p>

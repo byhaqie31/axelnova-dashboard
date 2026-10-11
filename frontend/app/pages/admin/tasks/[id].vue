@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Workspace › Tasks › Detail — full-page view/edit for one task (replaces the
 // old slideover). Editable only while the task is still `open`; once a teammate
 // has started it (in_progress and every state after) the fields are locked, but
@@ -196,7 +197,7 @@ const confirmCopy = computed(() => {
   return pendingAction.value === 'mark-paid'
     ? {
         title: `Mark "${t.title}" paid?`,
-        body: `This records RM ${t.pay_amount_myr ?? 0}${t.assignee_name ? ` to ${t.assignee_name}` : ''} as a Project collaboration payment in payroll and closes the task. It can't be undone here.`,
+        body: `This records ${formatMyr(t.pay_amount_myr)}${t.assignee_name ? ` to ${t.assignee_name}` : ''} as a Project collaboration payment in payroll and closes the task. It can't be undone here.`,
         cta: 'Mark paid',
       }
     : {
@@ -218,7 +219,7 @@ async function confirmAction() {
       const res = await apiFetch<{ data: TaskRecord }>(`/api/v1/admin/tasks/${t.id}/mark-paid`, { method: 'POST', body })
       task.value = res.data
       hydrateForm(res.data)
-      toast.success('Bonus paid', `RM ${res.data.pay_amount_myr ?? 0} recorded in ${res.data.assignee_name ?? 'the assignee'}’s payroll.`)
+      toast.success('Bonus paid', `${formatMyr(res.data.pay_amount_myr)} recorded in ${res.data.assignee_name ?? 'the assignee'}’s payroll.`)
       pendingAction.value = null
     }
     else {

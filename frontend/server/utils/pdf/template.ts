@@ -1,9 +1,11 @@
 import { FONT_FACES } from "./fonts";
 import { STUDIO_LOGO } from "./logo";
 import { DUITNOW_QR } from "./qr";
+import { fmt, formatDate, strings, type LocaleStrings } from "./locales";
 import type {
   Client,
   DocumentData,
+  DocumentLocale,
   ComputedTotals,
   DetailRow,
   Section,
@@ -15,6 +17,14 @@ import type {
   PaymentInfo,
   PaymentPlanBlock,
 } from "./types";
+
+// LANGUAGE MODEL. Every string this file emits on its own — eyebrows, section
+// headings, table captions, column headers, row labels, panel labels, footer,
+// "Page x of y" and formatted dates — comes from locales.ts, picked by
+// `data.locale` (default en, second locale bm). Founder-authored CONTENT in the
+// payload (project, intro, section / row titles and details, included items,
+// option cards, care rows, notes) is printed exactly as entered, in whatever
+// language it was written — never translated, never detected.
 
 /* ----------------------------------------------------------------- helpers */
 
@@ -39,9 +49,13 @@ function group(n: number, dec: number): string {
   });
 }
 
-/** Document money: "RM1,800" (line items) or "RM1,300.00" (panels, dec=2). */
-function money(n: number, cur: string, dec = 0): string {
-  return `${cur}${group(n, dec)}`;
+/**
+ * THE document money format, used for every figure the PDF prints: "RM 2,700.00"
+ * — currency, one space, comma thousands, always two decimals (line items,
+ * totals, panels, option cards, care rows, the payment plan alike).
+ */
+function money(n: number, cur: string): string {
+  return `${cur} ${group(n, 2)}`;
 }
 
 export function computeTotals(d: DocumentData): ComputedTotals {
@@ -85,7 +99,7 @@ const CSS = `
     color:var(--muted); padding-bottom:1mm;
   }
   @bottom-right{
-    content:"Page " counter(page) " of " counter(pages);
+    content:var(--pg-page) " " counter(page) " " var(--pg-of) " " counter(pages);
     font-family:'Satoshi',sans-serif; font-size:8px; letter-spacing:.04em;
     color:var(--muted); padding-bottom:1mm;
   }
@@ -109,18 +123,24 @@ html,body{background:var(--paper);color:var(--ink);
 /* Proportional figures on the SSM line only; prices stay tabular. */
 .brand .reg{font-size:10px;line-height:1;letter-spacing:.01em;color:var(--body);
   font-variant-numeric:proportional-nums;white-space:nowrap;margin-top:4.25px;}
-.doc{text-align:right;}
-/* The first pair's top margin collapses into this one: 18pt from the title
-   to the first pair, then ~14pt between pairs. 10px (not 9) because Chromium
-   snaps these baselines to whole px — measured in the prod Alpine Chromium,
-   NO./DATE/STATUS land at 100.5 / 114.75 / 128.25pt. */
-.doc .kind-big{font-weight:700;font-size:28px;
+/* Meta block: a two-column grid pushed to the right edge. Every pair rides the
+   same columns (subgrid), so the LABELS share one left edge (QUOTATION / DATE /
+   VALID UNTIL start on the same x) and the VALUES stay flush right. */
+.doc{display:grid;grid-template-columns:auto auto;column-gap:8px;
+  justify-content:end;text-align:right;}
+/* 18pt from the title to the first pair, then ~14pt between pairs. 10px (not
+   9) because Chromium snaps these baselines to whole px — measured in the prod
+   Alpine Chromium, NO./DATE/STATUS land at 100.5 / 114.75 / 128.25pt. Grid
+   margins don't collapse, so the first pair after the title drops its own
+   margin to keep the old collapsed 10px. */
+.doc .kind-big{grid-column:1/-1;font-weight:700;font-size:28px;
   letter-spacing:-.01em;line-height:1;margin-bottom:10px;color:var(--ink);}
-.doc .pair{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;
-  margin-top:5.67px;}
+.doc .pair{grid-column:1/-1;display:grid;grid-template-columns:subgrid;
+  align-items:baseline;margin-top:5.67px;}
+.doc .kind-big + .pair{margin-top:0;}
 .doc .lab{font-size:8.5px;font-weight:500;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--muted);}
-.doc .val{font-size:11.5px;color:var(--ink);margin-top:0;line-height:1;}
+  text-transform:uppercase;color:var(--muted);text-align:left;}
+.doc .val{font-size:11.5px;color:var(--ink);margin-top:0;line-height:1;text-align:right;}
 
 /* ---- rule with primary leading segment ---- */
 .rule{position:relative;height:.5px;background:var(--hairline);margin:16px 0 0;}
@@ -252,13 +272,31 @@ tbody tr:last-child td{border-bottom:0;}
 .panel .bf-t{font-size:13px;font-weight:500;color:var(--ink);letter-spacing:-.005em;}
 .panel.split .label.bf-l{color:var(--muted);}
 
-/* ---- payment plan (instalment / partner quotations) ---- */
-.plan .sum{margin-top:12px;}
-.plan .sum-row .v .dt{color:var(--muted);font-size:10px;margin-left:7px;}
-.plan .sched-h{font-size:8.5px;font-weight:500;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--muted);margin-top:16px;}
-.plan .sched td{padding:7px 0;}
-.plan .sched .c-item{font-weight:400;color:var(--body);}
+/* ---- payment plan (quotations: its own titled section) ---- */
+.payment-plan{margin-top:26px;}
+.payment-plan .pp-title{font-weight:700;font-size:19px;color:var(--ink);
+  letter-spacing:-.015em;line-height:1.1;margin-top:12px;}
+.payment-plan .pp-line{margin-top:8px;font-size:11px;color:var(--body);line-height:1.6;}
+.payment-plan .panels{margin-top:16px;}
+.payment-plan .summary{margin-top:16px;}
+.payment-plan .summary .sum-row .v .dt{color:var(--muted);font-size:10px;margin-left:7px;}
+.payment-plan .caption{font-size:8.5px;font-weight:500;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);margin-top:18px;}
+.payment-plan .schedule table{margin-top:10px;}
+.payment-plan .schedule td{padding:7px 0;}
+.payment-plan .schedule .c-item{font-weight:400;color:var(--body);}
+/* Pagination — an instalment / partner plan opens on a fresh page (modern
+   break-* and legacy page-break-* spellings both set), its cards, rows and
+   schedule never split, and a schedule that still overflows repeats its header
+   row. A lump sum (.inline: heading + cards, no schedule) keeps flowing. */
+.payment-plan{break-before:page;page-break-before:always;}
+.payment-plan:not(.inline){margin-top:0;}
+.payment-plan.inline{break-before:auto;page-break-before:auto;}
+.payment-plan .summary,.payment-plan .schedule{break-inside:avoid;page-break-inside:avoid;}
+.payment-plan .schedule thead{display:table-header-group;}
+.payment-plan .schedule tr{break-inside:avoid;page-break-inside:avoid;}
+.payment-plan .pp-title,.payment-plan .pp-line,.payment-plan .caption{
+  break-after:avoid;page-break-after:avoid;}
 
 /* ---- how to pay (invoice) ---- */
 /* Kept whole across a page break — a half-split QR is unscannable. */
@@ -410,7 +448,7 @@ const STUDIO_PAY: PaymentInfo = {
  * The QR is a *static* merchant QR, so it carries no amount — the caption tells
  * the payer to key in the total themselves.
  */
-function payBlockHTML(data: DocumentData): string {
+function payBlockHTML(data: DocumentData, L: LocaleStrings): string {
   const pay = { ...STUDIO_PAY, ...(data.pay ?? {}) };
   const transfer = [pay.bank, pay.holder].filter(Boolean).join(" · ");
 
@@ -419,25 +457,23 @@ function payBlockHTML(data: DocumentData): string {
   // under the image so all three read as one column.
   const methods = [
     `<div class="hp-m">
-      <div class="hp-mt">How to scan</div>
-      <div class="hp-ml">Open any Malaysian banking or e-wallet app, scan the
-        DuitNow QR, then key in the amount due above.</div>
+      <div class="hp-mt">${esc(L.howToPay.scanTitle)}</div>
+      <div class="hp-ml">${esc(L.howToPay.scanText)}</div>
     </div>`,
     `<div class="hp-m">
-      <div class="hp-mt">Bank transfer</div>
+      <div class="hp-mt">${esc(L.howToPay.transferTitle)}</div>
       ${transfer ? `<div class="hp-ml"><b>${esc(transfer)}</b></div>` : ""}
       ${pay.acct ? `<div class="hp-ml"><span class="mono">${esc(pay.acct)}</span></div>` : ""}
-      ${data.number ? `<div class="hp-ml">Reference <span class="mono">${esc(data.number)}</span></div>` : ""}
+      ${data.number ? `<div class="hp-ml">${esc(L.howToPay.reference)} <span class="mono">${esc(data.number)}</span></div>` : ""}
     </div>`,
     `<div class="hp-m">
-      <div class="hp-mt">Card (credit &amp; debit)</div>
-      <div class="hp-ml">Prefer to pay by card? Request a payment link from our
-        admin at <b>${esc(data.studio.email)}</b> and we'll send one over.</div>
+      <div class="hp-mt">${esc(L.howToPay.cardTitle)}</div>
+      <div class="hp-ml">${fmt(esc(L.howToPay.cardText), { email: `<b>${esc(data.studio.email)}</b>` })}</div>
     </div>`,
   ].join("");
 
   return `<div class="sec howpay">
-    ${sectionHeaderHTML("How to pay")}
+    ${sectionHeaderHTML(L.sections.howToPay)}
     <div class="hp-body">
       <div class="hp-qr">
         <img src="${DUITNOW_QR}" alt="DuitNow QR · ${esc(data.studio.name)}">
@@ -448,45 +484,98 @@ function payBlockHTML(data: DocumentData): string {
 }
 
 /**
- * The "Pelan pembayaran" block for an instalment / partner quotation. Everything
- * (copy, dates, totals) arrives derived from the backend; this only lays it out:
- * intro sentence, label/value rows, the plan total, then the dated schedule.
+ * The titled "Payment plan" section of a quotation — ONE container holding the
+ * eyebrow + h2, a one-line summary, the deposit / monthly cards, the labelled
+ * rows and the captioned, dated schedule. Everything arrives as data
+ * (PaymentPlan::documentBlock + ::panels, ISO dates); every heading, label,
+ * caption and date is worded here from the locale file. Instalment / partner
+ * open on a fresh page (.payment-plan); a lump sum (.inline) keeps flowing —
+ * heading + summary line + cards, no rows, no schedule.
  */
-function paymentPlanHTML(block: PaymentPlanBlock, cur: string): string {
-  const rows = block.rows
-    .map((r) => {
-      // Money due prints two decimals, like the deposit card and panels — a
-      // whole-ringgit format would round cents away (RM970.50 → RM971).
-      const value =
-        r.amount != null
-          ? `${money(r.amount, cur, 2)}${r.detail ? `<span class="dt">${esc(r.detail)}</span>` : ""}`
-          : esc(r.text);
-      return `<div class="sum-row"><span class="l">${esc(r.label)}</span><span class="v">${value}</span></div>`;
-    })
-    .join("");
-  const total = `<div class="sum-row total redv"><span class="l">${esc(block.totalLabel)}</span><span class="v">${money(block.total, cur, 2)}</span></div>`;
+export function paymentPlanHTML(
+  block: PaymentPlanBlock,
+  cur: string,
+  locale?: DocumentLocale | null,
+  panels: Panel[] = [],
+): string {
+  const L = strings(locale);
+  const partner = block.plan === "partner";
+  const scheduled = block.plan !== "lump_sum" && block.months > 0;
+  const day = L.dayOfMonth(block.billingDay);
 
-  // priceText (not price): tableHTML formats `price` to whole ringgit.
-  const schedRows: DetailRow[] = block.schedule.map((r) => ({
-    title: r.label,
-    detail: r.date,
-    priceText: money(r.amount, cur, 2),
-    priceMuted: true,
-  }));
-  const schedule = schedRows.length
-    ? `<div class="sched-h">${esc(block.scheduleTitle ?? "Jadual")}</div>
-       <div class="sched">${tableHTML(schedRows, cur, ["Bayaran", "Tarikh", "Jumlah"])}</div>`
+  const title =
+    block.plan === "instalment"
+      ? fmt(L.plan.title.instalment, { months: block.months })
+      : partner
+        ? fmt(L.plan.title.partner, { months: block.months })
+        : L.plan.title.lump_sum;
+
+  // One summary line under the heading — only the parts that apply to the plan.
+  const line: string[] = [];
+  if (scheduled) {
+    line.push(fmt(partner ? L.plan.line.setup : L.plan.line.deposit, { amount: money(block.deposit, cur) }));
+    line.push(fmt(L.plan.line.instalments, { months: block.months, amount: money(block.monthly, cur) }));
+    line.push(fmt(L.plan.line.billed, { day }));
+  } else {
+    line.push(fmt(L.plan.line.depositPct, { amount: money(block.deposit, cur), pct: block.depositPctLabel }));
+    if (block.balance > 0) line.push(fmt(L.plan.line.balance, { amount: money(block.balance, cur) }));
+  }
+  line.push(fmt(L.plan.line.total, { amount: money(block.total, cur) }));
+
+  const cards = panels.length
+    ? `<div class="panels">${panels.map((p) => panelHTML(p, cur, L)).join("")}</div>`
     : "";
 
-  return `<div class="sec plan">
-    ${sectionHeaderHTML(block.title)}
-    ${block.intro ? `<div class="para">${esc(block.intro)}</div>` : ""}
-    <div class="sum">${rows}${total}</div>
-    ${schedule}
+  let summary = "";
+  let schedule = "";
+  if (scheduled) {
+    const row = (label: string, value: string, cls = ""): string =>
+      `<div class="sum-row${cls}"><span class="l">${esc(label)}</span><span class="v">${value}</span></div>`;
+    const monthlyDetail =
+      fmt(L.plan.rows.months, { months: block.months }) +
+      (block.includesCarePlan ? `, ${L.plan.rows.includesCare}` : "");
+    summary = `<div class="summary">${[
+      row(partner ? L.plan.rows.setup : L.plan.rows.deposit, money(block.deposit, cur)),
+      row(
+        partner ? L.plan.rows.monthlyFee : L.plan.rows.monthly,
+        `${money(block.monthly, cur)}<span class="dt">${esc(monthlyDetail)}</span>`,
+      ),
+      row(L.plan.rows.billingDay, esc(fmt(L.plan.rows.eachMonth, { day }))),
+      block.firstDate
+        ? row(partner ? L.plan.rows.firstPayment : L.plan.rows.first, esc(formatDate(block.firstDate, L)))
+        : "",
+      block.lastDate
+        ? row(partner ? L.plan.rows.lastPayment : L.plan.rows.last, esc(formatDate(block.lastDate, L)))
+        : "",
+      row(
+        partner ? fmt(L.plan.rows.totalMonths, { months: block.months }) : L.plan.rows.total,
+        money(block.total, cur),
+        " total redv",
+      ),
+    ].join("")}</div>`;
+
+    // priceText (not price): tableHTML formats `price` to whole ringgit.
+    const schedRows: DetailRow[] = block.schedule.map((r) => ({
+      title: fmt(partner ? L.plan.schedule.month : L.plan.schedule.instalment, { n: r.n }),
+      detail: formatDate(r.date, L),
+      priceText: money(r.amount, cur),
+      priceMuted: true,
+    }));
+    if (schedRows.length) {
+      schedule = `<div class="caption">${esc(L.plan.schedule.caption)}</div>
+    <div class="schedule">${tableHTML(schedRows, cur, [L.plan.schedule.payment, L.plan.schedule.date, L.plan.schedule.amount])}</div>`;
+    }
+  }
+
+  return `<div class="payment-plan${scheduled ? "" : " inline"}">
+    <div class="eyebrow">${esc(L.plan.eyebrow)}</div>
+    <h2 class="pp-title">${esc(title)}</h2>
+    <div class="pp-line">${esc(line.join(L.plan.line.separator))}</div>
+    ${cards}${summary}${schedule}
   </div>`;
 }
 
-function sectionHTML(sec: Section, cur: string): string {
+function sectionHTML(sec: Section, cur: string, L: LocaleStrings): string {
   const total =
     sec.totalLabel != null
       ? `<div class="sec-total"><span class="l">${esc(sec.totalLabel)}</span>` +
@@ -495,7 +584,7 @@ function sectionHTML(sec: Section, cur: string): string {
   const note = sec.note ? `<div class="sec-note">${esc(sec.note)}</div>` : "";
   return `<div class="sec">
     ${sectionHeaderHTML(sec.title)}
-    ${tableHTML(sec.rows, cur, ["Item", "Detail", "Price"])}
+    ${tableHTML(sec.rows, cur, [L.columns.item, L.columns.detail, L.columns.price])}
     ${total}${note}
   </div>`;
 }
@@ -512,9 +601,40 @@ function optionCardHTML(c: OptionCard, cur: string): string {
   </div>`;
 }
 
-function panelHTML(p: Panel, cur: string, billingFor?: DocumentData["billingFor"]): string {
-  const note = p.note
-    ? `<div class="note">${esc(p.note).replace(/\n/g, "<br>")}</div>`
+/**
+ * A card's label + note. Quotation plan roles (PaymentPlan::panels) carry only
+ * figures — worded here from the locale file; invoice / receipt panels keep
+ * the label + note frozen in their payload.
+ */
+function panelCopy(p: Panel, L: LocaleStrings): { label: string; note: string } {
+  const months = p.months ?? 0;
+  const day = L.dayOfMonth(p.billingDay ?? 0);
+  const billed =
+    p.firstDate && p.lastDate
+      ? fmt(L.panels.billed, { day, first: formatDate(p.firstDate, L), last: formatDate(p.lastDate, L) })
+      : fmt(L.panels.billedNoSpan, { day });
+  switch (p.role) {
+    case "lump_deposit":
+      return { label: fmt(L.panels.lump_deposit.label, { pct: p.pctLabel ?? "" }), note: L.panels.lump_deposit.note };
+    case "lump_balance":
+      return L.panels.lump_balance;
+    case "inst_deposit":
+      return L.panels.inst_deposit;
+    case "inst_monthly":
+      return { label: fmt(L.panels.inst_monthly.label, { months }), note: billed };
+    case "partner_setup":
+      return L.panels.partner_setup;
+    case "partner_monthly":
+      return { label: fmt(L.panels.partner_monthly.label, { months }), note: billed };
+    default:
+      return { label: p.label ?? "", note: p.note ?? "" };
+  }
+}
+
+function panelHTML(p: Panel, cur: string, L: LocaleStrings, billingFor?: DocumentData["billingFor"]): string {
+  const copy = panelCopy(p, L);
+  const note = copy.note
+    ? `<div class="note">${esc(copy.note).replace(/\n/g, "<br>")}</div>`
     : "";
   if (billingFor?.title) {
     // Grid auto-flows by column, so every one of the six cells must exist —
@@ -523,15 +643,15 @@ function panelHTML(p: Panel, cur: string, billingFor?: DocumentData["billingFor"
       ? `<div class="note">${esc(billingFor.text).replace(/\n/g, "<br>")}</div>`
       : "<div></div>";
     return `<div class="panel split${p.accent ? " accent" : ""}">
-    <div class="val">${money(p.value, cur, 2)}</div>
-    <div class="label">${esc(p.label)}</div>${note || "<div></div>"}
+    <div class="val">${money(p.value, cur)}</div>
+    <div class="label">${esc(copy.label)}</div>${note || "<div></div>"}
     <div class="bf-t">${esc(billingFor.title)}</div>
-    <div class="label bf-l">${esc(billingFor.label || "Scope covered")}</div>${bfNote}
+    <div class="label bf-l">${esc(billingFor.label || L.sections.scopeCovered)}</div>${bfNote}
   </div>`;
   }
   return `<div class="panel${p.accent ? " accent" : ""}">
-    <div class="val">${money(p.value, cur, 2)}</div>
-    <div class="label">${esc(p.label)}</div>${note}
+    <div class="val">${money(p.value, cur)}</div>
+    <div class="label">${esc(copy.label)}</div>${note}
   </div>`;
 }
 
@@ -544,31 +664,46 @@ function panelHTML(p: Panel, cur: string, billingFor?: DocumentData["billingFor"
  * the stale string on every past document. Header chrome is house style; the
  * payload freezes data, not letterhead.
  *
+ * `ssm` is the bare registration number — the letterhead prints it as
+ * "SSM Registration: …", the running footer as "SSM No : …" (locale file).
+ *
  * KEEP IN SYNC with `DocumentMapper::STUDIO['reg']` (backend).
  */
+const STUDIO_SSM = "202603119899 (CA0420977-U)";
 const STUDIO_IDENTITY = {
   name: "AXEL NOVA VENTURES",
-  reg: "SSM Registration: 202603119899 (CA0420977-U)",
+  ssm: STUDIO_SSM,
+  reg: `SSM Registration: ${STUDIO_SSM}`,
 } as const;
 
-function headHTML(data: DocumentData): string {
+/**
+ * The closing signature ("Designed by Qie," / "Axel Nova Ventures"). Owned by
+ * the renderer for the same reason as STUDIO_IDENTITY: frozen payloads carry an
+ * older `studio.designedBy` string, which is no longer read. The "Designed by
+ * {name}," wording comes from the locale file (`credit.designedBy`).
+ */
+const STUDIO_CREDIT = { designer: "Qie", studio: "Axel Nova Ventures" } as const;
+
+function headHTML(data: DocumentData, L: LocaleStrings): string {
   const kindWord =
-    data.kind === "invoice" ? "Invoice" : data.kind === "receipt" ? "Receipt" : "";
+    data.kind === "invoice" ? L.kind.invoice : data.kind === "receipt" ? L.kind.receipt : "";
   const logo = data.studio.logo || STUDIO_LOGO;
 
   const pairs: string[] = [];
   if (data.kind === "quotation") {
-    pairs.push(pair("Quotation", data.number));
+    pairs.push(pair(L.meta.quotation, data.number));
   } else {
-    pairs.push(pair("No.", data.number));
+    pairs.push(pair(L.meta.no, data.number));
   }
-  pairs.push(pair("Date", data.issued));
+  // ISO dates (live quotations) are formatted per locale; a frozen payload's
+  // pre-formatted "22 June 2026" prints as-is.
+  pairs.push(pair(L.meta.date, formatDate(data.issued, L)));
   if (data.validUntil) {
     const lab =
-      data.metaLabel2 ?? (data.kind === "quotation" ? "Valid until" : "Due");
-    pairs.push(pair(lab, data.validUntil));
+      data.metaLabel2 ?? (data.kind === "quotation" ? L.meta.validUntil : L.meta.due);
+    pairs.push(pair(lab, formatDate(data.validUntil, L)));
   }
-  if (data.status) pairs.push(pair("Status", data.status));
+  if (data.status) pairs.push(pair(L.meta.status, data.status));
 
   const big = kindWord ? `<div class="kind-big">${kindWord}</div>` : "";
 
@@ -589,8 +724,8 @@ function pair(label: string, value: string): string {
   return `<div class="pair"><span class="lab">${esc(label)}</span><span class="val">${esc(value)}</span></div>`;
 }
 
-function creditHTML(data: DocumentData): string {
-  const by = data.studio.designedBy ?? data.studio.name;
+function creditHTML(data: DocumentData, L: LocaleStrings): string {
+  const by = `${esc(fmt(L.credit.designedBy, { name: STUDIO_CREDIT.designer }))}<br>${esc(STUDIO_CREDIT.studio)}`;
   const contact = [data.studio.email, data.studio.site]
     .filter(Boolean)
     .map(esc)
@@ -599,7 +734,7 @@ function creditHTML(data: DocumentData): string {
     ? `<div class="tag">${esc(data.studio.tagline)}</div>`
     : "";
   return `<div class="credit">
-    <div class="name">${esc(by)}</div>${tag}
+    <div class="name">${by}</div>${tag}
     ${contact ? `<div class="contact">${contact}</div>` : ""}
   </div>`;
 }
@@ -608,6 +743,7 @@ function creditHTML(data: DocumentData): string {
 
 function renderStandard(data: DocumentData): string {
   const cur = data.currency;
+  const L = strings(data.locale);
   const t = computeTotals(data);
   const addr = esc(data.client.address).replace(/\n/g, "<br>");
 
@@ -623,10 +759,10 @@ function renderStandard(data: DocumentData): string {
     .join("");
 
   const discountRow = t.discount
-    ? `<div class="tot-row"><span>Discount</span><span class="v">− ${money(t.discount, cur)}</span></div>`
+    ? `<div class="tot-row"><span>${esc(L.totals.discount)}</span><span class="v">− ${money(t.discount, cur)}</span></div>`
     : "";
   const taxRow = data.taxRate
-    ? `<div class="tot-row"><span>${esc(data.taxLabel ?? "Tax")}</span><span class="v">${money(t.tax, cur)}</span></div>`
+    ? `<div class="tot-row"><span>${esc(data.taxLabel ?? L.totals.tax)}</span><span class="v">${money(t.tax, cur)}</span></div>`
     : "";
 
   const terms = (data.terms ?? []).map((x) => `<li>${esc(x)}</li>`).join("");
@@ -640,24 +776,24 @@ function renderStandard(data: DocumentData): string {
   const depositCard =
     hasDeposit && !data.paymentPlan
       ? `<div class="deposit">
-           <div class="val">${money(t.deposit, cur, 2)}</div>
-           <div class="label">Deposit to commence · ${esc(data.depositPctLabel ?? `${data.depositPct}%`)}</div>
-           <div class="bal">Balance on delivery&nbsp;&nbsp;${money(t.balance, cur, 2)}</div>
+           <div class="val">${money(t.deposit, cur)}</div>
+           <div class="label">${esc(L.deposit.toCommence)} · ${esc(data.depositPctLabel ?? `${data.depositPct}%`)}</div>
+           <div class="bal">${esc(L.deposit.balanceOnDelivery)}&nbsp;&nbsp;${money(t.balance, cur)}</div>
          </div>`
       : "";
-  const planBlock = data.paymentPlan ? paymentPlanHTML(data.paymentPlan, cur) : "";
+  const planBlock = data.paymentPlan ? paymentPlanHTML(data.paymentPlan, cur, data.locale) : "";
 
   return `
-  ${headHTML(data)}
+  ${headHTML(data, L)}
   <div class="rule"></div>
   <div class="parties">
     <div class="party">
-      <div class="plabel">From</div>
+      <div class="plabel">${esc(L.parties.from)}</div>
       <div class="pname">${esc(data.studio.name)}</div>
       <div class="pln">${studioLn}</div>
     </div>
     <div class="party">
-      <div class="plabel">${data.kind === "quotation" ? "Prepared for" : "Billed to"}</div>
+      <div class="plabel">${esc(data.kind === "quotation" ? L.parties.preparedFor : L.parties.billedTo)}</div>
       <div class="pname">${esc(data.client.name)}</div>
       <div class="pln">${[esc(data.client.company), esc(data.client.attn), addr, esc(data.client.email), esc(data.client.phone)].filter(Boolean).join("<br>")}</div>
     </div>
@@ -670,19 +806,19 @@ function renderStandard(data: DocumentData): string {
 
   <table>
     <thead><tr>
-      <th>Scope of work</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th>
+      <th>${esc(L.columns.scope)}</th><th class="r">${esc(L.columns.qty)}</th><th class="r">${esc(L.columns.rate)}</th><th class="r">${esc(L.columns.amount)}</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>
 
   <div class="foot">
     <div class="terms">
-      ${terms ? `<div class="plabel">Terms</div><ul class="bul">${terms}</ul>` : ""}
+      ${terms ? `<div class="plabel">${esc(L.standard.terms)}</div><ul class="bul">${terms}</ul>` : ""}
     </div>
     <div class="totals">
-      <div class="tot-row"><span>Subtotal</span><span class="v">${money(t.subtotal, cur)}</span></div>
+      <div class="tot-row"><span>${esc(L.totals.subtotal)}</span><span class="v">${money(t.subtotal, cur)}</span></div>
       ${discountRow}${taxRow}
-      <div class="tot-row grand"><span>Total</span><span class="v">${money(t.total, cur)}</span></div>
+      <div class="tot-row grand"><span>${esc(L.totals.total)}</span><span class="v">${money(t.total, cur)}</span></div>
       ${depositCard}
     </div>
   </div>
@@ -690,23 +826,21 @@ function renderStandard(data: DocumentData): string {
 
   <div class="lower">
     <div class="pay">
-      <div class="plabel">Payment</div>
-      ${data.pay?.online ? `<div class="ln"><b>Online</b>&nbsp; ${esc(data.pay.online)}</div>` : ""}
-      ${data.pay?.bank ? `<div class="ln"><b>Transfer</b>&nbsp; ${esc([data.pay.bank, data.pay.holder].filter(Boolean).join(" · "))}</div>` : ""}
-      ${data.pay?.acct ? `<div class="ln"><b>Account</b>&nbsp; <span class="mono">${esc(data.pay.acct)}</span></div>` : ""}
+      <div class="plabel">${esc(L.standard.payment)}</div>
+      ${data.pay?.online ? `<div class="ln"><b>${esc(L.standard.online)}</b>&nbsp; ${esc(data.pay.online)}</div>` : ""}
+      ${data.pay?.bank ? `<div class="ln"><b>${esc(L.standard.transfer)}</b>&nbsp; ${esc([data.pay.bank, data.pay.holder].filter(Boolean).join(" · "))}</div>` : ""}
+      ${data.pay?.acct ? `<div class="ln"><b>${esc(L.standard.account)}</b>&nbsp; <span class="mono">${esc(data.pay.acct)}</span></div>` : ""}
     </div>
     <div class="accept">
-      <div class="plabel">${data.kind === "quotation" ? "Acceptance" : "Notes"}</div>
+      <div class="plabel">${esc(data.kind === "quotation" ? L.standard.acceptance : L.standard.notes)}</div>
       <div class="ln" style="font-size:10.5px;line-height:1.55">${
-        data.kind === "quotation"
-          ? "Approve this quotation to begin. A deposit invoice follows on acceptance."
-          : "Thank you. Payment is due by the date shown above."
+        esc(data.kind === "quotation" ? L.standard.acceptText : L.standard.thanksText)
       }</div>
-      ${data.kind === "quotation" ? `<div class="sign">Signature&nbsp;·&nbsp;Date</div>` : ""}
+      ${data.kind === "quotation" ? `<div class="sign">${esc(L.standard.signature).replace(/ · /g, "&nbsp;·&nbsp;")}</div>` : ""}
     </div>
   </div>
 
-  ${creditHTML(data)}
+  ${creditHTML(data, L)}
   `;
 }
 
@@ -714,7 +848,8 @@ function renderStandard(data: DocumentData): string {
 
 function renderDetailed(data: DocumentData): string {
   const cur = data.currency;
-  const parts: string[] = [headHTML(data), `<div class="rule"></div>`];
+  const L = strings(data.locale);
+  const parts: string[] = [headHTML(data, L), `<div class="rule"></div>`];
 
   // Hero — quotation opens with who it's for (name, company, email, phone —
   // any null line skipped) under the "Prepared for" eyebrow, then the project
@@ -732,7 +867,7 @@ function renderDetailed(data: DocumentData): string {
         </div>`
       : "";
     parts.push(`<div class="hero">
-      <div class="eyebrow">Prepared for</div>
+      <div class="eyebrow">${esc(L.parties.preparedFor)}</div>
       ${clientBlock}
       <div class="title">${esc(data.project)}</div>
       ${data.subtitle ? `<div class="subtitle">${esc(data.subtitle)}</div>` : ""}
@@ -742,12 +877,12 @@ function renderDetailed(data: DocumentData): string {
     const addr = esc(data.client.address).replace(/\n/g, "<br>");
     parts.push(`<div class="parties" style="margin-top:20px">
       <div class="party">
-        <div class="plabel">Bill to</div>
+        <div class="plabel">${esc(L.parties.billTo)}</div>
         <div class="pname">${esc(data.client.name)}</div>
         <div class="pln">${[esc(data.client.attn), addr, esc(data.client.email), esc(data.client.company)].filter(Boolean).join("<br>")}</div>
       </div>
       <div class="party">
-        <div class="plabel">Project</div>
+        <div class="plabel">${esc(L.parties.project)}</div>
         <div class="pname">${esc(data.project)}</div>
         ${data.subtitle ? `<div class="pln">${esc(data.subtitle)}</div>` : ""}
       </div>
@@ -756,7 +891,7 @@ function renderDetailed(data: DocumentData): string {
   }
 
   // Sections (packages)
-  for (const sec of data.sections ?? []) parts.push(sectionHTML(sec, cur));
+  for (const sec of data.sections ?? []) parts.push(sectionHTML(sec, cur, L));
 
   // "What's included" bullet groups
   for (const inc of data.included ?? [])
@@ -766,14 +901,14 @@ function renderDetailed(data: DocumentData): string {
   if (data.options) {
     const cards = data.options.cards.map((c) => optionCardHTML(c, cur)).join("");
     parts.push(`<div class="opts-block">
-      <div class="opts-h">${sectionHeaderHTML(data.options.title ?? "Package options", data.options.promo)}</div>
+      <div class="opts-h">${sectionHeaderHTML(data.options.title ?? L.sections.packageOptions, data.options.promo)}</div>
       <div class="opts">${cards}</div>
     </div>`);
   }
 
   // Care & hosting
   if (data.care) {
-    const headers = data.care.headers ?? ["Plan", "Detail", "Price"];
+    const headers = data.care.headers ?? [L.columns.plan, L.columns.detail, L.columns.price];
     const rows: DetailRow[] = data.care.rows.map((r) => ({
       title: r.label,
       detail: r.detail,
@@ -790,19 +925,19 @@ function renderDetailed(data: DocumentData): string {
 
   // What you provide
   if (data.provide)
-    parts.push(`<div class="sec">${sectionHeaderHTML(data.provide.title ?? "What you provide")}${bulletHTML(data.provide)}</div>`);
+    parts.push(`<div class="sec">${sectionHeaderHTML(data.provide.title ?? L.sections.provide)}${bulletHTML(data.provide)}</div>`);
 
   // Not included
   if (data.notIncluded)
-    parts.push(`<div class="sec">${sectionHeaderHTML(data.notIncluded.title ?? "Not included in this version")}${bulletHTML(data.notIncluded)}</div>`);
+    parts.push(`<div class="sec">${sectionHeaderHTML(data.notIncluded.title ?? L.sections.notIncluded)}${bulletHTML(data.notIncluded)}</div>`);
 
   // Timeline
   if (data.timeline)
-    parts.push(`<div class="sec">${sectionHeaderHTML(data.timeline.title ?? "Timeline")}<div class="para">${esc(data.timeline.text)}</div></div>`);
+    parts.push(`<div class="sec">${sectionHeaderHTML(data.timeline.title ?? L.sections.timeline)}<div class="para">${esc(data.timeline.text)}</div></div>`);
 
   // Payment terms
   if (data.paymentTerms)
-    parts.push(`<div class="sec">${sectionHeaderHTML(data.paymentTerms.title ?? "Payment terms")}${bulletHTML({ items: data.paymentTerms.items })}</div>`);
+    parts.push(`<div class="sec">${sectionHeaderHTML(data.paymentTerms.title ?? L.sections.paymentTerms)}${bulletHTML({ items: data.paymentTerms.items })}</div>`);
 
   // Display switches hide at RENDER time: the payload keeps every row and
   // panel (amount_total is derived from the summary rows), and hidden parts are
@@ -827,27 +962,29 @@ function renderDetailed(data: DocumentData): string {
         return `<div class="sum-row ${cls}"><span class="l">${esc(r.label)}</span><span class="v">${priceCell(r, cur)}</span></div>`;
       })
       .join("");
-    parts.push(`<div class="sec">${sectionHeaderHTML(data.summary.title ?? "Summary")}<div class="sum">${rows}</div></div>`);
+    parts.push(`<div class="sec">${sectionHeaderHTML(data.summary.title ?? L.sections.summary)}<div class="sum">${rows}</div></div>`);
   }
 
-  // Deposit / balance panels. billingFor fills the right half of the accent
-  // (amount-due) panel.
+  // Deposit / balance panels. A quotation's cards live INSIDE its titled
+  // Payment plan section (one container: heading, summary line, cards, rows,
+  // schedule — instalment / partner on their own page, lump sum inline).
+  // Invoices / receipts render the panels here, with billingFor filling the
+  // right half of the accent (amount-due) panel.
   const panels = (data.panels ?? []).filter(
     (p) => showRemaining || p.role !== "balance",
   );
-  if (panels.length)
-    parts.push(`<div class="panels">${panels.map((p) => panelHTML(p, cur, p.accent ? data.billingFor : undefined)).join("")}</div>`);
-
-  // Payment plan (instalment / partner quotations) — the dated schedule under
-  // the deposit / monthly panels it explains.
-  if (data.paymentPlan) parts.push(paymentPlanHTML(data.paymentPlan, cur));
+  if (data.paymentPlan) {
+    parts.push(paymentPlanHTML(data.paymentPlan, cur, data.locale, panels));
+  } else if (panels.length) {
+    parts.push(`<div class="panels">${panels.map((p) => panelHTML(p, cur, L, p.accent ? data.billingFor : undefined)).join("")}</div>`);
+  }
 
   // Scope covered — what this bill pays for, before the payment instructions.
   if (data.scope?.items?.length)
-    parts.push(`<div class="sec">${sectionHeaderHTML(data.scope.title || "Scope covered")}${bulletHTML(data.scope)}</div>`);
+    parts.push(`<div class="sec">${sectionHeaderHTML(data.scope.title || L.sections.scopeCovered)}${bulletHTML(data.scope)}</div>`);
 
   // How to pay — invoices only, directly under the amount-due panel it refers to.
-  if (data.kind === "invoice") parts.push(payBlockHTML(data));
+  if (data.kind === "invoice") parts.push(payBlockHTML(data, L));
 
   // Bottom notes. Frozen invoice/receipt payloads may carry the admin's
   // free-text notes as a plain string — normalize to NoteLine[] before mapping.
@@ -860,7 +997,7 @@ function renderDetailed(data: DocumentData): string {
   if (notes.length)
     parts.push(`<div class="notes">${notes.map((n) => `<div class="n">${n.label ? `<b>${esc(n.label)}</b> ` : ""}${esc(n.text)}</div>`).join("")}</div>`);
 
-  parts.push(creditHTML(data));
+  parts.push(creditHTML(data, L));
   return parts.join("\n");
 }
 
@@ -874,11 +1011,15 @@ export function renderDocumentHTML(data: DocumentData): string {
   const body =
     data.layout === "detailed" ? renderDetailed(data) : renderStandard(data);
 
-  // Running page-foot identity line (left side; page numbers come from @page).
-  const pgfootL = [data.studio.name, data.studio.tagline, data.number]
+  // Running page-foot identity line (left side): studio · SSM No · number —
+  // the SSM number from the renderer's identity (never a frozen payload), the
+  // label from the locale file. The localized "Page x of y" words sit on the
+  // right; the counters come from @page.
+  const L = strings(data.locale);
+  const pgfootL = [data.studio.name, fmt(L.page.ssm, { ssm: STUDIO_IDENTITY.ssm }), data.number]
     .filter(Boolean)
     .join("  ·  ");
-  const rootVar = `:root{--pgfoot-l:"${cssStr(pgfootL)}";}`;
+  const rootVar = `:root{--pgfoot-l:"${cssStr(pgfootL)}";--pg-page:"${cssStr(L.page.page)}";--pg-of:"${cssStr(L.page.of)}";}`;
 
   // Document <title> → becomes the PDF's /Title metadata (Chromium embeds the page
   // title when printing). Without it the page renders as about:blank and the PDF

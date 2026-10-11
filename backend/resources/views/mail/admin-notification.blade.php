@@ -11,7 +11,7 @@ A new lead has been submitted via the quote builder.
 | **Phone** | {{ $quote->phone }} |
 | **Company** | {{ $quote->company ?: '—' }} |
 | **Package** | `{{ $quote->form_payload['package_key'] ?? '—' }}` |
-| **Estimate** | RM {{ number_format($quote->estimate_min_myr) }} – RM {{ number_format($quote->estimate_max_myr) }} |
+| **Estimate** | RM {{ number_format($quote->estimate_min_myr, 2) }} – RM {{ number_format($quote->estimate_max_myr, 2) }} |
 | **Timeline** | {{ $quote->eta_label }} |
 | **Submitted** | {{ $quote->submitted_at->format('d M Y, H:i') }} |
 

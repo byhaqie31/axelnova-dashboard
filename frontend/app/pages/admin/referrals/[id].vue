@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -235,10 +236,6 @@ function fmtDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-function fmtMyrExact(amount: string | number | null) {
-  return `RM ${Number(amount ?? 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
 // Manual triage stages. draft/converted are lifecycle-driven (tie/quote → draft,
 // deposit collected → converted), so they aren't manual buttons.
 const statusOptions = ['new', 'contacted', 'qualified', 'rejected']
@@ -310,11 +307,11 @@ v-if="referral.commission_email_sent_at" class="inline-flex items-center gap-1 t
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Contract</p>
-              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(referral.contract_myr) }}</p>
+              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">{{ formatMyr(referral.contract_myr) }}</p>
             </div>
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Collected</p>
-              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyrExact(referral.collected_myr) }}</p>
+              <p class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">{{ formatMyr(referral.collected_myr) }}</p>
             </div>
             <div>
               <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Rate</p>
@@ -325,7 +322,7 @@ v-if="referral.commission_email_sent_at" class="inline-flex items-center gap-1 t
                 {{ referral.status === 'converted' ? 'Earned' : 'Estimated' }}
               </p>
               <p class="text-[15px] font-bold tabular-nums" style="color: var(--color-accent);">
-                {{ referral.status === 'converted' ? fmtMyrExact(referral.earned_myr) : fmtMyrExact(referral.estimated_myr) }}
+                {{ referral.status === 'converted' ? formatMyr(referral.earned_myr) : formatMyr(referral.estimated_myr) }}
               </p>
             </div>
           </div>

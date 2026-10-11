@@ -62,6 +62,62 @@ const varianceMyr = computed(() => variance(props.total, plan.value, depositDue.
 const reconciles = computed(() => Math.abs(varianceMyr.value) < 0.005)
 const showSchedule = ref(false)
 
+const partnerPlan = computed(() => plan.value.payment_plan === 'partner')
+const monthlyMyr = computed(() => Number(plan.value.instalment_amount_myr) || 0)
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+// The three summary cards: what's paid up front, the monthly run, the plan total.
+const planCards = computed(() => [
+  {
+    key: 'upfront',
+    label: partnerPlan.value ? 'Setup fee' : 'Deposit',
+    meta: 'On acceptance',
+    amount: `RM ${fmtRm(depositDue.value)}`,
+    tone: 'text',
+  },
+  {
+    key: 'monthly',
+    label: partnerPlan.value ? 'Monthly fee' : 'Monthly instalment',
+    meta: dates.value.length
+      ? `${months.value} × · ${fmtYmd(dates.value[0]!)} → ${fmtYmd(dates.value[dates.value.length - 1]!)}`
+      : `${months.value} × · set a first date`,
+    amount: `RM ${fmtRm(monthlyMyr.value)}`,
+    tone: 'text',
+  },
+  {
+    key: 'total',
+    label: 'Plan total',
+    meta: `${partnerPlan.value ? 'Setup' : 'Deposit'} + ${months.value} × monthly`,
+    amount: `RM ${fmtRm(planTotalMyr.value)}`,
+    tone: props.total > 0 && !reconciles.value ? 'danger' : 'success',
+  },
+])
+
+// One vertical schedule: the up-front payment, then every instalment, each with
+// the balance still owed on the plan total once it is paid.
+const scheduleRows = computed(() => {
+  const total = planTotalMyr.value
+  let paid = depositDue.value
+  const rows = [{
+    key: 'upfront',
+    label: partnerPlan.value ? 'Setup fee' : 'Deposit',
+    due: 'On acceptance',
+    amount: depositDue.value,
+    remaining: Math.max(round2(total - paid), 0),
+  }]
+  dates.value.forEach((d, i) => {
+    paid += monthlyMyr.value
+    rows.push({
+      key: `${d}-${i}`,
+      label: `${partnerPlan.value ? 'Month' : 'Instalment'} ${i + 1}`,
+      due: fmtYmd(d),
+      amount: monthlyMyr.value,
+      remaining: Math.max(round2(total - paid), 0),
+    })
+  })
+  return rows
+})
+
 // Partner defaults to 24 months — prefill so the figure is visible, not implied.
 watch(() => plan.value.payment_plan, (p) => {
   if (p === 'partner' && !plan.value.instalment_months) plan.value.instalment_months = PARTNER_DEFAULT_MONTHS
@@ -159,32 +215,70 @@ const fieldStyle = { borderColor: 'var(--color-border)', color: 'var(--color-tex
           <input v-model="plan.includes_care_plan" type="checkbox"> Monthly figure includes the care plan
         </label>
 
-        <!-- Derived: schedule span + reconciliation against the quotation total -->
-        <div class="rounded-xl border px-4 py-3 space-y-2" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
-          <div class="flex items-start justify-between gap-3 flex-wrap text-[12px]">
-            <p class="tabular-nums" style="color: var(--color-text);">
-              <span class="font-medium">RM {{ fmtRm(depositDue) }}</span>
-              <span style="color: var(--color-text-tertiary);"> {{ plan.payment_plan === 'partner' ? 'setup' : 'deposit' }} + </span>
-              <span class="font-medium">{{ months }} × RM {{ fmtRm(Number(plan.instalment_amount_myr) || 0) }}</span>
-              <span v-if="dates.length" style="color: var(--color-text-tertiary);"> · {{ fmtYmd(dates[0]!) }} → {{ fmtYmd(dates[dates.length - 1]!) }}</span>
-              <span v-else style="color: var(--color-text-tertiary);"> · set a first date to see the schedule</span>
-            </p>
-            <button v-if="dates.length" type="button" class="text-[12px] font-medium shrink-0" style="color: var(--color-accent);" @click="showSchedule = !showSchedule">
-              {{ showSchedule ? 'Hide schedule' : 'Show schedule' }}
-            </button>
+        <!-- Derived: up-front / monthly / plan-total cards, reconciliation, then the schedule -->
+        <div class="rounded-xl border p-4 max-md:p-3 space-y-3" :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
+          <div class="grid sm:grid-cols-3 gap-2.5">
+            <div
+              v-for="c in planCards" :key="c.key"
+              class="rounded-lg border px-3.5 py-3 flex flex-col gap-1 min-w-0"
+              :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }"
+            >
+              <span class="d-label">{{ c.label }}</span>
+              <span
+                class="text-[17px] font-semibold tabular-nums tracking-tight"
+                :style="{ color: c.tone === 'danger' ? 'var(--color-danger)' : c.tone === 'success' ? 'var(--color-success)' : 'var(--color-text)' }"
+              >{{ c.amount }}<span v-if="c.key === 'monthly'" class="text-[11px] font-normal" style="color: var(--color-text-tertiary);"> / month</span></span>
+              <span class="text-[11px] tabular-nums truncate" style="color: var(--color-text-tertiary);" :title="c.meta">{{ c.meta }}</span>
+            </div>
           </div>
-          <p class="text-[12px] tabular-nums flex items-center gap-1.5" :style="{ color: reconciles ? 'var(--color-success)' : 'var(--color-danger)' }">
-            <UIcon :name="reconciles ? 'i-lucide-circle-check' : 'i-lucide-triangle-alert'" class="size-3.5 shrink-0" />
-            <template v-if="props.total <= 0">Plan total RM {{ fmtRm(planTotalMyr) }} — add line items to reconcile.</template>
-            <template v-else-if="reconciles">Plan total RM {{ fmtRm(planTotalMyr) }} matches the quotation total.</template>
-            <template v-else>Plan total RM {{ fmtRm(planTotalMyr) }} is RM {{ fmtRm(Math.abs(varianceMyr)) }} {{ varianceMyr < 0 ? 'over' : 'under' }} the quotation total (RM {{ fmtRm(props.total) }}). Fine if you rounded the monthly figure on purpose — the PDF prints the plan total.</template>
+
+          <p class="text-[12px] tabular-nums flex items-start gap-1.5" :style="{ color: reconciles ? 'var(--color-success)' : 'var(--color-danger)' }">
+            <UIcon :name="reconciles ? 'i-lucide-circle-check' : 'i-lucide-triangle-alert'" class="size-3.5 shrink-0 mt-px" />
+            <span>
+              <template v-if="props.total <= 0">Add line items to reconcile the plan total.</template>
+              <template v-else-if="reconciles">Plan total matches the quotation total.</template>
+              <template v-else>Plan total is RM {{ fmtRm(Math.abs(varianceMyr)) }} {{ varianceMyr < 0 ? 'over' : 'under' }} the quotation total (RM {{ fmtRm(props.total) }}). Fine if you rounded the monthly figure on purpose — the PDF prints the plan total.</template>
+            </span>
           </p>
-          <ol v-if="showSchedule && dates.length" class="grid sm:grid-cols-2 gap-x-6 gap-y-1 pt-1 text-[12px] tabular-nums" style="color: var(--color-text-secondary);">
-            <li v-for="(d, i) in dates" :key="d" class="flex justify-between gap-3">
-              <span><span style="color: var(--color-text-tertiary);">{{ i + 1 }}.</span> {{ fmtYmd(d) }}</span>
-              <span>RM {{ fmtRm(Number(plan.instalment_amount_myr) || 0) }}</span>
-            </li>
-          </ol>
+
+          <div v-if="dates.length" class="pt-1 border-t" :style="{ borderColor: 'var(--color-border)' }">
+            <button
+              type="button"
+              class="mt-2 inline-flex items-center gap-1.5 text-[12px] max-md:text-[13px] max-md:py-1.5 font-medium"
+              style="color: var(--color-accent);"
+              :aria-expanded="showSchedule"
+              @click="showSchedule = !showSchedule"
+            >
+              <UIcon :name="showSchedule ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3.5" />
+              {{ showSchedule ? 'Hide schedule' : `Show schedule (${scheduleRows.length} payments)` }}
+            </button>
+
+            <div v-if="showSchedule" data-lenis-prevent class="mt-2 max-h-[22rem] overflow-y-auto overscroll-contain rounded-lg border" :style="{ borderColor: 'var(--color-border)' }">
+              <table class="w-full text-[12px] tabular-nums">
+                <thead class="sticky top-0" :style="{ background: 'var(--color-bg-elevated)' }">
+                  <!-- Not .d-label: its display:block would pull each <th> out of the table row. -->
+                  <tr class="text-left text-[10px] font-semibold uppercase tracking-wide" style="color: var(--color-text-tertiary);">
+                    <th class="px-3 py-2 font-semibold">Payment</th>
+                    <th class="px-3 py-2 font-semibold">Due</th>
+                    <th class="px-3 py-2 font-semibold text-right">Amount</th>
+                    <th class="px-3 py-2 font-semibold text-right">Balance after</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="r in scheduleRows" :key="r.key"
+                    class="border-t" :style="{ borderColor: 'var(--color-border)' }"
+                  >
+                    <td class="px-3 py-1.5 whitespace-nowrap" :style="{ color: r.key === 'upfront' ? 'var(--color-text)' : 'var(--color-text-secondary)', fontWeight: r.key === 'upfront' ? 500 : 400 }">{{ r.label }}</td>
+                    <td class="px-3 py-1.5 whitespace-nowrap" style="color: var(--color-text-secondary);">{{ r.due }}</td>
+                    <td class="px-3 py-1.5 text-right whitespace-nowrap" style="color: var(--color-text);">RM {{ fmtRm(r.amount) }}</td>
+                    <td class="px-3 py-1.5 text-right whitespace-nowrap" :style="{ color: r.remaining > 0 ? 'var(--color-text-tertiary)' : 'var(--color-success)' }">{{ r.remaining > 0 ? `RM ${fmtRm(r.remaining)}` : 'Paid off' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p v-else class="text-[11px]" style="color: var(--color-text-tertiary);">Set the first {{ partnerPlan ? 'payment' : 'instalment' }} date to see the schedule.</p>
         </div>
       </template>
     </div>

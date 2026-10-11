@@ -8,7 +8,7 @@ Here's the estimate for your project, based on what you submitted on the quote b
 | | |
 |---|---|
 | **Reference** | `{{ $quote->reference_code }}` |
-| **Estimated Investment** | RM {{ number_format($quote->estimate_min_myr) }} – RM {{ number_format($quote->estimate_max_myr) }} |
+| **Estimated Investment** | RM {{ number_format($quote->estimate_min_myr, 2) }} – RM {{ number_format($quote->estimate_max_myr, 2) }} |
 | **Estimated Timeline** | {{ $quote->eta_label }} |
 | **Valid Until** | {{ $validUntil }} |
 
@@ -28,7 +28,7 @@ Download your quotation (PDF)
 ## What's included
 
 @foreach($breakdown as $item)
-- **{{ $item[0] ?? '' }}** — RM {{ number_format($item[1] ?? 0) }} – RM {{ number_format($item[2] ?? 0) }}
+- **{{ $item[0] ?? '' }}** — RM {{ number_format($item[1] ?? 0, 2) }} – RM {{ number_format($item[2] ?? 0, 2) }}
 @endforeach
 @endif
 
@@ -36,7 +36,7 @@ Download your quotation (PDF)
 ## Add-ons selected
 
 @foreach($quote->addons as $addon)
-- **{{ $addon->addon_label }}** — RM {{ number_format($addon->amount_myr) }}
+- **{{ $addon->addon_label }}** — RM {{ number_format($addon->amount_myr, 2) }}
 @endforeach
 @endif
 

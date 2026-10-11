@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Right-side slide-over for creating / editing a category scope field. Opens over
 // the category page (no navigation) — lighter + faster than a separate route.
 
@@ -233,7 +234,7 @@ v-for="t in types" :key="t.value" type="button" class="flex flex-col items-cente
               <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">Free up to</label><input v-model.number="form.s_free_threshold" type="number" min="0" class="contact-input w-full" :style="fieldStyle" ></div>
               <div><label class="text-[11px] block mb-1" :style="{ color: 'var(--color-text-secondary)' }">RM / extra</label><input v-model.number="form.s_price_per_unit" type="number" min="0" step="50" class="contact-input w-full" :style="fieldStyle" ></div>
             </div>
-            <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">First {{ form.s_free_threshold }} {{ form.s_unit || 'unit' }}(s) free; each beyond adds RM {{ form.s_price_per_unit || 0 }}. Set RM/extra to 0 to capture scope without pricing.</p>
+            <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">First {{ form.s_free_threshold }} {{ form.s_unit || 'unit' }}(s) free; each beyond adds {{ formatMyr(form.s_price_per_unit) }}. Set RM/extra to 0 to capture scope without pricing.</p>
           </div>
 
           <!-- Toggle config -->

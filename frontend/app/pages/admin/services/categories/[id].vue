@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 import { serviceIcons } from '~/data/serviceIcons'
 import ScopeFieldModal from '~/components/admin/ScopeFieldModal.vue'
 
@@ -107,7 +108,7 @@ async function deleteField(f: ScopeFieldRow) {
 }
 
 function fieldPriceSummary(f: ScopeFieldRow): string {
-  const rm = (n: number) => `+RM ${Math.round(n).toLocaleString('en-US')}`
+  const rm = (n: number) => `+${formatMyr(n)}`
   if (f.type === 'slider') {
     const p = Number(f.config.price_per_unit || 0)
     return p > 0 ? `${rm(p)} / ${f.config.unit || 'unit'} over ${f.config.free_threshold ?? 0}` : 'No charge'

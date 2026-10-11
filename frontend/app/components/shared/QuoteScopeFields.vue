@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 import type { EstimateResult, ScopeField } from '~/composables/usePricingEngine'
 import type { QuoteScopeState, ScopeValue } from '~/composables/quoteScope'
 import { seedScopeDefaults } from '~/composables/quoteScope'
@@ -21,7 +22,7 @@ const emit = defineEmits<{
   'update:scopeValues': [value: Record<string, ScopeValue>]
 }>()
 
-const { config, configLoading, configError, loadConfig, calculate, fmtMyrExact } = usePricingEngine()
+const { config, configLoading, configError, loadConfig, calculate } = usePricingEngine()
 
 onMounted(loadConfig)
 
@@ -113,7 +114,7 @@ class="text-[13px] font-semibold mb-0.5"
               </p>
               <p class="text-[11px]" style="color: var(--color-text-tertiary);">{{ pkg.tagline }}</p>
               <p v-if="config && config.base_packages[pkg.key]" class="text-[11px] mt-2 font-medium" style="color: var(--color-text-secondary);">
-                from {{ fmtMyrExact(config.base_packages[pkg.key]?.min ?? 0) }}
+                from {{ formatMyr(config.base_packages[pkg.key]?.min ?? 0) }}
               </p>
             </button>
           </div>
@@ -188,7 +189,7 @@ class="text-[13px] font-medium"
             <p
 class="text-[12px] font-semibold shrink-0 ml-3"
               :style="{ color: state.addonKeys.includes(key) ? 'var(--color-accent)' : 'var(--color-text-secondary)' }">
-              +{{ fmtMyrExact(addon.amount) }}
+              +{{ formatMyr(addon.amount) }}
             </p>
           </button>
         </div>

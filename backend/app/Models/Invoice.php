@@ -24,6 +24,7 @@ class Invoice extends Model
         'invoice_number',
         'public_token',
         'type',
+        'instalment_no',
         'payload',
         'inputs',
         'amount_total',
@@ -43,6 +44,7 @@ class Invoice extends Model
         return [
             'payload' => 'array',
             'inputs' => 'array',
+            'instalment_no' => 'integer',
             'amount_total' => 'decimal:2',
             'amount_paid' => 'decimal:2',
             'issued_at' => 'datetime',

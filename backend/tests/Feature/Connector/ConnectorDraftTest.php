@@ -296,7 +296,7 @@ class ConnectorDraftTest extends TestCase
         $this->assertContains(600, array_map('intval', array_column($doc['items'], 'rate'))); // seo, exact
         // created_via + the midpoint assumption survive on the document.
         $this->assertSame('mcp_connector', $doc['created_via']);
-        $this->assertStringContainsString('midpoint RM 2,000', $doc['assumptions'][0]);
+        $this->assertStringContainsString('midpoint RM 2,000.00', $doc['assumptions'][0]);
 
         // Canonical form_payload carries packages[] with a resolved service_package_id.
         $this->assertCount(1, $q->form_payload['packages']);

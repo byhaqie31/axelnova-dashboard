@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -151,7 +152,7 @@ v-model.number="form.amount_myr" type="number" min="0" step="50" required
           class="contact-input w-full"
           :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" >
         <p v-if="errors.amount_myr?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.amount_myr[0] }}</p>
-        <p v-else class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Added to the quote total when selected (shown as “+RM {{ form.amount_myr || 0 }}”).</p>
+        <p v-else class="mt-1 text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">Added to the quote total when selected (shown as “+{{ formatMyr(form.amount_myr) }}”).</p>
       </div>
 
       <div>

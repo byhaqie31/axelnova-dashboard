@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
@@ -51,15 +52,12 @@ async function fetchRevenue() {
 onMounted(fetchRevenue)
 watch(months, fetchRevenue)
 
-const myr = new Intl.NumberFormat('en-MY', {
+// Whole-ringgit, for the chart's scale ceiling only — an axis label, not an
+// amount. Every figure (tiles, tooltips, table) uses the house formatMyr.
+const myrScale = new Intl.NumberFormat('en-MY', {
   style: 'currency',
   currency: 'MYR',
   maximumFractionDigits: 0,
-})
-const myrExact = new Intl.NumberFormat('en-MY', {
-  style: 'currency',
-  currency: 'MYR',
-  minimumFractionDigits: 2,
 })
 
 // Both series share one scale — they're the same unit (MYR), so a second y-axis
@@ -147,7 +145,7 @@ const tiles = computed(() => [
         </div>
         <p class="text-[26px] max-md:text-[19px] font-bold tracking-tight tabular-nums leading-none max-md:break-words" style="color: var(--color-text);">
           <span v-if="loading" class="opacity-40">—</span>
-          <span v-else>{{ myr.format(t.value ?? 0) }}</span>
+          <span v-else>{{ formatMyr(t.value ?? 0) }}</span>
         </p>
         <p class="text-[11px] mt-2" style="color: var(--color-text-secondary);">{{ t.hint }}</p>
       </section>
@@ -192,7 +190,7 @@ const tiles = computed(() => [
       <div v-else class="relative">
         <!-- Scale ceiling, kept recessive — the table below carries exact figures. -->
         <div class="flex justify-between items-center mb-1">
-          <span class="text-[10px] tabular-nums" style="color: var(--color-text-tertiary);">{{ myr.format(scaleMax) }}</span>
+          <span class="text-[10px] tabular-nums" style="color: var(--color-text-tertiary);">{{ myrScale.format(scaleMax) }}</span>
         </div>
         <div
           class="flex items-end gap-1 h-56 border-t border-b"
@@ -226,15 +224,15 @@ const tiles = computed(() => [
               <p class="text-[11px] flex items-center gap-1.5" style="color: var(--color-text-secondary);">
                 <span class="size-2 rounded-[2px]" :style="{ background: 'var(--chart-secondary)' }" />
                 Booked
-                <span class="tabular-nums font-medium ml-1" style="color: var(--color-text);">{{ myrExact.format(row.booked) }}</span>
+                <span class="tabular-nums font-medium ml-1" style="color: var(--color-text);">{{ formatMyr(row.booked) }}</span>
               </p>
               <p class="text-[11px] flex items-center gap-1.5 mt-0.5" style="color: var(--color-text-secondary);">
                 <span class="size-2 rounded-[2px]" :style="{ background: 'var(--chart-primary)' }" />
                 Collected
-                <span class="tabular-nums font-medium ml-1" style="color: var(--color-text);">{{ myrExact.format(row.collected) }}</span>
+                <span class="tabular-nums font-medium ml-1" style="color: var(--color-text);">{{ formatMyr(row.collected) }}</span>
               </p>
               <p v-if="row.refunded > 0" class="text-[11px] mt-0.5" style="color: var(--color-danger);">
-                Refunded {{ myrExact.format(row.refunded) }}
+                Refunded {{ formatMyr(row.refunded) }}
               </p>
             </div>
           </div>
@@ -293,12 +291,12 @@ const tiles = computed(() => [
                     :style="{ color: 'var(--color-text-tertiary)', opacity: hovered === index ? 1 : 0 }" />
                 </span>
               </td>
-              <td class="px-5 py-3 text-right tabular-nums" style="color: var(--color-text);">{{ myrExact.format(row.booked) }}</td>
-              <td class="px-5 py-3 text-right tabular-nums" style="color: var(--color-text);">{{ myrExact.format(row.collected) }}</td>
+              <td class="px-5 py-3 text-right tabular-nums" style="color: var(--color-text);">{{ formatMyr(row.booked) }}</td>
+              <td class="px-5 py-3 text-right tabular-nums" style="color: var(--color-text);">{{ formatMyr(row.collected) }}</td>
               <td
                 class="px-5 py-3 text-right tabular-nums"
                 :style="{ color: row.collected - row.booked < 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }"
-              >{{ row.collected - row.booked >= 0 ? '+' : '' }}{{ myrExact.format(row.collected - row.booked) }}</td>
+              >{{ row.collected - row.booked >= 0 ? '+' : '' }}{{ formatMyr(row.collected - row.booked) }}</td>
               <td class="px-5 py-3 text-right tabular-nums" style="color: var(--color-text-secondary);">{{ row.orders }}</td>
               <td class="px-5 py-3 text-right tabular-nums" style="color: var(--color-text-secondary);">{{ row.payments }}</td>
             </tr>
@@ -327,20 +325,20 @@ const tiles = computed(() => [
             <p class="text-[11px] flex items-center gap-1.5" :style="{ color: 'var(--color-text-tertiary)' }">
               <span class="size-2 rounded-[2px] shrink-0" :style="{ background: 'var(--chart-secondary)' }" />Booked
             </p>
-            <p class="text-[13px] font-semibold tabular-nums break-words" :style="{ color: 'var(--color-text)' }">{{ myrExact.format(row.booked) }}</p>
+            <p class="text-[13px] font-semibold tabular-nums break-words" :style="{ color: 'var(--color-text)' }">{{ formatMyr(row.booked) }}</p>
           </div>
           <div class="min-w-0">
             <p class="text-[11px] flex items-center gap-1.5" :style="{ color: 'var(--color-text-tertiary)' }">
               <span class="size-2 rounded-[2px] shrink-0" :style="{ background: 'var(--chart-primary)' }" />Collected
             </p>
-            <p class="text-[13px] font-semibold tabular-nums break-words" :style="{ color: 'var(--color-text)' }">{{ myrExact.format(row.collected) }}</p>
+            <p class="text-[13px] font-semibold tabular-nums break-words" :style="{ color: 'var(--color-text)' }">{{ formatMyr(row.collected) }}</p>
           </div>
         </div>
         <div class="flex items-center justify-between gap-3 pt-2 mt-3 border-t text-[11px]" :style="{ borderColor: 'var(--color-border)' }">
           <span
             class="tabular-nums min-w-0"
             :style="{ color: row.collected - row.booked < 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }"
-          >{{ row.collected - row.booked >= 0 ? '+' : '' }}{{ myrExact.format(row.collected - row.booked) }}</span>
+          >{{ row.collected - row.booked >= 0 ? '+' : '' }}{{ formatMyr(row.collected - row.booked) }}</span>
           <span class="tabular-nums shrink-0" :style="{ color: 'var(--color-text-secondary)' }">{{ row.orders }} orders · {{ row.payments }} payments</span>
         </div>
       </button>

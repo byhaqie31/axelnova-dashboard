@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Referrer-only (Task 9): earnings detail — the earned/estimated totals, the
 // commission tier bands, and a per-referral commission breakdown, split out of
 // the old single portal page.
@@ -47,12 +48,12 @@ const tierLabels: Record<string, string> = {
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }">
         <p class="text-[12px] font-medium mb-1.5" style="color: var(--color-text-tertiary);">Earned (collected)</p>
-        <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-success);">{{ myr(data.stats.earned_myr) }}</p>
+        <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-success);">{{ formatMyr(data.stats.earned_myr) }}</p>
         <p class="text-[12px] mt-1" style="color: var(--color-text-secondary);">Your share of what converted clients have already paid.</p>
       </div>
       <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }">
         <p class="text-[12px] font-medium mb-1.5" style="color: var(--color-text-tertiary);">Estimated</p>
-        <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-text);">{{ myr(data.stats.estimated_myr) }}</p>
+        <p class="text-[26px] font-bold tracking-tight" style="color: var(--color-text);">{{ formatMyr(data.stats.estimated_myr) }}</p>
         <p class="text-[12px] mt-1" style="color: var(--color-text-secondary);">What's still to come as remaining contract value is collected.</p>
       </div>
     </div>
@@ -63,7 +64,7 @@ const tierLabels: Record<string, string> = {
       <p class="text-[12px] mb-4" style="color: var(--color-text-secondary);">
         Each referral earns by how closely you're connected to the business. Your default tier is highlighted;
         individual referrals can sit in a different band. Payouts are capped at
-        {{ myr(data.partner.commission_cap_myr) }} per referral.
+        {{ formatMyr(data.partner.commission_cap_myr) }} per referral.
       </p>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div
@@ -123,7 +124,7 @@ const tierLabels: Record<string, string> = {
             class="text-[14px] font-semibold tabular-nums shrink-0"
             :style="{ color: r.earned_myr != null ? 'var(--color-success)' : 'var(--color-text-tertiary)' }"
           >
-            {{ r.earned_myr != null ? myr(r.earned_myr) : '—' }}
+            {{ r.earned_myr != null ? formatMyr(r.earned_myr) : '—' }}
           </p>
         </div>
       </div>

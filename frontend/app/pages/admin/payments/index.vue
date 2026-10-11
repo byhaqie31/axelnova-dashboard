@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
@@ -123,8 +124,9 @@ function fmtDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 // Signed amount: refunds render as −RM x in the danger tone, never a new colour.
+// Unsigned — callers prefix "−" for refund rows themselves.
 function fmtMyr(amount: string | number) {
-  return `RM ${Math.abs(Number(amount)).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return formatMyr(Math.abs(Number(amount)))
 }
 function methodLabel(v: string) {
   return methodLabels[v] ?? v

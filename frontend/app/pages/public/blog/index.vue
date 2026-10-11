@@ -10,16 +10,6 @@ import { blogFormatLabel, type BlogPostCard } from '~/data/blog'
 
 definePageMeta({ layout: 'public' })
 
-usePublicSeo({
-  title: 'Websites, UX & Business Systems Blog | Axel Nova',
-  description: 'Practical notes from Axel Nova Ventures on websites, UI/UX and custom systems for business owners in Malaysia.',
-  path: '/blog',
-  card: {
-    label: 'BLOG',
-    headline: 'Notes from the workbench.',
-  },
-})
-
 interface ListResponse {
   data: BlogPostCard[]
   meta: { current_page: number, last_page: number, total: number }
@@ -42,6 +32,29 @@ const posts = computed(() => data.value?.data ?? [])
 const formats = computed(() => data.value?.formats ?? [])
 const topics = computed(() => data.value?.topics ?? [])
 const meta = computed(() => data.value?.meta)
+
+// Past the last page is a real 404, not an empty 200 (a "soft 404" to Google).
+// No data at all (backend down) is left alone rather than reported as missing.
+if (meta.value && page.value > meta.value.last_page) {
+  throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true })
+}
+
+// Each archive page is its own canonical so Google keeps following it to the
+// posts it lists — pointing page 2 at /blog tells Google to drop it, leaving
+// older posts reachable only through the sitemap. Filtered views (?format,
+// ?topic) are reshuffles of the same posts and still fold into /blog.
+const archivePage = computed(() => (!format.value && !topic.value && page.value > 1 ? page.value : 1))
+usePublicSeo({
+  title: () => archivePage.value > 1
+    ? `Websites, UX & Business Systems Blog — Page ${archivePage.value} | Axel Nova`
+    : 'Websites, UX & Business Systems Blog | Axel Nova',
+  description: 'Practical notes from Axel Nova Ventures on websites, UI/UX and custom systems for business owners in Malaysia.',
+  path: () => (archivePage.value > 1 ? `/blog?page=${archivePage.value}` : '/blog'),
+  card: {
+    label: 'BLOG',
+    headline: 'Notes from the workbench.',
+  },
+})
 
 function queryFor(f: string, t: string, p = 1) {
   const q: Record<string, string> = {}

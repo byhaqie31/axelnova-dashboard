@@ -323,6 +323,11 @@ class QuotationDraftController extends Controller
             'estimate_eta_value' => $etaValue,
             'estimate_eta_unit' => $etaUnit,
         ];
+        // PDF template language — written only when sent, so an update that
+        // omits it keeps the stored choice (new rows default to en).
+        if (filled($data['locale'] ?? null)) {
+            $attributes['locale'] = $data['locale'];
+        }
 
         $addonKeys = collect($packages)
             ->flatMap(fn (array $p): array => $p['addon_keys'])
@@ -568,6 +573,8 @@ class QuotationDraftController extends Controller
             'status' => $quotation->status,
             'source' => $quotation->source,
             'created_via' => $document['created_via'] ?? $createdVia,
+            // PDF template language (en | bm) — chrome only; the content prints as authored.
+            'locale' => $quotation->locale ?: 'en',
             'last_updated_via' => $rawMeta['last_updated_via'] ?? null,
             'last_updated_at' => $rawMeta['last_updated_at'] ?? null,
             'client' => [

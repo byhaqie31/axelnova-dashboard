@@ -34,8 +34,11 @@ import { authApp } from "./auth";
  * v4.1: detailed.deposit_amount_myr (fixed deposit, wins over deposit_pct) and
  * detailed.payment_plan (lump_sum | instalment | partner) with the instalment
  * fields; get_quotation returns the derived `payment_plan` block.
+ * v4.2: `locale` (en | bm) — the PDF's template-chrome language, settable on
+ * create / update (any mode) and returned by get_quotation. Content is never
+ * translated or language-detected.
  */
-const CONNECTOR_VERSION = "4.1.0";
+const CONNECTOR_VERSION = "4.2.0";
 
 const CATALOG_PATH = "/api/v1/connector/catalog";
 const QUOTATIONS_PATH = "/api/v1/connector/quotations";
@@ -120,6 +123,12 @@ const draftInputShape = {
     .string()
     .optional()
     .describe("A one–two sentence lead-in shown under the project title on the PDF. Optional."),
+  locale: z
+    .enum(["en", "bm"])
+    .optional()
+    .describe(
+      "Language of the PDF's TEMPLATE CHROME only — section headings, table captions, row labels, the footer and the formatted dates. Default en; bm = Bahasa Melayu. Everything you write (project, intro, section / row titles, included items, option cards, care rows) prints exactly as you wrote it in either locale — nothing is translated or detected from the content. On update, omit it to keep the stored choice.",
+    ),
   detailed: z
     .object({
       subtitle: z.string().optional().describe("Short subtitle under the title, e.g. 'Website quotation'."),
@@ -380,6 +389,7 @@ export class AxelNovaMCP extends McpAgent<Env> {
         "For a rich, presentation-grade proposal (grouped scope sections + What's included + option cards + a care plan), pass the `detailed` object INSTEAD — it is self-priced from its section amounts and must not be combined with package_key/packages/line_items.",
         "Deposit: detailed.deposit_pct (whole %) OR detailed.deposit_amount_myr (a fixed ringgit figure — wins over the pct, use it for any agreed round amount). Payment plan: detailed.payment_plan lump_sum (default) | instalment (deposit, then instalment_months × instalment_amount_myr on billing_day from first_instalment_date) | partner (setup fee + monthly × months, default 24). The PDF prints the schedule; the response's payment_plan shows the derived figures and any variance from the section total.",
         "project and intro set the document's title + lead-in on the PDF for any mode.",
+        "locale (en, default | bm) picks the language of the PDF's template chrome (headings, captions, labels, footer, dates) — never of the content, which prints as written. Set bm when the founder wants a Bahasa Melayu document.",
         "Put every guess in assumptions and every unknown in open_questions so the founder can verify them.",
         "Call list_catalog first to get the valid keys. On a validation error, read the returned message — it lists the valid keys — and retry.",
       ].join(" "),

@@ -11,6 +11,12 @@
 
 export type DocumentLayout = "standard" | "detailed";
 export type DocumentKind = "quotation" | "invoice" | "receipt";
+/**
+ * The language of the TEMPLATE CHROME (eyebrows, headings, captions, labels,
+ * footer, formatted dates) — see locales.ts. Never the content, which prints
+ * as authored. Absent = "en" (frozen invoice/receipt payloads predate it).
+ */
+export type DocumentLocale = "en" | "bm";
 
 export interface Studio {
   name: string;
@@ -23,7 +29,8 @@ export interface Studio {
   /** business / company registration number. Frozen into payloads but NOT read
    *  by the header — the letterhead renders from `STUDIO_IDENTITY` in template.ts. */
   reg?: string;
-  /** footer credit, e.g. "Designed by Qie / Axel Nova Ventures" */
+  /** Frozen into older payloads but NOT read — the closing signature renders
+   *  from `STUDIO_CREDIT` in template.ts ("Designed by Qie," / "Axel Nova Ventures"). */
   designedBy?: string;
 }
 
@@ -139,16 +146,39 @@ export interface SummaryRow {
   role?: "remaining";
 }
 
+/**
+ * Quotation deposit / monthly cards arrive from the backend as a ROLE plus
+ * figures (PaymentPlan::panels) — no label or note; the template words them
+ * from the locale file. Invoice / receipt panels (frozen payloads) still carry
+ * their own `label` / `note` and the `balance` display-switch role.
+ */
+export type PanelRole =
+  | "balance"
+  | "lump_deposit"
+  | "lump_balance"
+  | "inst_deposit"
+  | "inst_monthly"
+  | "partner_setup"
+  | "partner_monthly";
+
 export interface Panel {
-  /** e.g. "DEPOSIT INVOICED" / "BALANCE DUE ON COMPLETION" */
-  label: string;
+  /** e.g. "DEPOSIT INVOICED" / "BALANCE DUE ON COMPLETION" — absent on quotation plan roles */
+  label?: string;
   value: number;
-  /** sub line(s); "\n" becomes <br> */
+  /** sub line(s); "\n" becomes <br> — absent on quotation plan roles */
   note?: string;
   /** red-bordered emphasis card */
   accent?: boolean;
-  /** stable hook for render-time display switches (never match on label text) */
-  role?: "balance";
+  /** stable hook: render-time display switches + locale labelling (never match on label text) */
+  role?: PanelRole;
+  /** lump_deposit: the effective deposit pct for the label, e.g. "18.8%" */
+  pctLabel?: string;
+  /** inst_monthly / partner_monthly: the schedule the note describes */
+  months?: number;
+  billingDay?: number;
+  /** ISO YYYY-MM-DD, formatted per locale */
+  firstDate?: string | null;
+  lastDate?: string | null;
 }
 
 export interface NoteLine {
@@ -159,44 +189,37 @@ export interface NoteLine {
 
 /* ------------------------------------------------------------ payment plan */
 
-/** One label/value line of the Payment plan block: money (`amount`, with an
- *  optional muted `detail` after it) or plain `text` (a date, a billing day). */
-export interface PaymentPlanRow {
-  label: string;
-  amount?: number;
-  detail?: string;
-  text?: string;
-}
-
 export interface PaymentPlanScheduleRow {
-  /** e.g. "Ansuran 1" */
-  label: string;
-  /** formatted, e.g. "20 November 2026" */
+  /** 1-based instalment number */
+  n: number;
+  /** ISO YYYY-MM-DD, formatted per locale by the template */
   date: string;
   amount: number;
 }
 
 /**
- * The client-facing "Pelan pembayaran" block for an instalment / partner plan.
- * Fully derived by the backend (PaymentPlan::documentBlock) — copy, dates and
- * totals arrive ready to print; the template only lays it out. Absent on a
- * lump-sum quotation, which keeps the deposit card / panels + terms.
+ * The data behind the titled "Payment plan" section of a quotation — DATA
+ * ONLY, derived by the backend (PaymentPlan::documentBlock): figures, ISO
+ * dates and the dated schedule. Every heading, row label, caption and month
+ * name comes from the locale file. A lump sum carries deposit + balance and an
+ * empty schedule (heading + cards, flows inline); instalment / partner carry the
+ * monthly figures + schedule (the section opens on its own page).
  */
 export interface PaymentPlanBlock {
   plan: "lump_sum" | "instalment" | "partner";
-  title: string;
-  intro?: string;
-  rows: PaymentPlanRow[];
   deposit: number;
+  /** e.g. "18.8%" — the lump-sum deposit label */
+  depositPctLabel: string;
+  /** total − deposit */
+  balance: number;
   monthly: number;
   months: number;
   billingDay: number;
   firstDate?: string | null;
   lastDate?: string | null;
   includesCarePlan: boolean;
+  /** the plan total (deposit + months × monthly, or the quotation total) */
   total: number;
-  totalLabel: string;
-  scheduleTitle?: string;
   schedule: PaymentPlanScheduleRow[];
 }
 
@@ -205,11 +228,15 @@ export interface PaymentPlanBlock {
 export interface DocumentData {
   layout: DocumentLayout;
   kind: DocumentKind;
+  /** template-chrome language; absent = "en" */
+  locale?: DocumentLocale | null;
 
   /** document number, e.g. "AXN-011" or "INV-AXN-011" */
   number: string;
-  issued: string; // formatted, e.g. "22 June 2026"
-  /** quotes: "Valid until"; invoices: "Due" — label switches by kind */
+  /** ISO "2026-10-10" (quotations — formatted per locale by the template) or a
+   *  pre-formatted "22 June 2026" (frozen invoice/receipt payloads, printed as-is) */
+  issued: string;
+  /** quotes: "Valid until"; invoices: "Due" — label switches by kind. Same date forms as `issued`. */
   validUntil?: string;
   /** override the right-column second meta label (default depends on kind) */
   metaLabel2?: string;

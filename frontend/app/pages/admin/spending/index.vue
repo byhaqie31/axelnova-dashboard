@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
@@ -100,10 +101,6 @@ function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-// Whole-ringgit ledger (record-only) — no cents.
-function fmtMyr(amount: number) {
-  return `RM ${Number(amount).toLocaleString('en-MY')}`
-}
 </script>
 
 <template>
@@ -158,7 +155,7 @@ type="button" class="btn-pill btn-pill-primary w-full justify-center text-[13px]
       <AdminExpandingSearch v-model="filters.category" placeholder="Filter by category…" />
       <p v-if="totalMyr !== null" class="ml-auto text-[13px]" style="color: var(--color-text-secondary);">
         Total<span v-if="filters.category"> ({{ filters.category }})</span>:
-        <span class="font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyr(totalMyr) }}</span>
+        <span class="font-semibold tabular-nums" style="color: var(--color-text);">{{ formatMyr(totalMyr) }}</span>
       </p>
     </div>
 
@@ -194,7 +191,7 @@ v-for="h in ['Category', 'Amount', 'Spent on', 'Entered by', 'Recorded']" :key="
               <p v-if="x.note" class="text-[11px] truncate max-w-64" style="color: var(--color-text-tertiary);">{{ x.note }}</p>
             </td>
             <td class="px-4 py-3.5">
-              <span class="text-[13px] font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyr(x.amount_myr) }}</span>
+              <span class="text-[13px] font-semibold tabular-nums" style="color: var(--color-text);">{{ formatMyr(x.amount_myr) }}</span>
             </td>
             <td class="px-4 py-3.5 text-[12px]" style="color: var(--color-text-secondary);">{{ fmtDate(x.spent_at) }}</td>
             <td class="px-4 py-3.5 text-[13px]" style="color: var(--color-text);">{{ x.entered_by_name ?? '—' }}</td>
@@ -212,7 +209,7 @@ v-for="x in expenses" :key="x.id" class="rounded-xl border p-4"
         :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }">
         <div class="flex items-start justify-between gap-3 mb-1">
           <span class="text-[13px] font-semibold leading-tight min-w-0 break-words" :style="{ color: 'var(--color-text)' }">{{ x.category }}</span>
-          <span class="text-[14px] font-semibold tabular-nums shrink-0 whitespace-nowrap" :style="{ color: 'var(--color-text)' }">{{ fmtMyr(x.amount_myr) }}</span>
+          <span class="text-[14px] font-semibold tabular-nums shrink-0 whitespace-nowrap" :style="{ color: 'var(--color-text)' }">{{ formatMyr(x.amount_myr) }}</span>
         </div>
         <p v-if="x.note" class="text-[12px] break-words" :style="{ color: 'var(--color-text-secondary)' }">{{ x.note }}</p>
         <div class="flex items-center justify-between gap-3 pt-2 mt-2 border-t" :style="{ borderColor: 'var(--color-border)' }">

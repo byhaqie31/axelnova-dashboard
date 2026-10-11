@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { OrderPlanView } from '~/composables/paymentPlan'
+
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -15,9 +17,15 @@ interface Order {
   deposit_due_myr: number
   amount_paid_myr: string
   remaining_myr: number
+  payment_plan?: OrderPlanView | null
+  invoices?: { id: number; type: string; status: string; instalment_no?: number | null }[]
 }
 
 const orderId = computed(() => route.query.order_id ? String(route.query.order_id) : '')
+// ?instalment=N (from the order's schedule) opens the form on that instalment.
+const initial = computed(() => route.query.instalment
+  ? { invoiceType: 'instalment', instalmentNo: Number(route.query.instalment) }
+  : null)
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref('')
@@ -75,7 +83,7 @@ onMounted(fetchOrder)
         For order <span class="font-mono" style="color: var(--color-accent);">{{ order.order_number }}</span> · {{ order.name ?? '—' }}
       </p>
 
-      <AdminInvoiceForm :order="order" mode="create" :submitting="issuing" @submit="issueInvoice" />
+      <AdminInvoiceForm :order="order" mode="create" :initial="initial" :submitting="issuing" @submit="issueInvoice" />
     </template>
   </div>
 </template>

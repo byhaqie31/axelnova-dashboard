@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // Merged hub: referral partners (referrers) + their referral submissions.
 // Replaces the standalone /admin/referral-partners/{index,[id]} pages — the
 // list became the "Referrers" tab, the detail became a slideover. See
@@ -26,11 +27,6 @@ const tierLabels: Record<string, string> = { cold: 'Cold', warm: 'Warm', closed:
 
 function fmtDate(iso?: string | null) {
   return iso ? new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
-}
-
-const currency = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' })
-function fmtMyr(amount: number | string | null | undefined) {
-  return currency.format(Number(amount ?? 0))
 }
 
 // ── Tabs — query-param synced (?view=referrers|referrals). Referrers is the
@@ -620,11 +616,11 @@ v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-
                   </div>
                   <div>
                     <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Earned</p>
-                    <p class="text-[13px] font-semibold tabular-nums" style="color: var(--color-success);">{{ fmtMyr(partnerDetail.stats.earned_myr) }}</p>
+                    <p class="text-[13px] font-semibold tabular-nums" style="color: var(--color-success);">{{ formatMyr(partnerDetail.stats.earned_myr) }}</p>
                   </div>
                   <div>
                     <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Estimated</p>
-                    <p class="text-[13px] font-semibold tabular-nums" style="color: var(--color-text);">{{ fmtMyr(partnerDetail.stats.estimated_myr) }}</p>
+                    <p class="text-[13px] font-semibold tabular-nums" style="color: var(--color-text);">{{ formatMyr(partnerDetail.stats.estimated_myr) }}</p>
                   </div>
                   <div>
                     <p class="text-[11px] font-medium uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Last login</p>
@@ -664,7 +660,7 @@ v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-
                       <span v-else class="text-[12px]" style="color: var(--color-text-tertiary);">—</span>
                       <span class="text-[12px] tabular-nums" style="color: var(--color-text);">
                         <template v-if="r.status === 'converted'">
-                          {{ fmtMyr(r.earned_myr) }}
+                          {{ formatMyr(r.earned_myr) }}
                           <span style="color: var(--color-text-tertiary);">· {{ r.effective_pct }}%</span>
                         </template>
                         <template v-else>{{ r.effective_pct }}%</template>

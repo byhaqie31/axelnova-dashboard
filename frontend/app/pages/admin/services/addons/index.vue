@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
@@ -48,10 +49,6 @@ onMounted(load)
 
 const activeCount = computed(() => addons.value.filter(a => a.active).length)
 
-// Add-on prices are exact — always precise, never the "k" range shorthand.
-function fmtPrice(n: string | number) {
-  return `+RM ${Math.round(Number(n) || 0).toLocaleString('en-US')}`
-}
 </script>
 
 <template>
@@ -103,7 +100,7 @@ v-if="!a.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.
           </div>
           <p class="text-[11px] font-mono mt-0.5 max-md:break-all" :style="{ color: 'var(--color-text-tertiary)' }">{{ a.addon_key }}</p>
         </div>
-        <p class="text-[13px] font-semibold tabular-nums shrink-0" :style="{ color: 'var(--color-text)' }">{{ fmtPrice(a.amount_myr) }}</p>
+        <p class="text-[13px] font-semibold tabular-nums shrink-0" :style="{ color: 'var(--color-text)' }">+{{ formatMyr(a.amount_myr) }}</p>
         <div class="flex items-center gap-1 shrink-0 max-md:w-full max-md:justify-end max-md:gap-1.5">
           <NuxtLink
 :to="`/admin/services/addons/${a.id}`"

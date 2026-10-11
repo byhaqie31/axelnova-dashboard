@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 // One rendered list per viewport: table and mobile cards used to BOTH mount
@@ -97,11 +98,6 @@ function isOverdue(o: Order) {
   due.setHours(23, 59, 59, 999)
   return due.getTime() < Date.now()
 }
-
-// Full amount, two decimals — accurate, transaction-style (e.g. RM 12,000.00).
-function fmtMyr(amount: string | number) {
-  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
 </script>
 
 <template>
@@ -160,10 +156,10 @@ v-for="o in orders" :key="o.id"
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">
-                {{ fmtMyr(o.final_amount_myr) }}
+                {{ formatMyr(o.final_amount_myr) }}
               </p>
               <p class="text-[11px]" :style="{ color: Number(o.remaining_myr) > 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }">
-                {{ Number(o.remaining_myr) > 0 ? `${fmtMyr(o.remaining_myr)} remaining` : 'Paid in full' }}
+                {{ Number(o.remaining_myr) > 0 ? `${formatMyr(o.remaining_myr)} remaining` : 'Paid in full' }}
               </p>
             </td>
             <td class="px-4 py-3.5">
@@ -209,10 +205,10 @@ v-for="o in orders" :key="o.id"
         <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3">
             <p class="text-[13px] font-semibold tabular-nums" :style="{ color: 'var(--color-text)' }">
-              {{ fmtMyr(o.final_amount_myr) }}
+              {{ formatMyr(o.final_amount_myr) }}
             </p>
             <p class="text-[11px] text-right" :style="{ color: Number(o.remaining_myr) > 0 ? 'var(--color-text-secondary)' : 'var(--color-success)' }">
-              {{ Number(o.remaining_myr) > 0 ? `${fmtMyr(o.remaining_myr)} remaining` : 'Paid in full' }}
+              {{ Number(o.remaining_myr) > 0 ? `${formatMyr(o.remaining_myr)} remaining` : 'Paid in full' }}
             </p>
           </div>
           <div class="flex items-center justify-between flex-wrap gap-x-3 gap-y-0.5 text-[11px]" :style="{ color: 'var(--color-text-secondary)' }">

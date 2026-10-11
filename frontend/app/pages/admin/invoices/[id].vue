@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
+import type { InvoiceType } from '~/composables/paymentPlan'
+import { invoiceTypeLabel } from '~/composables/paymentPlan'
+
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
@@ -26,7 +30,8 @@ interface Invoice {
   client_id: number | null
   name: string | null
   email: string | null
-  type: 'deposit' | 'partial' | 'final'
+  type: InvoiceType
+  instalment_no: number | null
   status: 'issued' | 'paid' | 'void'
   amount_total: string
   amount_paid: string | null
@@ -77,9 +82,6 @@ function fmtDate(iso?: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-function fmtMyr(amount: string | number) {
-  return `RM ${Number(amount).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
 
 // ── Email invoice ──────────────────────────────────────────────────────────
 const emailOpen = ref(false)
@@ -127,7 +129,7 @@ v-if="invoice.is_overdue" class="text-[11px] font-semibold px-2 py-0.5 rounded-f
               :style="{ color: 'var(--color-danger)', background: 'var(--color-danger-soft)' }">Overdue</span>
           </div>
           <p class="text-[13px] mt-1.5" style="color: var(--color-text-secondary);">
-            <span class="uppercase tracking-wide">{{ invoice.type }}</span> invoice
+            <span class="uppercase tracking-wide">{{ invoiceTypeLabel(invoice.type, invoice.instalment_no) }}</span> invoice
             <template v-if="invoice.order_number">
               · on <NuxtLink :to="`/admin/orders/${invoice.order_id}`" class="underline" :style="{ color: 'var(--color-accent)' }">{{ invoice.order_number }}</NuxtLink>
             </template>
@@ -171,15 +173,15 @@ class="lg:col-span-2 rounded-2xl border p-6 max-md:p-5"
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4">
             <div>
               <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Total</p>
-              <p class="text-[15px] font-semibold" style="color: var(--color-text);">{{ fmtMyr(invoice.amount_total) }}</p>
+              <p class="text-[15px] font-semibold" style="color: var(--color-text);">{{ formatMyr(invoice.amount_total) }}</p>
             </div>
             <div>
               <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Paid</p>
-              <p class="text-[15px] font-semibold" style="color: var(--color-success);">{{ fmtMyr(invoice.amount_paid ?? 0) }}</p>
+              <p class="text-[15px] font-semibold" style="color: var(--color-success);">{{ formatMyr(invoice.amount_paid ?? 0) }}</p>
             </div>
             <div>
               <p class="text-[11px] uppercase tracking-wider mb-1" style="color: var(--color-text-tertiary);">Balance</p>
-              <p class="text-[15px] font-semibold" :style="{ color: balance > 0 ? 'var(--color-text)' : 'var(--color-success)' }">{{ fmtMyr(balance) }}</p>
+              <p class="text-[15px] font-semibold" :style="{ color: balance > 0 ? 'var(--color-text)' : 'var(--color-success)' }">{{ formatMyr(balance) }}</p>
             </div>
           </div>
 
@@ -257,7 +259,7 @@ v-for="p in invoice.payments" :key="p.id"
             </div>
             <span
 class="text-[13px] font-semibold shrink-0"
-              :style="{ color: Number(p.amount_myr) < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">{{ fmtMyr(p.amount_myr) }}</span>
+              :style="{ color: Number(p.amount_myr) < 0 ? 'var(--color-danger)' : 'var(--color-text)' }">{{ formatMyr(p.amount_myr) }}</span>
           </div>
         </div>
         <p v-else class="text-[13px]" style="color: var(--color-text-tertiary);">No payments recorded against this invoice yet.</p>

@@ -48,6 +48,9 @@ class OrderResource extends JsonResource
             'deposit_pct' => $this->deposit_pct,
             'deposit_amount_myr' => $this->deposit_amount_myr,
             'deposit_due_myr' => $this->deposit_due_myr,
+            // The agreed instalment / partner schedule with each instalment's
+            // live invoice (detail view only — it reads invoices + the quotation).
+            'payment_plan' => $this->when($detailRoute, fn () => $this->planView()),
             'amount_paid_myr' => $this->amount_paid_myr,
             'remaining_myr' => $this->remaining_myr,
             'payment_status' => $this->payment_status,
@@ -66,6 +69,7 @@ class OrderResource extends JsonResource
             'invoices' => $this->whenLoaded('invoices', fn () => $this->invoices->map(fn ($d) => [
                 'id' => $d->id,
                 'type' => $d->type,
+                'instalment_no' => $d->instalment_no,
                 'number' => $d->invoice_number,
                 'status' => $d->status,
                 'amount_total' => $d->amount_total,

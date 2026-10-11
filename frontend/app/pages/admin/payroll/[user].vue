@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMyr } from '~/utils/money'
 // One teammate's payroll detail — full payslip history with yearly totals.
 // Pick a year: the tiles show that year's paid / pending / allowance / extras,
 // and the list is that year's slips month-by-month with Settle. Founder-only.
@@ -161,9 +162,9 @@ function fmtMonth(period: string) {
   const d = new Date(Number(y), Number(m) - 1, 1)
   return d.toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })
 }
+// Null renders "—", not RM 0.00.
 function fmtMyr(amount: number | null) {
-  if (amount == null) return '—'
-  return `RM ${Number(amount).toLocaleString('en-MY')}`
+  return amount == null ? '—' : formatMyr(amount)
 }
 function roleLabel(role: string) {
   return role.charAt(0).toUpperCase() + role.slice(1)
