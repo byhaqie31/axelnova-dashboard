@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\PricingConfig;
 use App\Models\Quotation;
+use App\Services\Quoting\QuotationRevisions;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -31,5 +32,11 @@ class QuotationFactory extends Factory
             'status' => 'draft',
             'submitted_at' => now(),
         ];
+    }
+
+    /** Every quotation is a family with an R1 — exactly as the real creators leave it. */
+    public function configure(): static
+    {
+        return $this->afterCreating(fn (Quotation $quotation) => QuotationRevisions::initialise($quotation));
     }
 }

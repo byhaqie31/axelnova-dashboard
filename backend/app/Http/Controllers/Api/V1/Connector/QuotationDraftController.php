@@ -13,6 +13,7 @@ use App\Services\Quoting\DetailedDocumentBuilder;
 use App\Services\Quoting\DocumentSeeder;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuotationIndexQuery;
+use App\Services\Quoting\QuotationRevisions;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -99,6 +100,7 @@ class QuotationDraftController extends Controller
             ]));
 
             $this->syncAddons($quotation, $built['addonKeys'], $engine);
+            QuotationRevisions::initialise($quotation);
 
             return $quotation;
         });
@@ -132,16 +134,19 @@ class QuotationDraftController extends Controller
             ], 404);
         }
 
-        // Lifecycle gate — pre-send only. A whitelist, so any unknown/future status
-        // is treated as locked. The only pre-send status is 'draft' (see
-        // Quotation::PRE_SEND_STATUSES).
-        if (! $quotation->isPreSend()) {
+        // Lifecycle gate — the family's DRAFT revision is the only editable one.
+        // A sent or accepted revision is what the client saw; changing it means
+        // opening a new revision first (create_revision).
+        $draft = $quotation->draftRevision();
+        if (! $draft) {
             return response()->json([
-                'message' => "Quotation {$quotation->reference_code} is '{$quotation->status}' and can no longer be updated from the connector — "
-                    .'only a pre-send draft (status: '.implode(', ', Quotation::PRE_SEND_STATUSES).') is updatable. '
-                    .'Once a quote is sent to the client, a change is a manual admin revision — out of scope here.',
+                'message' => "Quotation {$quotation->reference_code} has no draft revision — its current revision ({$quotation->revision()->label()}) is '{$quotation->revision()->status}' and can no longer be edited. "
+                    .'Call create_revision with a change_reason to open a new draft revision, then update that.',
             ], 422);
         }
+        // Every read below sees the draft's content, not the family's current revision.
+        $family = $quotation;
+        $quotation = $draft->asQuotation($family);
 
         $data = $request->validated();
         $catalog = new ConnectorCatalog;
@@ -183,17 +188,19 @@ class QuotationDraftController extends Controller
         ];
         $documentReseeded = $regenerate;
 
-        DB::transaction(function () use ($request, $data, $catalog, $engine, $createdVia, $sourceMeta, $quotation, $existingDoc, $preserveDocument): void {
+        DB::transaction(function () use ($request, $data, $catalog, $engine, $createdVia, $sourceMeta, $family, $draft, $existingDoc, $preserveDocument): void {
             $built = $this->buildDraft($request, $data, $this->upsertClient($data['client']), $catalog, $engine, $createdVia, $sourceMeta);
             if ($preserveDocument) {
                 $built['attributes']['document'] = $existingDoc;
             }
-            $quotation->update($built['attributes']);
-            $this->syncAddons($quotation, $built['addonKeys'], $engine);
+            // The client is the family's; the content is the draft revision's.
+            $family->update(array_intersect_key($built['attributes'], array_flip(['client_id', 'name', 'email', 'phone', 'company'])));
+            QuotationRevisions::writeDraft($draft, $built['attributes'], QuotationRevisions::addonSnapshot($built['addonKeys'], $engine), $family);
         });
 
-        $quotation->logActivity('quotation.updated', [
+        $family->logActivity('quotation.updated', [
             'via' => 'mcp_connector',
+            'revision' => $draft->number,
             'document_reseeded' => $documentReseeded,
         ]);
 
@@ -201,13 +208,13 @@ class QuotationDraftController extends Controller
             ? 'The document was re-seeded from the new scope.'
             : 'The existing (edited) document was preserved; the estimate was re-priced. Pass reseed_document: true to regenerate it.';
 
-        $quotation = $quotation->fresh();
+        $quotation = $draft->refresh()->asQuotation($family);
 
         return response()->json([
             'message' => "Quotation {$quotation->reference_code} updated. {$note} It remains a DRAFT for admin review."
                 .self::planVarianceNote($quotation),
             'document_reseeded' => $documentReseeded,
-            'data' => self::connectorView($quotation->load('addons')),
+            'data' => self::connectorView($quotation),
         ]);
     }
 

@@ -9,6 +9,7 @@ use App\Jobs\SendClientQuoteEmail;
 use App\Models\Client;
 use App\Models\Quotation;
 use App\Services\Quoting\PricingEngine;
+use App\Services\Quoting\QuotationRevisions;
 use App\Services\Quoting\QuoteRequestInput;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
@@ -107,6 +108,9 @@ class QuoteRequestController extends Controller
                     ]);
                 }
             }
+
+            // R1 — the funnel's estimate is the family's first revision.
+            QuotationRevisions::initialise($quotation);
 
             return $quotation;
         });

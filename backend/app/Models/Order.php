@@ -18,6 +18,7 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'quotation_id',
+        'current_revision_id',
         'client_id',
         'value_min_myr',
         'value_max_myr',
@@ -30,6 +31,7 @@ class Order extends Model
         'started_at',
         'delivered_at',
         'completed_at',
+        'revised_at',
         'due_at',
         'notes',
     ];
@@ -47,6 +49,7 @@ class Order extends Model
             'started_at' => 'datetime',
             'delivered_at' => 'datetime',
             'completed_at' => 'datetime',
+            'revised_at' => 'datetime',
             'due_at' => 'date',
         ];
     }
@@ -175,6 +178,12 @@ class Order extends Model
     public function quotation(): BelongsTo
     {
         return $this->belongsTo(Quotation::class);
+    }
+
+    /** The quotation revision whose terms this order currently runs on (R1, then R2 after a revise …). */
+    public function currentRevision(): BelongsTo
+    {
+        return $this->belongsTo(QuotationRevision::class, 'current_revision_id');
     }
 
     public function client(): BelongsTo

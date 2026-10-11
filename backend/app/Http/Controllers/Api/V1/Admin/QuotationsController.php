@@ -17,6 +17,7 @@ use App\Services\Quoting\DocumentSeeder;
 use App\Services\Quoting\MultiEstimateResult;
 use App\Services\Quoting\PricingEngine;
 use App\Services\Quoting\QuotationIndexQuery;
+use App\Services\Quoting\QuotationRevisions;
 use App\Services\Referrals\ReferralAttributionService;
 use App\Support\DocumentType;
 use App\Support\ReferenceCodeGenerator;
@@ -31,6 +32,9 @@ use Illuminate\Validation\Rule;
 
 class QuotationsController extends Controller
 {
+    /** Family-level attributes — the client. Everything else a write computes is revision content. */
+    private const FAMILY_FIELDS = ['client_id', 'name', 'email', 'phone', 'company'];
+
     /**
      * Live quotation-document preview from the builder's current draft, WITHOUT
      * persisting. Hydrates a transient Quotation and runs the same DocumentMapper
@@ -124,7 +128,7 @@ class QuotationsController extends Controller
     {
         // Lazy expiry for this one record (the list sweep won't have run on a deep link).
         if ($quotation->isOverdue()) {
-            $quotation->update(['status' => 'expired']);
+            QuotationRevisions::expire($quotation->revision());
         }
 
         $quotation->load('addons', 'order', 'updatedBy', 'referrer');
@@ -155,6 +159,7 @@ class QuotationsController extends Controller
             ));
 
             $this->syncAddons($quotation, $this->allAddonKeys($packages), $engine);
+            QuotationRevisions::initialise($quotation);
 
             if (! empty($data['inquiry_id'])) {
                 $inquiry = Inquiry::find($data['inquiry_id']);
@@ -180,24 +185,30 @@ class QuotationsController extends Controller
 
     public function update(AdminQuotationRequest $request, Quotation $quotation): JsonResponse|QuotationResource
     {
-        if ($quotation->status !== 'draft') {
-            return response()->json(['message' => 'Only draft quotations can be edited.'], 422);
+        // Only a draft REVISION is editable — sent / accepted / superseded ones are
+        // what the client saw (or agreed to). A sent or accepted quote changes by
+        // opening a new revision ("Revise").
+        $draft = $quotation->draftRevision();
+        if (! $draft) {
+            return response()->json(['message' => 'Only a draft revision can be edited. Use Revise to open a new revision.'], 422);
         }
 
         $engine = PricingEngine::active();
         $data = $request->validated();
 
-        DB::transaction(function () use ($data, $engine, $quotation) {
+        DB::transaction(function () use ($data, $engine, $quotation, $draft) {
             $client = $this->resolveClient($data);
             $packages = $this->resolvePackages($data, $engine);
             $rush = (bool) ($data['rush'] ?? false);
             $estimate = $packages !== [] ? $engine->calculateMulti($packages, $rush) : null;
             // created_via is sticky — an admin editing a connector draft keeps its
             // "Via connector" provenance on the Draft context panel.
-            $createdVia = $quotation->normalizedForm()['source_meta']['created_via'] ?? 'admin';
+            $createdVia = $draft->asQuotation($quotation)->normalizedForm()['source_meta']['created_via'] ?? 'admin';
 
-            $quotation->update($this->pricedAttributes($client, $engine, $packages, $rush, $estimate, $data, $createdVia));
-            $this->syncAddons($quotation, $this->allAddonKeys($packages), $engine);
+            $attributes = $this->pricedAttributes($client, $engine, $packages, $rush, $estimate, $data, $createdVia);
+            // The client is the family's; the content is the draft revision's.
+            $quotation->update(array_intersect_key($attributes, array_flip(self::FAMILY_FIELDS)));
+            QuotationRevisions::writeDraft($draft, $attributes, QuotationRevisions::addonSnapshot($this->allAddonKeys($packages), $engine), $quotation);
         });
 
         $quotation->logActivity('quotation.updated');
@@ -258,17 +269,15 @@ class QuotationsController extends Controller
 
     public function send(Request $request, Quotation $quotation): JsonResponse
     {
-        if (! $quotation->public_token) {
-            $quotation->public_token = Str::random(48);
+        // Sends (or re-sends) the family's open revision. Keeps a custom validity
+        // date if the builder set one; otherwise sent_at + valid_for_days — drives
+        // lazy auto-expiry and the PDF "valid until".
+        $revision = $quotation->openRevision();
+        if (! $revision) {
+            return response()->json(['message' => 'Nothing to send — this quotation has no draft or sent revision. Use Revise to open one.'], 422);
         }
-        $quotation->status = 'sent';
-        $quotation->sent_at = now();
-        // Keep a custom validity date if the builder set one; otherwise default to
-        // sent_at + valid_for_days. Drives lazy auto-expiry and the PDF "valid until".
-        if (! $quotation->expires_at) {
-            $quotation->expires_at = now()->addDays($quotation->validForDays());
-        }
-        $quotation->save();
+        QuotationRevisions::markSent($revision);
+        $quotation->refresh();
 
         // Email delivery is the default; the "download PDF" channel marks the
         // quote sent without emailing (the admin delivers the file themselves).
@@ -295,7 +304,9 @@ class QuotationsController extends Controller
         ]);
 
         $from = $quotation->status;
-        $quotation->update(['status' => $request->status]);
+        $revision = $quotation->revision();
+        $revision->forceFill(['status' => $request->status])->save();
+        QuotationRevisions::refresh($quotation);
         $quotation->logActivity('quotation.status', ['from' => $from, 'to' => $quotation->status]);
 
         return response()->json(['message' => 'Status updated.', 'status' => $quotation->status]);
@@ -311,15 +322,17 @@ class QuotationsController extends Controller
         $request->validate(['expires_at' => ['nullable', 'date']]);
 
         $expiresAt = $request->date('expires_at')?->endOfDay();
-        $quotation->expires_at = $expiresAt;
+        $revision = $quotation->revision();
+        $revision->expires_at = $expiresAt;
 
-        if ($quotation->status === 'expired' && ($expiresAt === null || $expiresAt->isFuture())) {
-            $quotation->status = 'sent';
-        } elseif ($quotation->status === 'sent' && $expiresAt !== null && $expiresAt->isPast()) {
-            $quotation->status = 'expired';
+        if ($revision->status === 'expired' && ($expiresAt === null || $expiresAt->isFuture())) {
+            $revision->status = 'sent';
+        } elseif ($revision->status === 'sent' && $expiresAt !== null && $expiresAt->isPast()) {
+            $revision->status = 'expired';
         }
 
-        $quotation->save();
+        $revision->save();
+        QuotationRevisions::refresh($quotation);
 
         return response()->json([
             'message' => 'Expiry updated.',
@@ -366,7 +379,9 @@ class QuotationsController extends Controller
         ]);
 
         $order = DB::transaction(function () use ($request, $quotation) {
-            $quotation->update(['status' => 'accepted']);
+            $revision = $quotation->revision();
+            $revision->forceFill(['status' => 'accepted', 'accepted_at' => now()])->save();
+            QuotationRevisions::refresh($quotation);
 
             // The deposit the order expects up front. A fixed-amount deposit is
             // carried as the amount (pct left null) so deposit_due_myr can never
@@ -377,6 +392,7 @@ class QuotationsController extends Controller
             $order = Order::create([
                 'order_number' => ReferenceCodeGenerator::generate(DocumentType::Order),
                 'quotation_id' => $quotation->id,
+                'current_revision_id' => $revision->id,
                 'client_id' => $quotation->client_id,
                 'value_min_myr' => $quotation->estimate_min_myr,
                 'value_max_myr' => $quotation->estimate_max_myr,

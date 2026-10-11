@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\Quoting\FormPayloadNormalizer;
 use App\Services\Quoting\PaymentPlan;
+use App\Services\Quoting\QuotationRevisions;
 use App\Support\RecordsActivity;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -47,8 +48,15 @@ class Quotation extends Model
      */
     public const LOCALES = ['en', 'bm'];
 
+    /**
+     * Set on a read-only view built by QuotationRevision::asQuotation() — the
+     * revision it renders. Such a view must never be saved over the family row.
+     */
+    public ?QuotationRevision $revisionView = null;
+
     protected $fillable = [
         'reference_code',
+        'current_revision_id',
         'source',
         'public_token',
         'client_id',
@@ -87,10 +95,17 @@ class Quotation extends Model
     protected static function booted(): void
     {
         static::saving(function (Quotation $quotation): void {
+            if ($quotation->revisionView !== null) {
+                throw new \LogicException('A revision view of a quotation is read-only — write through QuotationRevisions.');
+            }
             if ($quotation->status === 'draft') {
                 $quotation->issued_at = now();
             }
         });
+
+        // A direct write to the row's content / status lands on its current
+        // revision too (QuotationRevisions writes the row quietly, so no loop).
+        static::updated(fn (Quotation $quotation) => QuotationRevisions::absorbRowWrite($quotation));
     }
 
     protected function casts(): array
@@ -116,11 +131,9 @@ class Quotation extends Model
      */
     public static function expireOverdue(): void
     {
-        static::query()
-            ->where('status', 'sent')
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<', now())
-            ->update(['status' => 'expired']);
+        // Expiry is per revision (a sent R2 can lapse while R1 stays accepted);
+        // the sweep re-derives every family it touched.
+        QuotationRevisions::expireOverdue();
     }
 
     /**
@@ -217,6 +230,53 @@ class Quotation extends Model
     public function order(): HasOne
     {
         return $this->hasOne(Order::class);
+    }
+
+    /** Every revision of this family, R1 first. */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(QuotationRevision::class)->orderBy('number');
+    }
+
+    /** The revision this family currently presents (and whose content the row mirrors). */
+    public function currentRevision(): BelongsTo
+    {
+        return $this->belongsTo(QuotationRevision::class, 'current_revision_id');
+    }
+
+    /**
+     * The current revision, creating R1 from the row's content if this family
+     * predates revisions (a safety net — creators and the migration set it).
+     */
+    public function revision(): QuotationRevision
+    {
+        return QuotationRevisions::initialise($this);
+    }
+
+    /** The family's open (draft or sent) revision, if any — at most one exists. */
+    public function openRevision(): ?QuotationRevision
+    {
+        $this->revision();
+
+        return $this->revisions()->whereIn('status', QuotationRevision::OPEN)->latest('number')->first();
+    }
+
+    /** The family's draft revision — the only editable one — if any. */
+    public function draftRevision(): ?QuotationRevision
+    {
+        $this->revision();
+
+        return $this->revisions()->where('status', QuotationRevision::DRAFT)->latest('number')->first();
+    }
+
+    /** "AXNQ-2026-0017" / "AXNQ-2026-0017 · R2" for the revision this model shows. */
+    public function displayReference(): string
+    {
+        $number = $this->revisionView?->number
+            ?? ($this->relationLoaded('currentRevision') ? $this->currentRevision?->number : null)
+            ?? 1;
+
+        return QuotationRevision::displayReference((string) $this->reference_code, (int) $number);
     }
 
     public function referrer(): BelongsTo
