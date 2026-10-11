@@ -17,18 +17,17 @@ The PR triggers a build-check workflow first (builds both images to catch Docker
 
 ## What the deploy workflow does
 
-[.github/workflows/deploy.yml](./.github/workflows/deploy.yml) on every push to `main`:
+[.github/workflows/deploy-ghcr.yml](../../.github/workflows/deploy-ghcr.yml) on every push to `main` (the legacy build-on-VPS [deploy.yml](../../.github/workflows/deploy.yml) is manual-only, kept for rollback):
 
-1. SSH into VPS using `VPS_HOST` / `VPS_USER` / `VPS_SSH_KEY` repo secrets
-2. `git reset --hard origin/main`
-3. `docker compose -f docker-compose.prod.yml up -d --build` (incremental, layer-cached)
-4. Wait for entrypoint config:cache
-5. `php artisan migrate --force`
-6. `php artisan queue:restart` (reloads job code in worker)
-7. Health-check `/up`
-8. Prune dangling images
-
-Total: ~30s when only source changes; ~2 min for a full rebuild (PHP extension recompile or `npm ci` invalidation).
+1. Build the backend + frontend images on GitHub runners and push them to GHCR
+2. SSH into the VPS (`VPS_HOST` / `VPS_USER` / `VPS_SSH_KEY` repo secrets)
+3. Refresh `docker-compose.prod.ghcr.yml` from `origin/main` — the only repo file the VPS runs from (images carry the code). Everything else in the VPS checkout, including `backend/.env.production`, is left alone
+4. `docker compose -f docker-compose.prod.ghcr.yml pull` + `up -d --no-deps backend frontend queue scheduler`
+5. Wait for entrypoint config:cache
+6. `php artisan migrate --force`
+7. `php artisan queue:restart` (reloads job code in worker)
+8. Health-check `/up`
+9. Prune dangling images
 
 ## Architecture
 

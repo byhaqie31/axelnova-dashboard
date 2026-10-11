@@ -107,6 +107,13 @@ jobs:
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u byhaqie31 --password-stdin
 
             echo ""
+            echo "=== sync the compose file from main (the one repo file the VPS runs from) ==="
+            # Images carry the code; this file carries the service list. Refresh just
+            # it, so a new service (e.g. `scheduler`) exists before `up` names it.
+            git fetch --quiet origin main
+            git checkout origin/main -- docker-compose.prod.ghcr.yml
+
+            echo ""
             echo "=== pull latest images from GHCR ==="
             docker compose -f docker-compose.prod.ghcr.yml pull
 
