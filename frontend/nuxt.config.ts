@@ -157,6 +157,8 @@ export default defineNuxtConfig({
     '/services/**': swr(300),
     '/projects': swr(300),
     '/projects/**': swr(300),
+    '/collaborations': swr(300),
+    '/collaborations/**': swr(300),
     '/blog': swr(300),
     '/blog/**': swr(300),
     // Legal copy changes on the order of never.

@@ -16,7 +16,7 @@ class InquiriesController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Inquiry::with('quotation')->latest('created_at');
+        $query = Inquiry::with(['quotation', 'collaborationPartner'])->latest('created_at');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -50,7 +50,7 @@ class InquiriesController extends Controller
 
     public function show(Inquiry $inquiry): InquiryResource
     {
-        $inquiry->load('quotation');
+        $inquiry->load(['quotation', 'collaborationPartner']);
 
         if ($inquiry->status === 'new') {
             $inquiry->update(['status' => 'reviewing']);
@@ -97,7 +97,7 @@ class InquiriesController extends Controller
         app(ReferralAttributionService::class)
             ->attribute($inquiry->quotation, $inquiry);
 
-        return new InquiryResource($inquiry->load('quotation'));
+        return new InquiryResource($inquiry->load(['quotation', 'collaborationPartner']));
     }
 
     /**
@@ -111,6 +111,6 @@ class InquiriesController extends Controller
             'status' => 'reviewing',
         ]);
 
-        return new InquiryResource($inquiry->load('quotation'));
+        return new InquiryResource($inquiry->load(['quotation', 'collaborationPartner']));
     }
 }

@@ -35,6 +35,7 @@ const links = [
   { label: 'Company',  to: '/company' },
   { label: 'Blog',     to: '/blog' },
   { label: 'Projects', to: '/projects' },
+  { label: 'Collabs',  to: '/collaborations' },
   { label: 'Services', to: '/services' },
   { label: 'Partners', to: '/partners' },
   { label: 'Contact',  to: '/contact' },
@@ -238,7 +239,10 @@ if (import.meta.client) {
         >
           <BrandMark />
 
-          <ul class="hidden md:flex items-center gap-8">
+          <!-- Links from lg up: nine of them don't fit beside the brand + CTA at md
+               (measured: the bar overflowed by 47px at 768px with eight), so md
+               keeps the menu button. Tighter gaps until xl leave room at 1024px. -->
+          <ul class="hidden lg:flex items-center gap-5 xl:gap-8">
             <li v-for="l in links" :key="l.to">
               <NuxtLink
                 :to="l.to"
@@ -281,7 +285,7 @@ if (import.meta.client) {
             </NuxtLink>
 
             <button
-              class="md:hidden inline-flex items-center justify-center size-8 rounded-full"
+              class="lg:hidden inline-flex items-center justify-center size-8 rounded-full"
               :style="{ color: 'var(--color-text)' }"
               aria-label="Toggle menu"
               :aria-expanded="mobileOpen"
@@ -297,7 +301,7 @@ if (import.meta.client) {
           <button
             v-if="mobileOpen"
             type="button"
-            class="md:hidden fixed inset-0 top-14 z-30 cursor-default"
+            class="lg:hidden fixed inset-0 top-14 z-30 cursor-default"
             style="background: rgba(0, 0, 0, 0.32); backdrop-filter: blur(2px);"
             aria-label="Close menu"
             @click="mobileOpen = false"
@@ -306,7 +310,7 @@ if (import.meta.client) {
         <Transition name="drawer-panel">
           <aside
             v-if="mobileOpen"
-            class="md:hidden fixed left-3 right-3 top-17 z-40 rounded-2xl border shadow-2xl overflow-hidden"
+            class="lg:hidden fixed left-3 right-3 top-17 z-40 rounded-2xl border shadow-2xl overflow-hidden"
             :style="{
               borderColor: 'var(--color-border)',
               background: 'var(--nav-mobile-bg)'

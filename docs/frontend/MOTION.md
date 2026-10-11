@@ -148,3 +148,22 @@ All are client-guarded, kill their tweens/triggers on unmount, and no-op
     `transition: none` inline while it owns an element, but hover transitions on
     reveal targets must still name their properties
     (`transition-[transform,box-shadow]`), never `transition-all`.
+11. **Morph without re-layout.** To grow one shape into another (e.g. the
+    `/collaborations/trlabs` hero: logo tile → card), keep the element at its
+    FINISHED size and animate `clip-path` + transforms, never width/height/
+    padding. Resizing re-lays out the page every frame and re-wraps any text
+    inside. Animate `clip-path: inset()` with `fromTo` and explicit four-value
+    strings: browsers normalise a computed `inset()` to its short form, and a
+    plain `.to()` then pairs GSAP's numbers wrongly (the radius collapses
+    mid-morph). Clip to a negative inset at the end so the element's shadow is
+    whole before `clearProps`.
+12. **A hero that starts hidden needs a pre-paint hold, not a hydration flash.**
+    The SSR HTML is the finished state, so an entrance that collapses it in
+    `onMounted` flashes the finished hero first. For a signature hero, a
+    server-only `useHead` script marks `<html>` before first paint
+    (`data-collab-intro`). The page CSS hides the hero under that attribute,
+    the entrance lifts it as it sets its start state, and a delayed CSS
+    failsafe animation reveals it regardless. Skip the hold for reduced motion.
+    In a **scoped** style, write the selector as a plain descendant
+    (`html[data-x] .thing`). `:global(html[data-x]) .thing` compiles to the
+    bare `html[data-x]` and hides the whole page.

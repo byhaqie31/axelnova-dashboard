@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import LikeButton from '~/components/shared/LikeButton.vue'
+import { collaborationModeLabels, type CollaborationMode } from '~/data/collaborations'
 
 definePageMeta({ layout: 'public' })
 
@@ -17,6 +18,8 @@ interface ApiProject {
   cover_image_url: string | null
   featured: boolean
   likes_count: number
+  /** Studio partners credited on this project (detail endpoint only). */
+  partners?: { slug: string, name: string, symbol_url: string | null, mode: CollaborationMode }[]
 }
 
 const route = useRoute()
@@ -105,6 +108,27 @@ useScrollReveal('.reveal')
       <p class="reveal text-[18px] leading-[1.55] mb-10 max-w-2xl" style="color: var(--color-text-secondary);">
         {{ project.description }}
       </p>
+
+      <!-- Built with a studio partner (public credits only — see /collaborations).
+           Each chip wears its partner's scope class, so it carries the co-brand. -->
+      <div v-if="project.partners?.length" class="reveal flex flex-wrap gap-2 -mt-4 mb-10">
+        <NuxtLink
+          v-for="partner in project.partners"
+          :key="partner.slug"
+          :to="`/collaborations/${partner.slug}`"
+          :class="`collab-${partner.slug}`"
+          class="inline-flex items-center gap-2.5 rounded-full border pl-1.5 pr-4 py-1.5 transition-colors hover:opacity-90"
+          :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg-elevated)' }"
+        >
+          <span class="collab-logo-plate size-7 rounded-full flex items-center justify-center shrink-0">
+            <img v-if="partner.symbol_url" :src="partner.symbol_url" alt="" class="w-[74%] object-contain">
+          </span>
+          <span class="text-[13px]" style="color: var(--color-text-secondary);">
+            Built with <span class="font-medium" style="color: var(--color-accent);">{{ partner.name }}</span>
+            · {{ collaborationModeLabels[partner.mode] }}
+          </span>
+        </NuxtLink>
+      </div>
 
       <!-- CTAs -->
       <div class="reveal flex flex-wrap gap-3 mb-14">

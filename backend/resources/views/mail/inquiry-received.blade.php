@@ -1,7 +1,11 @@
 @component('mail::message')
 # Thanks for reaching out, {{ $inquiry->name }}
 
-@if($isProject)
+@if($partner)
+I've received your enquiry for **Axel Nova × {{ $partner->name }}**. I'll review it with {{ $partner->founder_name ? $partner->founder_name.' at '.$partner->name : 'the '.$partner->name.' team' }} and get back to you with next steps, usually within 1–2 business days.
+@elseif($inquiry->origin === 'collaboration')
+Thanks for your interest in collaborating with Axel Nova Ventures. I'll look through your work and reply personally, usually within a few working days.
+@elseif($isProject)
 I've received your project inquiry and made a note of it. I'll review the details and get back to you with a tailored quote, usually within 1–2 business days.
 @else
 I've received your message and will get back to you personally, usually within one working day.
@@ -9,6 +13,7 @@ I've received your message and will get back to you personally, usually within o
 
 @php
     $hints = array_filter([
+        'Partner' => $partner ? 'Axel Nova × '.$partner->name : null,
         'Subject' => $inquiry->subject,
         'Project type' => $inquiry->project_type,
         'Budget' => $inquiry->budget_hint,

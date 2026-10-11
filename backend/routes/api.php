@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\V1\LikesController;
 use App\Http\Controllers\Api\V1\Partner\AuthController as PartnerAuthController;
 use App\Http\Controllers\Api\V1\Partner\DashboardController as PartnerDashboardController;
 use App\Http\Controllers\Api\V1\PublicBlogController;
+use App\Http\Controllers\Api\V1\PublicCollaborationsController;
 use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
 use App\Http\Controllers\Api\V1\PublicTestimonialsController;
@@ -59,6 +60,9 @@ Route::get('/v1/quote-builder/config', [QuoteBuilderConfigController::class, 'sh
 Route::get('/v1/services', [PublicServicesController::class, 'index'])->name('services.index');
 Route::get('/v1/projects', [PublicProjectsController::class, 'index'])->name('projects.index');
 Route::get('/v1/projects/{slug}', [PublicProjectsController::class, 'show'])->name('projects.show');
+// Public — studio partners on /collaborations (seeded; read-only, no admin editor yet).
+Route::get('/v1/collaborations', [PublicCollaborationsController::class, 'index'])->name('collaborations.index');
+Route::get('/v1/collaborations/{slug}', [PublicCollaborationsController::class, 'show'])->name('collaborations.show');
 
 // Public — the blog (BLOG.md). Published posts only; drafts and deleted rows
 // 404. `/slugs` is the unpaginated feed the frontend sitemap reads.

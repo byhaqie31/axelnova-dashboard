@@ -30,9 +30,14 @@ class InquiryReceivedMail extends Mailable implements ShouldQueue
             with: [
                 'inquiry' => $this->inquiry,
                 // Quote-copy ("tailored quote") only fits project intent — a contact
-                // "General question" / "Feedback" gets a plain acknowledgement.
-                'isProject' => $this->inquiry->origin !== 'contact'
-                    || $this->inquiry->subject === 'Project inquiry',
+                // "General question" / "Feedback" gets a plain acknowledgement, and a
+                // studio applying to partner (origin 'collaboration') isn't a project.
+                'isProject' => match ($this->inquiry->origin) {
+                    'contact' => $this->inquiry->subject === 'Project inquiry',
+                    'collaboration' => false,
+                    default => true,
+                },
+                'partner' => $this->inquiry->origin === 'partner' ? $this->inquiry->collaborationPartner : null,
                 'whatsappUrl' => config('services.admin.whatsapp_url')
                     .'?text='.rawurlencode("Hi Qie, I'd like to chat about my project."),
             ],

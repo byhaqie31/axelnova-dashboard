@@ -26,7 +26,7 @@ The service list is admin data (`GET /v1/services`). Each category gets `/servic
 
 ## Sitemap and robots
 
-`@nuxtjs/sitemap` builds `/sitemap.xml` at request time: the static public pages, plus [server/api/__sitemap__/urls.ts](../../frontend/server/api/__sitemap__/urls.ts), which adds published blog posts, the admin's service categories and the projects (each source fails independently). `sitemap.exclude` in [nuxt.config.ts](../../frontend/nuxt.config.ts) removes everything private — admin, portal, proposals, feedback, investor, the team workspace and the signed-in partner pages (`/partners` and `/partners/refer` stay). Those pages are also `noindex`; don't list a `noindex` page in the sitemap. A new service, project or post appears automatically — nothing to redeploy.
+`@nuxtjs/sitemap` builds `/sitemap.xml` at request time: the static public pages, plus [server/api/__sitemap__/urls.ts](../../frontend/server/api/__sitemap__/urls.ts), which adds published blog posts, the admin's service categories and the projects (each source fails independently). `sitemap.exclude` in [nuxt.config.ts](../../frontend/nuxt.config.ts) removes everything private — admin, portal, proposals, feedback, investor, the team workspace and the signed-in partner pages (`/partners` and `/partners/refer` stay). Those pages are also `noindex`; don't list a `noindex` page in the sitemap. A new service, project or post appears automatically — nothing to redeploy. `/collaborations` and `/collaborations/trlabs` are static page files, so they are listed with the static pages; when a generic `/collaborations/[slug]` template arrives with a second partner, add a `collaborations` source to `urls.ts`.
 
 ## Outside the code
 

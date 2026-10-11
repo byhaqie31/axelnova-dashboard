@@ -3,12 +3,17 @@
 
 @if($inquiry->origin === 'contact')
 A new message came in through the contact form.
+@elseif($inquiry->origin === 'partner')
+A client wants to hire **{{ $inquiry->collaborationPartner?->name ?? 'a partner studio' }}** through Axel Nova, from the collaboration page. Log the lead, then pass it on.
+@elseif($inquiry->origin === 'collaboration')
+A studio applied to partner with Axel Nova through the collaborations page.
 @else
 A new project inquiry came in through the quote form.
 @endif
 
 @php
     $rows = array_filter([
+        'Partner' => $inquiry->collaborationPartner?->name,
         'Subject' => $inquiry->subject,
         'Name' => $inquiry->name,
         'Email' => $inquiry->email,

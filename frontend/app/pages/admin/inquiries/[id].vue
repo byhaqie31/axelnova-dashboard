@@ -16,8 +16,10 @@ interface Inquiry {
   timeline_hint: string | null
   message: string
   source: string
-  origin: 'quote' | 'contact'
+  origin: 'quote' | 'contact' | 'partner' | 'collaboration'
   subject: string | null
+  /** origin 'partner': the studio partner the client asked to hire through us. */
+  collaboration_partner?: { slug: string, name: string } | null
   status: string
   quotation_id: number | null
   quotation_reference: string | null
@@ -25,6 +27,16 @@ interface Inquiry {
 }
 
 const inquiry = ref<Inquiry | null>(null)
+
+// /collaborations leads: a client hiring a partner studio through us, or a studio applying to partner.
+const originHeading = computed(() => {
+  switch (inquiry.value?.origin) {
+    case 'contact': return 'Contact form'
+    case 'partner': return `Partner enquiry · Axel Nova × ${inquiry.value.collaboration_partner?.name ?? 'partner'}`
+    case 'collaboration': return 'Partnership application'
+    default: return 'Project'
+  }
+})
 const loading = ref(true)
 const error = ref('')
 const statusLoading = ref(false)
@@ -144,11 +156,13 @@ class="rounded-2xl border p-6 max-md:p-5"
 class="rounded-2xl border p-6 max-md:p-5"
           :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">
-            {{ inquiry.origin === 'contact' ? 'Contact form' : 'Project' }}
+            {{ originHeading }}
           </p>
-          <!-- Contact-form messages carry a subject, not project hints -->
-          <div v-if="inquiry.origin === 'contact'">
-            <p class="text-[11px] mb-0.5" style="color: var(--color-text-tertiary);">Subject</p>
+          <!-- Contact messages and partnership applications carry a subject, not project hints -->
+          <div v-if="inquiry.origin === 'contact' || inquiry.origin === 'collaboration'">
+            <p class="text-[11px] mb-0.5" style="color: var(--color-text-tertiary);">
+              {{ inquiry.origin === 'collaboration' ? 'Describes themselves as' : 'Subject' }}
+            </p>
             <p class="text-[13px]" style="color: var(--color-text);">{{ inquiry.subject ?? '—' }}</p>
           </div>
           <div v-else class="grid sm:grid-cols-3 gap-4">

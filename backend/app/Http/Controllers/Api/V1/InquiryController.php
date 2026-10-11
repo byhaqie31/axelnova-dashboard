@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInquiryRequest;
 use App\Mail\InquiryAdminNotificationMail;
 use App\Mail\InquiryReceivedMail;
+use App\Models\CollaborationPartner;
 use App\Models\Inquiry;
 use App\Models\Referrer;
 use Illuminate\Http\JsonResponse;
@@ -24,9 +25,22 @@ class InquiryController extends Controller
         // ?ref param may still ride the submit for best-effort attribution. Resolve
         // to a referrer → source = 'referral'; otherwise it's public/organic.
         $referrer = $this->resolveReferrer($request);
+        $origin = $request->input('origin') ?: 'quote';
+
+        // /collaborations/{partner}: the lead is tagged with the studio partner
+        // the client asked for (validated live). A studio applying to partner
+        // keeps its portfolio link in the message — no column of its own.
+        $partnerId = $origin === 'partner'
+            ? CollaborationPartner::active()->where('slug', $request->input('partner'))->value('id')
+            : null;
+        $message = $request->input('message');
+        if ($origin === 'collaboration' && $request->filled('portfolio_url')) {
+            $message .= "\n\nPortfolio: ".$request->input('portfolio_url');
+        }
 
         $inquiry = Inquiry::create([
             'referral_partner_id' => $referrer?->id,
+            'collaboration_partner_id' => $partnerId,
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'phone' => $request->input('phone'),
@@ -34,9 +48,9 @@ class InquiryController extends Controller
             'project_type' => $request->input('project_type'),
             'budget_hint' => $request->input('budget_hint'),
             'timeline_hint' => $request->input('timeline_hint'),
-            'message' => $request->input('message'),
+            'message' => $message,
             'source' => $referrer ? 'referral' : 'web',
-            'origin' => $request->input('origin', 'quote'),
+            'origin' => $origin,
             'subject' => $request->input('subject'),
             'status' => 'new',
             'ip_address' => $request->ip(),
