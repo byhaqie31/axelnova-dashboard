@@ -4,33 +4,41 @@ namespace App\Mail;
 
 use App\Models\Feedback;
 use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class FeedbackRequestMail extends Mailable
+/**
+ * Email 4 — the feedback request, sent only when the founder asks for it
+ * (the "project completed" email carries its own feedback button).
+ */
+class FeedbackRequestMail extends KitMailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(public readonly Feedback $feedback) {}
 
-    public function envelope(): Envelope
+    public static function emailType(): string
     {
-        return new Envelope(
-            subject: 'How did we do? — quick feedback on your Axel Nova project',
-        );
+        return 'feedback.request';
     }
 
-    public function content(): Content
+    public static function relatedProperty(): ?string
     {
-        return new Content(
-            markdown: 'mail.feedback-request',
-            with: [
-                'feedback' => $this->feedback,
-                'feedbackUrl' => rtrim((string) config('services.frontend.public_url'), '/')
-                    ."/feedback/{$this->feedback->public_token}",
-            ],
-        );
+        return 'feedback';
+    }
+
+    public function viewData(): array
+    {
+        $feedback = $this->feedback;
+
+        return [
+            'name' => $feedback->name ?: null,
+            'variant' => match (true) {
+                $feedback->order_id && filled($feedback->project_label) => 'project_label',
+                (bool) $feedback->order_id => 'project',
+                default => 'general',
+            },
+            'projectLabel' => $feedback->project_label,
+            'feedbackUrl' => rtrim((string) config('services.frontend.public_url'), '/')."/feedback/{$feedback->public_token}",
+        ];
     }
 }

@@ -129,10 +129,11 @@ class ReferralsController extends Controller
         Mail::to($referral->referrer_email, $referral->referrer_name)
             ->send(new ReferralCommissionMail($referral, $commission));
 
+        // "Requested at" — the email itself is queued; delivery shows on the referral.
         $referral->update(['commission_email_sent_at' => now()]);
 
         return response()->json([
-            'message' => 'Commission email sent to the referrer.',
+            'message' => 'Commission email queued — its delivery shows on the referral.',
             'referral' => new ReferralResource($referral),
         ]);
     }

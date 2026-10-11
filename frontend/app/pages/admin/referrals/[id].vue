@@ -519,6 +519,8 @@ class="rounded-xl border px-4 py-3.5 space-y-2"
       </div>
     </div>
 
+    <AdminEmailHistory v-if="referral?.referrer_email" :email="referral.referrer_email" title="Emails to the referrer" />
+
     <!-- Quotation picker drawer -->
     <Teleport to="body">
       <Transition name="drawer">

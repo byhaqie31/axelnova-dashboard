@@ -167,6 +167,17 @@
   --status-superseded-bg: rgba(168, 85, 247, 0.10);
   --status-discarded-fg:  #86868B;
   --status-discarded-bg:  rgba(134, 134, 139, 0.14);
+  /* Email delivery statuses (AdminEmailHistory) — aliases of existing tones, so
+     .dark overrides of the base tones carry through. "delivered" stays the purple
+     order hand-over; a delivered EMAIL is green (email_delivered). */
+  --status-email_delivered-fg: var(--status-succeeded-fg);
+  --status-email_delivered-bg: var(--status-succeeded-bg);
+  --status-delayed-fg:     var(--status-expired-fg);
+  --status-delayed-bg:     var(--status-expired-bg);
+  --status-bounced-fg:     var(--status-failed-fg);
+  --status-bounced-bg:     var(--status-failed-bg);
+  --status-complained-fg:  var(--status-failed-fg);
+  --status-complained-bg:  var(--status-failed-bg);
 
   /* Kanban board (team tasks — UI-STANDARDS §12.14). Columns are quiet sunken
      wells; cards are elevated surfaces that pop off them. */
@@ -834,6 +845,10 @@ h1 { letter-spacing: -0.045em; }
 .status-pill[data-status="failed"]      { color: var(--status-failed-fg);     background: var(--status-failed-bg); }
 .status-pill[data-status="superseded"]  { color: var(--status-superseded-fg); background: var(--status-superseded-bg); }
 .status-pill[data-status="discarded"]   { color: var(--status-discarded-fg);  background: var(--status-discarded-bg); }
+.status-pill[data-status="email_delivered"] { color: var(--status-email_delivered-fg); background: var(--status-email_delivered-bg); }
+.status-pill[data-status="delayed"]     { color: var(--status-delayed-fg);    background: var(--status-delayed-bg); }
+.status-pill[data-status="bounced"]     { color: var(--status-bounced-fg);    background: var(--status-bounced-bg); }
+.status-pill[data-status="complained"]  { color: var(--status-complained-fg); background: var(--status-complained-bg); }
 
 /* Status pill — selectable button variant (used in detail pages for status changes) */
 .status-pill-button {

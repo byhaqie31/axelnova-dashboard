@@ -8,6 +8,7 @@ type StatusKey =
   | 'issued' | 'paid' | 'void'
   | 'succeeded' | 'refunded' | 'failed'
   | 'superseded' | 'discarded'
+  | 'email_delivered' | 'delayed' | 'bounced' | 'complained'
 
 const props = withDefaults(defineProps<{
   status: string | null | undefined
@@ -48,6 +49,11 @@ const statusLabels: Record<StatusKey, string> = {
   failed: 'Failed',
   superseded: 'Superseded',
   discarded: 'Discarded',
+  // Email delivery (AdminEmailHistory) — "delivered" alone is an order hand-over.
+  email_delivered: 'Delivered',
+  delayed: 'Delayed',
+  bounced: 'Bounced',
+  complained: 'Spam complaint',
 }
 
 const resolved = computed<StatusKey>(() => {

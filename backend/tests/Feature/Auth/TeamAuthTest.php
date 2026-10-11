@@ -186,7 +186,7 @@ class TeamAuthTest extends TestCase
         $this->postJson('/api/v1/team/forgot-password', ['email' => $user->email])
             ->assertOk();
 
-        Mail::assertSent(TeamPasswordResetRequestedMail::class);
+        Mail::assertQueued(TeamPasswordResetRequestedMail::class);
         $this->assertDatabaseHas('activity_log', [
             'action' => 'team.password_reset_requested',
             'subject_id' => $user->id,

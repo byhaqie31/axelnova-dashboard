@@ -112,7 +112,7 @@ jobs:
 
             echo ""
             echo "=== recreate containers (--no-deps keeps unrelated services untouched) ==="
-            docker compose -f docker-compose.prod.ghcr.yml up -d --no-deps backend frontend queue
+            docker compose -f docker-compose.prod.ghcr.yml up -d --no-deps backend frontend queue scheduler
 
             echo ""
             echo "=== wait for entrypoint config:cache ==="

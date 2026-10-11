@@ -3,38 +3,45 @@
 namespace App\Mail;
 
 use App\Models\ExternalAccount;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Heads-up to the founder that a partner (referrer OR investor) used self-service
- * "forgot passcode" and a fresh passcode was auto-issued to them. Carries NO
- * passcode — it's just a notice. Sent synchronously so it doesn't depend on the
- * queue worker.
+ * Email 26 — heads-up to the founder that a partner (referrer OR investor)
+ * used self-service "forgot passcode" and a fresh passcode was auto-issued to
+ * them. Carries NO passcode — it's just a notice. Queued like every email
+ * (spec §5.7).
  */
-class PartnerResetRequestedMail extends Mailable
+class PartnerResetRequestedMail extends KitMailable implements ShouldQueue
 {
-    use SerializesModels;
+    use Queueable, SerializesModels;
 
     public function __construct(public readonly ExternalAccount $account) {}
 
-    public function envelope(): Envelope
+    public static function emailType(): string
     {
-        return new Envelope(
-            subject: 'Partner passcode reset — '.$this->account->displayName(),
-        );
+        return 'partner.reset_alert';
     }
 
-    public function content(): Content
+    public static function relatedProperty(): ?string
     {
-        return new Content(
-            markdown: 'mail.partner-reset-requested',
-            with: [
-                'account' => $this->account,
-                'name' => $this->account->displayName(),
+        return 'account';
+    }
+
+    public function viewData(): array
+    {
+        $account = $this->account;
+        $name = $account->displayName();
+
+        return [
+            'partnerName' => $name !== '' ? $name : $account->email,
+            'rows' => [
+                ['Partner', $name !== '' ? $name : '—'],
+                ['Account type', ucfirst((string) $account->type)],
+                ['Email', $account->email],
+                ['Referral code', $account->isReferrer() ? $account->referralCode() : null],
             ],
-        );
+        ];
     }
 }
