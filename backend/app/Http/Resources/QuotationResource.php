@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\QuotationRevision;
 use App\Services\Quoting\ScopeSummary;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -65,6 +66,58 @@ class QuotationResource extends JsonResource
                 'label' => $a->addon_label,
                 'amount_myr' => $a->amount_myr,
             ])),
+            ...($listRoute ? [] : $this->revisionFields()),
+        ];
+    }
+
+    /**
+     * Which revision this payload shows, and the family's revision tabs. Content
+     * and `status` above are the SHOWN revision's (a view built by
+     * QuotationRevision::asQuotation); `family_status` is the family's derived one.
+     *
+     * @return array<string, mixed>
+     */
+    private function revisionFields(): array
+    {
+        $revision = $this->resource->revisionView ?? $this->resource->revision();
+        $family = $revision->quotation;
+        $revisions = $family->revisions()->with('creator:id,name')->get();
+        $numberOf = $revisions->pluck('number', 'id');
+
+        return [
+            'family_status' => $family->status,
+            'display_reference' => QuotationRevision::displayReference($family->reference_code, $revision->number),
+            'revision' => [
+                'id' => $revision->id,
+                'number' => $revision->number,
+                'label' => $revision->label(),
+                'status' => $revision->status,
+                'change_reason' => $revision->change_reason,
+                'replaces' => $numberOf[$revision->replaces_revision_id] ?? null,
+                'is_current' => $revision->id === $family->current_revision_id,
+                'editable' => $revision->isDraft(),
+                'issued_at' => $revision->issued_at?->toISOString(),
+                'sent_at' => $revision->sent_at?->toISOString(),
+                'accepted_at' => $revision->accepted_at?->toISOString(),
+                'superseded_at' => $revision->superseded_at?->toISOString(),
+                'pdf_path' => $revision->pdfPath(),
+                'pdf_filename' => QuotationRevision::fileStem($family->reference_code, $revision->number).'.pdf',
+            ],
+            'revisions' => $revisions->map(fn (QuotationRevision $r) => [
+                'number' => $r->number,
+                'label' => $r->label(),
+                'status' => $r->status,
+                'is_current' => $r->id === $family->current_revision_id,
+                'estimate_myr' => $r->asQuotation($family)->finalAmount(),
+                'change_reason' => $r->change_reason,
+                'replaces' => $numberOf[$r->replaces_revision_id] ?? null,
+                'created_by' => $r->creator?->name,
+                'created_at' => $r->created_at?->toISOString(),
+                'sent_at' => $r->sent_at?->toISOString(),
+                'accepted_at' => $r->accepted_at?->toISOString(),
+                'superseded_at' => $r->superseded_at?->toISOString(),
+            ])->values()->all(),
+            'open_revision' => $revisions->first(fn (QuotationRevision $r) => $r->isOpen())?->number,
         ];
     }
 }

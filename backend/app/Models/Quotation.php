@@ -258,7 +258,7 @@ class Quotation extends Model
     {
         $this->revision();
 
-        return $this->revisions()->whereIn('status', QuotationRevision::OPEN)->latest('number')->first();
+        return $this->revisions()->whereIn('status', QuotationRevision::OPEN)->reorder('number', 'desc')->first();
     }
 
     /** The family's draft revision — the only editable one — if any. */
@@ -266,7 +266,7 @@ class Quotation extends Model
     {
         $this->revision();
 
-        return $this->revisions()->where('status', QuotationRevision::DRAFT)->latest('number')->first();
+        return $this->revisions()->where('status', QuotationRevision::DRAFT)->reorder('number', 'desc')->first();
     }
 
     /** "AXNQ-2026-0017" / "AXNQ-2026-0017 · R2" for the revision this model shows. */

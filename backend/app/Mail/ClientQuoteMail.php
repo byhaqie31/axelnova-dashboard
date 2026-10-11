@@ -18,7 +18,7 @@ class ClientQuoteMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Your quote {$this->quote->reference_code} from Axel Nova Ventures",
+            subject: "Your quote {$this->quote->displayReference()} from Axel Nova Ventures",
         );
     }
 
@@ -32,7 +32,7 @@ class ClientQuoteMail extends Mailable
                 // (stamped by send() just before this job is queued) wins.
                 'validUntil' => $this->quote->validUntil()->format('d F Y'),
                 'whatsappUrl' => config('services.admin.whatsapp_url')
-                    .'?text='.rawurlencode("Hi Qie, I'd like to chat about quote {$this->quote->reference_code}."),
+                    .'?text='.rawurlencode("Hi Qie, I'd like to chat about quote {$this->quote->displayReference()}."),
                 'pdfUrl' => $this->quote->public_token
                     ? rtrim((string) config('services.frontend.public_url'), '/')."/documents/{$this->quote->public_token}/pdf"
                     : null,

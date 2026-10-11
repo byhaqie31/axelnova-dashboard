@@ -2,6 +2,7 @@
 
 namespace App\Services\Quoting;
 
+use App\Models\Order;
 use App\Models\Quotation;
 use App\Models\QuotationRevision;
 use Illuminate\Support\Collection;
@@ -172,6 +173,159 @@ class QuotationRevisions
     }
 
     /**
+     * "Revise" (§2): clone a revision into a new DRAFT (number = max + 1) carrying
+     * the change reason. The source keeps its status — except a SENT source, which
+     * moves to `discarded` (the client gets the replacement instead). Nothing is
+     * sent. The document is copied verbatim, hand edits included (the founder can
+     * re-seed it from the builder); it is never re-priced here.
+     *
+     * Refused when another revision of the family is still open (draft / sent),
+     * when the source isn't revisable, or once the order is completed/cancelled.
+     */
+    public static function revise(Quotation $quotation, string $changeReason, ?QuotationRevision $source = null): QuotationRevision
+    {
+        $changeReason = trim($changeReason);
+        if ($changeReason === '') {
+            throw new RevisionLocked('A change reason is required to open a new revision.');
+        }
+
+        return DB::transaction(function () use ($quotation, $changeReason, $source): QuotationRevision {
+            Quotation::withTrashed()->lockForUpdate()->findOrFail($quotation->getKey());
+            self::initialise($quotation);
+            $revisions = $quotation->revisions()->get();
+
+            $source = $source
+                ? $revisions->firstWhere('id', $source->id)
+                : ($revisions->firstWhere('status', QuotationRevision::SENT)
+                    ?? $revisions->firstWhere('status', QuotationRevision::ACCEPTED)
+                    ?? self::pickCurrent($revisions));
+            if (! $source || ! in_array($source->status, QuotationRevision::REVISABLE, true)) {
+                $what = $source ? "{$source->label()} is {$source->status}" : 'That revision does not belong to this quotation';
+                throw new RevisionLocked("{$what} — a new revision can only be opened from an accepted, sent, rejected or expired one.");
+            }
+
+            $open = $revisions->first(fn (QuotationRevision $r) => $r->isOpen() && $r->isNot($source));
+            if ($open) {
+                throw new RevisionLocked("{$open->label()} of {$quotation->reference_code} is still {$open->status} — "
+                    .($open->isDraft() ? 'edit, send or discard it' : 'accept, reject or revise it').' before opening another revision.');
+            }
+
+            $order = $quotation->order()->first();
+            if ($order && in_array($order->status, ['completed', 'cancelled'], true)) {
+                throw new RevisionLocked("Order {$order->order_number} is {$order->status} — it can't be revised. Start a new quotation instead.");
+            }
+
+            $revision = new QuotationRevision;
+            $revision->forceFill(array_merge(self::contentOf($source), [
+                'quotation_id' => $quotation->getKey(),
+                'number' => (int) $revisions->max('number') + 1,
+                'status' => QuotationRevision::DRAFT,
+                'change_reason' => $changeReason,
+                'replaces_revision_id' => $source->id,
+                'public_token' => Str::random(48),
+                'addons' => $source->addons ?? [],
+                'created_by' => Auth::id(),
+            ]));
+            $revision->save();
+
+            if ($source->status === QuotationRevision::SENT) {
+                $source->forceFill(['status' => QuotationRevision::DISCARDED])->save();
+            }
+
+            self::refresh($quotation);
+            $quotation->logActivity('quotation.revised', [
+                'revision' => $revision->number,
+                'from' => $source->number,
+                'change_reason' => $changeReason,
+            ]);
+
+            return $revision;
+        });
+    }
+
+    /**
+     * Discard a draft revision (never R1 — that is the quotation itself; delete
+     * it instead). Undoes the revise that opened it: a source that was SENT (and
+     * moved to discarded by the revise) goes back to sent — or expired, if its
+     * validity lapsed meanwhile.
+     */
+    public static function discard(QuotationRevision $draft, ?Quotation $quotation = null): void
+    {
+        if (! $draft->isDraft()) {
+            throw new RevisionLocked("{$draft->label()} is {$draft->status} — only a draft revision can be discarded.");
+        }
+        if ($draft->number === 1) {
+            throw new RevisionLocked('R1 is the quotation itself — delete the quotation instead of discarding it.');
+        }
+
+        $quotation ??= $draft->quotation;
+
+        DB::transaction(function () use ($draft, $quotation): void {
+            $draft->forceFill(['status' => QuotationRevision::DISCARDED])->save();
+
+            $source = $draft->replaces;
+            if ($source && $source->status === QuotationRevision::DISCARDED && $source->sent_at !== null) {
+                $source->forceFill([
+                    'status' => $source->expires_at?->isPast() ? QuotationRevision::EXPIRED : QuotationRevision::SENT,
+                ])->save();
+            }
+
+            self::refresh($quotation);
+            $quotation->logActivity('quotation.revision_discarded', ['revision' => $draft->number]);
+        });
+    }
+
+    /**
+     * Accept a revision. The target is the family's latest live revision (never a
+     * stale one behind a newer revision). First acceptance creates the order;
+     * accepting a revision when an earlier one is already accepted runs the
+     * SUPERSEDE transaction (§3) — the order keeps its id and re-points to the new
+     * revision. All of it is atomic.
+     *
+     * @return array{order: Order, superseded: ?QuotationRevision, revision: QuotationRevision}
+     */
+    public static function accept(Quotation $quotation, ?QuotationRevision $revision = null, ?int $commissionPct = null): array
+    {
+        return DB::transaction(function () use ($quotation, $revision, $commissionPct): array {
+            Quotation::withTrashed()->lockForUpdate()->findOrFail($quotation->getKey());
+            self::initialise($quotation);
+            $revisions = $quotation->revisions()->get();
+
+            $latest = $revisions->where('status', '!=', QuotationRevision::DISCARDED)->sortByDesc('number')->first();
+            $revision = $revision ? $revisions->firstWhere('id', $revision->id) : $latest;
+            if (! $revision) {
+                throw new RevisionLocked('That revision does not belong to this quotation.');
+            }
+            if ($revision->status === QuotationRevision::ACCEPTED) {
+                throw new RevisionLocked("{$revision->label()} is already accepted.");
+            }
+            if ($revision->isNot($latest) || ! in_array($revision->status, [
+                QuotationRevision::DRAFT, QuotationRevision::SENT, QuotationRevision::REJECTED, QuotationRevision::EXPIRED,
+            ], true)) {
+                throw new RevisionLocked("{$revision->label()} is {$revision->status} and isn't the latest revision — only {$latest?->label()} can be accepted.");
+            }
+
+            $previous = $revisions->firstWhere('status', QuotationRevision::ACCEPTED);
+            $order = $quotation->order()->first();
+            if ($order && in_array($order->status, ['completed', 'cancelled'], true)) {
+                throw new RevisionLocked("Order {$order->order_number} is {$order->status} — it can't take a new revision.");
+            }
+
+            $now = now();
+            $revision->forceFill(['status' => QuotationRevision::ACCEPTED, 'accepted_at' => $now])->save();
+            $previous?->forceFill(['status' => QuotationRevision::SUPERSEDED, 'superseded_at' => $now])->save();
+            self::refresh($quotation);
+
+            $terms = $revision->asQuotation($quotation);
+            $order = $order
+                ? OrderRevisions::supersede($order, $revision, $previous, $terms)
+                : OrderRevisions::open($quotation, $revision, $terms, $commissionPct);
+
+            return ['order' => $order, 'superseded' => $previous, 'revision' => $revision];
+        });
+    }
+
+    /**
      * Mark a draft (or re-send a sent) revision as delivered: token, sent_at and
      * the default validity (sent_at + valid_for_days unless a custom date is set).
      */
@@ -192,6 +346,22 @@ class QuotationRevisions
         self::refresh($revision->quotation);
 
         return $revision;
+    }
+
+    /** The client declined: the open (draft or sent) revision moves to rejected. */
+    public static function reject(Quotation $quotation): QuotationRevision
+    {
+        $open = $quotation->openRevision();
+        if (! $open) {
+            $current = $quotation->revision();
+            throw new RevisionLocked("{$current->label()} is {$current->status} — only an open (draft or sent) revision can be rejected."
+                .($current->status === QuotationRevision::ACCEPTED ? ' To change accepted terms, use Revise; to stop the project, cancel the order.' : ''));
+        }
+
+        $open->forceFill(['status' => QuotationRevision::REJECTED])->save();
+        self::refresh($quotation);
+
+        return $open;
     }
 
     /** Lazy expiry of one sent revision past its validity date. */

@@ -238,6 +238,11 @@ Route::middleware([
         Route::post('/quotations/{quotation}/expiry', [QuotationsController::class, 'setExpiry'])->name('quotations.expiry');
         Route::post('/quotations/{quotation}/send', [QuotationsController::class, 'send'])->name('quotations.send');
         Route::post('/quotations/{quotation}/accept', [QuotationsController::class, 'accept'])->name('quotations.accept');
+        // Revisions — open a new draft revision ("Revise", change_reason required)
+        // or discard a draft one. Accept handles first acceptance AND supersede.
+        Route::post('/quotations/{quotation}/revisions', [QuotationsController::class, 'revise'])->name('quotations.revise');
+        Route::post('/quotations/{quotation}/revisions/{number}/discard', [QuotationsController::class, 'discardRevision'])
+            ->whereNumber('number')->name('quotations.revisions.discard');
         // Correct a mis-matched client — re-point (+ refresh snapshot). Not gated by
         // status: bad records may already be sent/accepted.
         Route::post('/quotations/{quotation}/client', [QuotationsController::class, 'updateClient'])->name('quotations.client');

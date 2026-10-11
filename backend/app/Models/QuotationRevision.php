@@ -188,6 +188,7 @@ class QuotationRevision extends Model
         ));
         $view->exists = true;
         $view->revisionView = $this;
+        $this->setRelation('quotation', $family);
         $view->setRelation('addons', $this->addonModels());
         $view->setRelation('pricingConfig', $this->pricingConfig ?? $family->pricingConfig);
         foreach (['order', 'referrer', 'updatedBy', 'client'] as $relation) {
