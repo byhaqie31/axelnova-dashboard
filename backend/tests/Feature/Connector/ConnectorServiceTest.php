@@ -457,9 +457,20 @@ class ConnectorServiceTest extends TestCase
         $this->assertSame(['web'], $public->pluck('slug')->all());
         $this->assertNotContains('starter', $public->flatMap(fn ($s) => collect($s['packages'])->pluck('slug'))->all());
 
-        $builder = collect($this->getJson('/api/v1/quote-builder/config')->assertOk()->json('data.categories'));
+        $config = $this->getJson('/api/v1/quote-builder/config')->assertOk();
+        $builder = collect($config->json('data.categories'));
         $this->assertNotContains('dash', $builder->pluck('key')->all());
         $this->assertNotContains('dash_starter', $builder->flatMap(fn ($c) => collect($c['packages'])->pluck('key'))->all());
+        $this->assertArrayNotHasKey('dash_starter', $config->json('data.base_packages'));
+        $this->assertArrayHasKey('web_business', $config->json('data.base_packages'));
+
+        // A hand-made public quote request can't price it either.
+        $this->postJson('/api/v1/quote-requests', ['package_key' => 'dash_starter'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('package_key');
+        $this->postJson('/api/v1/quote-requests', ['package_key' => 'web_business'])
+            ->assertUnprocessable()
+            ->assertJsonMissingValidationErrors('package_key');
 
         $catalog = $this->getJson('/api/v1/connector/catalog', $this->tokenHeader())->assertOk();
         $this->assertNotContains('dash_starter', collect($catalog->json('packages'))->pluck('key')->all());

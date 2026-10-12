@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Observers\ServicePackageObserver;
 use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -69,6 +70,12 @@ class ServicePackage extends Model
     public function isEffectivelyLive(?ServiceCategory $in = null): bool
     {
         return $this->active && (bool) ($in ?? $this->category)?->active;
+    }
+
+    /** isEffectivelyLive() as a query — the packages the quote engine may price. */
+    public function scopeEffectivelyLive(Builder $query): Builder
+    {
+        return $query->where('active', true)->whereHas('category', fn (Builder $q) => $q->where('active', true));
     }
 
     /** `live` | `hidden` — isEffectivelyLive() as a label (the package's own flag stays `active`). */
