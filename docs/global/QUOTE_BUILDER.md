@@ -16,7 +16,8 @@ There are two sources of truth, by design:
 The `PricingEngine` merges these at request time:
 
 1. Start with `pricing_configs.active.config.base_packages` (legacy / fallback entries).
-2. Layer admin-managed `service_packages` on top, keyed by `quote_key.package`. DB rows override any matching JSON entry. Only **effectively Live** rows are priced — the package **and** its service (category) active (`ServicePackage::effectivelyLive()`), so a package under a hidden service can't be quoted at all, not even by key (the public funnel, the admin builder and its re-save all validate against this list → 422). `packageName()` still resolves any row's real name, Live or Hidden, so old quotes keep their package names.
+2. Layer admin-managed `service_packages` on top, keyed by `quote_key.package`. A DB row **claims** its key, Live or Hidden (like add-ons): the JSON entry for any key a row holds is dropped first, so hiding the row can never fall back to the old JSON price. Only **effectively Live** rows are priced — the package **and** its service (category) active (`ServicePackage::effectivelyLive()`), so a package under a hidden service can't be quoted at all, not even by key (the admin builder and its re-save validate against this list → 422). `packageName()` still resolves any row's real name, Live or Hidden, so old quotes keep their package names.
+   - The **public** quote endpoint (`POST /v1/quote-requests`) is stricter: `package_key` must be a package the catalogue offers **right now** — the config's `categories` (effectively Live, wired, with a max price). A hidden package, or a legacy JSON-only key no service offers, gets a 422 *"That package is no longer available…"* — so a stale cached page or a hand-made request can't quote one. JSON-only keys stay in `base_packages` for the admin builder and old quotes.
 3. Add-ons merge the same way: `service_addons` rows over the JSON `addons` map. A DB row *claims* its key — an **active** row appears (in `sort_order`), an **inactive** row removes the key entirely (no JSON fallback), and a JSON key with no DB row still resolves. See `PricingEngine::buildAddons()`.
 4. **Scope fields** (`service_scope_fields`) define both the builder's per-category inputs and their pricing — superseding the JSON `modifiers` map. `calculate()` evaluates the selected package's category fields (gated by `applies_to`); `buildScopeFields()` groups them by category slug for the config endpoint. The JSON `modifiers` loop is kept as a one-release fallback for legacy `modifiers` payloads. See **Scope fields** below.
 5. Rush stays in `pricing_configs.config`.
@@ -256,7 +257,7 @@ The `PricingConfigObserver` deactivates older rows and clears cache.
 
 > Legacy entries written before the ETA refactor have `weeks` instead of `eta_value`/`eta_unit`. The engine reads `weeks` as `eta_value` with `eta_unit='week'` for backward compatibility — but write all new entries in the new shape.
 
-`base_packages` in JSON is a **fallback** for keys that don't have a matching admin-managed `service_packages` row. The DB row always wins where both exist.
+`base_packages` in JSON is a **fallback** for keys that no admin-managed `service_packages` row holds. Once a row holds a key it owns it — Live → priced from the row, Hidden → not priced at all (the JSON entry is ignored either way).
 
 ---
 

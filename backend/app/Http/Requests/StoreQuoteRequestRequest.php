@@ -20,7 +20,13 @@ class StoreQuoteRequestRequest extends FormRequest
         // packages aren't rejected as "invalid".
         $config = PricingEngine::cachedFrontendConfig();
         $validAddonKeys = array_keys($config['addons'] ?? []);
-        $validPackageKeys = array_keys($config['base_packages'] ?? []);
+        // A public quote may only name a package the catalogue offers RIGHT NOW
+        // (the builder's `categories`: effectively Live, wired, with a max price).
+        // A stale cached page or a hand-made request for a hidden package, or for a
+        // legacy pricing-JSON key no service offers, is refused.
+        $validPackageKeys = collect($config['categories'] ?? [])
+            ->flatMap(fn (array $category) => array_column($category['packages'], 'key'))
+            ->all();
 
         return [
             'name' => ['required', 'string', 'min:2', 'max:150'],
@@ -37,6 +43,13 @@ class StoreQuoteRequestRequest extends FormRequest
             'form_payload.source' => ['nullable', 'string', 'max:100'],
             'form_payload.notes' => ['nullable', 'string', 'max:2000'],
             'website_url' => ['nullable', 'max:0'], // honeypot — must be empty
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'package_key.in' => 'That package is no longer available. Please pick another one from the services page.',
         ];
     }
 }

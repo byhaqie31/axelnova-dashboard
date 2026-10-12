@@ -88,6 +88,8 @@ These are easy to get wrong; they exist for reasons:
 
 **Design tokens (frontend).** All theming via CSS variables in [frontend/app/assets/css/main.css](../frontend/app/assets/css/main.css). Never hardcode hex in components. New patterns extend `main.css` AND update [docs/frontend/UI-STANDARDS.md](../docs/frontend/UI-STANDARDS.md) together. Both light and dark mode are first-class — verify in both.
 
+**Public pages are swr-cached — a visible change must purge.** In production Nitro caches every public marketing page **and its `_payload.json`** (`swr` route rules in `nuxt.config.ts`), and an expired entry is still served once more with no age limit — so freshness relies on `App\Support\SiteCache::purge()` → `POST /_cache/purge`, not the 300s window. Any model a public page renders needs its observer to purge when a row that is or was public changes (today: blog posts, service categories / packages that are or were Live, add-ons, scope fields, pricing configs). Every public page's footer lists the Live services. See [DEPLOY.md § Page caching](../docs/global/DEPLOY.md#page-caching).
+
 **Queue worker is required for quote submissions.** `POST /v1/quote-requests` dispatches `SendClientQuoteEmail` and `NotifyAdminJob`. If `queue:work` isn't running, submissions silently queue and emails never send. The customer estimate is rendered **inline** in the email — no PDF, no attachments.
 
 **Sanctum is route-scoped.** Stateful CSRF middleware only applies to `/v1/admin/*` ([backend/routes/api.php](../backend/routes/api.php)). Public POSTs (the quote form) are pure stateless. Don't set `SANCTUM_STATEFUL_DOMAINS` globally.
