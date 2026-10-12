@@ -61,16 +61,6 @@ const sections = computed<{ key: string, title: string, links: FooterLink[] }[]>
   },
 ])
 
-// Back to top — the brand mark in the bottom bar. Rides Lenis when it owns
-// scrolling (a native smooth scroll would fight it), then hands keyboard focus
-// to the header's brand link so a keyboard user lands where the eye does.
-const motion = useMotion()
-const toTop = () => {
-  if (motion.lenis) motion.lenis.scrollTo(0, { duration: motion.reduced ? 0 : 1.4 })
-  else window.scrollTo({ top: 0, behavior: motion.reduced ? 'auto' : 'smooth' })
-  document.querySelector<HTMLElement>('header a')?.focus({ preventScroll: true })
-}
-
 // Rows toggle independently (as on apple.com): closing a row above the one
 // just tapped would shift it out from under the finger.
 const open = ref<Record<string, boolean>>({})
@@ -135,34 +125,11 @@ watch(() => route.fullPath, () => { open.value = {} })
         </nav>
 
         <!-- Company identity: name set like the section titles, details like the
-             copyright line; Back to top on its right -->
-        <div class="mt-6 md:mt-10 mb-8 md:mb-10 flex items-center justify-between gap-6">
-          <div class="min-w-0 text-[12px] leading-relaxed" style="color: var(--color-text-secondary);">
-            <p class="mb-1 text-[14px] md:text-[12px] font-semibold tracking-tight" style="color: var(--color-text);">Axel Nova Ventures</p>
-            <p>Registration No.: 202603119899 (CA0420977-U)</p>
-            <p>Kuala Lumpur, Malaysia</p>
-          </div>
-
-          <!-- Back to top: the brand mark floating in a slowly turning aurora
-               ring. On hover the mark flies up and an arrow rises in its
-               place. Right of the company identity, at every width. -->
-          <button
-            type="button"
-            class="footer-top shrink-0 flex flex-col items-center gap-1.5"
-            title="Back to top"
-            @click="toTop"
-          >
-            <span class="footer-top-badge">
-              <span class="footer-top-ring" aria-hidden="true" />
-              <span class="footer-top-core">
-                <span class="footer-top-float">
-                  <img src="/favicon/apple-touch-icon.png" alt="" class="footer-top-mark">
-                </span>
-                <UIcon name="i-lucide-arrow-up" class="footer-top-arrow size-4.5" />
-              </span>
-            </span>
-            <span class="text-[11px] font-medium" style="color: var(--color-text-tertiary);">Back to top</span>
-          </button>
+             copyright line. (Back to top floats now — ScrollTopButton.) -->
+        <div class="mt-6 md:mt-10 mb-8 md:mb-10 text-[12px] leading-relaxed" style="color: var(--color-text-secondary);">
+          <p class="mb-1 text-[14px] md:text-[12px] font-semibold tracking-tight" style="color: var(--color-text);">Axel Nova Ventures</p>
+          <p>Registration No.: 202603119899 (CA0420977-U)</p>
+          <p>Kuala Lumpur, Malaysia</p>
         </div>
 
         <!-- Bottom bar -->
@@ -239,88 +206,8 @@ watch(() => route.fullPath, () => { open.value = {} })
   color: var(--color-text) !important;
 }
 
-/* Back to top. The ring is a conic gradient of the aurora stops turning
-   behind a core disc (so it reads as a 2px rotating border); the mark floats
-   on its own wrapper so the hover fly-up (a transform on the img) never
-   fights the float animation. */
-.footer-top-badge {
-  position: relative;
-  display: block;
-  width: 48px;
-  height: 48px;
-  border-radius: 9999px;
-  transition: transform 0.45s cubic-bezier(0.215, 0.61, 0.355, 1), box-shadow 0.45s ease;
-}
-.footer-top-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: conic-gradient(
-    from 0deg,
-    var(--grad-aurora-blue),
-    var(--grad-aurora-violet),
-    var(--grad-aurora-pink),
-    var(--grad-aurora-cyan),
-    var(--grad-aurora-blue)
-  );
-  animation: footer-top-spin 8s linear infinite;
-}
-.footer-top-core {
-  position: absolute;
-  inset: 2px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border-radius: inherit;
-  background: var(--color-bg-elevated);
-}
-.footer-top-float {
-  grid-area: 1 / 1;
-  display: block;
-  animation: footer-top-float 3.2s ease-in-out infinite;
-}
-.footer-top-mark {
-  display: block;
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
-  transition: transform 0.45s cubic-bezier(0.215, 0.61, 0.355, 1), opacity 0.3s ease;
-}
-.footer-top-arrow {
-  grid-area: 1 / 1;
-  color: var(--color-text);
-  opacity: 0;
-  transform: translateY(150%);
-  transition: transform 0.45s cubic-bezier(0.215, 0.61, 0.355, 1), opacity 0.3s ease;
-}
-.footer-top { border-radius: 0.75rem; }
-.footer-top:hover .footer-top-badge,
-.footer-top:focus-visible .footer-top-badge {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-glow);
-}
-.footer-top:hover .footer-top-ring,
-.footer-top:focus-visible .footer-top-ring { animation-duration: 2.5s; }
-.footer-top:hover .footer-top-mark,
-.footer-top:focus-visible .footer-top-mark { transform: translateY(-160%); opacity: 0; }
-.footer-top:hover .footer-top-arrow,
-.footer-top:focus-visible .footer-top-arrow { transform: translateY(0); opacity: 1; }
-
-@keyframes footer-top-spin {
-  to { transform: rotate(360deg); }
-}
-@keyframes footer-top-float {
-  0%, 100% { transform: translateY(1.5px); }
-  50% { transform: translateY(-1.5px); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .footer-panel,
   .footer-panel.is-open { transition: none; }
-  .footer-top-ring,
-  .footer-top-float { animation: none; }
-  .footer-top-badge,
-  .footer-top-mark,
-  .footer-top-arrow { transition: none; }
 }
 </style>

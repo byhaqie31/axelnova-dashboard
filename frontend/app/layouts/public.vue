@@ -3,6 +3,7 @@ import type { ComponentPublicInstance } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import BrandMark from '~/components/shared/BrandMark.vue'
 import SiteFooter from '~/components/public/SiteFooter.vue'
+import ScrollTopButton from '~/components/public/ScrollTopButton.vue'
 import { NAV_FLIGHT_KEY } from '~/composables/useNavFlight'
 import { MOTION } from '~/utils/motion'
 
@@ -395,6 +396,9 @@ if (import.meta.client) {
     </main>
 
     <SiteFooter :links="links" />
+
+    <!-- Floating Back to top: appears while scrolling up; its ring is the reading progress. -->
+    <ScrollTopButton />
 
     <!-- Consent banner (functional axn_ref attribution cookie is gated on this). -->
     <CookieConsent />
