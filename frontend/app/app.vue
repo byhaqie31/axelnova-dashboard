@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { MOTION } from '~/utils/motion'
+import { jumpToHashOrTop } from '~/utils/hashScroll'
 
 // Route transitions: quick fade+slide via GSAP JS hooks (total < 0.8s).
 // Under reduced motion the hooks complete instantly. Hooks only run on the
@@ -33,6 +34,11 @@ const pageTransition = {
     })
   },
   onEnter(el: Element, done: () => void) {
+    // Arriving at another page's #hash (e.g. a package card's "+N more
+    // features"): land on it now, before the fade-in, so the page appears
+    // already there. This is the first moment the new page is in the DOM —
+    // page:finish fires while the old one is still leaving (utils/hashScroll.ts).
+    if (window.location.hash) jumpToHashOrTop(motion?.lenis ?? null)
     if (skipTransition()) return done()
     motion!.gsap.fromTo(el,
       { opacity: 0, y: 24 },

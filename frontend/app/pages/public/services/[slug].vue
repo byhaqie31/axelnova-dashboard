@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SectionHeader from '~/components/shared/SectionHeader.vue'
-import PriceTag from '~/components/shared/primitives/PriceTag.vue'
+import ServicePackageCard from '~/components/public/ServicePackageCard.vue'
 import { useApiBase } from '~/composables/useApiBase'
 
 definePageMeta({ layout: 'public' })
@@ -14,8 +14,11 @@ interface ApiPackage {
   price_max_myr: string | number | null
   unit: string
   duration_text: string
+  revisions: string | null
   features: string[]
   featured: boolean
+  cta: string | null
+  quote_key: { category: string, package: string } | null
 }
 
 interface ApiCategory {
@@ -404,48 +407,14 @@ useScrollReveal('.reveal')
 
     <section v-if="category.packages.length" class="reveal mb-24">
       <h3 class="text-2xl font-semibold tracking-tight mb-8">Packages</h3>
+      <!-- The full cards (every feature); /services shows the brief ones and links here by #slug. -->
       <div class="grid md:grid-cols-3 gap-5">
-        <div
+        <ServicePackageCard
           v-for="pkg in category.packages"
-          :key="pkg.id"
-          class="relative rounded-2xl border p-6 flex flex-col"
-          :style="{
-            background: 'var(--color-bg-secondary)',
-            borderColor: pkg.featured ? 'var(--color-accent)' : 'var(--color-border)',
-            borderWidth: pkg.featured ? '2px' : '1px',
-          }"
-        >
-          <span
-            v-if="pkg.featured"
-            class="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-medium px-3 py-1 rounded-full"
-            style="background: var(--color-accent); color: white;"
-          >
-            Most popular
-          </span>
-
-          <h4 class="text-lg font-semibold tracking-tight mb-1">
-            {{ pkg.name }}
-          </h4>
-          <p class="text-[13px] mb-4" :style="{ color: 'var(--color-text-secondary)' }">
-            {{ pkg.tagline }}
-          </p>
-          <PriceTag
-            class="text-[17px] font-semibold tracking-tight mb-1"
-            :min="pkg.price_min_myr"
-            :max="pkg.price_max_myr"
-            :unit="pkg.unit"
-          />
-          <p class="text-[12px] mb-4 inline-flex items-center gap-1.5" :style="{ color: 'var(--color-text-secondary)' }">
-            <UIcon name="i-lucide-clock" class="size-3.5 shrink-0" />
-            {{ pkg.duration_text }}
-          </p>
-          <ul class="space-y-1.5 text-[13px] flex-1" :style="{ color: 'var(--color-text)' }">
-            <li v-for="f in pkg.features.slice(0, 4)" :key="f" class="flex items-start gap-2">
-              <UIcon name="i-fluent-checkmark-24-regular" class="size-3.5 mt-1 shrink-0" :style="{ color: 'var(--color-accent)' }" />
-              <span>{{ f }}</span>
-            </li>
-          </ul>
-        </div>
+          :key="pkg.slug"
+          :pkg="pkg"
+          heading-level="h4"
+        />
       </div>
     </section>
 

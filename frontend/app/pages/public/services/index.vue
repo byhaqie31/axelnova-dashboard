@@ -2,6 +2,7 @@
 import { useApiBase } from '~/composables/useApiBase'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import PriceTag from '~/components/shared/primitives/PriceTag.vue'
+import ServicePackageCard from '~/components/public/ServicePackageCard.vue'
 import {
   defaultPackage,
   estimatePackage,
@@ -60,7 +61,8 @@ const { data: apiResponse } = await useFetch<{ data: ApiCategory[] }>(
   { key: 'public-services' },
 )
 
-// Reshape the API response into the camelCase shape the template was originally written against.
+// Reshape the categories into the camelCase shape the template was originally
+// written against. Packages stay in the API shape — ServicePackageCard takes it.
 const serviceCategories = computed(() => {
   const rows = apiResponse.value?.data ?? []
   return rows.map(c => ({
@@ -69,23 +71,13 @@ const serviceCategories = computed(() => {
     icon: c.icon,
     descriptionHtml: c.description_html,
     isDefault: c.is_default,
-    packages: c.packages.map(p => ({
-      id: p.slug,
-      dbId: p.id,
-      name: p.name,
-      tagline: p.tagline,
-      priceMin: Number(p.price_min_myr),
-      priceMax: p.price_max_myr === null ? null : Number(p.price_max_myr),
-      unit: p.unit,
-      duration: p.duration_text,
-      revisions: p.revisions ?? '—',
-      featured: p.featured,
-      features: p.features,
-      cta: p.cta ?? 'Get a quote',
-      quoteKey: p.quote_key ?? undefined,
-    })),
+    packages: c.packages,
   }))
 })
+
+// The listing's cards are brief: the first few features, then a link to the
+// full card on the service page.
+const BRIEF_FEATURES = 5
 
 // ── Currency ──────────────────────────────────────────────────────────────────
 type CurrencyCode = 'MYR' | 'USD' | 'GBP' | 'SGD'
@@ -375,99 +367,17 @@ useScrollReveal('.reveal')
           </Transition>
         </div>
 
-        <!-- Package cards -->
+        <!-- Package cards — brief here; the full card lives on the service page -->
         <div class="grid gap-5 md:grid-cols-3">
-          <div
+          <ServicePackageCard
             v-for="pkg in currentCategory.packages"
-            :key="pkg.id"
-            class="relative rounded-2xl border p-8 flex flex-col"
-            :style="{
-              background: 'var(--color-bg-secondary)',
-              borderColor: pkg.featured ? 'var(--color-accent)' : 'var(--color-border)',
-              borderWidth: pkg.featured ? '2px' : '1px',
-            }"
-          >
-            <!-- Popular badge -->
-            <span
-              v-if="pkg.featured"
-              class="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-medium px-3 py-1 rounded-full"
-              style="background: var(--color-accent); color: white;"
-            >
-              Most popular
-            </span>
-
-            <!-- Name + tagline -->
-            <h3 class="text-[20px] font-semibold tracking-tight mb-1" style="color: var(--color-text);">
-              {{ pkg.name }}
-            </h3>
-            <p class="text-[13px] mb-6" style="color: var(--color-text-secondary);">
-              {{ pkg.tagline }}
-            </p>
-
-            <!-- Price -->
-            <PriceTag
-              class="mb-6 text-[30px] font-semibold tracking-tight leading-tight"
-              stacked
-              :min="convert(pkg.priceMin)"
-              :max="pkg.priceMax === null ? null : convert(pkg.priceMax)"
-              :unit="pkg.unit"
-              :symbol="currencySymbol"
-            />
-
-            <!-- Meta row -->
-            <div
-              class="flex items-center gap-4 pb-6 mb-6 border-b"
-              :style="{ borderColor: 'var(--color-border)' }"
-            >
-              <span class="inline-flex items-center gap-1.5 text-[12px]" style="color: var(--color-text-secondary);">
-                <UIcon name="i-lucide-clock" class="size-3.5 shrink-0" />
-                {{ pkg.duration }}
-              </span>
-              <span
-                v-if="pkg.revisions !== '—'"
-                class="inline-flex items-center gap-1.5 text-[12px]"
-                style="color: var(--color-text-secondary);"
-              >
-                <UIcon name="i-lucide-rotate-ccw" class="size-3.5 shrink-0" />
-                {{ pkg.revisions }}
-              </span>
-            </div>
-
-            <!-- Features -->
-            <ul class="space-y-2.5 mb-8 flex-1">
-              <li
-                v-for="f in pkg.features"
-                :key="f"
-                class="flex items-start gap-2.5 text-[14px]"
-                style="color: var(--color-text);"
-              >
-                <UIcon
-                  name="i-fluent-checkmark-24-regular"
-                  class="size-4 mt-0.5 shrink-0"
-                  style="color: var(--color-accent);"
-                />
-                <span>{{ f }}</span>
-              </li>
-            </ul>
-
-            <!-- CTA -->
-            <NuxtLink
-              v-if="pkg.quoteKey"
-              :to="{ path: '/quote', query: { category: pkg.quoteKey.category, package: pkg.quoteKey.package } }"
-              class="btn-pill text-center"
-              :class="pkg.featured ? 'btn-pill-accent' : 'btn-pill-primary'"
-            >
-              {{ pkg.cta }}
-            </NuxtLink>
-            <a
-              v-else
-              href="mailto:baihaqie@axelnova.tech"
-              class="btn-pill text-center"
-              :class="pkg.featured ? 'btn-pill-accent' : 'btn-pill-primary'"
-            >
-              {{ pkg.cta }}
-            </a>
-          </div>
+            :key="pkg.slug"
+            :pkg="pkg"
+            :feature-limit="BRIEF_FEATURES"
+            :more-to="`/services/${currentCategory.id}#${pkg.slug}`"
+            :convert="convert"
+            :symbol="currencySymbol"
+          />
         </div>
       </div>
     </Transition>

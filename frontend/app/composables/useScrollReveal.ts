@@ -1,4 +1,5 @@
 import { MOTION } from '~/utils/motion'
+import { hashTarget } from '~/utils/hashScroll'
 
 /**
  * Selector-based scroll reveal — the standard `.reveal` API used by pages.
@@ -38,6 +39,11 @@ export function useScrollReveal(selector: string, options: Record<string, unknow
     if (reduced) return // content is already visible — no-op
 
     elements = Array.from(document.querySelectorAll<HTMLElement>(selector))
+    // The section a #hash link lands on (a package card's "+N more features")
+    // is where the visitor arrives — it shows at once instead of being hidden
+    // and faded in under them (utils/hashScroll.ts).
+    const anchor = hashTarget()
+    if (anchor) elements = elements.filter(el => !el.contains(anchor))
     if (!elements.length) return
 
     // GSAP owns these elements until their reveal completes. A CSS transition

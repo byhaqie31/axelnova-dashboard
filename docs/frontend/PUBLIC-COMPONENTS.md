@@ -117,6 +117,14 @@ The `/collaborations` building blocks (see [COLLABORATIONS.md](../global/COLLABO
   - `collaboration`: a studio applying, sent with `origin=collaboration`. It collects studio name, `portfolio_url`, a "what best describes you" pill (sent as `subject`) and a message.
   - Uses the shared `.contact-input`, the `website_url` honeypot and `useReferralAttribution().withRef`, like `/contact`.
 
+### `ServicePackageCard`
+One catalogue package (`GET /v1/services`, API shape) — the `/services` listing and every `/services/{slug}` page render this one card, so the two always show the same package: name, tagline, `PriceTag` (stacked), duration + revisions, features, and the CTA (`/quote?category=&package=` when the package has a `quote_key`, else a mailto). "Most popular" on `featured`.
+
+- **Brief on the listing, full on the service page.** The listing passes `featureLimit` (5) + `moreTo` (`/services/{service}#{package-slug}`): the first 5 features in the admin's order, then "+N more features →". The service page passes neither and shows every feature. The order is set in the admin, so each package should lead with its strongest features.
+- **The card's `id` is the package slug** — the anchor `moreTo` lands on. Arriving from the listing lands straight on it, with its section already visible (`utils/hashScroll.ts`; see [MOTION.md](MOTION.md#plumbing)).
+- **Price sizes to the card, not the viewport** (`@container`): 30px from a 24rem card, 26px below (the service page's narrower 3-up, the listing below `xl`), so a range like "RM 10,000 – 16,000" stays on one line.
+- Props: `pkg`, `headingLevel` (`h3` on the listing, `h4` under the service page's "Packages" h3), `featureLimit` (0 = all), `moreTo`, `convert` + `symbol` (the listing's currency switcher; amounts arrive in MYR).
+
 ### `SiteFooter`
 The storefront footer, mounted once by `layouts/public.vue` (which passes its nav `links` array, so the **Explore** section always matches the header). Laid out after apple.com's footer:
 

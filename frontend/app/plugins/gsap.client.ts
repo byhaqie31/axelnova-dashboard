@@ -2,6 +2,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SplitText } from 'gsap/SplitText'
 import Lenis from 'lenis'
+import { jumpToHashOrTop } from '~/utils/hashScroll'
 
 export default defineNuxtPlugin((nuxtApp) => {
   gsap.registerPlugin(ScrollTrigger, SplitText)
@@ -52,9 +53,21 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   // After each navigation, reset scroll (through Lenis so its internal position
   // stays in sync) and recalculate ScrollTrigger positions against the new layout.
+  // A URL with a #hash lands on that element instead (utils/hashScroll.ts) — here
+  // only on the full load, where the page is already in the DOM (and this hook
+  // would otherwise undo the browser's own jump). On a client-side navigation
+  // this hook fires while the OLD page is still leaving (out-in transition), so
+  // app.vue's onEnter does the landing once the new page is in.
+  let initialLoad = true
   nuxtApp.hook('page:finish', () => {
-    if (lenis) {
-      lenis.options.lerp = AUTH_SURFACE.test(window.location.pathname) ? 1 : 0.1
+    const firstLoad = initialLoad
+    initialLoad = false
+    if (lenis) lenis.options.lerp = AUTH_SURFACE.test(window.location.pathname) ? 1 : 0.1
+
+    if (window.location.hash) {
+      if (firstLoad) jumpToHashOrTop(lenis)
+    }
+    else if (lenis) {
       lenis.scrollTo(0, { immediate: true })
     }
     else {
