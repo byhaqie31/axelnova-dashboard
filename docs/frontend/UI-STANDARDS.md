@@ -711,7 +711,9 @@ The standard "hub page with switchable views" pattern — introduced by the `/ad
 - Switching tabs calls `router.replace({ query: { ...route.query, view } })` — **replace, not push**, so clicking between tabs doesn't spam browser-back history with one entry per click.
 - Because `route.query` is populated from the request URL during SSR, a hard refresh on a deep link (`/admin/referrals?view=referrers`) renders the correct tab server-side — no client-only flash.
 
-**Where it applies today:** `/admin/referrals` (`Referrers` | `Referrals`, default `Referrers`). First use — the CSS lives scoped on that page (`<style scoped>`), not yet in `main.css`. Promote `.tab-track`/`.tab-pill` to global classes (mirroring the §12.9 mobile-drawer precedent: single-use patterns stay scoped, promote once a second page needs them) if another hub page adopts this.
+**Where it applies today:** `/admin/referrals` (`Referrers` | `Referrals`, default `Referrers`) and `/admin/collaborations` (`Partners` | `Applications`, default `Partners`). `.tab-track` / `.tab-pill` are **global classes in `main.css`** — promoted from the Referrals page's scoped styles once Collaborations became the second user (the §12.9 precedent: single-use patterns stay scoped, promote once a second page needs them). Never re-declare them in a page's `<style scoped>`: a page that uses the markup without the styles renders bare text.
+
+**Count badge:** `<span class="tab-count">2</span>` after a tab's label shows something waiting in that view (e.g. new partnership applications) — accent-soft pill, tabular numbers. Hide it at zero, and give it an `aria-label` ("2 new").
 
 ### 12.13 Slideover panel
 

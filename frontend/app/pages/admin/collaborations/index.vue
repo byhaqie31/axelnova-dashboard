@@ -95,11 +95,7 @@ function enquiriesLabel(p: AdminCollaborationPartnerRow): string {
         >
           <UIcon :name="tab.icon" class="size-4" />
           {{ tab.label }}
-          <span
-            v-if="tab.value === 'applications' && applicationsNew"
-            class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold tabular-nums"
-            style="background: var(--color-accent-soft); color: var(--color-accent);"
-            :aria-label="`${applicationsNew} new`">
+          <span v-if="tab.value === 'applications' && applicationsNew" class="tab-count" :aria-label="`${applicationsNew} new`">
             {{ applicationsNew }}
           </span>
         </button>

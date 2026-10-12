@@ -705,45 +705,6 @@ v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-
 </template>
 
 <style scoped>
-/* Query-param pill tabs (§12.12) — a bounded segmented track, same visual
-   language as .standard-pill (§12.6) but grouped so it reads as a single
-   control rather than a loose filter row. First use; promote to a global
-   class in main.css if a second page needs it (mirrors the §12.9 mobile-
-   drawer precedent). */
-.tab-track {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: 9999px;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-}
-.tab-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-  border: none;
-  color: var(--color-text-secondary);
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-}
-.tab-pill:hover {
-  color: var(--color-text);
-}
-.tab-pill[aria-selected="true"] {
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  box-shadow: var(--shadow-sm);
-}
-
 /* Slideover panel (§12.13) — right-edge overlay for a "promote to a page
    later" detail view. Same Teleport + scrim + sliding-panel shape as the
    quotation-picker drawer on referrals/[id].vue, generalised into a named
@@ -821,11 +782,9 @@ v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-
   }
 }
 
-/* Mobile (<768px): the tab track spans the row with equal, taller tabs; the
-   slideover close button gets a 40px hit area. Desktop unchanged. */
+/* Mobile (<768px): the slideover close button gets a 40px hit area (the
+   §12.12 tab track's mobile rule lives with it in main.css). Desktop unchanged. */
 @media (max-width: 767.98px) {
-  .tab-track { display: flex; }
-  .tab-pill { flex: 1 1 0%; justify-content: center; padding: 0.625rem 0.75rem; }
   .slideover-head { padding: 16px; }
   .slideover-body { padding: 16px; }
   .slideover-close { width: 40px; height: 40px; margin: -4px -4px 0 0; }
