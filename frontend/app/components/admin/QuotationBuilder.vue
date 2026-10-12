@@ -189,6 +189,15 @@ watch(pricingKey, () => { if (baselineReady.value) pricingDirty.value = true })
 const showLiveEstimate = computed(() => !isEdit.value || pricingDirty.value)
 const headlineEstimate = computed<EstimateResult | null>(() =>
   showLiveEstimate.value ? liveEstimate.value : storedEstimate.value)
+// "2 weeks · engine estimate". An ETA of 0 is the "no ETA yet" sentinel — left out.
+const estimateCaption = computed(() => {
+  const e = headlineEstimate.value
+  if (!e) return ''
+  return [
+    ...(e.etaValue > 0 ? [formatEta(e.etaValue, e.etaUnit)] : []),
+    showLiveEstimate.value ? 'engine estimate' : 'stored estimate',
+  ].join(' · ')
+})
 
 // Per-package mini-breakdown for the sidebar (label + range per package).
 const packageBreakdown = computed(() =>
@@ -1145,27 +1154,33 @@ type="button"
     <!-- Sidebar -->
     <div class="lg:sticky lg:top-20 space-y-4">
       <div class="rounded-2xl border p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-        <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Estimate (guide)</p>
-        <div v-if="headlineEstimate">
-          <p class="text-[26px] max-md:text-[22px] font-bold tracking-tight leading-none max-md:leading-tight mb-1" style="color: var(--color-text);">
-            {{ formatMyr(headlineEstimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ formatMyr(headlineEstimate.maxMyr) }}
-          </p>
-          <p class="text-[12px]" style="color: var(--color-text-secondary);">
-            {{ formatEta(headlineEstimate.etaValue, headlineEstimate.etaUnit) }} · {{ showLiveEstimate ? 'engine estimate' : 'stored estimate' }}
-          </p>
+        <!-- The guide range comes from catalog packages (the pricing engine). A custom /
+             detailed quote has none — its stored "estimate" is just the document total,
+             so only the total shows. -->
+        <template v-if="!isCustom">
+          <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Estimate (guide)</p>
+          <div v-if="headlineEstimate">
+            <p class="text-[26px] max-md:text-[22px] font-bold tracking-tight leading-none max-md:leading-tight mb-1" style="color: var(--color-text);">
+              <template v-if="headlineEstimate.minMyr === headlineEstimate.maxMyr">{{ formatMyr(headlineEstimate.minMyr) }}</template>
+              <template v-else>{{ formatMyr(headlineEstimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ formatMyr(headlineEstimate.maxMyr) }}</template>
+            </p>
+            <p class="text-[12px]" style="color: var(--color-text-secondary);">
+              {{ estimateCaption }}
+            </p>
 
-          <!-- Per-package mini-breakdown (label + range), shown with the live recompute. -->
-          <div v-if="showLiveEstimate && packageBreakdown.length" class="mt-3 pt-3 border-t space-y-1.5" style="border-color: var(--color-border);">
-            <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Per package</p>
-            <div v-for="(line, i) in packageBreakdown" :key="i" class="flex items-center justify-between gap-3 text-[12px]">
-              <span class="truncate" style="color: var(--color-text-secondary);">{{ line.name }}</span>
-              <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ formatMyr(line.estimate.minMyr) }}–{{ formatMyr(line.estimate.maxMyr) }}</span>
+            <!-- Per-package mini-breakdown (label + range), shown with the live recompute. -->
+            <div v-if="showLiveEstimate && packageBreakdown.length" class="mt-3 pt-3 border-t space-y-1.5" style="border-color: var(--color-border);">
+              <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Per package</p>
+              <div v-for="(line, i) in packageBreakdown" :key="i" class="flex items-center justify-between gap-3 text-[12px]">
+                <span class="truncate" style="color: var(--color-text-secondary);">{{ line.name }}</span>
+                <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ formatMyr(line.estimate.minMyr) }}–{{ formatMyr(line.estimate.maxMyr) }}</span>
+              </div>
             </div>
+            <p v-else-if="!showLiveEstimate" class="text-[11px] mt-2" style="color: var(--color-text-tertiary);">Edit a package to re-price.</p>
           </div>
-          <p v-else-if="!showLiveEstimate" class="text-[11px] mt-2" style="color: var(--color-text-tertiary);">Edit a package to re-price.</p>
-        </div>
-        <p v-else class="text-[13px]" style="color: var(--color-text-secondary);">Pick a package to see the engine estimate.</p>
-        <div class="mt-4 pt-4 border-t flex items-center justify-between" style="border-color: var(--color-border);">
+          <p v-else class="text-[13px]" style="color: var(--color-text-secondary);">Pick a package to see the engine estimate.</p>
+        </template>
+        <div class="flex items-center justify-between" :class="{ 'mt-4 pt-4 border-t': !isCustom }" style="border-color: var(--color-border);">
           <span class="text-[12px]" style="color: var(--color-text-tertiary);">Document total</span>
           <span class="text-[16px] font-bold tabular-nums" style="color: var(--color-text);">{{ formatMyr(grandTotal) }}</span>
         </div>

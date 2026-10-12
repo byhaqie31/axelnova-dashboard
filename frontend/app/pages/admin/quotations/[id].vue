@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatMyr } from '~/utils/money'
+import { formatMyr, formatMyrRange } from '~/utils/money'
 import QuotationBuilder from '~/components/admin/QuotationBuilder.vue'
 import DetailedQuotationView from '~/components/admin/DetailedQuotationView.vue'
 import type { RevisionTab } from '~/components/admin/QuotationRevisionTabs.vue'
@@ -437,10 +437,11 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 ma
           <div class="rounded-2xl border p-6 max-md:p-5" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
             <p class="text-[11px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">Estimate</p>
             <p class="text-[30px] max-md:text-[24px] font-bold tracking-tight mb-1" style="color: var(--color-text);">
-              {{ formatMyr(quotation.estimate_min_myr) }} – {{ formatMyr(quotation.estimate_max_myr) }}
+              {{ formatMyrRange(quotation.estimate_min_myr, quotation.estimate_max_myr) }}
             </p>
             <p class="text-[13px]" style="color: var(--color-text-secondary);">
-              {{ formatEta(quotation.estimate_eta_value, quotation.estimate_eta_unit) }} ·
+              <!-- 0 is the "no ETA yet" sentinel a custom quote stores — never print "0 weeks". -->
+              <template v-if="quotation.estimate_eta_value > 0">{{ formatEta(quotation.estimate_eta_value, quotation.estimate_eta_unit) }} · </template>
               Package: <code class="font-mono" style="color: var(--color-text);">{{ quotation.package_key ?? '—' }}</code>
             </p>
           </div>
