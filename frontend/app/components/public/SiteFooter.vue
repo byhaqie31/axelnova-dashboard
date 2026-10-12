@@ -78,58 +78,64 @@ watch(() => route.fullPath, () => { open.value = {} })
     <div class="border-t" :style="{ borderColor: 'var(--color-border)' }">
       <div class="max-w-7xl mx-auto px-6 pt-4 md:pt-12 pb-8">
 
-        <!-- Directory: accordion rows on phones, columns from md -->
-        <nav aria-label="Footer" class="md:grid md:grid-cols-4 md:gap-x-8">
-          <section
-            v-for="s in sections"
-            :key="s.key"
-            class="border-b md:border-b-0"
-            :style="{ borderColor: 'var(--color-border)' }"
-          >
-            <h2>
-              <button
-                type="button"
-                class="md:hidden flex w-full min-h-11 items-center justify-between gap-4 text-left text-[14px]"
-                style="color: var(--color-text);"
-                :aria-expanded="!!open[s.key]"
-                :aria-controls="`footer-section-${s.key}`"
-                @click="toggle(s.key)"
-              >
-                {{ s.title }}
-                <UIcon
-                  name="i-lucide-chevron-down"
-                  class="size-4 shrink-0 transition-transform duration-300 motion-reduce:transition-none"
-                  :class="{ 'rotate-180': open[s.key] }"
-                  style="color: var(--color-text-secondary);"
-                />
-              </button>
-              <span class="hidden md:block text-[12px] font-semibold mb-3" style="color: var(--color-text);">{{ s.title }}</span>
-            </h2>
+        <!-- Identity + directory. From lg the company identity is the first
+             column, in line with Explore / Services / Support / Legal; below lg
+             it drops under the directory (accordion rows on phones, four
+             columns from md). -->
+        <div class="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,4fr)] lg:gap-x-8 lg:mb-12">
+          <!-- Company identity: name set like the section titles, details like the
+               copyright line. (Back to top floats now — ScrollTopButton.) -->
+          <div class="order-last lg:order-first mt-6 md:mt-10 lg:mt-0 mb-8 md:mb-10 lg:mb-0 text-[12px] leading-relaxed" style="color: var(--color-text-secondary);">
+            <p class="mb-1 lg:mb-3 text-[14px] md:text-[12px] font-semibold tracking-tight" style="color: var(--color-text);">Axel Nova Ventures</p>
+            <p>Registration No.: 202603119899 (CA0420977-U)</p>
+            <p>Kuala Lumpur, Malaysia</p>
+          </div>
 
-            <div :id="`footer-section-${s.key}`" class="footer-panel" :class="{ 'is-open': open[s.key] }">
-              <ul class="flex flex-col pb-3 pl-3 md:gap-2 md:pb-0 md:pl-0">
-                <li v-for="l in s.links" :key="l.to">
-                  <NuxtLink
-                    :to="l.to"
-                    :target="l.external ? '_blank' : undefined"
-                    :rel="l.external ? 'noopener' : undefined"
-                    class="inline-flex min-h-11 items-center text-[14px] md:min-h-0 md:text-[12px] transition-colors"
+          <!-- Directory: accordion rows on phones, columns from md -->
+          <nav aria-label="Footer" class="md:grid md:grid-cols-4 md:gap-x-8">
+            <section
+              v-for="s in sections"
+              :key="s.key"
+              class="border-b md:border-b-0"
+              :style="{ borderColor: 'var(--color-border)' }"
+            >
+              <h2>
+                <button
+                  type="button"
+                  class="md:hidden flex w-full min-h-11 items-center justify-between gap-4 text-left text-[14px]"
+                  style="color: var(--color-text);"
+                  :aria-expanded="!!open[s.key]"
+                  :aria-controls="`footer-section-${s.key}`"
+                  @click="toggle(s.key)"
+                >
+                  {{ s.title }}
+                  <UIcon
+                    name="i-lucide-chevron-down"
+                    class="size-4 shrink-0 transition-transform duration-300 motion-reduce:transition-none"
+                    :class="{ 'rotate-180': open[s.key] }"
                     style="color: var(--color-text-secondary);"
-                  >
-                    <span class="link-underline">{{ l.label }}</span>
-                  </NuxtLink>
-                </li>
-              </ul>
-            </div>
-          </section>
-        </nav>
+                  />
+                </button>
+                <span class="hidden md:block text-[12px] font-semibold mb-3" style="color: var(--color-text);">{{ s.title }}</span>
+              </h2>
 
-        <!-- Company identity: name set like the section titles, details like the
-             copyright line. (Back to top floats now — ScrollTopButton.) -->
-        <div class="mt-6 md:mt-10 mb-8 md:mb-10 text-[12px] leading-relaxed" style="color: var(--color-text-secondary);">
-          <p class="mb-1 text-[14px] md:text-[12px] font-semibold tracking-tight" style="color: var(--color-text);">Axel Nova Ventures</p>
-          <p>Registration No.: 202603119899 (CA0420977-U)</p>
-          <p>Kuala Lumpur, Malaysia</p>
+              <div :id="`footer-section-${s.key}`" class="footer-panel" :class="{ 'is-open': open[s.key] }">
+                <ul class="flex flex-col pb-3 pl-3 md:gap-2 md:pb-0 md:pl-0">
+                  <li v-for="l in s.links" :key="l.to">
+                    <NuxtLink
+                      :to="l.to"
+                      :target="l.external ? '_blank' : undefined"
+                      :rel="l.external ? 'noopener' : undefined"
+                      class="inline-flex min-h-11 items-center text-[14px] md:min-h-0 md:text-[12px] transition-colors"
+                      style="color: var(--color-text-secondary);"
+                    >
+                      <span class="link-underline">{{ l.label }}</span>
+                    </NuxtLink>
+                  </li>
+                </ul>
+              </div>
+            </section>
+          </nav>
         </div>
 
         <!-- Bottom bar -->
