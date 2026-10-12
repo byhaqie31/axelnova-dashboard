@@ -1,26 +1,26 @@
-# MCP Connector (quotations + blog)
+# MCP Connector (quotations, blog, projects + services)
 
-Lets Claude (claude.ai / Cowork / Claude Code) drive the **quotation pipeline** in `axelnova-dashboard` straight from a client brief, and **draft blog posts**, without giving it a login to the cockpit. Two halves:
+Lets Claude (claude.ai / Cowork / Claude Code) drive the **quotation pipeline** in `axelnova-dashboard` straight from a client brief, **draft blog posts**, and **draft the public catalogue** — portfolio projects, services and their packages — without giving it a login to the cockpit. Two halves:
 
 1. **Laravel** — a scoped `/api/v1/connector/*` route group, gated by Sanctum token *abilities*, not admin role.
-2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes the tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it). Its `CONNECTOR_VERSION` (advertised as the MCP server version in the initialize handshake) tags the contract — **v5.x** adds quotation revisions (revision-aware `get_quotation` / `update_draft_quotation`, the read-only `get_order`; revisions themselves are opened by the founder) to v4's blog drafts + v3's read-open reads.
+2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes the tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it). Its `CONNECTOR_VERSION` (advertised as the MCP server version in the initialize handshake) tags the contract — **v6** adds the public catalogue (projects, services, packages: created Hidden, edited only while Hidden) to v5's quotation revisions (revision-aware `get_quotation` / `update_draft_quotation`, the read-only `get_order`; revisions themselves are opened by the founder), v4's blog drafts and v3's read-open reads.
 
 ```
 Claude (claude.ai)  ──OAuth──▶  mcp.axelnova.tech  ──Bearer CONNECTOR_TOKEN──▶  /api/v1/connector/*  (Laravel)
      (MCP client)               (Worker, connector/)                            (scoped connector surface)
 ```
 
-## Guardrails — the access model (v4)
+## Guardrails — the access model (v6)
 
 **Read everything, write drafts only, destroy only by hand.** The Sanctum token carries only `connector:read` + `connector:draft` (never `cockpit`), and each route opens exactly one ability.
 
-**The abilities are universal, not per-module.** `connector:read` opens every module's read routes and `connector:draft` every module's draft-write routes — quotations, the blog, and any module added later. A new module adds routes under the existing abilities (no new ability, so **no token rotation** to ship it); its guardrails live in its controller.
+**The abilities are universal, not per-module.** `connector:read` opens every module's read routes and `connector:draft` every module's draft-write routes — quotations, the blog, the catalogue, and any module added later. A new module adds routes under the existing abilities (no new ability, so **no token rotation** to ship it); its guardrails live in its controller.
 
-- ✅ **READ everything** — the catalog, a slim **list** of ANY non-deleted quotation, and full **read-back** of ANY non-deleted quotation (whatever created it — funnel, admin, or connector) — and an order's **money view** (`get_order`, v5.1: the tally, netted plan, invoices, payments; read-only). The blog writing guide, a slim list, and the full Markdown record of ANY non-deleted blog post (draft or published).
-- ✅ **WRITE drafts only** — create a **draft** quotation; **update** a quotation's **draft revision** only — a sent / accepted revision is never edited, and a new revision of one is opened **by the founder** ("Revise" in the admin, with a change reason), never by the connector ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)). Create a blog post (**always** `draft`); **partially update** a post while it is a **draft**, refused once published (its edits would go live without the founder's preview).
-- ❌ **never** — open a revision, send/accept a quote or a revision, **publish/unpublish** a post, create orders, touch clients/services/payments (orders and invoices are read-only via `get_order`), or **delete** anything. Deletion and publishing are **portal-only, by hand** — there is no delete or publish tool (irreversible and public-facing actions stay human-only).
+- ✅ **READ everything** — the catalog, a slim **list** of ANY non-deleted quotation, and full **read-back** of ANY non-deleted quotation (whatever created it — funnel, admin, or connector) — and an order's **money view** (`get_order`, v5.1: the tally, netted plan, invoices, payments; read-only). The blog writing guide, a slim list, and the full Markdown record of ANY non-deleted blog post (draft or published). Every portfolio project, service (category) and package, **Live or Hidden**.
+- ✅ **WRITE drafts only** — create a **draft** quotation; **update** a quotation's **draft revision** only — a sent / accepted revision is never edited, and a new revision of one is opened **by the founder** ("Revise" in the admin, with a change reason), never by the connector ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)). Create a blog post (**always** `draft`); **partially update** a post while it is a **draft**, refused once published (its edits would go live without the founder's preview). Create a project / service / package (**always Hidden**); **partially update** one while it is **Hidden**, refused once Live — the catalogue's Live / Hidden switch (`active`) plays the part of a post's draft status.
+- ❌ **never** — open a revision, send/accept a quote or a revision, **publish/unpublish** a post, make a project / service / package **Live** (or feature, reorder it, set the default service, link collaboration partners), edit service add-ons or scope fields, create orders, touch clients/payments (orders and invoices are read-only via `get_order`), or **delete** anything. Deletion and publishing are **portal-only, by hand** — there is no delete or publish tool (irreversible and public-facing actions stay human-only).
 
-A connector token is rejected by every `/v1/admin/*` route (they demand `abilities:cockpit`); the admin cockpit token is likewise rejected by `/v1/connector/*`. **Soft-deleted quotations and posts never surface through any connector read.** Read endpoints are throttled 60/min, writes 30/min.
+A connector token is rejected by every `/v1/admin/*` route (they demand `abilities:cockpit`); the admin cockpit token is likewise rejected by `/v1/connector/*`. **Soft-deleted quotations and posts never surface through any connector read.** (Projects, services and packages have no soft delete — a deleted one is simply gone.) Read endpoints are throttled 60/min, writes 30/min.
 
 ## Backend endpoints
 
@@ -37,8 +37,21 @@ A connector token is rejected by every `/v1/admin/*` route (they demand `abiliti
 | GET | `/v1/connector/blog/posts/{id}` | `connector:read` | 60/min | Full editable record (Markdown sections with ids) + URLs |
 | POST | `/v1/connector/blog/posts` | `connector:draft` | 30/min | Create — always `draft` (`status`/`published_at` in the body are ignored). Image alt text required |
 | PUT | `/v1/connector/blog/posts/{id}` | `connector:draft` | 30/min | **Partial** update of a DRAFT — only sent fields change; slug only if `slug` is sent; `sections` replaces the list (ids kept). Published → 422 (`errors.status`) |
+| GET | `/v1/connector/projects` | `connector:read` | 60/min | Slim list of every project, Live + Hidden, in public order — `visibility` (live \| hidden), `q` (name / slug), `page`/`per_page` (default 10, capped 25) |
+| GET | `/v1/connector/projects/{id}` | `connector:read` | 60/min | Full project record + `visibility`, `admin_url`, `public_url` (Live only) |
+| POST | `/v1/connector/projects` | `connector:draft` | 30/min | Create — always **Hidden**, unfeatured, appended to the order (`active`/`featured`/`sort_order` in the body are ignored). Slug derived from the name (suffixed `-2` …) unless sent |
+| PUT | `/v1/connector/projects/{id}` | `connector:draft` | 30/min | **Partial** update of a HIDDEN project — slug only if sent; `tags` / `stack` replace their lists. Live → 422 (`errors.visibility`) |
+| GET | `/v1/connector/services` | `connector:read` | 60/min | Every service (category), Live + Hidden, in order, each with slim package rows (`quote_package_key`, `quotable`) |
+| GET | `/v1/connector/services/{id}` | `connector:read` | 60/min | One service + its packages' full records |
+| POST | `/v1/connector/services` | `connector:draft` | 30/min | Create — always **Hidden**, never the default, appended. `icon` must be a Lucide name (`i-lucide-…`) |
+| PUT | `/v1/connector/services/{id}` | `connector:draft` | 30/min | **Partial** update of a HIDDEN service. A slug change re-points its wired packages' `quote_key.category`. Live → 422 |
+| GET | `/v1/connector/packages/{id}` | `connector:read` | 60/min | Full package record + its `service`, `quote_package_key`, `quotable` |
+| POST | `/v1/connector/packages` | `connector:draft` | 30/min | Create in `service_id` (Live or Hidden service) — always **Hidden**, unfeatured, appended to that service. Optional NEW `quote_package_key` |
+| PUT | `/v1/connector/packages/{id}` | `connector:draft` | 30/min | **Partial** update of a HIDDEN package; `service_id` moves it (appended there); `quote_package_key: null` unwires it. Live → 422 |
 
 Backend code: `app/Http/Controllers/Api/V1/Connector/{CatalogController,QuotationDraftController}.php`, `app/Http/Requests/Connector/{DraftQuotationRequest,UpdateDraftQuotationRequest,ListQuotationsRequest}.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Services/Quoting/QuotationIndexQuery.php` (the list query, shared with the admin index). Pricing is reused verbatim from [`PricingEngine`](../../backend/app/Services/Quoting/PricingEngine.php); reference codes from [`ReferenceCodeGenerator`](../../backend/app/Support/ReferenceCodeGenerator.php). See [QUOTE_BUILDER.md](./QUOTE_BUILDER.md) for the pricing model + the connector tool contract table.
+
+Catalogue code: `app/Http/Controllers/Api/V1/Connector/{ProjectController,ServiceController,ServicePackageController}.php` (the Live-edit refusal in `Concerns/EditsHiddenDrafts`), every record shaped by `app/Services/Connector/CatalogRecords.php`, the quote-key ownership check in [`QuotePackageKey`](../../backend/app/Services/Quoting/QuotePackageKey.php) (shared with the admin package form), slugs from `app/Support/UniqueSlug.php`, ordering via `SortOrder`. Writes are logged as `project.*` / `service_category.*` / `service_package.*` with `via: mcp_connector`.
 
 Blog code: `app/Http/Controllers/Api/V1/Connector/BlogPostController.php`, saving through the same [`BlogPostInput`](../../backend/app/Services/Blog/BlogPostInput.php) as the admin editor (partial mode + required alt text), with the guide from [`BlogGuide`](../../backend/app/Support/BlogGuide.php). Connector writes are logged as `blog_post.created` / `blog_post.updated` with `via: mcp_connector`. See [BLOG.md](./BLOG.md).
 
@@ -66,6 +79,34 @@ There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v
 | `get_blog_post` | `GET /blog/posts/{id}` | read (any) | Full Markdown record — read before updating. |
 | `create_blog_draft` | `POST /blog/posts` | write | Always a DRAFT. Returns `admin_url` for the founder to preview + publish. |
 | `update_blog_draft` | `PUT /blog/posts/{id}` | write · **gate: draft** | Partial patch. Refused 422 once published. |
+
+### Projects, services & packages (v6)
+
+The public catalogue — `/projects` and `/services`. Every record carries `visibility` (`live` = on the public site, `hidden` = admin only), an `admin_url`, and a `public_url` while Live. **Everything is created Hidden and editable only while Hidden** (a Live row → 422 `errors.visibility`, asking the founder to hide it first or edit it in the admin). Nothing can make a row Live, feature or reorder it, or delete it.
+
+| Tool | Maps to | Scope / gate | Notes |
+|---|---|---|---|
+| `list_projects` | `GET /projects` | read (any) | Slim rows. `status` is the **build stage** badge (live / soon / wip / planning) — **not** visibility. |
+| `get_project` | `GET /projects/{id}` | read (any) | Full record — read before updating. |
+| `create_project_draft` | `POST /projects` | write | Hidden, unfeatured, last. `name`, `description`, `long_description`, `status` required; cover only a founder-supplied URL or `/previews/<slug>.webp`. |
+| `update_project_draft` | `PUT /projects/{id}` | write · **gate: Hidden** | Partial patch. |
+| `list_services` | `GET /services` | read (any) | Every service with its packages — ids, prices, `quote_package_key`, `quotable`. |
+| `get_service` | `GET /services/{id}` | read (any) | A service + its packages' full records. |
+| `create_service_draft` | `POST /services` | write | Hidden, last, never the default. `name`, `icon` (Lucide), `description`. |
+| `update_service_draft` | `PUT /services/{id}` | write · **gate: Hidden** | Partial patch. |
+| `get_package` | `GET /packages/{id}` | read (any) | Full card + its service + quote wiring. |
+| `create_package_draft` | `POST /packages` | write | Hidden, unfeatured, last in its service (which may itself be Hidden). Optional `quote_package_key`. |
+| `update_package_draft` | `PUT /packages/{id}` | write · **gate: Hidden** | Partial patch; `service_id` moves it; `quote_package_key: null` unwires it. |
+
+#### Services & packages
+
+In connector language a **service** is a `service_categories` row (Web, Dashboard …) and a **package** is a priced card inside it (`service_packages`). The add-ons and scope fields that price the quote builder stay admin-only.
+
+**Wiring a package to the quote builder.** `quote_package_key` sets `quote_key.package`; `quote_key.category` is always the package's service slug (kept in step when the package moves, or a Hidden service's slug changes). Rules, all 422 with a message naming the problem:
+- the key is **snake_case** and **new** — not held by any other package row (**Live or Hidden** — the engine resolves keys on hidden rows too, so a duplicate would silently re-point quotes; the message names the holder) and not a legacy `pricing_configs` `base_packages` key (the admin may take one over on purpose; the connector may not). A package keeps its own key on update;
+- a wired package needs `price_max_myr` (the engine prices a min–max range), and `price_max_myr ≥ price_min_myr` always.
+
+A wired package is `quotable` (in `list_catalog` and the admin builder) only once **both it and its service are Live** — so a Hidden draft never touches pricing. It then picks up its service's scope fields that apply to every package; per-package scope fields are set in the admin. See [QUOTE_BUILDER.md](./QUOTE_BUILDER.md).
 
 **Two drafting modes** (in both write tools' descriptions and the guide's `modes`): asked to **write** about a topic → Claude writes in the founder's voice following the guide's structure; given the founder's **own text** → Claude keeps the wording verbatim, only arranges it into title / excerpt / sections and fills the missing metadata (alt text, format, category, tags, SEO), rewrites only when asked, and reports any change. Images are **only** URLs the founder supplied (no image search). There is no publish, unpublish, or delete tool.
 
@@ -195,23 +236,24 @@ Non-deploy checks that are safe to run any time: `npm run typecheck`, `npx wrang
 1. **Settings → Connectors → Add custom connector** (Customize → Connectors).
 2. **URL:** `https://mcp.axelnova.tech/mcp`
 3. Connect → you'll be redirected to the connector login → enter `ACCESS_USERNAME` / `ACCESS_PASSWORD` → authorize.
-4. The eleven tools appear — six quotation / order (`list_catalog`, `list_quotations`, `get_quotation`, `create_draft_quotation`, `update_draft_quotation`, `get_order`) and five blog (`get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft`, `update_blog_draft`). Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Ask it to "show pending quotes from this month" and it uses `list_quotations`; ask it to tweak a draft and it uses `update_draft_quotation`. Review everything in `/admin/quotations`. Ask it to "write a guide about X, cover image <url>" (or hand it your own text) and it calls `get_blog_guide`, then `create_blog_draft`; preview and publish in `/admin/blog`.
+4. The twenty-two tools appear — six quotation / order (`list_catalog`, `list_quotations`, `get_quotation`, `create_draft_quotation`, `update_draft_quotation`, `get_order`), five blog (`get_blog_guide`, `list_blog_posts`, `get_blog_post`, `create_blog_draft`, `update_blog_draft`), four project (`list_projects`, `get_project`, `create_project_draft`, `update_project_draft`) and seven service / package (`list_services`, `get_service`, `create_service_draft`, `update_service_draft`, `get_package`, `create_package_draft`, `update_package_draft`). Ask Claude to draft a quote; it calls `list_catalog` first, then `create_draft_quotation`. Ask it to "show pending quotes from this month" and it uses `list_quotations`; ask it to tweak a draft and it uses `update_draft_quotation`. Review everything in `/admin/quotations`. Ask it to "write a guide about X, cover image <url>" (or hand it your own text) and it calls `get_blog_guide`, then `create_blog_draft`; preview and publish in `/admin/blog`. Ask it to "add the Klinik portal to my projects" or "draft a Landing Sprint package under Websites" and it lands Hidden in `/admin/projects` / `/admin/services` for you to review and switch Live.
 5. After a Worker deploy that changes the tool list, refresh/reconnect the connector so claude.ai picks up the new tools.
 
 **Claude Code** gets the same tools through the synced **"claude.ai Axel Nova MCP"** connector when signed in with the same claude.ai account — authorize it once via `/mcp` (same `ACCESS_USERNAME` / `ACCESS_PASSWORD`).
 
 ## File map
 
-- Backend: `app/Http/Controllers/Api/V1/Connector/*` (incl. `BlogPostController`, `OrderController` — `get_order`), `app/Http/Requests/Connector/DraftQuotationRequest.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Services/Blog/BlogPostInput.php`, `app/Support/BlogGuide.php`, `config/blog.php`, `app/Console/Commands/MintConnectorToken.php`, route group in [`routes/api.php`](../../backend/routes/api.php).
+- Backend: `app/Http/Controllers/Api/V1/Connector/*` (incl. `BlogPostController`, `OrderController` — `get_order`, `ProjectController`, `ServiceController`, `ServicePackageController`), `app/Services/Connector/CatalogRecords.php`, `app/Services/Quoting/QuotePackageKey.php`, `app/Http/Requests/Connector/DraftQuotationRequest.php`, `app/Services/Connector/ConnectorCatalog.php`, `app/Services/Blog/BlogPostInput.php`, `app/Support/BlogGuide.php`, `config/blog.php`, `app/Console/Commands/MintConnectorToken.php`, route group in [`routes/api.php`](../../backend/routes/api.php).
 - Worker: `connector/src/{index,api,auth}.ts`, `connector/wrangler.toml`, `connector/package.json`, `connector/rotate-token.sh` (one-command token rotation).
-- Tests: `backend/tests/Feature/Connector/ConnectorDraftTest.php`, `ConnectorBlogTest.php`, `ConnectorRevisionTest.php`, `ConnectorOrderTest.php`.
+- Tests: `backend/tests/Feature/Connector/ConnectorDraftTest.php`, `ConnectorBlogTest.php`, `ConnectorRevisionTest.php`, `ConnectorOrderTest.php`, `ConnectorProjectTest.php`, `ConnectorServiceTest.php`; `tests/Feature/Pricing/AdminServicePackageQuoteKeyTest.php` (the admin side of the key rule).
 
 ## Out of scope
 
-Still no revise/send/accept/order tools (a revision is opened, sent and accepted by the founder in the admin — `create_revision` was removed in v5.2 and `send_revision` from the revisions spec is deliberately not built), no publish/unpublish tool for posts, no image search, no delete tool (portal-only), no client-management surface, no multi-user OAuth. In-dashboard AI UI is a separate, API-billed phase.
+Still no revise/send/accept/order tools (a revision is opened, sent and accepted by the founder in the admin — `create_revision` was removed in v5.2 and `send_revision` from the revisions spec is deliberately not built), no publish/unpublish tool for posts, no image search, no delete tool (portal-only), no client-management surface, no Live / feature / reorder switch for the catalogue (and no add-on, scope-field or collaboration-link tools), no multi-user OAuth. In-dashboard AI UI is a separate, API-billed phase.
 
 ## Version history
 
+- **v6** — the public catalogue: `list_projects` / `get_project` / `create_project_draft` / `update_project_draft`, `list_services` / `get_service` / `create_service_draft` / `update_service_draft`, `get_package` / `create_package_draft` / `update_package_draft`. Created Hidden, partially edited only while Hidden (Live → 422). A package can be wired to the quote builder with a NEW `quote_package_key` (unique across every package row, Live or Hidden, and not a legacy pricing-JSON key — the same uniqueness now guards the admin form). Reuses the universal abilities — no token rotation; the Worker ships on merge (`deploy-connector.yml`), then **reconnect** the connector to see the new tools.
 - **v5.2** — `create_revision` **removed**: opening a revision is the founder's call ("Revise" in the admin). The connector only edits a draft revision; `update_draft_quotation`'s 422 now asks the founder to revise. (`POST /v1/connector/quotations/{ref}/revisions` is gone.)
 - **v5.1** — `get_order`: read-only money view of an order (tally, netted plan, invoices with void reasons, payments, Care Plan periods, revisions) so Claude can confirm an order tallies after a revision is accepted. No invoice or payment writes.
 - **v5** — quotation revisions ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)): `create_revision`; `update_draft_quotation` targets the family's draft revision (422 → call `create_revision`); `get_quotation` returns `family` / `current_revision` / `revisions` and takes `revision`; list rows carry `revision_number` / `open_revision`, and `status=draft` also finds families with a draft revision open; `detailed.phases` (lump sum by phase) and `detailed.care_plan_monthly_myr`.

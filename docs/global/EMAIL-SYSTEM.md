@@ -106,7 +106,7 @@ One row per email that left (or definitively failed to leave). Written by the au
 
 ## Admin history panel
 
-`GET /api/v1/admin/emails?related_type=invoice&related_id=12` or `?email=client@…` (founder-only, newest first, 25 a page) feeds `AdminEmailHistory` ([ADMIN-COMPONENTS.md](../frontend/ADMIN-COMPONENTS.md)), placed on the quotation, invoice, inquiry, feedback and team-user pages (by record) and the client and referral pages (by address). "View in Resend" opens `https://resend.com/emails/{provider_id}`.
+`GET /api/v1/admin/emails?related_type=invoice&related_id=12` or `?email=client@…` (founder-only, newest first, 25 a page) feeds `AdminEmailHistory` ([ADMIN-COMPONENTS.md](../frontend/ADMIN-COMPONENTS.md)) — a compact summary card in the right sidebar (latest 3 + a "View all" dialog), placed on the quotation, invoice, inquiry, feedback and team-user pages (by record) and the client and referral pages (by address). `meta.problems` counts bounced / spam / failed sends across every page so the card can warn about an old failure. "View in Resend" opens `https://resend.com/emails/{provider_id}`.
 
 ## Credential links (Phase 2)
 

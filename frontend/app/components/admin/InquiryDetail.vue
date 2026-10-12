@@ -312,8 +312,9 @@ class="rounded-xl border px-4 py-3.5 space-y-2"
             <span class="text-[11px] capitalize" style="color: var(--color-text-secondary);">{{ inquiry.source }}</span>
           </div>
         </div>
+
+        <AdminEmailHistory related-type="inquiry" :related-id="inquiry.id" />
       </div>
     </div>
-    <AdminEmailHistory v-if="inquiry" related-type="inquiry" :related-id="inquiry.id" />
   </div>
 </template>

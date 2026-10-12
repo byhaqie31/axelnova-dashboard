@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatMyr } from '~/utils/money'
+import { formatMyrRange } from '~/utils/money'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
@@ -219,7 +219,7 @@ v-for="q in quotations" :key="q.id"
             </td>
             <td class="px-4 py-3.5">
               <p class="text-[13px] font-semibold" style="color: var(--color-text);">
-                {{ formatMyr(q.estimate_min_myr) }} – {{ formatMyr(q.estimate_max_myr) }}
+                {{ formatMyrRange(q.estimate_min_myr, q.estimate_max_myr) }}
               </p>
             </td>
             <td class="px-4 py-3.5">
@@ -263,7 +263,7 @@ v-for="q in quotations" :key="q.id"
         <div class="pt-2 border-t space-y-1" :style="{ borderColor: 'var(--color-border)' }">
           <div class="flex items-center justify-between gap-3">
             <p class="text-[13px] font-semibold tabular-nums shrink-0" :style="{ color: 'var(--color-text)' }">
-              {{ formatMyr(q.estimate_min_myr) }} – {{ formatMyr(q.estimate_max_myr) }}
+              {{ formatMyrRange(q.estimate_min_myr, q.estimate_max_myr) }}
             </p>
             <p class="text-[11px] text-right min-w-0 break-words" :style="{ color: 'var(--color-text-tertiary)' }">
               <template v-if="q.custom_package">

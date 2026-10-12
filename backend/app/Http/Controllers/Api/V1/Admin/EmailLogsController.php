@@ -13,7 +13,9 @@ use Illuminate\Validation\Rule;
  * GET /api/v1/admin/emails — the email history behind each record's "Emails"
  * panel (spec §5.9). Filter by a record (`related_type` + `related_id`, the
  * EmailLog::RELATED aliases) or by an address (`email` — a client page lists
- * everything ever sent to them). Newest first, 25 a page.
+ * everything ever sent to them). Newest first, 25 a page. `meta.problems`
+ * counts the bounced / spam / failed sends across EVERY page, so the sidebar
+ * card can warn about an old failure that isn't on the first page.
  */
 class EmailLogsController extends Controller
 {
@@ -35,6 +37,9 @@ class EmailLogsController extends Controller
             $query->where('to_email', $data['email']);
         }
 
-        return EmailLogResource::collection($query->paginate(25));
+        $problems = (clone $query)->whereIn('status', EmailLog::PROBLEMS)->count();
+
+        return EmailLogResource::collection($query->paginate(25))
+            ->additional(['meta' => ['problems' => $problems]]);
     }
 }

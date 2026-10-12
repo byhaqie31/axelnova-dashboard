@@ -223,10 +223,10 @@ v-if="client.phone"
             Delete client
           </button>
         </div>
+
+        <AdminEmailHistory v-if="client.email" :email="client.email" title="Emails to this client" />
       </div>
     </div>
-
-    <AdminEmailHistory v-if="client?.email" :email="client.email" title="Emails to this client" />
 
     <ClientFormModal :open="modalOpen" :client="client" @close="modalOpen = false" @saved="onSaved" />
     <AdminClientDeleteDialog :client="deleteTarget" @cancel="deleteTarget = null" @deleted="onDeleted" />

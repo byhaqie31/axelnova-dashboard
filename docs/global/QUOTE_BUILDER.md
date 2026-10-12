@@ -23,6 +23,8 @@ The `PricingEngine` merges these at request time:
 
 A `service_packages` row counts as "quotable" only if it has both a non-null `quote_key` **and** a non-null `price_max_myr`. Custom-quote and retainer rows (null `quote_key`) appear on the public services page but never in the quote builder.
 
+**One package per quote package key.** `quote_key.package` is unique across ALL `service_packages` rows, Live or Hidden — enforced by [`QuotePackageKey`](../../backend/app/Services/Quoting/QuotePackageKey.php) in the admin package form and the MCP connector. The engine's id / tagline / category lookups (`packageId()`, `packageTagline()`, `packageCategories()`) deliberately read hidden rows too, so old quotes keep resolving after a package is hidden — which means a second row holding the same key, even a hidden draft, would silently re-point new quotes. The admin may still take over a legacy pricing-JSON key (that's how DB rows replace JSON entries); the connector may not, and must pick a brand-new key.
+
 ---
 
 ## How `/api/v1/quote-builder/config` responds
@@ -208,7 +210,9 @@ The fastest path uses the admin UI — no code or SQL.
 4. Tick **"Wire CTA to the quote builder"** and set:
    - `quote category key` — usually matches `service_categories.slug`
    - `quote package key` — a new stable key like `web_landing` (no spaces, snake_case)
-5. Save. The quote builder picks it up immediately (cache auto-clears).
+5. Save. The quote builder picks it up immediately (cache auto-clears). The package key must not already belong to another package (Live or Hidden) — the form refuses it and names the holder.
+
+Claude can draft the same package through the MCP connector (`create_package_draft` with a new `quote_package_key`) — it lands **Hidden**, so it only joins the quote builder once you make it Live. See [MCP-CONNECTOR.md](./MCP-CONNECTOR.md#services--packages).
 
 If your new package needs **custom modifier inputs** in the quote builder (e.g. a checkbox specific to this package), that still requires editing `pricing_configs` JSON and `frontend/app/pages/public/quote/index.vue` — modifiers are engineered config, not yet admin-managed.
 

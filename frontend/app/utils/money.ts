@@ -20,3 +20,12 @@ export function formatMyr(value: number | string | null | undefined): string {
   const s = formatAmount(value)
   return s.startsWith('-') ? `-RM ${s.slice(1)}` : `RM ${s}`
 }
+
+/**
+ * An estimate range: "RM 3,500.00 – RM 5,500.00", or a single "RM 21,000.00"
+ * when both ends agree — a custom or detailed quote stores min = max = its
+ * total, which is a figure, not a range.
+ */
+export function formatMyrRange(min: number | string | null | undefined, max: number | string | null | undefined): string {
+  return Number(min) === Number(max) ? formatMyr(min) : `${formatMyr(min)} – ${formatMyr(max)}`
+}
