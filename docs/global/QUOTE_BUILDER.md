@@ -16,7 +16,7 @@ There are two sources of truth, by design:
 The `PricingEngine` merges these at request time:
 
 1. Start with `pricing_configs.active.config.base_packages` (legacy / fallback entries).
-2. Layer admin-managed `service_packages` on top, keyed by `quote_key.package`. DB rows override any matching JSON entry.
+2. Layer admin-managed `service_packages` on top, keyed by `quote_key.package`. DB rows override any matching JSON entry. Only **effectively Live** rows are priced — the package **and** its service (category) active (`ServicePackage::effectivelyLive()`), so a package under a hidden service can't be quoted at all, not even by key (the public funnel, the admin builder and its re-save all validate against this list → 422). `packageName()` still resolves any row's real name, Live or Hidden, so old quotes keep their package names.
 3. Add-ons merge the same way: `service_addons` rows over the JSON `addons` map. A DB row *claims* its key — an **active** row appears (in `sort_order`), an **inactive** row removes the key entirely (no JSON fallback), and a JSON key with no DB row still resolves. See `PricingEngine::buildAddons()`.
 4. **Scope fields** (`service_scope_fields`) define both the builder's per-category inputs and their pricing — superseding the JSON `modifiers` map. `calculate()` evaluates the selected package's category fields (gated by `applies_to`); `buildScopeFields()` groups them by category slug for the config endpoint. The JSON `modifiers` loop is kept as a one-release fallback for legacy `modifiers` payloads. See **Scope fields** below.
 5. Rush stays in `pricing_configs.config`.
@@ -212,7 +212,7 @@ The fastest path uses the admin UI — no code or SQL.
    - `quote package key` — a new stable key like `web_landing` (no spaces, snake_case)
 5. Save. The quote builder picks it up immediately (cache auto-clears). The package key must not already belong to another package (Live or Hidden) — the form refuses it and names the holder.
 
-Claude can draft the same package through the MCP connector (`create_package_draft` with a new `quote_package_key`) — it lands **Hidden**, so it only joins the quote builder once you make it Live. See [MCP-CONNECTOR.md](./MCP-CONNECTOR.md#services--packages).
+Claude can draft the same package through the MCP connector (`create_package_draft` with a new `quote_package_key`) — it lands **Hidden**, so it only joins the quote builder once you make it — and its service — Live. See [MCP-CONNECTOR.md](./MCP-CONNECTOR.md#services--packages).
 
 If your new package needs **custom modifier inputs** in the quote builder (e.g. a checkbox specific to this package), that still requires editing `pricing_configs` JSON and `frontend/app/pages/public/quote/index.vue` — modifiers are engineered config, not yet admin-managed.
 

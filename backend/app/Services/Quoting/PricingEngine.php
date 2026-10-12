@@ -65,11 +65,15 @@ final class PricingEngine
      * Human-readable package name from the merged catalog (admin-managed
      * service_packages name; humanised key for legacy JSON-only entries). Used
      * wherever a package would otherwise surface as a raw slug — breakdown lines,
-     * document line items, customer email.
+     * document line items, customer email. Falls back to ANY row holding the key
+     * (Live or Hidden), so an old quote keeps its package's real name after the
+     * package or its service is hidden.
      */
     public function packageName(string $key): string
     {
-        return $this->buildBasePackages()[$key]['name'] ?? Str::headline($key);
+        return $this->buildBasePackages()[$key]['name']
+            ?? $this->buildPackageMeta()[$key]['name']
+            ?? Str::headline($key);
     }
 
     /**
@@ -355,7 +359,9 @@ final class PricingEngine
             ];
         }
 
-        $packages = ServicePackage::where('active', true)
+        // Only effectively Live packages (it AND its service on) are priced, so a
+        // package under a Hidden service can't be quoted — not even by key.
+        $packages = ServicePackage::effectivelyLive()
             ->whereNotNull('quote_key')
             ->whereNotNull('price_max_myr')
             ->get();
@@ -477,10 +483,11 @@ final class PricingEngine
 
     /**
      * Map each quote package key (quote_key.package) to its service_packages row
-     * id + tagline. Only DB-managed packages appear; legacy JSON-only keys resolve
-     * to null (no row). Backs packageId() / packageTagline().
+     * id + name + tagline, Live or Hidden. Only DB-managed packages appear; legacy
+     * JSON-only keys resolve to null (no row). Backs packageId() / packageTagline()
+     * and packageName()'s fallback.
      *
-     * @return array<string, array{id: int, tagline: ?string}>
+     * @return array<string, array{id: int, name: string, tagline: ?string}>
      */
     private function buildPackageMeta(): array
     {
@@ -489,11 +496,11 @@ final class PricingEngine
         }
 
         $map = [];
-        $packages = ServicePackage::whereNotNull('quote_key')->get(['id', 'quote_key', 'tagline']);
+        $packages = ServicePackage::whereNotNull('quote_key')->get(['id', 'quote_key', 'name', 'tagline']);
         foreach ($packages as $p) {
             $key = $p->quote_key['package'] ?? null;
             if ($key) {
-                $map[$key] = ['id' => (int) $p->id, 'tagline' => $p->tagline];
+                $map[$key] = ['id' => (int) $p->id, 'name' => $p->name, 'tagline' => $p->tagline];
             }
         }
 

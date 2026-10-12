@@ -3,7 +3,7 @@
 Lets Claude (claude.ai / Cowork / Claude Code) drive the **quotation pipeline** in `axelnova-dashboard` straight from a client brief, **draft blog posts**, and **draft the public catalogue** — portfolio projects, services and their packages — without giving it a login to the cockpit. Two halves:
 
 1. **Laravel** — a scoped `/api/v1/connector/*` route group, gated by Sanctum token *abilities*, not admin role.
-2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes the tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it). Its `CONNECTOR_VERSION` (advertised as the MCP server version in the initialize handshake) tags the contract — **v6** adds the public catalogue (projects, services, packages: created Hidden, edited only while Hidden) to v5's quotation revisions (revision-aware `get_quotation` / `update_draft_quotation`, the read-only `get_order`; revisions themselves are opened by the founder), v4's blog drafts and v3's read-open reads.
+2. **Cloudflare Worker** — a remote MCP server at `mcp.axelnova.tech` that exposes the tools and proxies them to the Laravel API, adding the scoped bearer token server-side (Claude never sees it). Its `CONNECTOR_VERSION` (advertised as the MCP server version in the initialize handshake) tags the contract — **v6** adds the public catalogue (projects, services, packages: created Hidden, edited only while Hidden — **v6.1**: a package counts as Live only while it *and* its service are Live, `effective_visibility`) to v5's quotation revisions (revision-aware `get_quotation` / `update_draft_quotation`, the read-only `get_order`; revisions themselves are opened by the founder), v4's blog drafts and v3's read-open reads.
 
 ```
 Claude (claude.ai)  ──OAuth──▶  mcp.axelnova.tech  ──Bearer CONNECTOR_TOKEN──▶  /api/v1/connector/*  (Laravel)
@@ -17,7 +17,7 @@ Claude (claude.ai)  ──OAuth──▶  mcp.axelnova.tech  ──Bearer CONNEC
 **The abilities are universal, not per-module.** `connector:read` opens every module's read routes and `connector:draft` every module's draft-write routes — quotations, the blog, the catalogue, and any module added later. A new module adds routes under the existing abilities (no new ability, so **no token rotation** to ship it); its guardrails live in its controller.
 
 - ✅ **READ everything** — the catalog, a slim **list** of ANY non-deleted quotation, and full **read-back** of ANY non-deleted quotation (whatever created it — funnel, admin, or connector) — and an order's **money view** (`get_order`, v5.1: the tally, netted plan, invoices, payments; read-only). The blog writing guide, a slim list, and the full Markdown record of ANY non-deleted blog post (draft or published). Every portfolio project, service (category) and package, **Live or Hidden**.
-- ✅ **WRITE drafts only** — create a **draft** quotation; **update** a quotation's **draft revision** only — a sent / accepted revision is never edited, and a new revision of one is opened **by the founder** ("Revise" in the admin, with a change reason), never by the connector ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)). Create a blog post (**always** `draft`); **partially update** a post while it is a **draft**, refused once published (its edits would go live without the founder's preview). Create a project / service / package (**always Hidden**); **partially update** one while it is **Hidden**, refused once Live — the catalogue's Live / Hidden switch (`active`) plays the part of a post's draft status.
+- ✅ **WRITE drafts only** — create a **draft** quotation; **update** a quotation's **draft revision** only — a sent / accepted revision is never edited, and a new revision of one is opened **by the founder** ("Revise" in the admin, with a change reason), never by the connector ([QUOTATION-REVISIONS.md](./QUOTATION-REVISIONS.md)). Create a blog post (**always** `draft`); **partially update** a post while it is a **draft**, refused once published (its edits would go live without the founder's preview). Create a project / service / package (**always Hidden**); **partially update** one while it is **Hidden**, refused once Live — the catalogue's Live / Hidden switch (`active`) plays the part of a post's draft status. A package is Hidden for this purpose while **it or its service** is Hidden (`effective_visibility`, v6.1).
 - ❌ **never** — open a revision, send/accept a quote or a revision, **publish/unpublish** a post, make a project / service / package **Live** (or feature, reorder it, set the default service, link collaboration partners), edit service add-ons or scope fields, create orders, touch clients/payments (orders and invoices are read-only via `get_order`), or **delete** anything. Deletion and publishing are **portal-only, by hand** — there is no delete or publish tool (irreversible and public-facing actions stay human-only).
 
 A connector token is rejected by every `/v1/admin/*` route (they demand `abilities:cockpit`); the admin cockpit token is likewise rejected by `/v1/connector/*`. **Soft-deleted quotations and posts never surface through any connector read.** (Projects, services and packages have no soft delete — a deleted one is simply gone.) Read endpoints are throttled 60/min, writes 30/min.
@@ -84,19 +84,30 @@ There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v
 
 The public catalogue — `/projects` and `/services`. Every record carries `visibility` (`live` = on the public site, `hidden` = admin only), an `admin_url`, and a `public_url` while Live. **Everything is created Hidden and editable only while Hidden** (a Live row → 422 `errors.visibility`, asking the founder to hide it first or edit it in the admin). Nothing can make a row Live, feature or reorder it, or delete it.
 
+**Packages: effective visibility (v6.1).** A package's `visibility` is its **own** flag; it also carries `effective_visibility` — `live` only while **both** the package and its service are Live. That one rule (`ServicePackage::isEffectivelyLive()`, with the `effective_visibility` accessor) drives the package's `public_url`, `quotable` and the edit guard, so they can't drift apart:
+
+| Package flag | Service | `effective_visibility` | `update_package_draft` |
+|---|---|---|---|
+| live | live | `live` | 422 `errors.visibility` |
+| live | hidden | `hidden` | ✅ — saved, still not public, not quotable |
+| hidden | live | `hidden` | ✅ |
+| hidden | hidden | `hidden` | ✅ |
+
+A **move** (`service_id`) is refused when it would publish the package — a Live-flagged package into a Live service → 422 `errors.service_id`. No edit ever changes either flag; the founder still makes things Live. When the founder switches a Hidden service on in the admin, a confirmation states how many of its packages that publishes, and the services list badges an active package inside a hidden category **Hidden via service**.
+
 | Tool | Maps to | Scope / gate | Notes |
 |---|---|---|---|
 | `list_projects` | `GET /projects` | read (any) | Slim rows. `status` is the **build stage** badge (live / soon / wip / planning) — **not** visibility. |
 | `get_project` | `GET /projects/{id}` | read (any) | Full record — read before updating. |
 | `create_project_draft` | `POST /projects` | write | Hidden, unfeatured, last. `name`, `description`, `long_description`, `status` required; cover only a founder-supplied URL or `/previews/<slug>.webp`. |
 | `update_project_draft` | `PUT /projects/{id}` | write · **gate: Hidden** | Partial patch. |
-| `list_services` | `GET /services` | read (any) | Every service with its packages — ids, prices, `quote_package_key`, `quotable`. |
+| `list_services` | `GET /services` | read (any) | Every service with its packages — ids, prices, `visibility`, `effective_visibility`, `quote_package_key`, `quotable`. |
 | `get_service` | `GET /services/{id}` | read (any) | A service + its packages' full records. |
 | `create_service_draft` | `POST /services` | write | Hidden, last, never the default. `name`, `icon` (Lucide), `description`. |
 | `update_service_draft` | `PUT /services/{id}` | write · **gate: Hidden** | Partial patch. |
-| `get_package` | `GET /packages/{id}` | read (any) | Full card + its service + quote wiring. |
+| `get_package` | `GET /packages/{id}` | read (any) | Full card + its service + quote wiring + `effective_visibility`. |
 | `create_package_draft` | `POST /packages` | write | Hidden, unfeatured, last in its service (which may itself be Hidden). Optional `quote_package_key`. |
-| `update_package_draft` | `PUT /packages/{id}` | write · **gate: Hidden** | Partial patch; `service_id` moves it; `quote_package_key: null` unwires it. |
+| `update_package_draft` | `PUT /packages/{id}` | write · **gate: effectively Hidden** | Partial patch while the package **or its service** is Hidden; `service_id` moves it (refused if the move would publish it); `quote_package_key: null` unwires it. |
 
 #### Services & packages
 
@@ -106,7 +117,7 @@ In connector language a **service** is a `service_categories` row (Web, Dashboar
 - the key is **snake_case** and **new** — not held by any other package row (**Live or Hidden** — the engine resolves keys on hidden rows too, so a duplicate would silently re-point quotes; the message names the holder) and not a legacy `pricing_configs` `base_packages` key (the admin may take one over on purpose; the connector may not). A package keeps its own key on update;
 - a wired package needs `price_max_myr` (the engine prices a min–max range), and `price_max_myr ≥ price_min_myr` always.
 
-A wired package is `quotable` (in `list_catalog` and the admin builder) only once **both it and its service are Live** — so a Hidden draft never touches pricing. It then picks up its service's scope fields that apply to every package; per-package scope fields are set in the admin. See [QUOTE_BUILDER.md](./QUOTE_BUILDER.md).
+A wired package is `quotable` (in `list_catalog` and the admin builder) only once **both it and its service are Live** (`effective_visibility = live`). The engine's `base_packages` price map follows the same rule (`ServicePackage::effectivelyLive()`), so an effectively Hidden package is never priced — not even by key — and a connector edit to one never touches pricing. While a service is hidden, an existing quote that uses one of its packages can't be re-saved in the admin builder (422 on the key) until the service is Live again — the same as hiding the package itself. It then picks up its service's scope fields that apply to every package; per-package scope fields are set in the admin. See [QUOTE_BUILDER.md](./QUOTE_BUILDER.md).
 
 **Two drafting modes** (in both write tools' descriptions and the guide's `modes`): asked to **write** about a topic → Claude writes in the founder's voice following the guide's structure; given the founder's **own text** → Claude keeps the wording verbatim, only arranges it into title / excerpt / sections and fills the missing metadata (alt text, format, category, tags, SEO), rewrites only when asked, and reports any change. Images are **only** URLs the founder supplied (no image search). There is no publish, unpublish, or delete tool.
 
@@ -253,6 +264,7 @@ Still no revise/send/accept/order tools (a revision is opened, sent and accepted
 
 ## Version history
 
+- **v6.1** — packages: `effective_visibility` (live only while the package **and** its service are Live) on every package payload (`list_services`, `get_service`, `get_package`, write results); `visibility` stays the package's own flag. `update_package_draft` edits any effectively Hidden package — including a Live-flagged one inside a Hidden service — and refuses a move into a Live service that would publish it (422 `errors.service_id`). `public_url`, `quotable` and the guard share `ServicePackage::isEffectivelyLive()`, and the engine's price map its query twin `effectivelyLive()` (a package under a hidden service is no longer priceable by key). Description-only change on the Worker (no new tools).
 - **v6** — the public catalogue: `list_projects` / `get_project` / `create_project_draft` / `update_project_draft`, `list_services` / `get_service` / `create_service_draft` / `update_service_draft`, `get_package` / `create_package_draft` / `update_package_draft`. Created Hidden, partially edited only while Hidden (Live → 422). A package can be wired to the quote builder with a NEW `quote_package_key` (unique across every package row, Live or Hidden, and not a legacy pricing-JSON key — the same uniqueness now guards the admin form). Reuses the universal abilities — no token rotation; the Worker ships on merge (`deploy-connector.yml`), then **reconnect** the connector to see the new tools.
 - **v5.2** — `create_revision` **removed**: opening a revision is the founder's call ("Revise" in the admin). The connector only edits a draft revision; `update_draft_quotation`'s 422 now asks the founder to revise. (`POST /v1/connector/quotations/{ref}/revisions` is gone.)
 - **v5.1** — `get_order`: read-only money view of an order (tally, netted plan, invoices with void reasons, payments, Care Plan periods, revisions) so Claude can confirm an order tallies after a revision is accepted. No invoice or payment writes.

@@ -189,6 +189,43 @@ class PricingEngineTest extends TestCase
         $this->assertSame(2, $result->etaValue);
     }
 
+    public function test_a_live_package_under_a_hidden_service_is_not_priced_but_keeps_its_name(): void
+    {
+        $category = ServiceCategory::forceCreate([
+            'slug' => 'test-hidden',
+            'name' => 'Test Hidden',
+            'icon' => 'i-lucide-globe',
+            'description' => 'Hidden category',
+            'active' => false,
+        ]);
+        ServicePackage::forceCreate([
+            'service_category_id' => $category->id,
+            'slug' => 'test-hidden-pkg',
+            'name' => 'Hidden Service Package',
+            'tagline' => 'Live flag, hidden service',
+            'price_min_myr' => 3000,
+            'price_max_myr' => 4000,
+            'unit' => 'project',
+            'duration_text' => '2 weeks',
+            'features' => [],
+            'quote_key' => ['category' => 'test-hidden', 'package' => 'test_hidden_pkg'],
+            'eta_value' => 2,
+            'eta_unit' => 'week',
+            'active' => true,
+        ]);
+        $engine = $this->engine();
+
+        // Not effectively Live → not on the price list, so not quotable anywhere.
+        $this->assertArrayNotHasKey('test_hidden_pkg', $engine->configForFrontend()['base_packages']);
+        $this->expectException(InvalidArgumentException::class);
+        try {
+            $engine->calculate($this->input(['packageKey' => 'test_hidden_pkg']));
+        } finally {
+            // …but an existing quote that carries the key still shows the real name.
+            $this->assertSame('Hidden Service Package', $engine->packageName('test_hidden_pkg'));
+        }
+    }
+
     public function test_db_addon_claims_its_key_and_inactive_rows_hide_it(): void
     {
         $engine = fn () => $this->engine([
