@@ -31,5 +31,6 @@ The service list is admin data (`GET /v1/services`). Each category gets `/servic
 ## Outside the code
 
 - **Google Search Console:** submit `https://axelnovaventures.com/sitemap.xml` and resubmit after big changes.
+- **Admin host:** `admin.axelnovaventures.com` 301s every public page to the apex and sends `X-Robots-Tag: noindex` on everything it serves (Nuxt server middleware; the API adds the header itself) — see [DEPLOY.md § Admin host](../global/DEPLOY.md#admin-host-internal-only).
 - **www:** `www.axelnovaventures.com` should 301 to the apex (it currently answers 200; canonicals point at the apex, which softens it). Fix at the edge — a Cloudflare redirect rule (`www.axelnovaventures.com/*` → `https://axelnovaventures.com/${1}`, 301) or an nginx `server_name www…; return 301 https://axelnovaventures.com$request_uri;`.
 - **Speed:** measure in PageSpeed Insights / CrUX; public pages are `swr`-cached (see [DEPLOY.md § Page caching](../global/DEPLOY.md#page-caching)).

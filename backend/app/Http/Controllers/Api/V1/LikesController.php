@@ -5,17 +5,19 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\EntityLike;
 use App\Models\Project;
-use App\Models\ServicePackage;
 use App\Support\AnalyticsHash;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class LikesController extends Controller
 {
-    /** Likeable entity types → their model, for existence checks. */
+    /**
+     * Likeable entity types → their model, for existence checks. Service
+     * packages dropped likes in the 2026-10 catalog rewrite (their old
+     * entity_likes rows remain, unread).
+     */
     private const TYPES = [
         'project' => Project::class,
-        'service_package' => ServicePackage::class,
     ];
 
     /**

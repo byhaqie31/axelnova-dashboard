@@ -69,14 +69,16 @@ staged in `backend/.env.example`; no integration code yet).
 
 **Toggle.** [`LikesController::toggle`](../../backend/app/Http/Controllers/Api/V1/LikesController.php)
 — `POST /api/v1/likes/{type}/{id}` (public, throttled). Type allowlist
-`project` / `service_package`; 404 if the entity doesn't exist. `cookie_id` is
+`project` (service packages dropped likes in the 2026-10 catalog clean-up —
+`service_package` now 404s; its old `entity_likes` rows remain, unread); 404 if
+the entity doesn't exist. `cookie_id` is
 required. Deletes the existing like for this `cookie_id` or creates one; returns
 `{ liked, count }`.
 
-**Counts.** `Project` + `ServicePackage` expose a `likes()` `hasMany` (scoped to
-their entity type); the public controllers `withCount('likes')` and the resources
-emit `likes_count`. So the public projects/services payloads carry counts with no
-extra request.
+**Counts.** `Project` exposes a `likes()` `hasMany` (scoped to its entity type);
+the public controllers `withCount('likes')` and `ProjectResource` emits
+`likes_count`, so the public projects payload carries counts with no extra
+request. Service and package payloads carry no `likes_count`.
 
 **UI.** [`frontend/app/components/shared/LikeButton.vue`](../../frontend/app/components/shared/LikeButton.vue)
 — heart + count pill, optimistic toggle reconciled with the server response. The
@@ -84,7 +86,7 @@ extra request.
 id) so the filled heart persists across visits without a lookup. That same
 `axn_like_cookie` id is sent as `cookie_id` and is the server's dedupe key. SSR-safe
 (starts unliked, hydrates on mount). Placed on `ProjectCard` (home + registry,
-top-right), the project detail CTA row, and each service package card.
+top-right) and the project detail CTA row.
 
 **Admin.** Overview adds an all-time `topLikedProjects` leaderboard, rendered as
 "Most-liked projects" on the analytics page.
@@ -109,12 +111,11 @@ top-right), the project detail CTA row, and each service package card.
 ### Slice 3 — Service interest (not built)
 Tie page-view data to service packages so the admin sees which packages draw
 attention. Likely: count views whose `path` maps to a package (e.g. `/services`
-+ the package slug / a `/services/[slug]` route if added) and combine with
-`likes_count` per package. Surface as a "Service interest" table on the analytics
-page (replace the Soon card): package · views · likes. Backend: extend
-`overview()` (or a dedicated method) with a `serviceInterest` array joining
-`page_views` (by path) + `entity_likes` (entity_type=service_package) to
-`service_packages`.
++ the package slug / a `/services/[slug]` route if added). Packages have no likes
+any more, so views (and quote-builder starts) are the signal. Surface as a
+"Service interest" table on the analytics page (replace the Soon card): package ·
+views. Backend: extend `overview()` (or a dedicated method) with a
+`serviceInterest` array joining `page_views` (by path) to `service_packages`.
 
 ### Slice 4 — Quote funnel (not built)
 Conversion ratio: views of `/quote` → quote starts → submitted leads. Sources:

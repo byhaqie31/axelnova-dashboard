@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { formatMyr } from '~/utils/money'
 definePageMeta({ layout: 'public' })
 
 import SectionHeader from '~/components/shared/SectionHeader.vue'
+import PriceTag from '~/components/shared/primitives/PriceTag.vue'
 import { useApiBase } from '~/composables/useApiBase'
 
 interface ApiPackage {
@@ -92,16 +92,16 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     heroSubtitle: 'From a landing page to a larger website or web app, I build around what your customers need to find and do. The scope, integrations and handover are agreed before development starts.',
     deliverablesTitle: 'What you get',
     deliverables: [
-      { icon: 'i-lucide-layout', title: 'Marketing sites', desc: 'High-performance landing pages and multi-page sites with CMS integration.' },
-      { icon: 'i-lucide-code', title: 'Custom web apps', desc: 'Auth, dashboards, billing, integrations — full-stack builds end to end.' },
-      { icon: 'i-lucide-cloud', title: 'API + backend', desc: 'REST or GraphQL APIs in Laravel, with queues, jobs, and a clean admin layer.' },
-      { icon: 'i-lucide-rocket', title: 'Deploy + handover', desc: 'CI/CD, SSL, monitoring, documentation. You own everything when we finish.' },
+      { icon: 'i-lucide-layout', title: 'Marketing sites', desc: 'Single-page and multi-page sites designed around your brand, mobile-first and fast-loading.' },
+      { icon: 'i-lucide-puzzle', title: 'Add-ons when you need them', desc: 'A CMS, booking flow, extra pages and extra languages are optional, quoted with your package.' },
+      { icon: 'i-lucide-search', title: 'SEO foundations', desc: 'Meta tags, Open Graph, sitemap and optimised images on every site.' },
+      { icon: 'i-lucide-rocket', title: 'Deploy + handover', desc: 'Deployment with SSL and your domain connected, plus a handover walkthrough. You own everything when we finish.' },
     ],
     stackTitle: 'Stack',
     stack: ['Vue 3', 'Nuxt 4', 'TypeScript', 'Tailwind CSS', 'Laravel 11', 'MySQL', 'Docker', 'GitHub Actions', 'AWS', 'Cloudflare'],
     faqs: [
       { q: 'What stack do you build with?', a: 'Vue 3 + Nuxt 4 on the frontend, Laravel 11 on the backend, MySQL or PostgreSQL for data, deployed on a VPS or AWS. Tailwind CSS for styling. Everything containerised with Docker.' },
-      { q: 'How long does a typical web project take?', a: 'A landing site takes 1–2 weeks. A marketing website with CMS takes 3–4 weeks. A custom web app with auth, dashboard, and integrations takes 6–10 weeks. Timeline is agreed in writing before work begins.' },
+      { q: 'How long does a typical web project take?', a: 'A Starter Site takes 1–2 weeks, a Business Site 3–4 weeks and a Premium Site 5–6 weeks. Add-ons such as a CMS or booking flow can extend that. Timeline is agreed in writing before work begins.' },
       { q: 'Do you handle hosting and deployment?', a: 'Yes. I set up the production server (VPS, AWS, or Cloudflare), wire up CI/CD via GitHub Actions, configure SSL, and hand over the deploy keys. You own the infrastructure.' },
       { q: 'Can you work with existing teams?', a: 'Yes. I have experience embedding into fintech and SaaS teams. PR-based workflow, code review, documentation — same standards as your in-house engineers.' },
     ],
@@ -117,7 +117,7 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     deliverables: [
       { icon: 'i-lucide-users', title: 'Role-based access', desc: 'Granular permissions per user, team, or resource. Built on Laravel Sanctum with audit logging.' },
       { icon: 'i-lucide-database', title: 'Data tables that scale', desc: 'Server-side pagination, filters, sort, bulk actions, and CSV exports — built to handle thousands of rows.' },
-      { icon: 'i-lucide-line-chart', title: 'Real-time dashboards', desc: 'Live KPIs, charts, and alerts. WebSocket or polling — whichever fits your data volume.' },
+      { icon: 'i-lucide-line-chart', title: 'Dashboards and reports', desc: 'Key numbers, charts and exports on every portal. Business Admin adds scheduled reports; the Enterprise Portal adds real-time (WebSocket) updates.' },
       { icon: 'i-lucide-workflow', title: 'Workflow automation', desc: 'Approvals, notifications, queued background jobs. Wire your business logic into a clean operator UI.' },
     ],
     stackTitle: 'Stack',
@@ -126,7 +126,7 @@ const enrichmentBySlug: Record<string, Enrichment> = {
       { q: 'What kind of admin dashboards do you build?', a: 'SaaS admin panels, internal ops tools, fintech back-office consoles, and customer portals. Anything that needs role-based access, structured data tables, charts, and CRUD workflows.' },
       { q: 'How do you handle authentication and roles?', a: 'Laravel Sanctum for token-based auth, with role and permission management via spatie/laravel-permission or a custom layer. SSO and 2FA available on request.' },
       { q: 'Can you integrate with our existing API?', a: 'Yes. I can build the frontend portal against your existing REST or GraphQL API, or extend your current backend. Auth handoff, error handling, and rate limiting are all part of the scope.' },
-      { q: 'Do you provide analytics and reporting?', a: 'Yes — dashboards with charts (line, bar, donut, sparklines) via Chart.js or ECharts, plus CSV/PDF export, scheduled reports, and audit logs.' },
+      { q: 'Do you provide analytics and reporting?', a: 'Yes. Every portal has a dashboard with charts, CSV export and an activity log. Business Admin adds advanced charts, scheduled and on-demand PDF / CSV reports, and a full audit log.' },
     ],
     serviceType: 'Admin Portal Development',
     audience: 'SaaS, Fintech, and Internal Tools teams',
@@ -146,7 +146,7 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     stackTitle: 'Tools',
     stack: ['Figma', 'Tailwind CSS', 'Framer Motion', 'GSAP', 'Iconify', 'Heroicons', 'Material Symbols'],
     faqs: [
-      { q: 'What deliverables come with a UI/UX engagement?', a: 'A Figma file with the full design system (colors, type, components, states), interactive prototypes for every key flow, an accessibility checklist, and a written handover doc for developers.' },
+      { q: 'What deliverables come with a UI/UX engagement?', a: 'It depends on the package. A UX Audit delivers a prioritised fix list with an annotated walkthrough. A Design + Build Sprint delivers Figma screens, a clickable prototype and the production frontend. A Design System Build delivers tokens, a component library in Figma and code, and documentation.' },
       { q: 'Do you do user research too?', a: 'Yes. Stakeholder interviews, competitor audits, lightweight user interviews, and usability testing on prototypes. Scope depends on the project — I scope research separately from visual design.' },
       { q: 'Can you redesign an existing product?', a: 'Yes. Most redesign projects start with a UX audit of the current product — heuristic review, analytics dive if you have data, and a prioritised list of fixes before redesigning visuals.' },
       { q: 'Will the developers be able to build what you design?', a: 'Yes — because I also code. My Figma files use real Tailwind tokens, real component composition, and realistic states. Developer handover meetings are part of every project.' },
@@ -156,12 +156,12 @@ const enrichmentBySlug: Record<string, Enrichment> = {
   },
   'digital-marketing': {
     seoTitle: 'Digital Campaign & Creative Design in Malaysia | Axel Nova',
-    seoDescription: 'Premium social campaigns, e-flyers, event collateral, and brand refresh kits for Malaysian SMEs. EN + BM copywriting. Festive season ready. Print + digital delivered.',
+    seoDescription: 'Premium social campaigns, e-flyers, event collateral, and brand refresh kits for Malaysian SMEs. EN + BM copy on campaigns, events and retainers. Festive season ready.',
     h1: 'Creative design for Malaysian businesses.',
     heroSubtitle: 'From a social campaign to event materials or a brand refresh, I create assets that work across the channels and formats you actually use.',
     deliverablesTitle: 'What you get',
     deliverables: [
-      { icon: 'i-lucide-megaphone', title: 'Social campaigns', desc: 'Hero creative + adapted assets for FB, IG, WhatsApp, and email. EN + BM copywriting included.' },
+      { icon: 'i-lucide-megaphone', title: 'Social campaigns', desc: 'One hero visual adapted for FB, IG, WhatsApp and e-flyers, with EN + BM copy.' },
       { icon: 'i-lucide-image', title: 'Event collateral', desc: 'E-backdrops, buntings, standees, badges, and teasers — print-ready files with vendor specs.' },
       { icon: 'i-lucide-palette', title: 'Brand refresh kits', desc: 'Logo polish, colour and type system, business cards, email signatures, and reusable social templates.' },
       { icon: 'i-lucide-calendar-days', title: 'Monthly content retainer', desc: 'Consistent design output every month — social posts, e-flyers, and campaign concepts with planning.' },
@@ -169,9 +169,9 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     stackTitle: 'Tools',
     stack: ['Figma', 'Adobe Illustrator', 'Adobe Photoshop', 'Canva Pro', 'CapCut', 'Print-ready exports'],
     faqs: [
-      { q: 'Do you write in Bahasa Malaysia and English?', a: 'Yes. Every campaign includes EN + BM copywriting by default. For trilingual campaigns (BM / EN / 中文), I bring in a native Mandarin copywriter — costed separately and transparently.' },
-      { q: 'Can you handle festive campaigns (Raya, CNY, Deepavali)?', a: 'Yes — festive launches are my busiest period. Book 3–4 weeks ahead. I deliver a hero design plus 5+ adapted assets per festive campaign as standard.' },
-      { q: 'Do I get print-ready files?', a: 'Yes. Every design comes with print-ready PDF / CMYK files plus digital exports (RGB JPG / PNG). Vendor specs included so your printer or e-backdrop supplier can run it directly.' },
+      { q: 'Do you write in Bahasa Malaysia and English?', a: 'Yes. The Campaign Pack, Event Activation and Monthly Content Retainer include EN + BM copy. A Single Asset includes copy in one language (EN or BM); a second language can be added. For trilingual campaigns (BM / EN / 中文), I bring in a native Mandarin copywriter, costed separately and transparently.' },
+      { q: 'Can you handle festive campaigns (Raya, CNY, Deepavali)?', a: 'Yes — festive launches are my busiest period. Book 3–4 weeks ahead. A Campaign Pack delivers a hero key visual plus 5 adapted assets.' },
+      { q: 'Do I get print-ready files?', a: 'Yes. The Campaign Pack, Event Activation and Brand Refresh Kit come with print-ready files plus digital exports (RGB JPG / PNG). A Single Asset ships web-ready, with a print-ready PDF on request. Event work includes vendor specs so your printer or e-backdrop supplier can run it directly.' },
       { q: 'What if I need ongoing content every month?', a: 'That\'s the Monthly Content Retainer — 8–12 social posts, 2 e-flyers, and 1 campaign concept per month, with content calendar planning.' },
     ],
     serviceType: 'Digital Marketing & Creative Design',
@@ -185,16 +185,16 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     deliverablesTitle: 'Core capabilities',
     deliverables: [
       { icon: 'i-lucide-calendar-check', title: 'Smart booking engine', desc: 'Calendar with availability, lead time, blackout dates, and double-booking prevention. Mobile-first by default.' },
-      { icon: 'i-lucide-credit-card', title: 'Malaysian payment gateways', desc: 'Billplz, ToyyibPay, or Stripe for FPX, e-wallets (GrabPay, TNG, Boost), and cards. Refund flow included.' },
-      { icon: 'i-lucide-message-circle', title: 'Auto-notifications', desc: 'Booking confirmations via email + WhatsApp + SMS. Reminders before appointment. Admin gets a copy of everything.' },
-      { icon: 'i-lucide-users', title: 'Customer self-serve', desc: 'Customers manage their own bookings — reschedule, cancel, view history. Less admin work, less WhatsApp triage.' },
+      { icon: 'i-lucide-credit-card', title: 'Malaysian payment gateways', desc: 'Booking Pro takes deposits or full payment via Billplz / ToyyibPay, with cancellation and refund rules. On Booking Lite, online payment (Stripe or FPX) is an add-on.' },
+      { icon: 'i-lucide-message-circle', title: 'Auto-notifications', desc: 'Booking confirmations and reminders by email and WhatsApp, plus SMS on Booking Pro. Admin gets a copy of everything.' },
+      { icon: 'i-lucide-users', title: 'Customer self-serve', desc: 'Customers reschedule or cancel on their own; Booking Pro adds customer accounts with booking history. Less admin work, less WhatsApp triage.' },
     ],
     stackTitle: 'Stack',
     stack: ['Vue 3', 'Nuxt 4', 'Laravel 11', 'Billplz', 'ToyyibPay', 'Stripe', 'WhatsApp Business API', 'MySQL', 'Tailwind CSS'],
     faqs: [
-      { q: 'Which payment gateways do you integrate?', a: 'Billplz, ToyyibPay, and Stripe for Malaysian businesses. That covers FPX (online banking), e-wallets (GrabPay, TNG, Boost, ShopeePay), and credit/debit cards. International cards too if you serve foreign customers.' },
+      { q: 'Which payment gateways do you integrate?', a: 'Billplz, ToyyibPay, and Stripe for Malaysian businesses. That covers FPX (online banking), e-wallets (GrabPay, TNG, Boost, ShopeePay), and credit/debit cards. Online payment is included in Booking Pro and an add-on for Booking Lite.' },
       { q: 'Can it handle multiple rooms / staff / services?', a: 'Yes. Booking Pro and Custom plans support multi-resource scheduling — multiple rooms, staff, treatment rooms, classrooms, or service types in parallel. Each with its own availability and pricing rules.' },
-      { q: 'Will I get WhatsApp notifications for new bookings?', a: 'Yes. Customer and admin both receive WhatsApp confirmations on every booking, plus reminders before the appointment. SMS and email backup channels included.' },
+      { q: 'Will I get WhatsApp notifications for new bookings?', a: 'Yes. Customer and admin both receive WhatsApp and email confirmations on every booking, plus reminders before the appointment. Booking Pro adds SMS. WhatsApp API and SMS usage fees are billed separately.' },
       { q: 'Can it integrate with my existing PMS or POS?', a: 'Yes. I\'ve integrated with hotel PMS, salon POS, and clinic management systems via REST API or webhook. The Custom Booking System plan covers this — scope agreed on call.' },
     ],
     serviceType: 'Booking & Customer Portal Development',
@@ -207,17 +207,17 @@ const enrichmentBySlug: Record<string, Enrichment> = {
     heroSubtitle: 'Sell through a storefront that reflects your brand and gives customers a clear path from product to checkout. Payments, stock and delivery integrations depend on your agreed scope.',
     deliverablesTitle: 'What you get',
     deliverables: [
-      { icon: 'i-lucide-shopping-bag', title: 'Branded storefront', desc: 'Mobile-first product catalogue with variants, bundles, and category navigation. Fast, SEO-friendly, and brand-aligned.' },
-      { icon: 'i-lucide-banknote', title: 'Malaysian checkout', desc: 'FPX, GrabPay, TNG, Boost, ShopeePay, and card payments via Billplz, ToyyibPay, or Stripe. One-click checkout for returning customers.' },
-      { icon: 'i-lucide-package', title: 'Inventory & fulfilment', desc: 'Stock tracking, low-stock alerts, order management, and shipping label generation. Sync with EasyParcel / Pos Laju if needed.' },
-      { icon: 'i-lucide-trending-up', title: 'Sales analytics', desc: 'Revenue dashboard, abandoned cart recovery, discount codes, and customer LTV tracking. Decide on real data, not gut feel.' },
+      { icon: 'i-lucide-shopping-bag', title: 'Branded storefront', desc: 'Mobile-first product catalogue with categories and product pages; Storefront Pro adds variants and unlimited SKUs. Fast, SEO-friendly, and brand-aligned.' },
+      { icon: 'i-lucide-banknote', title: 'Malaysian checkout', desc: 'Billplz / ToyyibPay checkout on Storefront Starter; card and e-wallet checkout (GrabPay, TNG, Boost) on Storefront Pro. Stripe and FPX are add-ons where a package lists them.' },
+      { icon: 'i-lucide-package', title: 'Inventory & fulfilment', desc: 'Order management, stock status and shipping rules; Storefront Pro adds inventory with low-stock alerts. EasyParcel / Pos Laju sync is scoped if needed.' },
+      { icon: 'i-lucide-trending-up', title: 'Sales analytics', desc: 'On Storefront Pro: a sales analytics dashboard, abandoned cart recovery and discount codes. Decide on real data, not gut feel.' },
     ],
     stackTitle: 'Stack',
     stack: ['Vue 3', 'Nuxt 4', 'Laravel 11', 'Billplz', 'ToyyibPay', 'Stripe', 'EasyParcel', 'MySQL', 'Redis', 'Tailwind CSS'],
     faqs: [
-      { q: 'Can I accept FPX and Malaysian e-wallets?', a: 'Yes — FPX, GrabPay, TNG, Boost, and ShopeePay via Billplz or ToyyibPay. International cards via Stripe. Every storefront supports the full Malaysian payment stack from day one.' },
+      { q: 'Can I accept FPX and Malaysian e-wallets?', a: 'Yes. Storefront Starter checks out through Billplz or ToyyibPay, and Storefront Pro adds card and e-wallet checkout (GrabPay, TNG, Boost). Stripe card payments and FPX online banking are add-ons where a package lists them.' },
       { q: 'Is this better than selling on Shopee / Lazada?', a: 'Different, not better-or-worse. Marketplaces give you traffic but charge fees and own the customer relationship. Your own storefront builds brand, owns customer data, and has no marketplace fees. Most successful brands run both in parallel.' },
-      { q: 'Can you integrate with my existing inventory or accounting system?', a: 'Yes. I\'ve integrated with Xero, AutoCount, SQL Account, and custom ERPs. Storefront Pro and Custom plans cover real-time stock sync, automatic invoicing, and accounting export.' },
+      { q: 'Can you integrate with my existing inventory or accounting system?', a: 'Yes. I\'ve integrated with Xero, AutoCount, SQL Account, and custom ERPs. Storefront Pro includes order exports for your accounting; real-time stock sync and ERP / accounting integration are part of Custom Commerce.' },
       { q: 'What about subscriptions or B2B pricing?', a: 'The Custom Commerce plan covers subscriptions, recurring billing, B2B tiers, bulk pricing, and net-30 terms. Scope agreed on call — these are common for skincare, supplement, and wholesale brands.' },
     ],
     serviceType: 'E-commerce & Payment Flow Development',
@@ -424,10 +424,15 @@ useScrollReveal('.reveal')
           <p class="text-[13px] mb-4" :style="{ color: 'var(--color-text-secondary)' }">
             {{ pkg.tagline }}
           </p>
-          <p class="text-[12px] mb-4" :style="{ color: 'var(--color-text-secondary)' }">
-            From {{ formatMyr(pkg.price_min_myr) }}
-            <span v-if="pkg.price_max_myr"> – {{ formatMyr(pkg.price_max_myr) }}</span>
-            <span v-else>+</span> · {{ pkg.duration_text }}
+          <PriceTag
+            class="text-[17px] font-semibold tracking-tight mb-1"
+            :min="pkg.price_min_myr"
+            :max="pkg.price_max_myr"
+            :unit="pkg.unit"
+          />
+          <p class="text-[12px] mb-4 inline-flex items-center gap-1.5" :style="{ color: 'var(--color-text-secondary)' }">
+            <UIcon name="i-lucide-clock" class="size-3.5 shrink-0" />
+            {{ pkg.duration_text }}
           </p>
           <ul class="space-y-1.5 text-[13px] flex-1" :style="{ color: 'var(--color-text)' }">
             <li v-for="f in pkg.features.slice(0, 4)" :key="f" class="flex items-start gap-2">

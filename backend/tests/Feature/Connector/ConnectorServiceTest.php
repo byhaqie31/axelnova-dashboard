@@ -505,7 +505,7 @@ class ConnectorServiceTest extends TestCase
             $this->getJson("/api/v1/connector/packages/{$package->id}", $this->tokenHeader())
                 ->assertOk()
                 ->assertJsonPath('data.effective_visibility', $effective)
-                ->assertJsonPath('data.public_url', $effective === 'live' ? rtrim((string) config('services.frontend.url'), '/').'/services' : null);
+                ->assertJsonPath('data.public_url', $effective === 'live' ? rtrim((string) config('services.frontend.public_url'), '/').'/services' : null);
         }
 
         $this->getJson("/api/v1/connector/services/{$dash->id}", $this->tokenHeader())

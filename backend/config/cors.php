@@ -5,11 +5,12 @@
 | Cross-Origin Resource Sharing (CORS)
 |--------------------------------------------------------------------------
 |
-| Allowlist, never `*`. Production is same-origin (nginx routes /api/* and
-| the Nuxt app under one domain) so CORS is mostly inert there; this guards
-| dev (localhost:3003 → localhost:8003 is cross-origin) and any future
-| split-origin topology. FRONTEND_URL carries the canonical origin per
-| environment; the apex domains are a safety net in case the VPS env drifts.
+| Allowlist, never `*`. In production the browser calls the API on the admin
+| host (NUXT_PUBLIC_API_BASE = https://admin.axelnovaventures.com), so the
+| admin panel is same-origin while every public page on axelnovaventures.com
+| (quote, contact, referral, feedback forms, page-view beacon) is cross-origin
+| and needs the apex entries below. FRONTEND_URL is the admin origin; dev
+| (localhost:3003 → localhost:8003) is cross-origin too.
 |
 */
 

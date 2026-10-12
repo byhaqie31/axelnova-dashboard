@@ -16,6 +16,11 @@ function stripPublicPrefix(list: NuxtPage[]): void {
 // serving it across restarts, so a template edit would stay invisible for up
 // to five minutes — the rules are only emitted for builds.
 const isDev = process.env.NODE_ENV !== 'production'
+
+// The public site. admin.axelnovaventures.com is internal only (admin panel,
+// API, MCP): server/middleware/admin-host.ts 301s its public pages here and
+// marks every admin-host response noindex.
+const SITE_URL = 'https://axelnovaventures.com'
 const swr = (seconds: number) => (isDev ? {} : { swr: seconds })
 
 export default defineNuxtConfig({
@@ -32,7 +37,7 @@ export default defineNuxtConfig({
   ],
 
   site: {
-    url: 'https://axelnovaventures.com',
+    url: SITE_URL,
     name: 'Axel Nova Ventures',
   },
 
@@ -74,8 +79,13 @@ export default defineNuxtConfig({
     // Shared secret for POST /_cache/purge (server/routes/_cache/purge.post.ts),
     // set via NUXT_CACHE_PURGE_TOKEN. Empty → the route 404s (dev, CI).
     cachePurgeToken: '',
+    // The internal host (NUXT_ADMIN_HOST). Requests on it get X-Robots-Tag
+    // noindex, and its public pages redirect to siteUrl (server/middleware/admin-host.ts).
+    adminHost: 'admin.axelnovaventures.com',
     public: {
       apiBase: 'http://localhost:8003',
+      // Public site origin (NUXT_PUBLIC_SITE_URL) — the admin-host redirect target.
+      siteUrl: SITE_URL,
     },
   },
 
@@ -184,11 +194,11 @@ export default defineNuxtConfig({
         { property: 'og:type', content: 'website' },
         { property: 'og:site_name', content: 'Axel Nova Ventures' },
         { property: 'og:locale', content: 'en_MY' },
-        { property: 'og:image', content: 'https://axelnovaventures.com/og-image.jpg' },
+        { property: 'og:image', content: `${SITE_URL}/og-image.jpg` },
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'Axel Nova Ventures' },
         { name: 'twitter:description', content: 'Axel Nova Ventures designs and builds websites, booking portals and custom business systems in Kuala Lumpur for businesses across Malaysia.' },
-        { name: 'twitter:image', content: 'https://axelnovaventures.com/og-image.jpg' },
+        { name: 'twitter:image', content: `${SITE_URL}/og-image.jpg` },
       ],
       link: [
         { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/favicon/favicon-96x96.png' },

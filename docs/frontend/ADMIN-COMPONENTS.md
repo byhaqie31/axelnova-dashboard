@@ -14,7 +14,7 @@ Rules:
 
 The reusable "pick package → modifiers → add-ons → rush → live estimate" unit,
 extracted from the old public `/quote` page so the admin builder reuses the exact
-same scope/pricing logic (single source of truth — `composables/usePricingEngine.ts`).
+same scope/pricing logic (single source of truth — `utils/pricing.ts`, wrapped by `composables/usePricingEngine.ts`).
 
 - **Props:** `state: QuoteScopeState` (a reactive object the component mutates in place; shape + `defaultQuoteScope()` / `deriveModifiers()` / `scopeToPayload()` live in `composables/quoteScope.ts`).
 - **Emits:** `update:estimate` (`EstimateResult | null`), `update:modifiers` (the derived `{key: value}` map the server re-prices with).

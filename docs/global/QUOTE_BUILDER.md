@@ -80,6 +80,7 @@ Every quotable package has two columns:
 1. **Resolve base** — look up the merged `base_packages[packageKey]` → get `min`, `max`, `eta_value`, `eta_unit`.
 2. **Apply modifiers** — for each modifier in the input:
    - Check `applies_to`; skip silently if it's an array and doesn't include the chosen package.
+   - The amount is `amount_by_package[packageKey]` when the modifier has one for this package, else `amount` (`PricingEngine::modifierAmount()`).
    - **Numeric modifier** (has `applies_after`): if input value > `applies_after`, add `(value - applies_after) × amount` to both min and max.
    - **Toggle modifier** (no `applies_after`): if value is true, add `amount` to both.
 3. **Sum add-ons** — fixed-price, added to both min and max.
@@ -89,14 +90,14 @@ Every quotable package has two columns:
 
 ### Example
 
-Package `web_business` (min: 3500, max: 5500, eta_value: 2, eta_unit: week)
-Modifiers: `extra_page = 7` (threshold 5, +2 × RM300 = +RM600), `cms = true` (+RM1,200)
-Add-ons: `seo` (+RM600)
+Package `web_business` (min: 5000, max: 8000, eta_value: 4, eta_unit: week)
+Modifiers: `extra_page = 7` (threshold 5, +2 × RM500 = +RM1,000), `cms = true` (+RM1,200)
+Add-ons: `seo` (+RM300)
 Rush: false
 
-- min = 3500 + 600 + 1200 + 600 = **5,300** → rounds to **RM 5,300**
-- max = 5500 + 600 + 1200 + 600 = **7,300** → rounds to **RM 7,300**
-- eta = **2 weeks**
+- min = 5000 + 1000 + 1200 + 300 = **7,500** → rounds to **RM 7,500**
+- max = 8000 + 1000 + 1200 + 300 = **10,500** → rounds to **RM 10,500**
+- eta = **4 weeks**
 
 ---
 
@@ -214,13 +215,13 @@ The fastest path uses the admin UI — no code or SQL.
 
 Claude can draft the same package through the MCP connector (`create_package_draft` with a new `quote_package_key`) — it lands **Hidden**, so it only joins the quote builder once you make it — and its service — Live. See [MCP-CONNECTOR.md](./MCP-CONNECTOR.md#services--packages).
 
-If your new package needs **custom modifier inputs** in the quote builder (e.g. a checkbox specific to this package), that still requires editing `pricing_configs` JSON and `frontend/app/pages/public/quote/index.vue` — modifiers are engineered config, not yet admin-managed.
+If your new package needs **modifiers** (extra pages, a payment integration …), either add a scope field to its category in the admin, or extend the legacy `modifiers` JSON with a data migration — see [Legacy modifiers](#legacy-modifiers--the-live-catalogs-modifiers).
 
 ---
 
 ## How to update pricing rules (modifiers / addons / rush)
 
-These live in `pricing_configs.config` JSON. Insert a new active row:
+These live in `pricing_configs.config` JSON. In production, ship the change as a data migration that clones the active row into a new version (seeders never run on deploy) — see [Legacy modifiers](#legacy-modifiers--the-live-catalogs-modifiers). The equivalent manual insert:
 
 ```sql
 INSERT INTO pricing_configs (version, config, active, notes, created_at, updated_at)
@@ -240,7 +241,8 @@ The `PricingConfigObserver` deactivates older rows and clears cache.
     "<modifier_key>": {
       "amount": 300,
       "applies_after": 5,
-      "applies_to": ["web_business"]
+      "applies_to": ["web_business", "web_premium"],
+      "amount_by_package": { "web_premium": 800 }   // optional per-package override
     }
   },
   "addons": {
@@ -258,6 +260,22 @@ The `PricingConfigObserver` deactivates older rows and clears cache.
 
 ---
 
+## Legacy modifiers — the live catalog's modifiers
+
+The 2026-10 catalog (6 services / 20 packages under `digital-marketing`, `web-presence`, `ui-ux-frontend`, `booking-portal`, `ecommerce`, `admin-portal`) has **no scope fields**: every modifier its packages accept comes from the legacy `pricing_configs.config.modifiers` JSON — what the MCP calls the legacy pricing config. Scope fields exist only for the retired `web` / `dashboard` / `design-frontend` / `saas` categories, and a scope field of the same key would supersede the JSON entry.
+
+They are read by `PricingEngine::calculate()` (connector drafts and re-prices), `ConnectorCatalog` (`list_catalog` + draft validation) and the TS port [`utils/pricing.ts`](../../frontend/app/utils/pricing.ts) — which the public `/services` estimator ([`utils/serviceEstimator.ts`](../../frontend/app/utils/serviceEstimator.ts)) uses to price each package with the controls it accepts. The admin builder sends scope values only, and the public `/quote` page is a brief form that prices nothing. Each modifier may carry display-only `label` / `unit` (migration `2026_10_12_100002_label_pricing_modifiers`), shown by the estimator and `list_catalog`.
+
+| Key | Applies to | Amount |
+|---|---|---|
+| `extra_page` | `web_business`, `web_premium` (+ legacy `web_essential`) | per page above 5: **RM500** on web_business, **RM800** on web_premium (`amount_by_package`); RM300 flat otherwise |
+| `cms` / `booking_flow` | `web_business`, `web_premium` | RM1,200 / RM1,500 |
+| `extra_language` | all | RM600 |
+| `stripe_integration` / `fpx_integration` | every web, booking, e-commerce and admin package + `design_build` (+ the legacy JSON keys) — **not** `single_asset`, `campaign_pack`, `event_activation`, `brand_refresh`, `content_retainer`, `ux_audit`, `design_system` | RM1,800 / RM2,200 |
+| `extra_module`, `real_time_features`, `advanced_charts` | legacy `dash_*` / `saas_*` keys only | — |
+
+So `event_activation` takes `extra_language` only. **Changing them:** there is no admin editor and seeders never run on deploy, so a change ships as a **data migration that clones the active row into a new version** — e.g. [`2026_10_12_100001_scope_payment_modifiers_and_extra_page_prices`](../../backend/database/migrations/2026_10_12_100001_scope_payment_modifiers_and_extra_page_prices.php) → `2026.10.12`. Base prices, add-ons and rush are copied untouched; the old row stays (quotations keep their `pricing_config_id`) and reactivating it undoes the change. Pinned by `tests/Feature/Pricing/CatalogModifiersTest.php`. Package card copy that quotes a modifier price ("extra pages +RM300 each") is DB content — update it through the admin or the MCP when a price changes.
+
 ## Scope fields (per-category builder inputs + pricing) — admin-managed
 
 Each category's "Scope details" in the quote builder is driven by `service_scope_fields` rows — no hardcoded UI. A field has a `type`, per-package `applies_to`, and a type-specific `config` that defines BOTH how it renders and how it prices:
@@ -266,7 +284,7 @@ Each category's "Scope details" in the quote builder is driven by `service_scope
 - **toggle** — `{amount, default}`. Price = `amount` when on.
 - **select** — `{default, options:[{value,label,amount}]}`. Price = the chosen option's `amount`.
 
-`applies_to` is an array of `quote_key.package` strings; **empty = all packages in the category**. The builder renders sliders left, toggles right, selects full-width; the engine (`PricingEngine::calculate()`) and the TS port (`usePricingEngine.ts`) evaluate them identically — **keep the two in sync**.
+`applies_to` is an array of `quote_key.package` strings; **empty = all packages in the category**. The builder renders sliders left, toggles right, selects full-width; the engine (`PricingEngine::calculate()`) and the TS port (`utils/pricing.ts` `calculateEstimate`, parity-tested in `pricing.test.ts`) evaluate them identically — **keep the two in sync**.
 
 **To add/edit:** open a category under `/admin/services`, scroll to **Scope fields**, **+ New scope field** (or Edit), pick the type, set the pricing, tick which packages it applies to. Cache auto-clears via `ServiceScopeFieldObserver`; the builder reflects it on next open. No JSON edit, no deploy.
 
@@ -308,7 +326,10 @@ These are pre-existing inconsistencies, not regressions from the hybrid wiring:
   - `app/Observers/{Pricing,ServicePackage,ServiceCategory}Observer.php` — cache invalidation
   - `app/Http/Controllers/Api/V1/QuoteBuilderConfigController.php` — cached endpoint
 - Frontend
-  - `app/composables/usePricingEngine.ts` — TS port of PricingEngine (scope-field eval) + `formatEta` helper
+  - `app/utils/pricing.ts` — TS port of PricingEngine (`calculateEstimate`: legacy modifiers + scope fields + add-ons + rush) + `formatEta`; parity tests in `pricing.test.ts`
+  - `app/composables/usePricingEngine.ts` — the admin builder's cached config over `utils/pricing.ts` (re-exports its types)
+  - `app/utils/serviceEstimator.ts` — the public `/services` estimator: services + package cards from `/api/v1/services`, each package's controls generated from the catalog, priced by `calculateEstimate` (unit-tested)
+  - `app/utils/priceTag.ts` + `components/shared/primitives/PriceTag.vue` — catalog price display (`RM 2,500 – 4,000`, `From RM 20,000`)
   - `app/composables/quoteScope.ts` — `QuoteScopeState` (`scopeValues` dict), `seedScopeDefaults()`, `legacyToScopeValues()`
   - `app/components/shared/QuoteScopeFields.vue` — generic slider/toggle/select renderer (admin builder only)
   - `app/pages/admin/services/packages/[id].vue` — admin form with eta value + unit inputs

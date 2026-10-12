@@ -7,6 +7,7 @@ use App\Http\Resources\AdminBlogPostResource;
 use App\Models\BlogPost;
 use App\Services\Blog\BlogPostInput;
 use App\Services\Blog\BlogTaxonomy;
+use App\Services\Connector\CatalogRecords;
 use App\Support\BlogGuide;
 use App\Support\BlogMarkdown;
 use Illuminate\Http\JsonResponse;
@@ -150,11 +151,9 @@ class BlogPostController extends Controller
     /** @return array{admin_url: string, public_url: string|null} */
     private function urls(BlogPost $post): array
     {
-        $base = rtrim((string) config('services.frontend.url'), '/');
-
         return [
-            'admin_url' => "{$base}/admin/blog/{$post->id}",
-            'public_url' => $post->isPublished() ? "{$base}/blog/{$post->slug}" : null,
+            'admin_url' => CatalogRecords::adminUrl("/admin/blog/{$post->id}"),
+            'public_url' => $post->isPublished() ? CatalogRecords::publicUrl("/blog/{$post->slug}") : null,
         ];
     }
 }

@@ -47,7 +47,7 @@ Monorepo, two apps deployed independently:
 
 The pricing engine has two implementations that **must stay in sync**:
 - [backend/app/Services/Quoting/PricingEngine.php](../backend/app/Services/Quoting/PricingEngine.php) — server-side, source of truth, drives final stored quote
-- [frontend/app/composables/usePricingEngine.ts](../frontend/app/composables/usePricingEngine.ts) — TS port for live client-side estimates on `/quote`
+- [frontend/app/utils/pricing.ts](../frontend/app/utils/pricing.ts) — pure TS port (`calculateEstimate`) for live client-side estimates: the admin quote builder (via `usePricingEngine`) and the public `/services` estimator (`utils/serviceEstimator.ts`)
 
 Both read the same JSON config from `pricing_configs` (active row) via `GET /api/v1/quote-builder/config` (cached 1h). Pricing changes are **data, not code** — see [docs/global/QUOTE_BUILDER.md](../docs/global/QUOTE_BUILDER.md).
 

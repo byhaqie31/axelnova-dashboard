@@ -130,7 +130,7 @@ final class ConnectorCatalog
             if (! $this->applies($def['applies_to'] ?? 'all', $packageKey)) {
                 continue;
             }
-            $out[$key] = $this->normaliseLegacyModifier($key, $def);
+            $out[$key] = $this->normaliseLegacyModifier($key, $def, $packageKey);
         }
 
         return $out;
@@ -260,22 +260,26 @@ final class ConnectorCatalog
         ];
     }
 
-    /** Normalise a legacy JSON modifier to the connector's modifier shape. */
-    private function normaliseLegacyModifier(string $key, array $def): array
+    /**
+     * Normalise a legacy JSON modifier to the connector's modifier shape, priced
+     * for THIS package (its `amount_by_package` override, else the flat amount).
+     */
+    private function normaliseLegacyModifier(string $key, array $def, string $packageKey): array
     {
         $numeric = isset($def['applies_after']);
+        $amount = (int) PricingEngine::modifierAmount($def, $packageKey);
 
         return [
             'key' => $key,
-            'label' => Str::headline($key),
+            'label' => (string) ($def['label'] ?? Str::headline($key)),
             'source' => 'legacy',
             'kind' => $numeric ? 'number' : 'toggle',
             'value_hint' => $numeric
                 ? 'integer — charged per unit above free_threshold'
                 : 'boolean',
             'pricing' => $numeric
-                ? ['amount_myr' => (int) $def['amount'], 'free_threshold' => (int) $def['applies_after']]
-                : ['amount_myr' => (int) $def['amount']],
+                ? ['amount_myr' => $amount, 'free_threshold' => (int) $def['applies_after']]
+                : ['amount_myr' => $amount],
         ];
     }
 }

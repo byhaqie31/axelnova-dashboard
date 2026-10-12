@@ -24,9 +24,16 @@ final class CatalogRecords
         return $active ? 'live' : 'hidden';
     }
 
-    public static function url(string $path): string
+    /** A cockpit link — the admin origin (FRONTEND_URL). */
+    public static function adminUrl(string $path): string
     {
         return rtrim((string) config('services.frontend.url'), '/').$path;
+    }
+
+    /** A public-site link — the public origin (PUBLIC_SITE_URL), never the admin host. */
+    public static function publicUrl(string $path): string
+    {
+        return rtrim((string) config('services.frontend.public_url'), '/').$path;
     }
 
     // ── Projects ────────────────────────────────────────────────────────────
@@ -60,8 +67,8 @@ final class CatalogRecords
     private static function projectUrls(Project $project): array
     {
         return [
-            'admin_url' => self::url("/admin/projects/{$project->id}"),
-            'public_url' => $project->active ? self::url("/projects/{$project->slug}") : null,
+            'admin_url' => self::adminUrl("/admin/projects/{$project->id}"),
+            'public_url' => $project->active ? self::publicUrl("/projects/{$project->slug}") : null,
         ];
     }
 
@@ -83,8 +90,8 @@ final class CatalogRecords
             'is_default' => (bool) $service->is_default,
             'sort_order' => $service->sort_order,
             'updated_at' => $service->updated_at?->toISOString(),
-            'admin_url' => self::url("/admin/services/categories/{$service->id}"),
-            'public_url' => $service->active ? self::url('/services') : null,
+            'admin_url' => self::adminUrl("/admin/services/categories/{$service->id}"),
+            'public_url' => $service->active ? self::publicUrl('/services') : null,
             'packages' => $packages
                 ->map(fn (ServicePackage $package) => $fullPackages ? self::package($package) : self::packageRow($package))
                 ->all(),
@@ -107,7 +114,7 @@ final class CatalogRecords
             'effective_visibility' => $package->effective_visibility,
             'featured' => $package->featured,
             ...self::quoteState($package),
-            'admin_url' => self::url("/admin/services/packages/{$package->id}"),
+            'admin_url' => self::adminUrl("/admin/services/packages/{$package->id}"),
         ];
     }
 
@@ -128,8 +135,8 @@ final class CatalogRecords
             'visibility' => self::visibility($package->active),
             'effective_visibility' => $package->effective_visibility,
             ...self::quoteState($package),
-            'admin_url' => self::url("/admin/services/packages/{$package->id}"),
-            'public_url' => $package->isEffectivelyLive() ? self::url('/services') : null,
+            'admin_url' => self::adminUrl("/admin/services/packages/{$package->id}"),
+            'public_url' => $package->isEffectivelyLive() ? self::publicUrl('/services') : null,
         ];
     }
 

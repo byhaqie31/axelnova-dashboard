@@ -1,60 +1,19 @@
-export type EtaUnit = 'hour' | 'day' | 'week' | 'month'
+// The admin quote builder's pricing state (cached quote-builder config) over
+// the pure engine in utils/pricing.ts — the TS port of PricingEngine.php, shared
+// with the public /services estimator. Types are re-exported for existing imports.
+import { calculateEstimate, formatEta, type EstimateResult, type PricingConfig } from '~/utils/pricing'
 
-export interface QuoteCategory {
-  key: string
-  label: string
-  icon: string
-  packages: { key: string; name: string; tagline: string }[]
-}
-
-export type ScopeFieldType = 'slider' | 'toggle' | 'select'
-
-export interface ScopeFieldConfig {
-  // slider
-  min?: number; max?: number; default?: number | boolean | string; unit?: string
-  free_threshold?: number; price_per_unit?: number
-  // toggle
-  amount?: number
-  // select
-  options?: { value: string; label: string; amount: number }[]
-}
-
-export interface ScopeField {
-  field_key: string
-  label: string
-  type: ScopeFieldType
-  applies_to: string[] | 'all'
-  config: ScopeFieldConfig
-}
-
-export interface PricingConfig {
-  version: string
-  base_packages: Record<string, { min: number; max: number; eta_value: number; eta_unit: EtaUnit; name?: string }>
-  categories: QuoteCategory[]
-  modifiers: Record<string, {
-    amount: number
-    applies_after?: number
-    applies_to: string[] | 'all'
-  }>
-  addons: Record<string, { amount: number; label: string }>
-  scope_fields: Record<string, ScopeField[]>   // category slug → fields
-  rush_multiplier: number
-  rush_units: EtaUnit[]
-  currency: string
-  valid_for_days: number
-}
-
-export interface EstimateResult {
-  minMyr: number
-  maxMyr: number
-  etaValue: number
-  etaUnit: EtaUnit
-  breakdown: [string, number, number][]
-}
-
-export function formatEta(value: number, unit: EtaUnit): string {
-  return `${value} ${value === 1 ? unit : `${unit}s`}`
-}
+export type {
+  EstimateResult,
+  EtaUnit,
+  LegacyModifier,
+  PricingConfig,
+  QuoteCategory,
+  ScopeField,
+  ScopeFieldConfig,
+  ScopeFieldType,
+} from '~/utils/pricing'
+export { formatEta } from '~/utils/pricing'
 
 // Shared across every composable instance on the client (loadConfig only runs in
 // onMounted, so this never leaks across SSR requests). Dedupes concurrent loads —
@@ -99,87 +58,17 @@ export function usePricingEngine() {
     return configRequest
   }
 
+  // Scope-field pricing for the builder; legacy JSON modifiers ride along when
+  // a caller has them (the builder doesn't). Same engine as the PHP side.
   function calculate(
     packageKey: string,
     scopeValues: Record<string, number | boolean | string>,
     addonKeys: string[],
     rush: boolean,
+    modifiers: Record<string, number | boolean | string> = {},
   ): EstimateResult | null {
     if (!config.value) return null
-
-    const cfg = config.value
-    const base = cfg.base_packages[packageKey]
-    if (!base) return null
-
-    let min = base.min
-    let max = base.max
-    let etaValue = base.eta_value
-    const etaUnit = base.eta_unit
-    // Label with the catalog name (DB), never the slug — mirrors PricingEngine.php.
-    const breakdown: [string, number, number][] = [[`Base: ${base.name ?? packageKey}`, min, max]]
-
-    // Data-driven scope fields — MUST stay byte-for-byte in sync with
-    // PricingEngine::calculate() (the repo's two-engines invariant).
-    const categorySlug = cfg.categories.find(c => c.packages.some(p => p.key === packageKey))?.key
-    const fields = (categorySlug && cfg.scope_fields?.[categorySlug]) || []
-    for (const field of fields) {
-      const appliesTo = field.applies_to
-      if (appliesTo !== 'all' && Array.isArray(appliesTo) && !appliesTo.includes(packageKey)) continue
-
-      const fc = field.config
-      const value = scopeValues[field.field_key] ?? fc.default
-      let extra = 0
-      let label = ''
-
-      if (field.type === 'slider') {
-        const over = Math.max(0, Math.trunc(Number(value) || 0) - (fc.free_threshold ?? 0))
-        extra = over * (fc.price_per_unit ?? 0)
-        const unit = fc.unit ?? field.field_key.replace(/_/g, ' ')
-        label = `+${over} ${unit}`
-      }
-      else if (field.type === 'toggle') {
-        if (value === true || value === 1 || value === '1' || value === 'true') {
-          extra = fc.amount ?? 0
-          label = `+${field.label}`
-        }
-      }
-      else if (field.type === 'select') {
-        const opt = (fc.options ?? []).find(o => String(o.value) === String(value))
-        if (opt) {
-          extra = opt.amount ?? 0
-          label = `${field.label}: ${opt.label ?? opt.value}`
-        }
-      }
-
-      if (extra > 0) {
-        min += extra
-        max += extra
-        breakdown.push([label, extra, extra])
-      }
-    }
-
-    for (const key of addonKeys) {
-      const addon = cfg.addons[key]
-      if (!addon) continue
-      min += addon.amount
-      max += addon.amount
-      breakdown.push([`Addon: ${addon.label}`, addon.amount, addon.amount])
-    }
-
-    if (rush) {
-      min *= cfg.rush_multiplier
-      max *= cfg.rush_multiplier
-      // Rush time-reduction only meaningful for week/month projects.
-      if (cfg.rush_units.includes(etaUnit)) {
-        etaValue = Math.max(1, Math.floor(etaValue * 0.7))
-      }
-      breakdown.push([`Rush delivery (×${cfg.rush_multiplier})`, 0, 0])
-    }
-
-    min = Math.round(min / 50) * 50
-    max = Math.round(max / 50) * 50
-
-    return { minMyr: min, maxMyr: max, etaValue, etaUnit, breakdown }
+    return calculateEstimate(config.value, { packageKey, scopeValues, addonKeys, rush, modifiers })
   }
 
   return { config, configLoading, configError, loadConfig, invalidateConfig, calculate, formatEta }
