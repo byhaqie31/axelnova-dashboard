@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { onClickOutside } from '@vueuse/core'
+import type { Project } from '~/data/projects'
+import ProjectCard from '~/components/shared/ProjectCard.vue'
+import SectionHeader from '~/components/shared/SectionHeader.vue'
+
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
@@ -11,11 +16,6 @@ usePublicSeo({
     subline: 'Live client work, products and experiments.',
   },
 })
-
-import { onClickOutside } from '@vueuse/core'
-import type { Project } from '~/data/projects'
-import ProjectCard from '~/components/shared/ProjectCard.vue'
-import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 interface ApiProject {
   id: number

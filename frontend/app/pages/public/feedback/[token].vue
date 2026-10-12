@@ -90,13 +90,14 @@ async function submit() {
     })
     submitted.value = true
   }
-  catch (e: any) {
-    if (e?.status === 409) {
+  catch (e) {
+    const { status, data } = apiError(e)
+    if (status === 409) {
       alreadySubmitted.value = true
     }
-    else if (e?.data?.errors) {
-      errors.value = e.data.errors
-      message.value = e.data.message ?? 'Please check the highlighted fields.'
+    else if (data?.errors) {
+      errors.value = data.errors
+      message.value = data.message ?? 'Please check the highlighted fields.'
     }
     else {
       message.value = 'Something went wrong sending your feedback. Please try again.'

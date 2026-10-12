@@ -53,7 +53,7 @@ useScrollReveal('.reveal')
         >
           <!-- The space before <br> is load-bearing: below sm the break is hidden,
                and Vue drops the newline between <br> and <span>. -->
-          A digital studio built around <br class="hidden sm:block" />
+          A digital studio built around <br class="hidden sm:block" >
           <span class="text-gradient">how people use technology.</span>
         </h1>
         <p class="text-[17px] leading-relaxed max-w-lg" style="color: var(--color-text-secondary);">
@@ -72,7 +72,7 @@ useScrollReveal('.reveal')
           alt=""
           aria-hidden="true"
           class="relative size-52 sm:size-64 lg:size-72 object-contain hero-logo-mark"
-        />
+        >
       </div>
     </section>
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'public' })
-
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import PriceTag from '~/components/shared/primitives/PriceTag.vue'
 import { useApiBase } from '~/composables/useApiBase'
+
+definePageMeta({ layout: 'public' })
 
 interface ApiPackage {
   id: number

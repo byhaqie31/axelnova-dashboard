@@ -66,7 +66,7 @@ async function copyLink() {
         <span>{{ fmtBlogDate(post.published_at) }} · {{ post.reading_minutes }} min read</span>
       </p>
       <h1 class="text-4xl md:text-5xl font-semibold tracking-tighter leading-[1.08] mt-3 mb-5" :style="{ color: 'var(--color-text)' }">{{ post.title }}</h1>
-      <!-- Backend-sanitised: <p>/<strong>/<em> only (BlogMarkdown::introHtml), so v-html is safe. -->
+      <!-- eslint-disable-next-line vue/no-v-html -- backend-sanitised: <p>/<strong>/<em> only (BlogMarkdown::introHtml) -->
       <div class="blog-intro text-[19px] leading-[1.6] max-w-[78ch]" :style="{ color: 'var(--color-text-secondary)' }" v-html="post.excerpt_html" />
       <p class="text-[13px] mt-5 flex flex-wrap gap-x-6" :style="{ color: 'var(--color-text-tertiary)' }">
         <span>By Ahmad Baihaqie, Founder</span>
@@ -99,6 +99,7 @@ async function copyLink() {
       <!-- Sections -->
       <section v-for="s in post.sections" :key="s.id" class="mb-12">
         <h2 :id="s.anchor" class="blog-section-anchor text-[26px] font-semibold tracking-tight leading-tight mb-4" :style="{ color: 'var(--color-text)' }">{{ s.heading }}</h2>
+        <!-- eslint-disable-next-line vue/no-v-html -- backend-sanitised Markdown: raw HTML stripped, unsafe links dropped (BlogMarkdown::toHtml) -->
         <div class="blog-prose" v-html="s.body_html" />
         <figure v-if="s.image_url" class="mt-6 rounded-2xl overflow-hidden border" :style="{ borderColor: 'var(--color-border)' }">
           <img :src="s.image_url" :alt="s.image_alt ?? s.heading" class="w-full h-auto" loading="lazy">

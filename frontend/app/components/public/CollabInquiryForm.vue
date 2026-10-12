@@ -79,9 +79,8 @@ const handleSubmit = async () => {
     })
     submitted.value = true
   }
-  catch (e: any) {
-    const errs = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
-    error.value = errs || e?.data?.message || 'Something went wrong. Please try again, or email baihaqie@axelnova.tech directly.'
+  catch (e) {
+    error.value = formErrorMessage(e)
   }
   finally {
     loading.value = false

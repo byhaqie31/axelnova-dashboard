@@ -22,7 +22,8 @@ async function copyRef() {
 
     <!-- Success icon -->
     <div class="flex justify-center mb-8">
-      <div class="w-20 h-20 rounded-3xl flex items-center justify-center"
+      <div
+class="w-20 h-20 rounded-3xl flex items-center justify-center"
         style="background: rgba(48,209,88,0.12);">
         <UIcon name="i-fluent-checkmark-circle-24-regular" class="size-10" style="color: var(--color-success);" />
       </div>
@@ -37,7 +38,8 @@ async function copyRef() {
     </p>
 
     <!-- Reference code -->
-    <div v-if="ref_" class="rounded-2xl border p-6 mb-8 text-left"
+    <div
+v-if="ref_" class="rounded-2xl border p-6 mb-8 text-left"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -55,17 +57,20 @@ async function copyRef() {
     </div>
 
     <!-- What happens next -->
-    <div class="rounded-2xl border p-6 mb-8 text-left"
+    <div
+class="rounded-2xl border p-6 mb-8 text-left"
       :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
       <p class="text-[12px] font-semibold uppercase tracking-widest mb-4" style="color: var(--color-text-tertiary);">What happens next</p>
       <div class="space-y-3">
-        <div v-for="(step, i) in [
+        <div
+v-for="(step, i) in [
           'You receive a quote with full scope, timeline, and pricing.',
           'Review it at your own pace. No pressure, valid for 30 days.',
           'If you\'re happy, we schedule a 30-minute discovery call to finalise scope.',
           'On signed agreement + 50% upfront, we start building.',
         ]" :key="i" class="flex items-start gap-3">
-          <span class="text-[11px] font-bold shrink-0 mt-0.5 w-5 h-5 rounded flex items-center justify-center"
+          <span
+class="text-[11px] font-bold shrink-0 mt-0.5 w-5 h-5 rounded flex items-center justify-center"
             style="background: var(--color-accent-soft); color: var(--color-accent);">
             {{ i + 1 }}
           </span>

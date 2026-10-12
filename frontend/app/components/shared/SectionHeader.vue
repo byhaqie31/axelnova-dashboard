@@ -61,13 +61,8 @@ onUnmounted(() => {
       <!-- Slot variant for callers whose subtitle differs by viewport
            (e.g. "hover a card" on desktop vs "swipe left" on touch). -->
       <!-- Block markup (it can hold <p> / <ul>), so a div, never inside the <p>. -->
-      <div
-        v-if="subtitleHtml"
-        class="rich-intro mt-4 text-[17px] leading-relaxed"
-        :class="wide && 'max-w-3xl'"
-        style="color: var(--color-text-secondary);"
-        v-html="subtitleHtml"
-      />
+      <!-- eslint-disable-next-line vue/no-v-html -- callers pass backend-sanitised HTML only (e.g. CatalogMarkdown::descriptionHtml) -->
+      <div v-if="subtitleHtml" class="rich-intro mt-4 text-[17px] leading-relaxed" :class="wide && 'max-w-3xl'" style="color: var(--color-text-secondary);" v-html="subtitleHtml" />
       <p
         v-else-if="subtitle || $slots.subtitle"
         class="mt-4 text-[17px] leading-relaxed"
