@@ -221,18 +221,20 @@ final class PricingEngine
                 continue;
             }
 
+            $amount = self::modifierAmount($def, $input->packageKey);
+
             if (isset($def['applies_after'])) {
                 $count = (int) $value;
                 $threshold = (int) $def['applies_after'];
                 if ($count > $threshold) {
-                    $extra = ($count - $threshold) * (float) $def['amount'];
+                    $extra = ($count - $threshold) * $amount;
                     $min += $extra;
                     $max += $extra;
                     // De-slug the modifier key for the client-facing breakdown.
                     $breakdown[] = ['+'.($count - $threshold).' '.str_replace('_', ' ', $key), $extra, $extra];
                 }
             } elseif ($value === true || $value === 1 || $value === '1' || $value === 'true') {
-                $extra = (float) $def['amount'];
+                $extra = $amount;
                 $min += $extra;
                 $max += $extra;
                 $breakdown[] = ['+'.str_replace('_', ' ', $key), $extra, $extra];
@@ -313,6 +315,17 @@ final class PricingEngine
             etaUnit: $etaUnit,
             breakdown: $breakdown,
         );
+    }
+
+    /**
+     * A legacy JSON modifier's amount for one package: its `amount_by_package`
+     * override when the package has one, else the flat `amount`. Lets one key
+     * price differently per package (extra_page: RM500 on web_business, RM800 on
+     * web_premium) without a second key. ConnectorCatalog reads the same rule.
+     */
+    public static function modifierAmount(array $def, string $packageKey): float
+    {
+        return (float) ($def['amount_by_package'][$packageKey] ?? $def['amount'] ?? 0);
     }
 
     public function configForFrontend(): array

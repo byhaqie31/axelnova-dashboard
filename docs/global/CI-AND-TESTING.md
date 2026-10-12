@@ -48,8 +48,8 @@ from exported env vars (phpunit.xml carries a test-only `APP_KEY`, so no `.env` 
 - `tests/Feature/Payments/PaymentObserverTest.php` — the ledger contract: signed sums,
   refunds as negative child rows, caches clamped at zero, void invoices never auto-flip.
 - `tests/Feature/Pricing/PricingEngineTest.php` — the pricing formula. **The TS port
-  (`frontend/app/composables/usePricingEngine.ts`) must produce the same numbers** —
-  when a test here changes, the port changes with it.
+  (`frontend/app/utils/pricing.ts`, parity tests in `pricing.test.ts`) must produce the
+  same numbers** — when a test here changes, the port changes with it.
 - `tests/Feature/Security/` — CORS allowlist (never `*`), baseline security headers,
   JSON 401s on api/* (no web-login redirect).
 

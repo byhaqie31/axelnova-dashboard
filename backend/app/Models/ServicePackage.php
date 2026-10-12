@@ -9,18 +9,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[ObservedBy([ServicePackageObserver::class])]
 class ServicePackage extends Model
 {
     use RecordsActivity;
-
-    /** Anonymous likes (entity_likes table, scoped to this entity type). */
-    public function likes(): HasMany
-    {
-        return $this->hasMany(EntityLike::class, 'entity_id')->where('entity_type', 'service_package');
-    }
 
     protected $fillable = [
         'service_category_id',

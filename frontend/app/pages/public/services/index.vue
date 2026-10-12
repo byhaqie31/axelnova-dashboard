@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { formatAmount } from '~/utils/money'
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
@@ -15,7 +14,18 @@ usePublicSeo({
 
 import { useApiBase } from '~/composables/useApiBase'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
-import LikeButton from '~/components/shared/LikeButton.vue'
+import PriceTag from '~/components/shared/primitives/PriceTag.vue'
+import {
+  defaultPackage,
+  estimatePackage,
+  estimatorControls,
+  quotableKey,
+  type CatalogService,
+  type EstimatorControl,
+  type EstimatorResult,
+} from '~/utils/serviceEstimator'
+import { formatEta, type ModifierValue, type PricingConfig } from '~/utils/pricing'
+import { formatPriceTag } from '~/utils/priceTag'
 
 interface ApiPackage {
   id: number
@@ -31,7 +41,6 @@ interface ApiPackage {
   features: string[]
   cta: string | null
   quote_key: { category: string, package: string } | null
-  likes_count: number
 }
 
 interface ApiCategory {
@@ -61,7 +70,6 @@ const serviceCategories = computed(() => {
     packages: c.packages.map(p => ({
       id: p.slug,
       dbId: p.id,
-      likes: p.likes_count ?? 0,
       name: p.name,
       tagline: p.tagline,
       priceMin: Number(p.price_min_myr),
@@ -99,26 +107,12 @@ function pickCurrency(code: CurrencyCode) {
 }
 
 // MYR is the exact price; other currencies are an indicative conversion,
-// rounded to the nearest 50. Both print in the house 2-decimal format.
-function convertAmt(myr: number): string {
+// rounded to the nearest 50. PriceTag formats both the same way.
+function convert(myr: number): number {
   const { rate } = currencyMeta[activeCurrency.value]
-  const v = activeCurrency.value === 'MYR' ? myr : Math.round(myr * rate / 50) * 50
-  return formatAmount(v)
+  return activeCurrency.value === 'MYR' ? myr : Math.round(myr * rate / 50) * 50
 }
-
-function fmtAmt(myr: number): string {
-  const { symbol } = currencyMeta[activeCurrency.value]
-  const isMYR = activeCurrency.value === 'MYR'
-  return isMYR ? `${symbol} ${convertAmt(myr)}` : `${symbol}${convertAmt(myr)}`
-}
-
-function fmtPrice(min: number, max: number | null): string {
-  const { symbol } = currencyMeta[activeCurrency.value]
-  const isMYR = activeCurrency.value === 'MYR'
-  const prefix = isMYR ? `${symbol} ` : symbol
-  if (!max) return `${prefix}${convertAmt(min)}+`
-  return `${prefix}${convertAmt(min)} – ${convertAmt(max)}`
-}
+const currencySymbol = computed(() => currencyMeta[activeCurrency.value].symbol)
 
 // ── Service tabs ──────────────────────────────────────────────────────────────
 const route = useRoute()
@@ -154,54 +148,72 @@ const currentCategory = computed(
 )
 
 // ── Estimator ─────────────────────────────────────────────────────────────────
-type ProjectType = 'landing' | 'dashboard' | 'ecommerce' | 'custom'
-type Urgency = 'relaxed' | 'standard' | 'rush'
+// Driven by the catalog (utils/serviceEstimator.ts): the services and package
+// cards above, each quote-builder package priced by the shared engine with the
+// modifiers it accepts (quote-builder config). New services, packages and
+// modifiers appear here without a code change.
+const { data: quoteConfig } = await useFetch<{ data: PricingConfig }>(
+  `${useApiBase()}/api/v1/quote-builder/config`,
+  { key: 'quote-builder-config' },
+)
+const pricingConfig = computed(() => quoteConfig.value?.data ?? null)
+const estimatorServices = computed<CatalogService[]>(() => apiResponse.value?.data ?? [])
 
-const projectType = ref<ProjectType>('dashboard')
-const moduleCount = ref(3)
-const apiIntegration = ref(true)
-const urgency = ref<Urgency>('standard')
+const CUSTOM_BUILD = '__custom'
+// '' = follow the service tab above (then the default service).
+const estServiceSlug = ref('')
+const estPackageSlug = ref('')
+const estValues = ref<Record<string, ModifierValue>>({})
+const rush = ref(false)
 
-const baseByType: Record<ProjectType, number> = {
-  landing: 1500,
-  dashboard: 4000,
-  ecommerce: 6500,
-  custom: 8000,
-}
-const weeksByType: Record<ProjectType, number> = {
-  landing: 1,
-  dashboard: 3,
-  ecommerce: 5,
-  custom: 6,
-}
-
-const estimate = computed(() => {
-  let price = baseByType[projectType.value]
-  price += (moduleCount.value - 1) * 700
-  if (apiIntegration.value) price += 800
-  let weeks = weeksByType[projectType.value] + Math.max(0, Math.floor((moduleCount.value - 1) / 3))
-
-  if (urgency.value === 'rush') {
-    price = Math.round(price * 1.2)
-    weeks = Math.max(1, Math.round(weeks * 0.7))
-  } else if (urgency.value === 'relaxed') {
-    weeks = weeks + 1
-  }
-
-  return { price: Math.round(price / 100) * 100, weeks }
+const isCustomBuild = computed(() => estServiceSlug.value === CUSTOM_BUILD)
+const estService = computed(() => {
+  if (isCustomBuild.value) return null
+  const list = estimatorServices.value
+  return list.find(s => s.slug === (estServiceSlug.value || activeCat.value))
+    ?? list.find(s => s.is_default)
+    ?? list[0]
+    ?? null
 })
+const estPackage = computed(() => {
+  const service = estService.value
+  if (!service) return null
+  return service.packages.find(p => p.slug === estPackageSlug.value) ?? defaultPackage(service)
+})
+const estControls = computed<EstimatorControl[]>(() => {
+  const key = estPackage.value ? quotableKey(pricingConfig.value, estPackage.value) : null
+  return pricingConfig.value && key ? estimatorControls(pricingConfig.value, key) : []
+})
+const estimate = computed<EstimatorResult>(() =>
+  isCustomBuild.value ? { kind: 'custom' } : estimatePackage(pricingConfig.value, estPackage.value, estValues.value, rush.value),
+)
 
-const projectTypeOptions = [
-  { value: 'landing',   label: 'Landing page' },
-  { value: 'dashboard', label: 'Dashboard' },
-  { value: 'ecommerce', label: 'E-commerce' },
-  { value: 'custom',    label: 'Custom build' },
-]
-const urgencyOptions = [
-  { value: 'relaxed',  label: 'Relaxed' },
-  { value: 'standard', label: 'Standard' },
-  { value: 'rush',     label: 'Rush (+20%)' },
-]
+function pickEstService(slug: string) {
+  estServiceSlug.value = slug
+  estPackageSlug.value = ''
+  estValues.value = {}
+}
+
+function pickEstPackage(slug: string) {
+  estPackageSlug.value = slug
+  estValues.value = {}
+}
+
+function controlValue(control: EstimatorControl): ModifierValue {
+  return estValues.value[control.key] ?? control.default
+}
+
+function setControl(key: string, value: ModifierValue) {
+  estValues.value = { ...estValues.value, [key]: value }
+}
+
+const plusRm = (amount: number) => `+${formatPriceTag({ min: amount, max: amount })}`
+
+const estimatedTimeline = computed(() => {
+  const e = estimate.value
+  if (e.kind === 'range') return formatEta(e.etaValue, e.etaUnit)
+  return e.kind === 'custom' ? 'Scoped on call' : e.duration
+})
 
 // ── Process + contact ─────────────────────────────────────────────────────────
 const processSteps = [
@@ -383,15 +395,6 @@ useScrollReveal('.reveal')
               Most popular
             </span>
 
-            <!-- Like -->
-            <LikeButton
-              v-if="pkg.dbId"
-              class="absolute top-4 right-4 z-10"
-              type="service_package"
-              :id="pkg.dbId"
-              :count="pkg.likes ?? 0"
-            />
-
             <!-- Name + tagline -->
             <h3 class="text-[20px] font-semibold tracking-tight mb-1" style="color: var(--color-text);">
               {{ pkg.name }}
@@ -401,14 +404,14 @@ useScrollReveal('.reveal')
             </p>
 
             <!-- Price -->
-            <div class="mb-1 tabular-nums">
-              <span class="text-[34px] font-semibold tracking-tight">
-                {{ fmtPrice(pkg.priceMin, pkg.priceMax) }}
-              </span>
-            </div>
-            <p class="text-[12px] mb-6" style="color: var(--color-text-secondary);">
-              {{ pkg.unit }}
-            </p>
+            <PriceTag
+              class="mb-6 text-[30px] font-semibold tracking-tight leading-tight"
+              stacked
+              :min="convert(pkg.priceMin)"
+              :max="pkg.priceMax === null ? null : convert(pkg.priceMax)"
+              :unit="pkg.unit"
+              :symbol="currencySymbol"
+            />
 
             <!-- Meta row -->
             <div
@@ -481,71 +484,129 @@ useScrollReveal('.reveal')
           class="rounded-2xl border p-8 space-y-7"
           :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }"
         >
+          <!-- Service: the live services, plus a custom build -->
           <div>
-            <label class="text-[12px] font-medium block mb-3" style="color: var(--color-text-secondary);">Project type</label>
-            <div class="grid grid-cols-2 gap-2">
+            <p class="text-[12px] font-medium mb-3" style="color: var(--color-text-secondary);">Service</p>
+            <div class="flex flex-wrap gap-2">
               <button
-                v-for="o in projectTypeOptions"
-                :key="o.value"
-                class="text-[13px] py-2.5 rounded-lg border transition-colors"
-                :style="{
-                  borderColor: 'var(--color-border)',
-                  background: projectType === o.value ? 'var(--color-text)' : 'transparent',
-                  color: projectType === o.value ? 'var(--color-bg)' : 'var(--color-text)',
-                  fontWeight: projectType === o.value ? '500' : '400',
-                }"
-                @click="projectType = o.value as ProjectType"
+                v-for="svc in estimatorServices"
+                :key="svc.slug"
+                type="button"
+                class="estimator-pill"
+                :aria-pressed="!isCustomBuild && estService?.slug === svc.slug"
+                @click="pickEstService(svc.slug)"
               >
-                {{ o.label }}
+                <UIcon :name="svc.icon" class="size-3.5 shrink-0" />
+                {{ svc.name }}
+              </button>
+              <button
+                type="button"
+                class="estimator-pill"
+                :aria-pressed="isCustomBuild"
+                @click="pickEstService(CUSTOM_BUILD)"
+              >
+                <UIcon name="i-lucide-sparkles" class="size-3.5 shrink-0" />
+                Custom build
               </button>
             </div>
           </div>
 
-          <div>
-            <label class="text-[12px] font-medium flex items-center justify-between mb-3" style="color: var(--color-text-secondary);">
-              <span>Pages / modules</span>
-              <span class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">{{ moduleCount }}</span>
-            </label>
-            <input
-              v-model.number="moduleCount"
-              type="range" min="1" max="10" step="1"
-              class="w-full accent-cyan-500"
-            />
-          </div>
-
-          <div class="flex items-center justify-between">
-            <label class="text-[13px] font-medium" style="color: var(--color-text);">API integrations</label>
-            <button
-              role="switch"
-              :aria-checked="apiIntegration"
-              class="relative w-11 h-6 rounded-full border transition-colors"
-              :style="{
-                borderColor: 'var(--color-border)',
-                background: apiIntegration ? 'var(--color-accent)' : 'var(--color-bg)',
-              }"
-              @click="apiIntegration = !apiIntegration"
-            >
-              <span
-                class="absolute top-0.5 size-5 rounded-full bg-white shadow transition-all"
-                :style="{ left: apiIntegration ? '22px' : '2px' }"
-              />
-            </button>
-          </div>
-
-          <div>
-            <label class="text-[12px] font-medium block mb-3" style="color: var(--color-text-secondary);">Timeline</label>
-            <div class="grid grid-cols-3 gap-2">
+          <!-- Package: that service's cards -->
+          <div v-if="estService && estService.packages.length">
+            <p class="text-[12px] font-medium mb-3" style="color: var(--color-text-secondary);">Package</p>
+            <div class="flex flex-wrap gap-2">
               <button
-                v-for="o in urgencyOptions"
-                :key="o.value"
-                class="text-[13px] py-2.5 rounded-lg border transition-colors"
+                v-for="p in estService.packages"
+                :key="p.slug"
+                type="button"
+                class="estimator-pill"
+                :aria-pressed="estPackage?.slug === p.slug"
+                @click="pickEstPackage(p.slug)"
+              >
+                {{ p.name }}
+              </button>
+            </div>
+          </div>
+
+          <!-- What this package accepts (catalog modifiers + scope fields) -->
+          <div v-for="c in estControls" :key="c.key">
+            <template v-if="c.kind === 'number'">
+              <label :for="`est-${c.key}`" class="text-[12px] font-medium flex items-center justify-between mb-3" style="color: var(--color-text-secondary);">
+                <span>{{ c.label }}</span>
+                <span class="text-[15px] font-semibold tabular-nums" style="color: var(--color-text);">{{ controlValue(c) }}</span>
+              </label>
+              <input
+                :id="`est-${c.key}`"
+                :value="controlValue(c)"
+                type="range"
+                :min="c.min"
+                :max="c.max"
+                step="1"
+                class="w-full accent-cyan-500"
+                @input="setControl(c.key, Number(($event.target as HTMLInputElement).value))"
+              />
+              <p v-if="c.amount > 0" class="text-[12px] mt-1.5 tabular-nums" style="color: var(--color-text-tertiary);">
+                {{ c.included }} included · {{ plusRm(c.amount) }} per {{ c.unit }} after that
+              </p>
+            </template>
+
+            <template v-else-if="c.kind === 'select'">
+              <p class="text-[12px] font-medium mb-3" style="color: var(--color-text-secondary);">{{ c.label }}</p>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="o in c.options"
+                  :key="o.value"
+                  type="button"
+                  class="estimator-pill"
+                  :aria-pressed="String(controlValue(c)) === o.value"
+                  @click="setControl(c.key, o.value)"
+                >
+                  {{ o.label }}<span v-if="o.amount > 0" class="tabular-nums opacity-70">{{ plusRm(o.amount) }}</span>
+                </button>
+              </div>
+            </template>
+
+            <div v-else class="flex items-center justify-between gap-4">
+              <span class="text-[13px] font-medium" style="color: var(--color-text);">
+                {{ c.label }}
+                <span v-if="c.amount > 0" class="font-normal tabular-nums" style="color: var(--color-text-secondary);">{{ plusRm(c.amount) }}</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="controlValue(c) === true"
+                :aria-label="c.label"
+                class="relative w-11 h-6 shrink-0 rounded-full border transition-colors"
                 :style="{
                   borderColor: 'var(--color-border)',
-                  background: urgency === o.value ? 'var(--color-text)' : 'transparent',
-                  color: urgency === o.value ? 'var(--color-bg)' : 'var(--color-text)',
-                  fontWeight: urgency === o.value ? '500' : '400',
+                  background: controlValue(c) === true ? 'var(--color-accent)' : 'var(--color-bg)',
                 }"
-                @click="urgency = o.value as Urgency"
+                @click="setControl(c.key, controlValue(c) !== true)"
+              >
+                <span
+                  class="absolute top-0.5 size-5 rounded-full bg-white shadow transition-all"
+                  :style="{ left: controlValue(c) === true ? '22px' : '2px' }"
+                />
+              </button>
+            </div>
+          </div>
+
+          <div v-if="estimate.kind === 'range'">
+            <p class="text-[12px] font-medium mb-3" style="color: var(--color-text-secondary);">Timeline</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                v-for="o in [{ value: false, label: 'Standard' }, { value: true, label: 'Rush (+20%)' }]"
+                :key="o.label"
+                type="button"
+                class="text-[13px] py-2.5 rounded-lg border transition-colors"
+                :aria-pressed="rush === o.value"
+                :style="{
+                  borderColor: 'var(--color-border)',
+                  background: rush === o.value ? 'var(--color-text)' : 'transparent',
+                  color: rush === o.value ? 'var(--color-bg)' : 'var(--color-text)',
+                  fontWeight: rush === o.value ? '500' : '400',
+                }"
+                @click="rush = o.value"
               >
                 {{ o.label }}
               </button>
@@ -559,14 +620,35 @@ useScrollReveal('.reveal')
             :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }"
           >
             <p class="text-[12px] font-medium mb-2" style="color: var(--color-text-secondary);">Estimated cost</p>
-            <p class="text-5xl font-semibold tracking-tight tabular-nums">{{ fmtAmt(estimate.price) }}</p>
+            <template v-if="estimate.kind === 'custom'">
+              <p class="text-4xl font-semibold tracking-tight">Custom quote</p>
+              <NuxtLink
+                to="/contact"
+                class="inline-flex items-center gap-1.5 text-[13px] font-medium mt-2 transition-all hover:gap-2.5"
+                style="color: var(--color-accent);"
+              >
+                Tell me about your project <span aria-hidden="true">→</span>
+              </NuxtLink>
+            </template>
+            <template v-else>
+              <PriceTag
+                class="text-4xl font-semibold tracking-tight"
+                :min="convert(estimate.min)"
+                :max="estimate.kind === 'from' ? null : convert(estimate.max)"
+                :unit="estimate.unit"
+                :symbol="currencySymbol"
+              />
+              <p class="text-[12px] mt-2" style="color: var(--color-text-secondary);">
+                {{ estPackage?.name }}{{ estimate.kind === 'range' && rush ? ', with rush delivery' : '' }}.
+              </p>
+            </template>
           </div>
           <div
             class="rounded-2xl border p-8 flex flex-col justify-center"
             :style="{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }"
           >
             <p class="text-[12px] font-medium mb-2" style="color: var(--color-text-secondary);">Estimated timeline</p>
-            <p class="text-5xl font-semibold tracking-tight tabular-nums">{{ estimate.weeks }} {{ estimate.weeks === 1 ? 'week' : 'weeks' }}</p>
+            <p class="text-4xl font-semibold tracking-tight tabular-nums">{{ estimatedTimeline }}</p>
           </div>
         </div>
       </div>
@@ -661,6 +743,29 @@ useScrollReveal('.reveal')
 }
 .contact-card:hover .contact-glow {
   opacity: 1;
+}
+
+/* Estimator choices (service, package, select options) — pressed = chosen */
+.estimator-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 13px;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.estimator-pill:hover {
+  border-color: var(--color-border-strong);
+}
+.estimator-pill[aria-pressed='true'] {
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-weight: 500;
+  border-color: transparent;
 }
 
 /* Tab switch animation */

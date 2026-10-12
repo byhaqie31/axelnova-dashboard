@@ -184,15 +184,6 @@ watch(() => route.fullPath, () => { open.value = {} })
               >
                 <UIcon :name="social.icon" class="size-4" />
               </a>
-              <NuxtLink
-                to="/admin"
-                aria-label="Admin access"
-                title="Admin"
-                class="footer-social-btn"
-                :style="{ color: 'var(--color-text-tertiary)' }"
-              >
-                <UIcon name="i-lucide-settings" class="size-4" />
-              </NuxtLink>
             </div>
           </div>
         </div>

@@ -254,7 +254,7 @@ Two middlewares in `app/middleware/`:
 |---|---|
 | `useApi.ts` / `useApiBase.ts` | Backend fetch wrappers + runtime base URL |
 | `useAdminAuth.ts` | Bearer token in `localStorage` (`axn_admin_token`), `apiFetch()`, `logout()` |
-| `usePricingEngine.ts` | **TS port of the backend PricingEngine** for live `/quote` estimates |
+| `usePricingEngine.ts` | Cached quote-builder config for the admin builder, over the **TS port of the backend PricingEngine** (`utils/pricing.ts`) |
 | `useQuoteForm.ts` | Shared quote-form state across `/quote`, `/quote/preview`, `/quote/success` |
 | `useScrollReveal.ts` / `useReveal.ts` | Fade-in-on-scroll (GSAP) — the only fade-in API |
 | `useMotion.ts` / `useSplitTextReveal.ts` / `useCountUp.ts` / `useMagnetic.ts` / `useParallaxImage.ts` | Motion primitives |
@@ -279,7 +279,7 @@ The public **layout** (`public.vue`) wraps every storefront page:
 | `/about` | **About** | Bio (5 paragraphs) + auto-rotating photo carousel (5 photos). **Skills grid** (Frontend / Backend / Data & Queue / Infrastructure / Tools). "My Story" + "Things I believe" sidebar. **Timeline** "Life in chapters" (2019 → Now). **Dreams & ambitions** 6-card grid. Closing note. |
 | `/company` | **Company** | Brand story. Animated logo with rotating aurora halo. "At a glance" sticky card (registration no., established 2026, HQ KL, stage). "The Name" (Axel / Nova etymology). **Vision** 3 pillars (design-first, engineering with intention, human-centered). Philosophy pull-quote. Closing CTAs to `/services` and `/about`. |
 | `/contact` | **Contact** | **Contact form** (name, email, subject pills, message) → backend `POST /v1/inquiries` with `origin: contact` — lands in `/admin/inquiries` beside `/quote` inquiries. Sidebar: availability card + channel cards (WhatsApp, email, phone). Shows a success state after submit. |
-| `/services` | **Services hub** | Category **tabs** + **currency switcher** (MYR/USD/GBP/SGD with hardcoded conversion). Package cards per category (name, tagline, converted price, duration, features, CTA — featured = "Most popular"). Fed by `GET /api/v1/services`. Live **estimator** (project type, pages slider, API toggle, timeline → cost + weeks). 4-step **process**. Contact channel cards. |
+| `/services` | **Services hub** | Category **tabs** + **currency switcher** (MYR/USD/GBP/SGD with hardcoded conversion). Package cards per category (name, tagline, converted price via `PriceTag`, unit, duration, features, CTA — featured = "Most popular"; no likes). Fed by `GET /api/v1/services`. Live **estimator**, fully data-driven (`utils/serviceEstimator.ts`): pick a live service (follows the tab above) or "Custom build", then one of its package cards; the package's own inputs are generated from the catalog — the legacy modifiers that apply to it (pages slider, CMS, Stripe / FPX, extra language …, labelled from the pricing config) plus its category's scope fields — and priced by the shared engine (`utils/pricing.ts`) with Standard / Rush → price range + ETA. Open-ended cards show "From RM X" + their unit; Custom build → custom quote + contact link. A new service, package or modifier appears with no code change. 4-step **process**. Contact channel cards. |
 | `/services/[slug]` | **Service detail** | SEO-enriched deep-dive per category (web-presence, admin-portal, ui-ux-frontend, digital-marketing, booking-portal, ecommerce): deliverables, tech stack, packages, category-specific + general **FAQs**, "Ready to start?" CTA to `/quote?service=<slug>`. Emits Service + BreadcrumbList + FAQPage JSON-LD. |
 | `/projects` | **Project registry** | Filterable grid — stack pills (All/Laravel/Nuxt/Docker/Redis/MySQL/FastAPI) + status dropdown (All/Live/In progress/Planning). Fed by `GET /api/v1/projects`. |
 | `/projects/[id]` | **Project detail** | Status + featured badges, title, description, "Visit project" / "Source" links, cover image, long description, stack + tags. Fed by `GET /api/v1/projects/{slug}`. |
@@ -305,7 +305,7 @@ Three pages backed by `useQuoteForm()` shared state and the cached config endpoi
 - **Project type:** category cards + package cards, **loaded dynamically** from `GET /api/v1/quote-builder/config`. Deep-linkable via `?category=X&package=Y` from service-page CTAs.
 - **Scope details** (conditional per category): e.g. Web — pages slider, CMS toggle, booking toggle, languages; Dashboard — modules slider, real-time toggle, charts complexity; Design — screens, design-system/prototype toggles; Frontend — components/pages, state/testing toggles; SaaS — features, auth methods, payment, admin portal.
 - **Add-ons** (read dynamically from config) and a **rush** toggle (+20% price, −30% timeline for week/month projects).
-- A **live breakdown sidebar** recomputes cost + timeline on every change via `usePricingEngine.ts` (the TS port of the backend engine — no API round-trip).
+- A **live breakdown sidebar** recomputes cost + timeline on every change via `usePricingEngine.ts` (over `utils/pricing.ts`, the TS port of the backend engine — no API round-trip).
 - "Continue to preview" enabled once name/email/phone/package are set.
 
 **Step 2 — `/quote/preview`** (`noindex`) — formatted quote: client header, reference placeholder, valid-until, human-readable scope summary, pricing breakdown line items, timeline. **Submit → `POST /api/v1/quote-requests`** → redirects to success with `?ref=&until=`. Guards back to `/quote` if minimum data is missing.
@@ -477,7 +477,7 @@ Health check: `GET /up`.
 
 ## 14. The pricing engine
 
-Two implementations that **must stay in sync**: `backend/app/Services/Quoting/PricingEngine.php` (source of truth, drives the stored quote) and `frontend/app/composables/usePricingEngine.ts` (TS port for live `/quote` estimates). Both read the same config from `GET /api/v1/quote-builder/config`.
+Two implementations that **must stay in sync**: `backend/app/Services/Quoting/PricingEngine.php` (source of truth, drives the stored quote) and `frontend/app/utils/pricing.ts` (TS port for live estimates — the admin builder via `usePricingEngine`, and the `/services` estimator). Both read the same config from `GET /api/v1/quote-builder/config`.
 
 **Two-layer catalog/pricing model:**
 - **Catalog** (admin-managed): `service_categories` + `service_packages` — names, taglines, prices, ETA, features, the deep-link `quote_key`.

@@ -7,7 +7,7 @@
  * hydrates the real state on mount.
  */
 const props = withDefaults(defineProps<{
-  type: 'project' | 'service_package'
+  type: 'project'
   id: number
   count?: number
   size?: 'sm' | 'md'

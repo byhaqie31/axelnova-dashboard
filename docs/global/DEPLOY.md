@@ -129,6 +129,25 @@ docker exec axelnova-backend php -r 'echo file_get_contents(getenv("SITE_CACHE_P
 
 To rotate the token, re-run the block above. To turn the purge off, delete those lines (or restore the `.bak` files) and recreate — pages fall back to the 300s window.
 
+## Admin host (internal only)
+
+`admin.axelnovaventures.com` is for the admin panel, the API and the MCP connector; every public page and link uses `https://axelnovaventures.com`. The same Nuxt app answers on both hosts (one nginx vhost), so [server/middleware/admin-host.ts](../../frontend/server/middleware/admin-host.ts) (decision logic and tests in `server/utils/host/`) does two things on the admin host:
+
+- **301 public pages** (everything under `pages/public/` — `/`, `/services/**`, `/quote`, `/blog/**`, `/partners`, `/partners/refer`, `/sitemap.xml` …) to the same path and query on the public site. GET/HEAD only — a form POST is never redirected.
+- **`X-Robots-Tag: noindex, nofollow`** on every response it serves.
+
+Everything else stays on the admin host: `/admin/**`, `/api/**` (nginx routes it to Laravel before Nuxt, and Laravel adds its own `X-Robots-Tag` on every host), `/documents/**` (the invoice-PDF fetch), `/_cache/purge`, OG images, and the signed-in `/team`, `/partners/*` and `/portal` workspaces. The hosts come from `NUXT_ADMIN_HOST` / `NUXT_PUBLIC_SITE_URL` (defaults in `nuxt.config.ts`); dev (`localhost`) is never matched.
+
+The middleware reads `X-Forwarded-Host`, then `Host` — the nginx vhost must forward the original host (`proxy_set_header Host $host;`), or the middleware sees `127.0.0.1:3003` and does nothing (safe, but no redirect). Static files (`public/`, `/_nuxt/*`) are served ahead of server middleware and carry no header; for full coverage add `add_header X-Robots-Tag "noindex, nofollow" always;` to the admin `server_name` in the VPS vhost. Backend `public_url`s (MCP, emails) are built from `PUBLIC_SITE_URL` — keep it set to `https://axelnovaventures.com` in `backend/.env.production`.
+
+Check after a deploy:
+
+```bash
+curl -sI https://admin.axelnovaventures.com/services | grep -iE '^HTTP|^location|^x-robots'   # 301 → https://axelnovaventures.com/services
+curl -sI https://admin.axelnovaventures.com/admin/login | grep -iE '^HTTP|^x-robots'         # 200 + noindex
+curl -sI https://axelnovaventures.com/services | grep -iE '^HTTP|^x-robots'                  # 200, no X-Robots-Tag
+```
+
 ## OG image secret
 
 Generated link-preview cards ([docs/frontend/OG-IMAGES.md](../frontend/OG-IMAGES.md)) are served from signed `/_og/…` URLs. The signing key is `NUXT_OG_IMAGE_SECRET`. If it's unset, the module generates a new key on every build, so each deploy would 403 every preview image already cached by WhatsApp, Facebook or LinkedIn. One-time VPS setup (run from `~/axelnova-dashboard`, **before** the first deploy that ships the cards):

@@ -2,6 +2,7 @@
 import { formatMyr } from '~/utils/money'
 import QuoteScopeFields from '~/components/shared/QuoteScopeFields.vue'
 import DetailedProposalFields from '~/components/admin/DetailedProposalFields.vue'
+import PriceTag from '~/components/shared/primitives/PriceTag.vue'
 import type { QuoteScopeState, NormalizedPackage } from '~/composables/quoteScope'
 import type { EstimateResult, EtaUnit } from '~/composables/usePricingEngine'
 import { defaultQuoteScope, normalizePackages } from '~/composables/quoteScope'
@@ -1161,8 +1162,7 @@ type="button"
           <p class="text-[11px] font-semibold uppercase tracking-widest mb-3" style="color: var(--color-text-tertiary);">Estimate (guide)</p>
           <div v-if="headlineEstimate">
             <p class="text-[26px] max-md:text-[22px] font-bold tracking-tight leading-none max-md:leading-tight mb-1" style="color: var(--color-text);">
-              <template v-if="headlineEstimate.minMyr === headlineEstimate.maxMyr">{{ formatMyr(headlineEstimate.minMyr) }}</template>
-              <template v-else>{{ formatMyr(headlineEstimate.minMyr) }} <span style="color: var(--color-text-tertiary);">–</span> {{ formatMyr(headlineEstimate.maxMyr) }}</template>
+              <PriceTag :min="headlineEstimate.minMyr" :max="headlineEstimate.maxMyr" />
             </p>
             <p class="text-[12px]" style="color: var(--color-text-secondary);">
               {{ estimateCaption }}
@@ -1173,7 +1173,7 @@ type="button"
               <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-tertiary);">Per package</p>
               <div v-for="(line, i) in packageBreakdown" :key="i" class="flex items-center justify-between gap-3 text-[12px]">
                 <span class="truncate" style="color: var(--color-text-secondary);">{{ line.name }}</span>
-                <span class="tabular-nums shrink-0" style="color: var(--color-text);">{{ formatMyr(line.estimate.minMyr) }}–{{ formatMyr(line.estimate.maxMyr) }}</span>
+                <PriceTag class="shrink-0" :min="line.estimate.minMyr" :max="line.estimate.maxMyr" />
               </div>
             </div>
             <p v-else-if="!showLiveEstimate" class="text-[11px] mt-2" style="color: var(--color-text-tertiary);">Edit a package to re-price.</p>

@@ -16,4 +16,10 @@ class SecurityHeadersTest extends TestCase
             ->assertHeader('X-Frame-Options', 'DENY')
             ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
+
+    public function test_api_responses_are_kept_out_of_search(): void
+    {
+        // nginx serves /api on the public and the admin host alike — neither indexes it.
+        $this->getJson('/api/v1/services')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+    }
 }

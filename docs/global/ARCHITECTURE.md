@@ -347,7 +347,7 @@ GET    /v1/admin/inquiries                              No `origin` → sales le
 
 # Analytics (see ANALYTICS.md)
 POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)
-POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like
+POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like (projects)
 GET  /v1/admin/analytics/overview    Sanctum — traffic + likes overview (?range=7d|30d)
 GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer — the marketer's
                                      read-only mirror (same controller); engineers 403
@@ -456,8 +456,8 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 ### PricingEngine (`backend/app/Services/Quoting/PricingEngine.php`)
 Single source of truth for pricing calculations. Reads from the active `PricingConfig` row. Also exposes `configForFrontend()` which the Nuxt `/quote` page uses for live client-side estimates.
 
-### usePricingEngine (`frontend/app/composables/usePricingEngine.ts`)
-TypeScript port of the same calculation logic. Fetches config from `/api/v1/quote-builder/config` on mount, then runs estimates client-side in real-time as the form changes.
+### calculateEstimate (`frontend/app/utils/pricing.ts`)
+Pure TypeScript port of the same calculation (base → legacy modifiers → scope fields → add-ons → rush → RM 50), parity-tested in `pricing.test.ts`. `usePricingEngine` (the admin builder's cached config) and the public `/services` estimator (`utils/serviceEstimator.ts`, which derives each package's controls from the catalog) both price through it.
 
 ### ReferenceCodeGenerator (`backend/app/Support/ReferenceCodeGenerator.php`)
 Mints the AXN document family — `AXN{TYPE}-{YYYY}-{NNNN}` (type letter fused into the prefix), `AXNQ-` (quotation) / `AXNO-` (order) / `AXNI-` (invoice, future) via the [`DocumentType`](../../backend/app/Support/DocumentType.php) enum — atomically using a DB transaction with `lockForUpdate()`. Each type has its own counter that resets each year.

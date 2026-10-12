@@ -125,7 +125,7 @@ Route::middleware($trackThrottle)->group(function () {
     Route::post('/v1/track/page-view', [TrackingController::class, 'pageView'])
         ->name('track.page-view');
 
-    // Anonymous like toggle for a project / service package.
+    // Anonymous like toggle for a project.
     Route::post('/v1/likes/{type}/{id}', [LikesController::class, 'toggle'])
         ->whereNumber('id')
         ->name('likes.toggle');

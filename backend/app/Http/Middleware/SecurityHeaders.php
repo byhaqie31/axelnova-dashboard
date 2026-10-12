@@ -8,7 +8,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Baseline hardening headers on every response. The API serves JSON only, so
- * DENY framing outright; the Nuxt app sets its own headers via nitro routeRules.
+ * DENY framing outright and keep it out of search (X-Robots-Tag) on every host —
+ * nginx serves /api on the public and the admin host alike. The Nuxt app sets
+ * its own headers via nitro routeRules + server/middleware/admin-host.ts.
  */
 class SecurityHeaders
 {
@@ -19,6 +21,7 @@ class SecurityHeaders
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
 
         return $response;
     }

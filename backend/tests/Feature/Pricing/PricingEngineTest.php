@@ -104,6 +104,24 @@ class PricingEngineTest extends TestCase
         $this->assertSame(2950, $result->maxMyr);
     }
 
+    public function test_modifier_amount_can_be_overridden_per_package(): void
+    {
+        $engine = $this->engine([
+            'base_packages' => ['test_premium' => ['min' => 6000, 'max' => 9000, 'eta_value' => 6, 'eta_unit' => 'week']],
+            'modifiers' => ['test_pages' => [
+                'amount' => 300, 'applies_after' => 5, 'applies_to' => 'all',
+                'amount_by_package' => ['test_premium' => 800],
+            ]],
+        ]);
+
+        // 2 pages over the allowance: the override on test_premium, the flat amount elsewhere.
+        $premium = $engine->calculate($this->input(['packageKey' => 'test_premium', 'modifiers' => ['test_pages' => 7]]));
+        $landing = $engine->calculate($this->input(['modifiers' => ['test_pages' => 7]]));
+
+        $this->assertSame(6000 + 1600, $premium->minMyr);
+        $this->assertSame(1500 + 600, $landing->minMyr);
+    }
+
     public function test_modifier_scoped_to_another_package_is_ignored(): void
     {
         $engine = $this->engine([
