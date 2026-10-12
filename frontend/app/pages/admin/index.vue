@@ -29,6 +29,8 @@ const totalQuotations = ref<number | null>(null)
 const activeReferrals = ref<number | null>(null)
 const activeOrders = ref<number | null>(null)
 const openInquiries = ref<number | null>(null)
+// New leads from /collaborations — counted apart; they live under Partners › Collaborations.
+const collabEnquiries = ref(0)
 const draftQuotations = ref<number | null>(null)
 // Family-level conversion: quotations whose current revision is accepted, over
 // every quotation that has gone out — a revised quote counts once.
@@ -71,6 +73,7 @@ interface DashboardCounts {
   referrals_active: number
   orders_total: number
   inquiries_new: number
+  collab_enquiries_new: number
   views_7d: number
 }
 
@@ -89,6 +92,7 @@ async function load() {
       activeReferrals.value = c.referrals_active
       activeOrders.value = c.orders_total
       openInquiries.value = c.inquiries_new
+      collabEnquiries.value = c.collab_enquiries_new ?? 0
       draftQuotations.value = c.quotations_draft
       conversionPct.value = c.quotations_conversion_pct
       revisedQuotations.value = c.quotations_revised
@@ -194,7 +198,7 @@ const tiles = computed<StatTile[]>(() => [
   {
     label: 'Open inquiries',
     value: openInquiries.value === null ? '—' : String(shown.inq),
-    hint: 'New project inquiries',
+    hint: collabEnquiries.value ? `New project inquiries · +${collabEnquiries.value} collaboration` : 'New project inquiries',
     icon: 'i-lucide-inbox',
     to: '/admin/inquiries?status=new',
     cta: 'View inquiries',

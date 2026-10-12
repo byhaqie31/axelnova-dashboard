@@ -65,7 +65,7 @@ class InquiryAdminNotificationMail extends KitMailable implements ShouldQueue
                 ['Submitted', EmailFormat::dateTime($inquiry->created_at)],
             ],
             'inquiryMessage' => (string) $inquiry->message,
-            'adminUrl' => rtrim((string) config('services.frontend.url'), '/').'/admin/inquiries/'.$inquiry->id,
+            'adminUrl' => rtrim((string) config('services.frontend.url'), '/').$inquiry->adminPath(),
         ];
     }
 }

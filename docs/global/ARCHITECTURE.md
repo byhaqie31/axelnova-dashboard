@@ -33,7 +33,7 @@ axelnova-dashboard/
 | `pricing_configs` | Versioned pricing formula JSON — only one row `active=true` at a time |
 | `quote_requests` | Lead submissions from the public quote builder |
 | `quote_request_addons` | Denormalised add-ons selected per quote request |
-| `users` | Team accounts (authenticated via Sanctum). `role` = founder/marketer/engineer (COCKPIT_ROLES/WORKSPACE_ROLES on the model); `availability` (Task 4, self-service, available\|busy); `monthly_allowance_myr` (Task 7, nullable, snapshotted onto payslips); `deactivated_at` (Task 8 — nullable persistent lockout, set/cleared from `/admin/users`, checked at login on both `/v1/admin` and `/v1/team`) |
+| `users` | Team accounts (authenticated via Sanctum). `role` = founder/marketer/engineer (COCKPIT_ROLES/WORKSPACE_ROLES on the model); `availability` (Task 4, self-service, available\|busy); `monthly_allowance_myr` (Task 7, nullable, snapshotted onto payslips); `deactivated_at` (Task 8 — nullable persistent lockout, set/cleared from `/admin/users`, checked at login on both `/v1/admin` and `/v1/team`); `password_set_at` (email Phase 2 — null while an invited teammate hasn't chosen a password yet → `setup_pending` in the admin payload; pre-Phase-2 rows backfilled to `created_at`) |
 
 ### Planned (Phase 4+)
 
@@ -81,6 +81,7 @@ axelnova-dashboard/
 | Table | Purpose |
 |-------|---------|
 | `email_logs` | One row per email that left (or finally failed to leave) the dashboard: catalog `type`, `audience`, the record it's about (`related_type` short alias + `related_id`), recipient, subject, `route` (resend / hostinger), forward-only `status` (sent → delayed → delivered → bounced/failed → complained) advanced by the Resend webhook, our `message_id` + Resend's `provider_id`, `triggered_by` user, `alerted_at`. No bodies stored |
+| `access_tokens` | One-time set-up / reset links (email Phase 2 — see [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md#credential-links-phase-2)). `account_type` (`user` \| `external_account`) + `account_id`, `purpose` (`setup` 72h \| `reset` 60 min), `surface` (`team` \| `partner` \| `admin` — which page the link opens; `admin` requires a founder at redeem), unique `token_hash` (SHA-256 — the raw token only ever lives in the email), `expires_at`, `used_at` (claimed atomically, single use). Issuing a link deletes the account's earlier unused link of the same purpose; using one (or deactivating the teammate) deletes all its other unused links. Written only by `App\Services\Auth\AccessLinks` |
 
 ### Team workspace (portal restructure, Task 5/6/7)
 
@@ -100,14 +101,14 @@ axelnova-dashboard/
 
 | Table | Purpose |
 |-------|---------|
-| `collaboration_partners` | Studio partners on `/collaborations`, e.g. TRLabs. **Not** `referral_partners` (the `/partners` commission programme). Profile scalars (unique `slug`, name, tagline, summary, story, `logo_url`/`symbol_url` paths under `frontend/public/logos/`, website, founder, location), `services` json, `partner_since`, `active` (DB default false), `sort_order`. Soft-deletes. Seeded by data migration (TRLabs); no admin editor yet |
+| `collaboration_partners` | Studio partners on `/collaborations`, e.g. TRLabs. **Not** `referral_partners` (the `/partners` commission programme). Profile scalars (unique `slug`, name, tagline, summary, story, `logo_url`/`symbol_url` paths under `frontend/public/logos/`, website, founder, location), `services` json, `partner_since`, `active` (DB default false), `sort_order`, `updated_by`. Soft-deletes. Seeded by data migration (TRLabs); profile, Live/Hidden and project links are edited in the admin (Partners › Collaborations) — the slug never changes there, and adding a new partner is still a migration |
 | `collaboration_partner_project` | A project built with a partner: unique (partner, project), both FKs cascadeOnDelete, `mode` `co_build`\|`subcontract`\|`referral`, `role_note`, `credit_public`. Public only when partner active + `credit_public` + project active. `CollaborationPartner::linkProject()` defaults credit ON only for co-builds |
 
 ### Partner portal (portal restructure, Task 9 — type-aware referrer + investor)
 
 | Table | Purpose |
 |-------|---------|
-| `external_accounts` | The unified partner-portal identity — one authenticatable row per login, `type` enum (`referrer` \| `investor`), unique `email`, hashed 8-digit `password` passcode (nullable until credentialed), `status` (`active` \| `suspended`), `last_login_at`. The `external` Sanctum guard (config/auth.php) authenticates against this table and nowhere else; the old `referral` guard on `referral_partners` is gone. Passcodes are minted by staff (approve / reset-passcode) or self-service forgot-passcode, and only ever surfaced by email |
+| `external_accounts` | The unified partner-portal identity — one authenticatable row per login, `type` enum (`referrer` \| `investor`), unique `email`, hashed `password` passcode (nullable until the partner chooses one through their set-up link; 10+ characters since email Phase 2, older 8-digit ones still valid), `status` (`active` \| `suspended`), `last_login_at`. The `external` Sanctum guard (config/auth.php) authenticates against this table and nowhere else; the old `referral` guard on `referral_partners` is gone. Partners choose their own passcode through an emailed link (approve → set-up link; staff reset or self-service forgot → reset link); nobody else ever sees it |
 | `referral_partners` | Now a plain referrer **profile** (code, tier, commission, business status `pending\|active\|paused`) linked to its account via `external_account_id` (nullable FK, nullOnDelete — null until approved/credentialed). Its legacy `password`/`last_login_at` columns remain physically for rollback safety but are nulled/unused |
 | `investors` | The investor profile — `external_account_id` FK (cascadeOnDelete), name, company, notes. No content model yet (portal Documents/Reports are premium empty states); admin investor CRUD is future work |
 
@@ -128,8 +129,19 @@ POST /v1/admin/login                 Public, throttled — mints ['cockpit'] tok
 POST /v1/team/login                  Public, throttled — mints ['workspace'] token (all internal roles)
 POST /v1/partner/login               Public, throttled — mints ['partner'] token on the `external`
                                      guard (external_accounts — referrer OR investor, Task 9)
-POST /v1/partner/forgot-passcode     Public, throttled — self-service passcode reissue (active
-                                     accounts of either type; silent for unknown emails)
+POST /v1/admin/forgot-password       Public, throttled — founder account recovery: emails a 60-min reset
+                                     link (AdminAccountRecoveryMail) to a founder account only; one
+                                     generic response whether or not the email matches
+POST /v1/team/forgot-password        Public, throttled — emails an active teammate a 60-min reset link
+                                     (TeamPasswordResetMail); generic response; nothing changes until used
+POST /v1/partner/forgot-passcode     Public, throttled — emails a 60-min reset link (PartnerResetLinkMail;
+                                     active accounts of either type); generic response; no rotation.
+                                     All three forgot routes: ≤3 links/hour per address (AccessLinks)
+GET  /v1/auth/access-links/{token}   Public, throttled — whose link is it {purpose, surface, name, email,
+                                     min_length}; unknown/expired/used → 410 with one generic message
+POST /v1/auth/access-links/{token}   Public, throttled — {secret, secret_confirmation} sets the password /
+                                     passcode once, signs the account out everywhere, and (reset links
+                                     only) sends the owner a heads-up. Same 410 as above
 
 # Email (see EMAIL-SYSTEM.md)
 POST /v1/webhooks/resend             Public, Svix-signed (RESEND_WEBHOOK_SECRET), 600/min — Resend
@@ -210,22 +222,21 @@ GET    /v1/admin/users/{user}        Full profile for the /admin/users/[id] deta
                                      PLUS the teammate's self-filled phone/bank/address (off the list
                                      payload) + `profile_complete`/`profile_missing`. Founder reads only;
                                      bank/address are filled by the teammate on /team/profile (self-serve)
-POST   /v1/admin/users               Create {name, email, password (min 12), role, monthly_allowance_myr?}
-                                     — queues TeamWelcomeMail to the new teammate (motivational welcome +
-                                     their email/temp-password + Team Portal link); a mail failure is
-                                     logged, never fails provisioning (founder also sees creds one-time in UI)
+POST   /v1/admin/users               Create {name, email, role, monthly_allowance_myr?} — no password:
+                                     the account starts with an unusable random one + password_set_at
+                                     null, and TeamWelcomeMail carries a 72-hour set-up link (email
+                                     Phase 2). A mail failure is logged, never fails provisioning
 PATCH  /v1/admin/users/{user}        Edit {name?, role?, monthly_allowance_myr?} — a role CHANGE revokes
                                      the teammate's tokens; renaming/re-budgeting the allowance doesn't.
                                      Demoting the platform's last founder → 422
 POST   /v1/admin/users/{user}/deactivate    Persistent lockout (`deactivated_at` + revokes tokens).
                                      Self-deactivation → 422; already-deactivated → 422 (idempotent guard)
 POST   /v1/admin/users/{user}/reactivate    Clears the lockout; already-active → 422
-POST   /v1/admin/users/{user}/reset-password    Founder-issued reset — the ONLY reset path for team accounts.
-                                     Mints a random 16-char temp password (User::makeTemporaryPassword,
-                                     hashed by the model cast), revokes the teammate's tokens, logs
-                                     `team.password_reset`, queues TeamPasswordResetMail to them, and
-                                     returns `{message, password}` once so the founder can hand it over
-                                     if the mail doesn't land. Deactivated teammate → 422
+POST   /v1/admin/users/{user}/reset-password    Emails the teammate a link — a fresh set-up link while
+                                     set-up is pending (TeamWelcomeMail), otherwise a 60-min reset link
+                                     (TeamPasswordResetMail). Changes nothing until they use it (no token
+                                     revocation here — deactivate to lock someone out), logs
+                                     `team.password_reset`, returns `{message}` only. Deactivated → 422
 
 # Announcements (cockpit side — Task 6)
 GET    /v1/admin/announcements       All rows, newest first (creator eager-loaded)
@@ -308,6 +319,20 @@ GET  /v1/collaborations/{slug}       Public  — profile + publicly credited, ac
 # POST /v1/inquiries also takes origin=partner (+ partner slug → collaboration_partner_id) and
 # origin=collaboration (+ portfolio_url, folded into the message) from the /collaborations pages.
 
+# Partners › Collaborations (cockpit) — COLLABORATIONS.md §Admin
+GET    /v1/admin/collaboration-partners                 Partners (any state) + counts: projects_total/public,
+                                                        enquiries_open/new; + applications_new
+GET    /v1/admin/collaboration-partners/{p}             Profile + linked projects (public + hidden_reason)
+PATCH  /v1/admin/collaboration-partners/{p}             Profile fields, active, sort_order — `slug` prohibited;
+                                                        logo/symbol must be site paths. Logged (RecordsActivity)
+POST   /v1/admin/collaboration-partners/{p}/projects    Link {project_id, mode, role_note?, credit_public?} via
+                                                        linkProject(); already linked → 422
+PATCH  /v1/admin/collaboration-partners/{p}/projects/{project}   mode / role_note / credit_public; not linked → 404
+DELETE /v1/admin/collaboration-partners/{p}/projects/{project}   Unlink (the project stays)
+GET    /v1/admin/inquiries                              No `origin` → sales leads only (quote + contact);
+                                                        collab leads by origin=partner|collaboration
+                                                        (+ collaboration_partner_id)
+
 # Analytics (see ANALYTICS.md)
 POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)
 POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like
@@ -336,14 +361,22 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
                       the three ways of working, "Partner with us" → POST /v1/inquiries (origin=collaboration)
 /collaborations/trlabs  Axel Nova × TRLabs — hand-built co-branded page (.collab-trlabs scope); enquiry form
                       → POST /v1/inquiries (origin=partner, partner=trlabs). See COLLABORATIONS.md
+/admin/collaborations Partners › Collaborations — tabs Partners | Applications (origin=collaboration leads)
+/admin/collaborations/[id]  One partner: Live/Hidden, public profile form, shared projects (link / edit /
+                      "Show publicly" / unlink), its enquiries (origin=partner)
+/admin/collaborations/enquiries/[id]  A collab lead — the same AdminInquiryDetail as /admin/inquiries/[id];
+                      each route redirects a lead of the other kind to the right one
 /quote                Project inquiry form → POST /v1/inquiries (origin=quote)
 /quote/success        Post-submission confirmation
-/admin/login          Admin auth
+/admin/login          Admin auth (+ "Forgot password?" → /admin/forgot)
+/admin/forgot         Founder account recovery — POST /v1/admin/forgot-password (generic response)
+/admin/reset-password One-time reset link landing (?token=) — shared AccessLinkForm
 /admin/leads          Lead list (Sanctum-protected)
 /admin/leads/[id]     Lead detail + actions
 /admin/users          Team provisioning — create (marketer|engineer only; founder not creatable from
                       the UI, though the backend whitelist still allows it), edit (name/role/allowance;
-                      founder rows keep a locked role), deactivate/reactivate (confirm dialog)
+                      founder rows keep a locked role), deactivate/reactivate (confirm dialog), "Resend set-up link" /
+                      "Send reset link" (by `setup_pending`) — no password is ever chosen or shown here
 /admin/tasks          Tasks engine — scannable one-line listing (title/assignee/priority/deadline/status);
                       row → detail page. /admin/tasks/new + /admin/tasks/[id] are full pages (no slideover);
                       detail carries pay/duration/payment status + Mark paid/Delete, and is read-only once
@@ -369,8 +402,9 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 # The marketer surface (marketing + analytics) was added later — nav + pages
 # render for founder/marketer only (teamNav roles filter; backend 403s engineers).
 /team/login           Team auth
-/team/forgot          "Forgot password" — no self-service reset; emails the founder (TeamPasswordResetRequestedMail),
-                      who issues a new temp password via "Reset password" on /admin/users (list row or detail page)
+/team/forgot          "Forgot password" — emails a 60-min reset link (generic response); the owner gets
+                      TeamPasswordChangedMail only after the teammate actually sets a new password
+/team/set-password    One-time set-up / reset link landing (?token=) — shared AccessLinkForm
 /team                 Home — company announcements feed (published + audience team|all, newest first)
 /team/tasks           Tasks kanban — Available → In progress → Complete (payment is a card badge, not a column).
                       Founders get a "Mine / Whole team" toggle: team scope adds everyone else's cards
@@ -393,8 +427,10 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 # login); the old single /partners/portal page 301s to /partners/home.
 # partnersNav flags each item shared|referrer|investor; the partner-type route
 # middleware bounces the wrong type to /partners/home (the API 403s regardless).
-/partners/login       Partner auth — email + 8-digit passcode (glass card, both types)
-/partners/forgot      Self-service passcode reissue
+/partners/login       Partner auth — email + passcode (glass card, both types; free-form field since
+                      email Phase 2 — chosen passcodes are 10+ chars, older 8-digit ones still work)
+/partners/forgot      Self-service reset link (60 min; current passcode keeps working until it's used)
+/partners/set-passcode One-time set-up / reset link landing (?token=) — shared AccessLinkForm
 /partners/home        Dashboard — referrer: stats trio + ?ref link; investor: portfolio-coming-online
 /partners/profile     Shared — type badge + email; referrer: code/tier/commission; investor: company
 /partners/referrals   Referrer-only — referral list + "refer another" form

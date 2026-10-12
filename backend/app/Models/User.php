@@ -56,6 +56,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'monthly_allowance_myr' => 'integer',
             'deactivated_at' => 'datetime',
+            'password_set_at' => 'datetime',
         ];
     }
 
@@ -79,24 +80,6 @@ class User extends Authenticatable
     public function isFounder(): bool
     {
         return $this->role === 'founder';
-    }
-
-    /**
-     * Random 16-char temporary password for founder-issued resets. Readable-ish
-     * alphabet (no ambiguous 0/O/1/l/I) so it survives being read out or typed
-     * from a screen — mirrors the generator on the Users screen's create form.
-     */
-    public static function makeTemporaryPassword(): string
-    {
-        $alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-        $max = strlen($alphabet) - 1;
-        $out = '';
-
-        for ($i = 0; $i < 16; $i++) {
-            $out .= $alphabet[random_int(0, $max)];
-        }
-
-        return $out;
     }
 
     /** Set by the founder via /admin/users (Task 8) — a persistent lockout, not just a signed-out session. */

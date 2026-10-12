@@ -11,10 +11,8 @@ interface Inquiry {
   company: string | null
   project_type: string | null
   budget_hint: string | null
-  origin: 'quote' | 'contact' | 'partner' | 'collaboration'
+  origin: 'quote' | 'contact'
   subject: string | null
-  /** origin 'partner': the studio partner the client asked to hire through us. */
-  collaboration_partner?: { slug: string, name: string } | null
   status: string
   created_at: string
 }
@@ -27,7 +25,7 @@ const error = ref('')
 const filters = reactive({
   search: '',
   status: typeof route.query.status === 'string' ? route.query.status : '',
-  origin: typeof route.query.origin === 'string' ? route.query.origin : '',
+  origin: route.query.origin === 'quote' || route.query.origin === 'contact' ? route.query.origin : '',
   page: 1,
 })
 
@@ -39,31 +37,25 @@ const statusOptions = [
   { value: 'archived', label: 'Archived' },
 ]
 
-// Every public form feeds this one list — /quote (project brief), /contact, and
-// the /collaborations pages (a client hiring a partner studio through us, or a
-// studio applying to partner).
+// The sales list: /quote (project brief) and /contact. The /collaborations
+// leads share the table but live under Partners › Collaborations — the API
+// leaves them out unless asked for by origin.
 const originOptions = [
   { value: '', label: 'All' },
   { value: 'quote', label: 'Quote form' },
   { value: 'contact', label: 'Contact form' },
-  { value: 'partner', label: 'Partner enquiry' },
-  { value: 'collaboration', label: 'Partnership' },
 ]
-const originLabels: Record<string, string> = {
+const originLabels: Record<Inquiry['origin'], string> = {
   quote: 'Quote form',
   contact: 'Contact form',
-  partner: 'Partner enquiry',
-  collaboration: 'Partnership',
 }
 function originLabel(q: Inquiry) {
-  return q.origin === 'partner' && q.collaboration_partner
-    ? `Partner · ${q.collaboration_partner.name}`
-    : originLabels[q.origin]
+  return originLabels[q.origin]
 }
 
-// Contact rows and partnership applications carry a subject instead of a project type.
+// Contact rows carry a subject instead of a project type.
 function topic(q: Inquiry) {
-  return (q.origin === 'contact' || q.origin === 'collaboration' ? q.subject : q.project_type) ?? '—'
+  return (q.origin === 'contact' ? q.subject : q.project_type) ?? '—'
 }
 
 async function fetchInquiries() {
@@ -115,6 +107,10 @@ function fmtDate(iso: string) {
       <div>
         <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Inquiries</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">Everything sent through the public quote and contact forms. Open one and <span style="color: var(--color-text);">Build quotation</span> to price it.</p>
+        <p class="text-[12px] mt-1.5" style="color: var(--color-text-tertiary);">
+          Collaboration enquiries live in
+          <NuxtLink to="/admin/collaborations" style="color: var(--color-accent);">Partners › Collaborations</NuxtLink>.
+        </p>
       </div>
     </div>
 

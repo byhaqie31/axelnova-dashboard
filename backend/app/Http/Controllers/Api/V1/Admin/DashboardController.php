@@ -34,7 +34,10 @@ class DashboardController extends Controller
             'quotations_revised' => (new QuotationIndexQuery(revisedAfterAcceptance: true))->builder()->count(),
             'referrals_active' => Referral::where('status', '!=', 'rejected')->count(),
             'orders_total' => Order::count(),
-            'inquiries_new' => Inquiry::where('status', 'new')->count(),
+            // Sales inquiries only; leads from /collaborations are counted apart
+            // (they live under Partners › Collaborations).
+            'inquiries_new' => Inquiry::where('status', 'new')->whereNotIn('origin', Inquiry::COLLAB_ORIGINS)->count(),
+            'collab_enquiries_new' => Inquiry::where('status', 'new')->whereIn('origin', Inquiry::COLLAB_ORIGINS)->count(),
             // Same window as analytics overview range=7 (subDays(range - 1)).
             'views_7d' => PageView::where('viewed_at', '>=', now()->subDays(6)->startOfDay())->count(),
         ]);

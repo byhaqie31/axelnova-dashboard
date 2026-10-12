@@ -47,7 +47,7 @@ async function handleSubmit() {
               <h1 class="text-[24px] font-bold tracking-tight" style="color: var(--color-text);">Reset passcode</h1>
             </div>
             <p class="text-[13px] text-center" style="color: var(--color-text-secondary);">
-              Enter your partner email and we'll send a fresh 8-digit passcode to it.
+              Enter your partner email and we'll send you a link to choose a new passcode.
             </p>
           </div>
 
@@ -58,7 +58,7 @@ class="rounded-2xl border p-4 flex items-start gap-2.5"
               :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
               <UIcon name="i-lucide-mail-check" class="size-5 shrink-0" style="color: var(--color-success);" />
               <p class="text-[13px] leading-relaxed" style="color: var(--color-text-secondary);">
-                If that email matches an active partner account, a new passcode is on its way. Check your inbox, then sign in.
+                If that email matches an active partner account, a reset link is on its way. It works for 60 minutes, and your current passcode keeps working until you use it.
               </p>
             </div>
             <NuxtLink to="/partners/login" class="btn-pill btn-pill-accent w-full justify-center partner-forgot-submit">
@@ -79,7 +79,7 @@ v-model="email" type="email" required autocomplete="email" placeholder="Your par
               {{ error }}
             </p>
             <button type="submit" class="btn-pill btn-pill-accent w-full justify-center partner-forgot-submit" :disabled="loading || !email">
-              {{ loading ? 'Sending…' : 'Send new passcode →' }}
+              {{ loading ? 'Sending…' : 'Send reset link →' }}
             </button>
           </form>
 

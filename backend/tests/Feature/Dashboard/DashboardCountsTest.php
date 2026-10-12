@@ -55,4 +55,18 @@ class DashboardCountsTest extends TestCase
     {
         $this->getJson('/api/v1/admin/dashboard/counts')->assertUnauthorized();
     }
+
+    public function test_collaboration_enquiries_are_counted_apart_from_sales_inquiries(): void
+    {
+        foreach (['quote', 'partner', 'collaboration', 'collaboration'] as $origin) {
+            Inquiry::create([
+                'name' => 'Lead', 'email' => 'lead@example.com', 'message' => 'Hello.',
+                'source' => 'web', 'origin' => $origin, 'status' => 'new',
+            ]);
+        }
+
+        $this->getJson('/api/v1/admin/dashboard/counts', $this->adminHeaders())
+            ->assertOk()
+            ->assertJson(['inquiries_new' => 1, 'collab_enquiries_new' => 3]);
+    }
 }

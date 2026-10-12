@@ -357,6 +357,7 @@ Highlights:
 - **Aurora drift:** 24s `ease-in-out` infinite alternate (background mesh, `.bg-aurora` — a top-anchored band for page sections).
 - **Loader grid:** `.loader-grid` — the homepage loading screen's backdrop. 64px cells drawn from `--color-border` panning one full cell per 6s (linear, so the loop is seamless), radially masked so it fades toward the edges, over a 4.5s `--color-accent-soft` bloom. It is **its own absolutely-positioned child element**, not a `::before` on a wrapper — see hard rule 8.
 - **Aurora line shift:** 14s ease-in-out infinite (navbar gradient hairline).
+- **Collab glow meet:** 9s `ease-in-out` infinite alternate (`/collaborations/trlabs` hero). Two full-screen-width co-brand glows (Axel Nova blue from the left, the partner colour from the right) drift `6vw` toward the middle and scale to 1.1 while fading from 0.7 to 1 opacity, then ease back. Transform and opacity only, blur on each glow (not the wrapper), still under reduced motion.
 - **Page transition:** GSAP JS hooks on `<NuxtPage>` (`out-in`): leave 0.3s, enter 0.45s.
 - **Reduced motion:** entrances are no-ops (content instantly visible), Lenis disabled; essential state transitions kept.
 
@@ -711,7 +712,9 @@ The standard "hub page with switchable views" pattern — introduced by the `/ad
 - Switching tabs calls `router.replace({ query: { ...route.query, view } })` — **replace, not push**, so clicking between tabs doesn't spam browser-back history with one entry per click.
 - Because `route.query` is populated from the request URL during SSR, a hard refresh on a deep link (`/admin/referrals?view=referrers`) renders the correct tab server-side — no client-only flash.
 
-**Where it applies today:** `/admin/referrals` (`Referrers` | `Referrals`, default `Referrers`). First use — the CSS lives scoped on that page (`<style scoped>`), not yet in `main.css`. Promote `.tab-track`/`.tab-pill` to global classes (mirroring the §12.9 mobile-drawer precedent: single-use patterns stay scoped, promote once a second page needs them) if another hub page adopts this.
+**Where it applies today:** `/admin/referrals` (`Referrers` | `Referrals`, default `Referrers`) and `/admin/collaborations` (`Partners` | `Applications`, default `Partners`). `.tab-track` / `.tab-pill` are **global classes in `main.css`** — promoted from the Referrals page's scoped styles once Collaborations became the second user (the §12.9 precedent: single-use patterns stay scoped, promote once a second page needs them). Never re-declare them in a page's `<style scoped>`: a page that uses the markup without the styles renders bare text.
+
+**Count badge:** `<span class="tab-count">2</span>` after a tab's label shows something waiting in that view (e.g. new partnership applications) — accent-soft pill, tabular numbers. Hide it at zero, and give it an `aria-label` ("2 new").
 
 ### 12.13 Slideover panel
 

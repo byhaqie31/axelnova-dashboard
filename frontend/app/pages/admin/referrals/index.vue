@@ -204,31 +204,40 @@ function closeSlideover() {
   partnerDetail.value = null
 }
 
-// ── Approve / reset passcode — shared by the list row's quick action and the
+// ── Approve / send link — shared by the list row's quick action and the
 // slideover's action button, so both funnel through one confirm-before-act
-// dialog (approve issues the first passcode; reset invalidates the old one —
-// both email the referrer, so both are confirmed; the passcode is never shown).
-type PendingAction = { id: number, name: string, email: string, kind: 'approve' | 'reset' }
+// dialog. Since Phase 2 nobody is issued a passcode: approve emails a set-up
+// link, and "reset" emails a reset link (or a fresh set-up link while they
+// haven't chosen one yet — `has_passcode` false). Nothing changes until the
+// partner uses the link.
+type PendingAction = { id: number, name: string, email: string, hasPasscode: boolean, kind: 'approve' | 'reset' }
 const pendingAction = ref<PendingAction | null>(null)
 const acting = ref(false)
 
-function askAction(target: { id: number, name: string, email: string }, kind: 'approve' | 'reset') {
-  pendingAction.value = { id: target.id, name: target.name, email: target.email, kind }
+function askAction(target: { id: number, name: string, email: string, has_passcode: boolean }, kind: 'approve' | 'reset') {
+  pendingAction.value = { id: target.id, name: target.name, email: target.email, hasPasscode: target.has_passcode, kind }
 }
 
 const confirmCopy = computed(() => {
   if (!pendingAction.value) return { title: '', body: '', cta: '' }
-  const { name, email, kind } = pendingAction.value
-  return kind === 'approve'
+  const { name, email, kind, hasPasscode } = pendingAction.value
+  if (kind === 'approve') {
+    return {
+      title: `Approve ${name}?`,
+      body: `This activates their account and emails ${email} a link to choose their own passcode. The link works for 72 hours.`,
+      cta: 'Approve & send link',
+    }
+  }
+  return hasPasscode
     ? {
-        title: `Approve ${name}?`,
-        body: `This activates their account and emails a one-time passcode to ${email}. The passcode is never shown here.`,
-        cta: 'Approve & email passcode',
+        title: `Send ${name} a reset link?`,
+        body: `This emails ${email} a link to choose a new passcode. It works for 60 minutes, and their current passcode keeps working until they use it.`,
+        cta: 'Send link',
       }
     : {
-        title: `Reset passcode for ${name}?`,
-        body: `This invalidates their current passcode and emails a new one to ${email}. They can't log in with the old passcode afterwards.`,
-        cta: 'Reset & email new passcode',
+        title: `Resend ${name}'s set-up link?`,
+        body: `They haven't chosen a passcode yet. This emails ${email} a fresh set-up link that works for 72 hours, and any earlier link stops working.`,
+        cta: 'Resend link',
       }
 })
 
@@ -241,7 +250,7 @@ async function confirmAction() {
     : `/api/v1/admin/referral-partners/${pending.id}/reset-passcode`
   try {
     const res = await apiFetch<{ message: string }>(path, { method: 'POST' })
-    toast.success(pending.kind === 'approve' ? 'Referrer approved' : 'Passcode reset', res.message)
+    toast.success(pending.kind === 'approve' ? 'Referrer approved' : 'Link sent', res.message)
     pendingAction.value = null
     await fetchPartners()
     if (slideoverPartnerId.value === pending.id) await fetchPartnerDetail(pending.id)
@@ -350,7 +359,7 @@ watch(activeView, (view) => {
         <h1 class="text-[24px] md:text-[28px] font-bold tracking-tight" style="color: var(--color-text);">Referrals</h1>
         <p class="text-[14px] mt-1" style="color: var(--color-text-secondary);">
           <template v-if="activeView === 'referrers'">
-            Approve new referrers and manage passcodes. Approving emails a one-time passcode — it's never shown here.
+            Approve new referrers and manage their access. Approving emails them a link to choose their own passcode.
           </template>
           <template v-else>
             Partner referrals submitted from the <NuxtLink to="/partners" class="underline" :style="{ color: 'var(--color-accent)' }">Partner Program</NuxtLink>. Link a converted referral to its order to lock the commission tier.
@@ -431,7 +440,7 @@ v-for="h in ['Partner', 'Code', 'Tier', 'Referrals', 'Status', 'Last login', 'Ac
                     <UIcon name="i-lucide-check" class="size-3.5" />Approve
                   </button>
                   <button v-else-if="p.status === 'active'" type="button" class="btn-table-action" @click.stop="askAction(p, 'reset')">
-                    <UIcon name="i-lucide-refresh-cw" class="size-3.5" />Reset passcode
+                    <UIcon name="i-lucide-mail" class="size-3.5" />{{ p.has_passcode ? 'Send reset link' : 'Resend set-up link' }}
                   </button>
                   <span v-else class="text-[12px]" style="color: var(--color-text-tertiary);">—</span>
                 </td>
@@ -599,7 +608,7 @@ v-if="partnerDetail.status === 'pending'" type="button" class="btn-pill btn-pill
                   <button
 v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-pill-ghost text-[13px]"
                     @click="askAction(partnerDetail, 'reset')">
-                    Reset passcode
+                    {{ partnerDetail.has_passcode ? 'Send reset link' : 'Resend set-up link' }}
                   </button>
                 </div>
 
@@ -696,45 +705,6 @@ v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-
 </template>
 
 <style scoped>
-/* Query-param pill tabs (§12.12) — a bounded segmented track, same visual
-   language as .standard-pill (§12.6) but grouped so it reads as a single
-   control rather than a loose filter row. First use; promote to a global
-   class in main.css if a second page needs it (mirrors the §12.9 mobile-
-   drawer precedent). */
-.tab-track {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: 9999px;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-}
-.tab-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-  border: none;
-  color: var(--color-text-secondary);
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-}
-.tab-pill:hover {
-  color: var(--color-text);
-}
-.tab-pill[aria-selected="true"] {
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  box-shadow: var(--shadow-sm);
-}
-
 /* Slideover panel (§12.13) — right-edge overlay for a "promote to a page
    later" detail view. Same Teleport + scrim + sliding-panel shape as the
    quotation-picker drawer on referrals/[id].vue, generalised into a named
@@ -812,11 +782,9 @@ v-else-if="partnerDetail.status === 'active'" type="button" class="btn-pill btn-
   }
 }
 
-/* Mobile (<768px): the tab track spans the row with equal, taller tabs; the
-   slideover close button gets a 40px hit area. Desktop unchanged. */
+/* Mobile (<768px): the slideover close button gets a 40px hit area (the
+   §12.12 tab track's mobile rule lives with it in main.css). Desktop unchanged. */
 @media (max-width: 767.98px) {
-  .tab-track { display: flex; }
-  .tab-pill { flex: 1 1 0%; justify-content: center; padding: 0.625rem 0.75rem; }
   .slideover-head { padding: 16px; }
   .slideover-body { padding: 16px; }
   .slideover-close { width: 40px; height: 40px; margin: -4px -4px 0 0; }

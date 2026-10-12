@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use InvalidArgumentException;
 
@@ -18,7 +20,7 @@ use InvalidArgumentException;
  */
 class CollaborationPartner extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, RecordsActivity, SoftDeletes;
 
     /** How a shared project was delivered. */
     public const MODES = ['co_build', 'subcontract', 'referral'];
@@ -60,6 +62,12 @@ class CollaborationPartner extends Model
         return $this->belongsToMany(Project::class, 'collaboration_partner_project')
             ->withPivot(['mode', 'role_note', 'credit_public'])
             ->withTimestamps();
+    }
+
+    /** Clients who asked to hire this partner through Axel Nova (inquiries, origin 'partner'). */
+    public function enquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class)->where('origin', 'partner');
     }
 
     /** Shared projects the public site may show: credited, and the project itself live on the site. */

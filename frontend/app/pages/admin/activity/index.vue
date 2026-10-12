@@ -33,6 +33,7 @@ const subjectOptions = [
   { value: 'Payment', label: 'Payments' },
   { value: 'Invoice', label: 'Invoices' },
   { value: 'Project', label: 'Projects' },
+  { value: 'CollaborationPartner', label: 'Collaborations' },
 ]
 
 const rangeOptions = [
@@ -67,6 +68,10 @@ const actionMeta: Record<string, { icon: string, label: string }> = {
   'project.created': { icon: 'i-lucide-folder-plus', label: 'created a project' },
   'project.updated': { icon: 'i-lucide-folder-pen', label: 'updated a project' },
   'project.deleted': { icon: 'i-lucide-folder-minus', label: 'deleted a project' },
+  'collaboration_partner.updated': { icon: 'i-lucide-combine', label: 'updated a collaboration partner' },
+  'collaboration_partner.project_linked': { icon: 'i-lucide-link', label: 'linked a shared project' },
+  'collaboration_partner.project_updated': { icon: 'i-lucide-link', label: 'edited a shared project' },
+  'collaboration_partner.project_unlinked': { icon: 'i-lucide-unlink', label: 'unlinked a shared project' },
 }
 
 const subjectRoute: Record<string, (id: number) => string> = {
@@ -77,6 +82,7 @@ const subjectRoute: Record<string, (id: number) => string> = {
   Payment: id => `/admin/payments/${id}`,
   Invoice: id => `/admin/invoices/${id}`,
   Project: () => `/admin/projects`,
+  CollaborationPartner: id => `/admin/collaborations/${id}`,
 }
 
 function metaFor(action: string) {

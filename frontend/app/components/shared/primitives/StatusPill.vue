@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type EntityType = 'lead' | 'quotation' | 'project' | 'invoice' | 'milestone' | 'referral' | 'referral_partner' | 'task' | 'user' | 'feedback'
+type EntityType = 'lead' | 'quotation' | 'project' | 'invoice' | 'milestone' | 'referral' | 'referral_partner' | 'task' | 'user' | 'feedback' | 'collab_partner'
 type Tone = 'neutral' | 'info' | 'warn' | 'success' | 'danger'
 
 const props = defineProps<{
@@ -84,6 +84,11 @@ const map: Record<EntityType, Record<string, Tone>> = {
     approved: 'info',
     published: 'success',
     archived: 'neutral',
+  },
+  // Studio partner on /collaborations — derived from `active` (Partners › Collaborations).
+  collab_partner: {
+    live: 'success',
+    hidden: 'neutral',
   },
 }
 

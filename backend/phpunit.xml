@@ -18,6 +18,8 @@
         </include>
     </source>
     <php>
+        <!-- The suite peaks ~130 MB; the container CLI default is 128M. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <!-- Test-only key so the suite runs without a .env (CI). Never used outside tests. -->
         <env name="APP_KEY" value="base64:4uCrOYJfYHOxPlt/qeMcg0sN3aO5Gdkr3NnT0LoIRU0="/>

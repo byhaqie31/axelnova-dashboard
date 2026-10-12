@@ -84,6 +84,19 @@ pipeline: [DOCUMENT-GENERATION.md](../global/DOCUMENT-GENERATION.md).
 
 ### Referrals / Inquiries pages
 
+**Inquiries vs Collaborations.** One `inquiries` table, two admin homes split by
+`origin`: Sales pipeline › Inquiries lists quote + contact leads (the API's default
+with no `origin`); Partners › Collaborations lists the /collaborations leads
+(`partner`, `collaboration`). The detail screen is one component,
+`components/admin/InquiryDetail.vue` (`<AdminInquiryDetail :inquiry-id section="sales|collaborations">`),
+mounted by `pages/admin/inquiries/[id].vue` and `pages/admin/collaborations/enquiries/[id].vue`;
+opened under the wrong section it `navigateTo(…, { replace: true })`s to the right
+one, and its Back link returns to the partner's page / the Applications tab / the
+sales list. Partnership applications hide the Quotation panel (not a sale).
+`components/admin/CollabEnquiries.vue` (`<AdminCollabEnquiries origin :partner-id empty-text>`)
+is the self-fetching list both Collaborations views use (status filter, table/cards,
+pagination). See [COLLABORATIONS.md § Admin](../global/COLLABORATIONS.md#admin-partners--collaborations).
+
 `pages/admin/inquiries/{index,[id]}.vue` follows the standard list+detail
 pattern (UI-STANDARDS §12): `AdminExpandingSearch`, `AdminStatusFilter`,
 desktop table + mobile cards, status-pill button group, sticky action

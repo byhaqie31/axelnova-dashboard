@@ -4,7 +4,9 @@ namespace Tests\Feature\Users;
 
 use App\Mail\TeamPasswordResetMail;
 use App\Mail\TeamWelcomeMail;
+use App\Models\AccessToken;
 use App\Models\User;
+use App\Services\Auth\AccessLinks;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -105,23 +107,38 @@ class AdminUsersTest extends TestCase
         }
     }
 
-    public function test_creating_a_teammate_queues_a_welcome_email_with_their_credentials(): void
+    public function test_creating_a_teammate_queues_a_welcome_email_with_a_set_up_link(): void
     {
         Mail::fake();
 
-        $this->postJson('/api/v1/admin/users', [
+        $response = $this->postJson('/api/v1/admin/users', [
             'name' => 'New Hire',
             'email' => 'new-hire@example.com',
-            'password' => 'a-secure-password-123',
             'role' => 'marketer',
             'monthly_allowance_myr' => 1800,
         ], $this->adminHeaders())->assertCreated();
 
-        Mail::assertQueued(TeamWelcomeMail::class, function (TeamWelcomeMail $mail) {
-            return $mail->hasTo('new-hire@example.com')
-                && $mail->user->name === 'New Hire'
-                && $mail->password === 'a-secure-password-123';
-        });
+        // Nobody but the teammate ever knows their password (Phase 2).
+        $this->assertArrayNotHasKey('password', $response->json());
+        $user = User::where('email', 'new-hire@example.com')->sole();
+        $this->assertNull($user->password_set_at);
+        $this->assertTrue($response->json('setup_pending'));
+
+        Mail::assertQueued(TeamWelcomeMail::class, fn (TeamWelcomeMail $mail) => $mail->hasTo('new-hire@example.com')
+            && $mail->user->is($user)
+            && str_contains($mail->setupUrl, '/team/set-password?token='));
+    }
+
+    public function test_a_password_sent_by_an_old_client_is_ignored(): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/v1/admin/users', [
+            'name' => 'New Hire', 'email' => 'old-client@example.com', 'role' => 'engineer',
+            'password' => 'founder-chosen-password',
+        ], $this->adminHeaders())->assertCreated();
+
+        $this->assertFalse(Hash::check('founder-chosen-password', User::where('email', 'old-client@example.com')->sole()->password));
     }
 
     public function test_the_backend_still_allows_a_founder_to_provision_another_founder(): void
@@ -267,43 +284,42 @@ class AdminUsersTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_founder_can_reset_a_teammates_password_and_it_is_emailed_and_shown_once(): void
+    public function test_founder_sends_a_reset_link_and_nothing_changes_until_it_is_used(): void
     {
         Mail::fake();
 
         $founder = User::factory()->founder()->create();
-        $member = User::factory()->marketer()->create(['password' => 'old-password-123']);
-        $memberToken = $member->createToken('team-spa', ['workspace'])->plainTextToken;
+        $member = User::factory()->marketer()->create(['password' => 'old-password-123', 'password_set_at' => now()]);
+        $member->createToken('team-spa', ['workspace']);
 
         $response = $this->postJson("/api/v1/admin/users/{$member->id}/reset-password", [], $this->adminHeaders($founder));
 
-        $response->assertOk();
-        $password = $response->json('password');
-        $this->assertIsString($password);
-        $this->assertGreaterThanOrEqual(16, strlen($password));
+        $response->assertOk()->assertJsonMissingPath('password');
+        $this->assertTrue(Hash::check('old-password-123', $member->fresh()->password), 'the current password keeps working');
+        $this->assertSame(1, $member->tokens()->count(), 'sessions continue until the link is used');
 
-        // The new password works, the old one does not, and it's stored hashed.
-        $fresh = $member->fresh();
-        $this->assertTrue(Hash::check($password, $fresh->password));
-        $this->assertFalse(Hash::check('old-password-123', $fresh->password));
-
-        // Every outstanding session dies with the reset.
-        $this->assertSame(0, $member->tokens()->count());
-        $this->app['auth']->forgetGuards();
-        $this->getJson('/api/v1/team/me', ['Authorization' => "Bearer {$memberToken}"])
-            ->assertUnauthorized();
-
-        Mail::assertQueued(TeamPasswordResetMail::class, function (TeamPasswordResetMail $mail) use ($member, $password) {
-            return $mail->hasTo($member->email)
-                && $mail->user->is($member)
-                && $mail->password === $password;
-        });
+        Mail::assertQueued(TeamPasswordResetMail::class, fn (TeamPasswordResetMail $mail) => $mail->hasTo($member->email)
+            && $mail->user->is($member)
+            && str_contains($mail->resetUrl, '/team/set-password?token='));
 
         $this->assertDatabaseHas('activity_log', [
             'actor_id' => $founder->id,
             'action' => 'team.password_reset',
             'subject_id' => $member->id,
         ]);
+    }
+
+    public function test_a_teammate_who_never_set_up_gets_a_fresh_set_up_link(): void
+    {
+        Mail::fake();
+        $member = User::factory()->marketer()->create(['password_set_at' => null]);
+
+        $this->postJson("/api/v1/admin/users/{$member->id}/reset-password", [], $this->adminHeaders())
+            ->assertOk()
+            ->assertJsonPath('message', "A new set-up link has been emailed to {$member->name}.");
+
+        Mail::assertQueued(TeamWelcomeMail::class, fn (TeamWelcomeMail $mail) => $mail->user->is($member));
+        Mail::assertNotQueued(TeamPasswordResetMail::class);
     }
 
     public function test_resetting_a_deactivated_teammates_password_is_rejected(): void
@@ -386,5 +402,19 @@ class AdminUsersTest extends TestCase
         $this->postJson("/api/v1/admin/users/{$member->id}/reactivate", [], $this->adminHeaders())
             ->assertUnprocessable()
             ->assertJsonPath('message', 'This teammate is already active.');
+    }
+
+    public function test_deactivating_a_teammate_kills_their_outstanding_links(): void
+    {
+        $founder = User::factory()->founder()->create();
+        $member = User::factory()->marketer()->create(['password_set_at' => null]);
+        $url = app(AccessLinks::class)->issue($member, AccessToken::SETUP);
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+
+        $this->postJson("/api/v1/admin/users/{$member->id}/deactivate", [], $this->adminHeaders($founder))->assertOk();
+        $this->postJson("/api/v1/admin/users/{$member->id}/reactivate", [], $this->adminHeaders($founder))->assertOk();
+
+        // Reactivating must not bring the old link back to life.
+        $this->assertNull(app(AccessLinks::class)->inspect((string) $query['token']));
     }
 }

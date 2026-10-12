@@ -169,4 +169,45 @@ class PartnerInquiryIntakeTest extends TestCase
             ->assertJsonPath('data.0.collaboration_partner.slug', 'studio-x')
             ->assertJsonPath('data.0.collaboration_partner.name', 'Studio X');
     }
+
+    public function test_the_sales_inquiry_list_leaves_collaboration_enquiries_out(): void
+    {
+        $token = User::factory()->founder()->create()->createToken('admin-spa', ['cockpit'])->plainTextToken;
+        $this->storedEnquiry();
+        $this->storedApplication();
+        $contact = Inquiry::create([
+            'name' => 'Walk In', 'email' => 'walk@example.com', 'message' => 'Hello.',
+            'source' => 'web', 'origin' => 'contact', 'status' => 'new',
+        ]);
+
+        // Partner enquiries and applications live under Partners › Collaborations.
+        $res = $this->getJson('/api/v1/admin/inquiries', ['Authorization' => "Bearer {$token}"])->assertOk();
+
+        $this->assertSame([$contact->id], collect($res->json('data'))->pluck('id')->all());
+    }
+
+    public function test_partner_enquiries_can_be_listed_for_one_partner(): void
+    {
+        $token = User::factory()->founder()->create()->createToken('admin-spa', ['cockpit'])->plainTextToken;
+        $mine = $this->storedEnquiry();
+        $other = CollaborationPartner::factory()->create();
+        Inquiry::create(collect($this->partnerPayload())->except('partner')->all() + [
+            'collaboration_partner_id' => $other->id, 'status' => 'new',
+        ]);
+
+        $res = $this->getJson("/api/v1/admin/inquiries?origin=partner&collaboration_partner_id={$this->studio->id}", [
+            'Authorization' => "Bearer {$token}",
+        ])->assertOk();
+
+        $this->assertSame([$mine->id], collect($res->json('data'))->pluck('id')->all());
+    }
+
+    public function test_the_admin_email_links_collab_enquiries_to_the_collaborations_page(): void
+    {
+        $enquiry = $this->storedEnquiry();
+        $application = $this->storedApplication();
+
+        $this->assertStringContainsString("/admin/collaborations/enquiries/{$enquiry->id}", (new InquiryAdminNotificationMail($enquiry))->render());
+        $this->assertStringContainsString("/admin/collaborations/enquiries/{$application->id}", (new InquiryAdminNotificationMail($application))->render());
+    }
 }

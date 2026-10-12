@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\V1\Team;
 
 use App\Http\Controllers\Controller;
-use App\Mail\TeamPasswordResetRequestedMail;
+use App\Mail\TeamPasswordResetMail;
+use App\Models\AccessToken;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\Auth\AccessLinks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -50,21 +52,22 @@ class AuthController extends Controller
     }
 
     /**
-     * "Forgot password" for the workspace. Team passwords have no self-service
-     * reset — only the founder resets them (Users screen) — so this simply
-     * notifies the founder by email that the member is locked out. The response
-     * is identical whether or not the email matches an account, so it never
-     * reveals who works here. Abuse is bounded by the shared login throttle.
+     * Self-service reset (Phase 2): a matching active teammate gets a
+     * 60-minute reset link at their own address; nothing changes until they
+     * use it. The response never reveals whether the email matched, and each
+     * address gets at most a few links an hour (AccessLinks::allowForgotRequest).
      */
-    public function forgotPassword(Request $request): JsonResponse
+    public function forgotPassword(Request $request, AccessLinks $links): JsonResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
         ]);
 
-        $user = User::where('email', $data['email'])->first();
+        $user = $links->allowForgotRequest('team', $data['email'])
+            ? User::where('email', $data['email'])->first()
+            : null;
 
-        if ($user && $user->isWorkspace()) {
+        if ($user && $user->isWorkspace() && ! $user->isDeactivated()) {
             ActivityLog::create([
                 'actor_id' => null,
                 'action' => 'team.password_reset_requested',
@@ -73,14 +76,12 @@ class AuthController extends Controller
                 'changes' => null,
             ]);
 
-            $adminEmail = config('services.admin.email') ?: config('mail.from.address');
-            if ($adminEmail) {
-                Mail::to($adminEmail)->send(new TeamPasswordResetRequestedMail($user));
-            }
+            Mail::to($user->email, $user->name)
+                ->send(new TeamPasswordResetMail($user, $links->issue($user, AccessToken::RESET)));
         }
 
         return response()->json([
-            'message' => 'If that email matches a team account, the admin has been notified and will reset your password.',
+            'message' => "If that email matches a team account, we've sent it a link to choose a new password.",
         ]);
     }
 
