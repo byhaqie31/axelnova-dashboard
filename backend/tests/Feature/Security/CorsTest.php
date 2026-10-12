@@ -27,7 +27,7 @@ class CorsTest extends TestCase
 
     public function test_the_frontend_origin_passes_preflight(): void
     {
-        $response = $this->call('OPTIONS', '/api/v1/quote-requests', [], [], [], [
+        $response = $this->call('OPTIONS', '/api/v1/inquiries', [], [], [], [
             'HTTP_ORIGIN' => 'http://localhost:3003',
             'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'POST',
         ]);

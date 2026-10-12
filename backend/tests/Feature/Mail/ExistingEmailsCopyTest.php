@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Mail;
 
-use App\Mail\AdminNotificationMail;
 use App\Mail\FeedbackRequestMail;
 use App\Mail\InquiryAdminNotificationMail;
 use App\Mail\ReferralCommissionMail;
@@ -10,7 +9,6 @@ use App\Mail\ReferralReceivedMail;
 use App\Models\Feedback;
 use App\Models\Inquiry;
 use App\Models\Order;
-use App\Models\Quotation;
 use App\Models\Referral;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Mail\Mailable;
@@ -102,12 +100,6 @@ class ExistingEmailsCopyTest extends TestCase
 
     public function test_owner_alerts_keep_their_copy_and_use_the_internal_layout(): void
     {
-        $quote = Quotation::factory()->create(['name' => 'Lead Person', 'email' => 'lead@example.com', 'company' => 'Lead Co']);
-        $leadText = $this->text(new AdminNotificationMail($quote));
-        foreach (['New Quote Request', 'A new lead has been submitted via the quote builder.', $quote->reference_code, 'Lead Person', 'lead@example.com', 'Lead Co', 'View Lead in Admin', 'Internal'] as $s) {
-            $this->assertStringContainsString($s, $leadText);
-        }
-
         $inquiry = Inquiry::create(['origin' => 'contact', 'subject' => 'General question', 'name' => 'Aina', 'email' => 'aina@example.com', 'message' => "Line one\nLine two", 'status' => 'new']);
         $this->assertKeeps(new InquiryAdminNotificationMail($inquiry), [
             'New inquiry',
@@ -116,8 +108,8 @@ class ExistingEmailsCopyTest extends TestCase
             'Line one',
             'Open in Admin',
             'Reply to this email to answer Aina directly.',
+            'Internal only.',
         ]);
-
     }
 
     public function test_the_markdown_mail_templates_are_gone(): void

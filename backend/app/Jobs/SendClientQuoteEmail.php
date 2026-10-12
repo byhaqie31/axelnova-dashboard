@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Mail\ClientEstimateMail;
 use App\Mail\ClientQuotationMail;
 use App\Models\Quotation;
 use App\Services\Mail\EmailLogger;
@@ -25,7 +24,7 @@ class SendClientQuoteEmail implements ShouldBeUnique, ShouldQueue
 
     /**
      * @param  int|null  $revisionId  the revision being sent (R2's own token + "· R2" reference);
-     *                                null = the family's current revision (the funnel's R1)
+     *                                null = the family's current revision
      */
     public function __construct(private readonly int $quoteRequestId, private readonly ?int $revisionId = null) {}
 
@@ -42,12 +41,9 @@ class SendClientQuoteEmail implements ShouldBeUnique, ShouldQueue
             ? $family->revisions()->whereKey($this->revisionId)->firstOrFail()
             : $family->revision();
 
-        // No revision id = the quote-builder's own R1 → the instant estimate;
-        // an admin Send names the revision → the formal quotation (email 1a / 1b).
-        $quote = $revision->asQuotation($family);
-        $mail = $this->revisionId === null ? new ClientEstimateMail($quote) : new ClientQuotationMail($quote);
-
-        Mail::to($family->email, $family->name)->send($mail);
+        // Always the formal quotation (email 1b). The instant estimate (1a) went
+        // with the retired public quote funnel.
+        Mail::to($family->email, $family->name)->send(new ClientQuotationMail($revision->asQuotation($family)));
     }
 
     /** Out of retries — the email never left; record it so the owner sees it (spec §5.4). */
@@ -55,10 +51,7 @@ class SendClientQuoteEmail implements ShouldBeUnique, ShouldQueue
     {
         $family = Quotation::find($this->quoteRequestId);
         if ($family?->email) {
-            app(EmailLogger::class)->recordFailure(
-                $this->revisionId === null ? ClientEstimateMail::class : ClientQuotationMail::class,
-                $family, $family->email, $family->name, null, $e,
-            );
+            app(EmailLogger::class)->recordFailure(ClientQuotationMail::class, $family, $family->email, $family->name, null, $e);
         }
     }
 }

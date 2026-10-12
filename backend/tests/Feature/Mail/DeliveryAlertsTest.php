@@ -62,7 +62,7 @@ class DeliveryAlertsTest extends TestCase
     public function test_no_alert_for_an_owner_inbox_email(): void
     {
         Mail::fake();
-        $log = $this->log(['type' => 'quotation.new_lead_alert', 'audience' => 'admin', 'status' => 'bounced']);
+        $log = $this->log(['type' => 'inquiry.new_alert', 'audience' => 'admin', 'status' => 'bounced']);
 
         app(DeliveryAlerts::class)->maybeAlert($log);
 

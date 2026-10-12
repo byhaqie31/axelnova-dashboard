@@ -60,7 +60,7 @@ class InquiryController extends Controller
         // Queued acknowledgement back to the person who inquired.
         Mail::to($inquiry->email, $inquiry->name)->send(new InquiryReceivedMail($inquiry));
         // Queued heads-up to the admin inbox (replaces the old browser-side Web3Forms ping).
-        // Delayed like NotifyAdminJob so the two sends don't hit the SMTP per-second cap.
+        // Delayed 10s so the auto-reply and this alert don't hit the SMTP per-second cap.
         Mail::to(config('services.admin.email'))
             ->later(now()->addSeconds(10), new InquiryAdminNotificationMail($inquiry));
 

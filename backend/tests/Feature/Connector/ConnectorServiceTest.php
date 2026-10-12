@@ -464,14 +464,6 @@ class ConnectorServiceTest extends TestCase
         $this->assertArrayNotHasKey('dash_starter', $config->json('data.base_packages'));
         $this->assertArrayHasKey('web_business', $config->json('data.base_packages'));
 
-        // A hand-made public quote request can't price it either.
-        $this->postJson('/api/v1/quote-requests', ['package_key' => 'dash_starter'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('package_key');
-        $this->postJson('/api/v1/quote-requests', ['package_key' => 'web_business'])
-            ->assertUnprocessable()
-            ->assertJsonMissingValidationErrors('package_key');
-
         $catalog = $this->getJson('/api/v1/connector/catalog', $this->tokenHeader())->assertOk();
         $this->assertNotContains('dash_starter', collect($catalog->json('packages'))->pluck('key')->all());
         $this->assertContains('web_business', collect($catalog->json('packages'))->pluck('key')->all());

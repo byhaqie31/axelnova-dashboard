@@ -59,7 +59,7 @@ draft ──send──► sent ──accept──► accepted ──(newer accep
 
 **Writes always go revision → row.** Content edits land on the draft revision (`writeDraft`), status changes on a revision; `refresh()` then re-derives the family and re-mirrors the current revision onto the row (quietly). Safety net: a direct, non-quiet write to the row's content / status / dates (tinker, a seeder, legacy code) is absorbed into the current revision (`Quotation::updated` → `absorbRowWrite`), so the two never drift.
 
-**Creators** call `QuotationRevisions::initialise()` once the row and its add-on rows exist (public funnel, admin store, connector store, demo seeder; the factory does it in `afterCreating`). `Quotation::revision()` initialises lazily as a last resort.
+**Creators** call `QuotationRevisions::initialise()` once the row and its add-on rows exist (admin store, connector store, demo seeder — and the public funnel until it was retired; the factory does it in `afterCreating`). `Quotation::revision()` initialises lazily as a last resort.
 
 ---
 

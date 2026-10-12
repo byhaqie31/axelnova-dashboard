@@ -16,7 +16,8 @@ use Tests\TestCase;
 
 /**
  * The catalog is the single list of every email the dashboard can send
- * (spec §5.13: 33 templates — email 1 split in two). Templates, preview
+ * (spec §5.13's 33, less the estimate and new-lead alert retired with the
+ * public quote funnel — 31). Templates, preview
  * sends, the email log's labels and audiences all read from it.
  */
 class EmailCatalogTest extends TestCase
@@ -27,8 +28,8 @@ class EmailCatalogTest extends TestCase
     {
         $all = EmailCatalog::all();
 
-        $this->assertCount(33, $all);
-        $this->assertCount(33, array_unique(array_column($all, 'view')));
+        $this->assertCount(31, $all);
+        $this->assertCount(31, array_unique(array_column($all, 'view')));
         foreach ($all as $type => $def) {
             $this->assertContains($def['audience'], ['client', 'partner', 'team', 'admin'], $type);
             $this->assertNotSame('', $def['label'], $type);

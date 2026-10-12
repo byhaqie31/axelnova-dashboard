@@ -17,7 +17,7 @@ The `PricingEngine` merges these at request time:
 
 1. Start with `pricing_configs.active.config.base_packages` (legacy / fallback entries).
 2. Layer admin-managed `service_packages` on top, keyed by `quote_key.package`. A DB row **claims** its key, Live or Hidden (like add-ons): the JSON entry for any key a row holds is dropped first, so hiding the row can never fall back to the old JSON price. Only **effectively Live** rows are priced — the package **and** its service (category) active (`ServicePackage::effectivelyLive()`), so a package under a hidden service can't be quoted at all, not even by key (the admin builder and its re-save validate against this list → 422). `packageName()` still resolves any row's real name, Live or Hidden, so old quotes keep their package names.
-   - The **public** quote endpoint (`POST /v1/quote-requests`) is stricter: `package_key` must be a package the catalogue offers **right now** — the config's `categories` (effectively Live, wired, with a max price). A hidden package, or a legacy JSON-only key no service offers, gets a 422 *"That package is no longer available…"* — so a stale cached page or a hand-made request can't quote one. JSON-only keys stay in `base_packages` for the admin builder and old quotes.
+   - The **public** quote endpoint (`POST /v1/quote-requests`) that priced by key was **retired on 2026-10-12** — `/quote` is the inquiry form; every priced quote is built by the admin or the MCP connector, both validated against this merged list.
 3. Add-ons merge the same way: `service_addons` rows over the JSON `addons` map. A DB row *claims* its key — an **active** row appears (in `sort_order`), an **inactive** row removes the key entirely (no JSON fallback), and a JSON key with no DB row still resolves. See `PricingEngine::buildAddons()`.
 4. **Scope fields** (`service_scope_fields`) define both the builder's per-category inputs and their pricing — superseding the JSON `modifiers` map. `calculate()` evaluates the selected package's category fields (gated by `applies_to`); `buildScopeFields()` groups them by category slug for the config endpoint. The JSON `modifiers` loop is kept as a one-release fallback for legacy `modifiers` payloads. See **Scope fields** below.
 5. Rush stays in `pricing_configs.config`.
@@ -104,7 +104,7 @@ Rush: false
 
 ## Canonical `form_payload` & multi-package quotations
 
-Quotation drafts are created three ways — the public `/quote` funnel, the admin edit form (`/admin/quotations/[id]`), and the MCP connector (`create_draft_quotation`). **All three now write ONE canonical `form_payload` shape, and every render path reads it back through one normalizer.** One write shape, three writers, one renderer.
+Quotation drafts are created two ways — the admin edit form (`/admin/quotations/[id]`) and the MCP connector (`create_draft_quotation`); the public `/quote` funnel was the third until it was retired on 2026-10-12, and its `quote_funnel` rows remain. **Every writer emits ONE canonical `form_payload` shape, and every render path reads it back through one normalizer.** One write shape, one renderer.
 
 ### The canonical shape
 
@@ -120,7 +120,7 @@ Quotation drafts are created three ways — the public `/quote` funnel, the admi
 }
 ```
 
-- **Multi-package via `packages[]`.** No new table, no pivot. The scalar `package_key` + `service_package_id` columns store the **first** package (list-display + back-compat). The public funnel stays single-package (one entry).
+- **Multi-package via `packages[]`.** No new table, no pivot. The scalar `package_key` + `service_package_id` columns store the **first** package (list-display + back-compat). (The retired public funnel wrote single-package rows — one entry.)
 - **`service_package_id`** is resolved from `package_key` at write time by `PricingEngine::packageId()` (null for legacy JSON-only packages that have no DB row).
 - **`breakdown` is grouped per package**: a list of `{ package_key, name, min, max, eta_value, eta_unit, lines: [[label, min, max], …] }`. The `lines` are the existing single-package tuple shape and are **pre-rush** (rush is applied to the running total, never to the pushed lines).
 

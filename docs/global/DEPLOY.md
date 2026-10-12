@@ -116,7 +116,7 @@ The cache lives in the Nuxt server process (Nitro storage), **not** at Cloudflar
 | nginx (VPS) | Reverse proxy only — a response changes on the very next request, so nothing is cached there (vhost not re-inspected) | — | — |
 | Browser | Pages and payloads send `s-maxage` (shared caches only) plus `Last-Modified` and no `max-age`, so a browser may reuse a `_payload.json` heuristically for ~10% of its age on in-site navigation | seconds–minutes | a reload |
 
-`/quote` is deliberately **not** cached (it's the inquiry form), and the package-priced `POST /v1/quote-requests` only accepts a package the catalogue offers right now — a stale page can't quote a hidden one ([QUOTE_BUILDER.md](./QUOTE_BUILDER.md)).
+`/quote` is deliberately **not** cached (it's the inquiry form). No public endpoint prices a package any more (`POST /v1/quote-requests` was retired), so a stale page can't quote a hidden one; the admin builder and the MCP validate against the live merged config ([QUOTE_BUILDER.md](./QUOTE_BUILDER.md)).
 
 **How `swr` really behaves** (Nitro 2.13, `runtime/internal/cache.mjs`): an entry older than its window is still served **once more** — to the first visitor after it expired — while the page re-renders behind that request; the next visitor gets the fresh copy. There is no upper bound: on a quiet site that first visitor can get a page hours old. A cache-busting query string does render fresh (the query is part of the key), but in-site navigation loads `/<path>/_payload.json?_b=<build>` without it, and the footer on every other cached page still lists the old services. So changes rely on the purge below, not on the window.
 

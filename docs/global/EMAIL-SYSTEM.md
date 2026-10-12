@@ -23,11 +23,11 @@ How the dashboard sends email, what it sends, how delivery is tracked, and how t
 
 ## Email catalog
 
-The single list lives in [`EmailCatalog`](../../backend/app/Support/Mail/EmailCatalog.php) (label, audience, template, subject). "Live" = sent today; a phase number = template built, trigger arrives in that phase.
+The single list lives in [`EmailCatalog`](../../backend/app/Support/Mail/EmailCatalog.php) (label, audience, template, subject) — **31 types**. "Live" = sent today; a phase number = template built, trigger arrives in that phase; "Retired" = removed from the catalog (numbering kept so it still matches the email kit).
 
 | # | Type | Template | Audience | Sent when | Related record | Status |
 |---|---|---|---|---|---|---|
-| 1a | `quotation.estimate` | `emails.quotation.estimate` | client | Quote-builder submit | Quotation | Live |
+| 1a | ~~`quotation.estimate`~~ | — | client | ~~Quote-builder submit~~ — the public quote funnel (`POST /v1/quote-requests`) was retired; the admin Send (1b) is the only client quote email. Design kept in `email-kit/01a-estimate.html` | Quotation | Retired 2026-10-12 |
 | 1b | `quotation.sent` | `emails.quotation.sent` | client | Admin "Send" on a quotation | Quotation | Live |
 | 2 | `inquiry.received` | `emails.inquiry.received` | client | Contact / quote / partner / collaboration form | Inquiry | Live |
 | 3 | `invoice.sent` | `emails.invoice.sent` | client | Admin "Send" on an invoice | Invoice | Live |
@@ -51,7 +51,7 @@ The single list lives in [`EmailCatalog`](../../backend/app/Support/Mail/EmailCa
 | 21 | `team.password_reset` | `emails.team.password-reset` | team | Teammate "forgot password", or founder "Send reset link" — reset link (60 min) | User | Live |
 | 22 | `task.assigned` | `emails.team.task-assigned` | team | Task assigned | Task | Phase 6 |
 | 23 | `payroll.payslip` | `emails.team.payslip` | team | Payroll settled | PayrollEntry | Phase 6 |
-| 24 | `quotation.new_lead_alert` | `emails.admin.new-lead` | admin | Quote-builder submit | Quotation | Live |
+| 24 | ~~`quotation.new_lead_alert`~~ | — | admin | ~~Quote-builder submit~~ — retired with the public quote funnel; new leads arrive as inquiries (25) | Quotation | Retired 2026-10-12 |
 | 25 | `inquiry.new_alert` | `emails.admin.new-inquiry` | admin | Any inquiry form (Reply-To = the inquirer) | Inquiry | Live |
 | 26 | `partner.reset_alert` | `emails.admin.partner-reset` | admin | A partner set a new passcode through a reset link (after the change) | ExternalAccount | Live |
 | 27 | `team.reset_alert` | `emails.admin.team-reset-request` | admin | A teammate set a new password through a reset link (after the change) | User | Live |

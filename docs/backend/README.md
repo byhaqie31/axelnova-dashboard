@@ -47,7 +47,7 @@ php artisan queue:work     # process queued jobs (PDF, email)
 | Method | Endpoint | Auth | Rate limit | Description |
 |--------|----------|------|-----------|-------------|
 | GET | `/api/v1/quote-builder/config` | Public | — | Active pricing config (cached 1h) |
-| POST | `/api/v1/quote-requests` | Public | 3/hr/IP | Submit quote request — creates Client + Quotation |
+| POST | `/api/v1/inquiries` | Public | 20/hr/IP | Submit an inquiry (`/quote`, `/contact`, partner, collaboration forms) |
 | POST | `/api/v1/admin/login` | Public | 10/min | Issue Sanctum token |
 | POST | `/api/v1/admin/logout` | Sanctum + admin | — | Revoke current token |
 | GET | `/api/v1/admin/me` | Sanctum + admin | — | Current admin user |
@@ -67,24 +67,15 @@ php artisan queue:work     # process queued jobs (PDF, email)
 # Get pricing config
 curl http://localhost:8000/api/v1/quote-builder/config
 
-# Submit a quote
-curl -X POST http://localhost:8000/api/v1/quote-requests \
+# Submit a quote request (the /quote inquiry form)
+curl -X POST http://localhost:8003/api/v1/inquiries \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "Ahmad Test",
-    "email": "test@example.com",
-    "phone": "+60183173103",
-    "package_key": "web_business",
-    "modifiers": { "cms": true, "extra_page": 7 },
-    "addon_keys": ["seo", "analytics"],
-    "rush": false,
-    "form_payload": { "source": "Google", "notes": "Test submission." }
-  }'
+  -d '{"name": "Ahmad Test", "email": "test@example.com", "message": "A booking site for my clinic.", "origin": "quote"}'
 
 # Validation failure
-curl -X POST http://localhost:8000/api/v1/quote-requests \
+curl -X POST http://localhost:8003/api/v1/inquiries \
   -H "Content-Type: application/json" \
-  -d '{"name": "A", "email": "not-an-email", "package_key": "invalid"}'
+  -d '{"name": "A", "email": "not-an-email"}'
 
 # Admin quotations (replace TOKEN with a Sanctum token)
 curl http://localhost:8000/api/v1/admin/quotations \
@@ -97,9 +88,10 @@ curl http://localhost:8000/api/v1/admin/quotations \
 
 Run `php artisan queue:work --tries=3` to process:
 
-1. **GenerateQuotePdfJob** — renders `resources/views/pdfs/quote.blade.php` via spatie/laravel-pdf, uploads to R2. Retries 3× with 10s/30s/60s backoff.
-2. **SendClientQuoteEmail** — attaches PDF from R2, sends to the client. Re-queues with 30s delay if PDF isn't ready yet. Unique per quote_request_id (no double-send).
-3. **NotifyAdminJob** — sends admin notification with lead summary and admin panel deep-link.
+- **SendClientQuoteEmail** — the admin's quotation Send → `ClientQuotationMail` (unique per revision for 1h, 5 tries).
+- Every other email (inquiry auto-reply + owner alert, invoices, feedback, team / partner mail) is a queued mailable — see [EMAIL-SYSTEM.md](../global/EMAIL-SYSTEM.md).
+
+(The public quote funnel — `POST /api/v1/quote-requests`, its instant estimate and the `NotifyAdminJob` new-lead alert — was retired on 2026-10-12.)
 
 Monitor queue: `php artisan queue:monitor database`
 
