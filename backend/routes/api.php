@@ -362,6 +362,7 @@ Route::middleware([
         Route::post('/service-categories', [ServiceCategoriesController::class, 'store'])->name('service-categories.store');
         Route::get('/service-categories/{serviceCategory}', [ServiceCategoriesController::class, 'show'])->name('service-categories.show');
         Route::put('/service-categories/{serviceCategory}', [ServiceCategoriesController::class, 'update'])->name('service-categories.update');
+        Route::patch('/service-categories/{serviceCategory}/active', [ServiceCategoriesController::class, 'setActive'])->name('service-categories.active');
         Route::delete('/service-categories/{serviceCategory}', [ServiceCategoriesController::class, 'destroy'])->name('service-categories.destroy');
 
         // CMS — Service packages
@@ -369,6 +370,7 @@ Route::middleware([
         Route::post('/service-packages', [ServicePackagesController::class, 'store'])->name('service-packages.store');
         Route::get('/service-packages/{servicePackage}', [ServicePackagesController::class, 'show'])->name('service-packages.show');
         Route::put('/service-packages/{servicePackage}', [ServicePackagesController::class, 'update'])->name('service-packages.update');
+        Route::patch('/service-packages/{servicePackage}/active', [ServicePackagesController::class, 'setActive'])->name('service-packages.active');
         Route::delete('/service-packages/{servicePackage}', [ServicePackagesController::class, 'destroy'])->name('service-packages.destroy');
 
         // CMS — Service add-ons (quote builder extras)

@@ -351,7 +351,7 @@ Overview with four **stat tiles**: Total quotations · New (unactioned) · Activ
 ### Services — catalog & pricing manager
 `/admin/services` (hub) + `/admin/services/categories/[id]` + `/admin/services/packages/[id]` (both also handle `/new`).
 
-**Hub:** stat tiles (categories / total packages / featured). "New category" button. Each category renders collapsibly with: icon + name, "Default tab" / "Inactive" badges, description, and actions **+ Package · Edit · Delete**. Each package row shows name (+featured/inactive badges), tagline, price (`RM X – RM Y` or `RM X+`), duration + ETA, and Edit/Delete.
+**Hub:** stat tiles (categories / total packages / featured). "New category" button. Each category renders collapsibly with: icon + name, "Default tab" badge, description, and actions **Active switch · Edit (pencil icon)**; its package list ends with a transparent **+ New package** row. Each package row shows name (+ Featured / "Hidden via service" badges), tagline, price (`RM X – RM Y` or `RM X+`), duration + ETA, and **Active switch · Edit (pencil icon)**. The switch flips visibility in place (`PATCH …/{id}/active`); a category asks first, since its active packages go public / come off with it. **Delete is not on the hub** — it sits at the foot of each editor (confirm dialog; founder-only `hard-delete` gate).
 
 **Category editor — every field:**
 - Slug* (unique) · Name*
@@ -359,7 +359,8 @@ Overview with four **stat tiles**: Total quotations · New (unactioned) · Activ
 - Description* (textarea)
 - **Sort order** — visual pill UI (move left/right, click a position to insert, "+" auto-appends)
 - Toggles: **Active** (visible on public services page) · **Default tab** (the one highlighted by default — only one allowed)
-- Calls `GET/POST/PUT /v1/admin/service-categories[/{id}]`.
+- **Delete category** card at the foot (removes its packages + scope fields too; quotes keep their stored copy).
+- Calls `GET/POST/PUT/DELETE /v1/admin/service-categories[/{id}]`.
 
 **Package editor — every field:**
 - **Category*** (select) · Slug* (unique within category) · Name*
@@ -370,9 +371,10 @@ Overview with four **stat tiles**: Total quotations · New (unactioned) · Activ
 - **CTA label** (default "Get a quote") + **"Wire CTA to the quote builder"** checkbox → reveals **quote category key** + **quote package key** (these are what make a package appear in `/quote` and deep-link as `/quote?category=…&package=…`)
 - **Sort order** (same pill UI as categories)
 - Toggles: **Featured** · **Active**
-- Calls `GET/POST/PUT /v1/admin/service-packages[/{id}]`.
+- **Delete package** card at the foot.
+- Calls `GET/POST/PUT/DELETE /v1/admin/service-packages[/{id}]`.
 
-> A package is "quotable" only if it has **both** a `quote_key` and a `price_max_myr`. Custom-quote / retainer rows (null `quote_key`) show on the public services page but never in the quote builder. Saving any category/package auto-clears the quote-builder config cache (observers).
+> A package is "quotable" only if it has **both** a `quote_key` and a `price_max_myr`. Custom-quote / retainer rows (null `quote_key`) show on the public services page but never in the quote builder. Saving any category/package auto-clears the quote-builder config cache (observers), and a change to one that is or was Live also purges the cached public pages ([DEPLOY.md § Page caching](./DEPLOY.md#page-caching)).
 
 ### Projects — `/admin/projects` (list) + `/admin/projects/[id]` (editor)
 **List:** stat tiles (total / featured / live), debounced search (name/slug), **status filter** (All / Live / In progress / Soon / Planning), "New project" button. Cards show name+slug, status badge, description (clamped), first 4 tags, featured/inactive badges, Edit + Delete (confirm).
@@ -469,6 +471,7 @@ All routes are under `/api`.
 | POST | `/v1/admin/orders/{id}/status` | Update status (auto-stamps timestamps) |
 | GET/POST/PUT/DELETE | `/v1/admin/service-categories[/{id}]` | Categories CRUD |
 | GET/POST/PUT/DELETE | `/v1/admin/service-packages[/{id}]` | Packages CRUD |
+| PATCH | `/v1/admin/service-categories/{id}/active` · `/v1/admin/service-packages/{id}/active` | Listing Active switch — `{active}` only |
 | GET/POST/PUT/DELETE | `/v1/admin/projects[/{id}]` | Projects CRUD |
 
 Health check: `GET /up`.

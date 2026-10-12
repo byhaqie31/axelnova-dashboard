@@ -69,6 +69,27 @@ class ServiceCategoriesController extends Controller
         return new ServiceCategoryResource($serviceCategory);
     }
 
+    /**
+     * The listing's Active switch — flips visibility alone, without resending the
+     * whole form. Showing a category also publishes its active packages
+     * (ServicePackage::isEffectivelyLive), which the admin confirms first.
+     */
+    public function setActive(Request $request, ServiceCategory $serviceCategory): ServiceCategoryResource
+    {
+        $data = $request->validate(['active' => ['required', 'boolean']]);
+
+        $serviceCategory->update($data);
+
+        if ($serviceCategory->wasChanged('active')) {
+            $serviceCategory->logActivity('service_category.updated', [
+                'name' => $serviceCategory->name,
+                'visibility' => $serviceCategory->active ? 'live' : 'hidden',
+            ]);
+        }
+
+        return new ServiceCategoryResource($serviceCategory);
+    }
+
     public function destroy(ServiceCategory $serviceCategory): JsonResponse
     {
         Gate::authorize('hard-delete');
