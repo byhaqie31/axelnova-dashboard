@@ -1,12 +1,15 @@
 // POST /_cache/purge
 //
-// Drops every cached public page (the `swr` route rules in nuxt.config.ts) so
-// the next visit renders fresh. Called by the backend's BlogPostObserver when a
-// post is published, unpublished, or a live post is edited/deleted — the pages
-// stay fast between changes, yet a change shows on the very next visit instead
-// of up to five minutes later. Clears ALL cached pages, not just /blog: the
-// homepage lists the latest posts, and matching Nitro's hashed keys per path
-// would be fragile. Anything else simply re-renders on its next visit.
+// Drops every cached public page AND its `_payload.json` (the `swr` route rules
+// in nuxt.config.ts) so the next visit renders fresh. Called by the backend's
+// SiteCache when a live blog post changes (BlogPostObserver) or the public
+// catalogue does (service category / package that is or was Live, add-ons,
+// scope fields, pricing — the catalogue observers). The pages stay fast between
+// changes, yet a change shows on the very next visit instead of whenever swr
+// gets round to it. Clears ALL cached pages, not just /blog or /services: the
+// homepage lists the latest posts, every page's footer lists the services, and
+// matching Nitro's hashed keys per path would be fragile. Anything else simply
+// re-renders on its next visit.
 //
 // Guarded by a shared secret (NUXT_CACHE_PURGE_TOKEN ↔ backend
 // SITE_CACHE_PURGE_TOKEN). Unset or wrong token → 404, so the route looks

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import SectionHeader from '~/components/shared/SectionHeader.vue'
+import { usePublicSeo } from '~/composables/usePublicSeo'
+
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
@@ -31,9 +34,6 @@ useHead({
     }),
   }],
 })
-
-import SectionHeader from '~/components/shared/SectionHeader.vue'
-import { usePublicSeo } from '~/composables/usePublicSeo'
 
 const photos = [
   '/baihaqie.png',
@@ -239,7 +239,7 @@ useScrollReveal('.reveal')
           class="photo-slide absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out"
           :class="i === photoIndex ? 'opacity-100' : 'opacity-0'"
           :aria-hidden="i !== photoIndex"
-        />
+        >
 
         <!-- Subtle Apple Blue tint, on top of image -->
         <div

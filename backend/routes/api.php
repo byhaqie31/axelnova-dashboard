@@ -47,7 +47,6 @@ use App\Http\Controllers\Api\V1\PublicProjectsController;
 use App\Http\Controllers\Api\V1\PublicServicesController;
 use App\Http\Controllers\Api\V1\PublicTestimonialsController;
 use App\Http\Controllers\Api\V1\QuoteBuilderConfigController;
-use App\Http\Controllers\Api\V1\QuoteRequestController;
 use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\Team\AnnouncementsController as TeamAnnouncementsController;
 use App\Http\Controllers\Api\V1\Team\AuthController as TeamAuthController;
@@ -95,17 +94,15 @@ Route::middleware($feedbackThrottle)->group(function () {
         ->name('feedback.submit');
 });
 
-// Public — submit quote / referral.
+// Public — submit a partner referral.
 // Production: 8/hour per IP (spam protection). Non-prod: very high so dev/staging can test freely.
 // NB: Laravel's simple `throttle:N,M` keys the bucket on domain+IP, NOT the path — every
 // route inside one throttle group shares a single per-IP counter. Inquiries therefore get
-// their own group below so heavy quote traffic can't starve the lightweight intake form.
-$quoteThrottle = app()->environment('production') ? 'throttle:8,60' : 'throttle:1000,1';
-Route::middleware($quoteThrottle)->group(function () {
-    Route::post('/v1/quote-requests', [QuoteRequestController::class, 'store'])
-        ->name('quote-requests.store');
-
-    // Partner referrals — same env-aware policy.
+// their own group below so referral traffic can't starve the lightweight intake form.
+// (The priced public quote funnel, POST /v1/quote-requests, was retired 2026-10-12 —
+// /quote is the inquiry form; the admin builds every priced quote.)
+$referralThrottle = app()->environment('production') ? 'throttle:8,60' : 'throttle:1000,1';
+Route::middleware($referralThrottle)->group(function () {
     Route::post('/v1/referrals', [ReferralController::class, 'store'])
         ->name('referrals.store');
 });
@@ -362,6 +359,7 @@ Route::middleware([
         Route::post('/service-categories', [ServiceCategoriesController::class, 'store'])->name('service-categories.store');
         Route::get('/service-categories/{serviceCategory}', [ServiceCategoriesController::class, 'show'])->name('service-categories.show');
         Route::put('/service-categories/{serviceCategory}', [ServiceCategoriesController::class, 'update'])->name('service-categories.update');
+        Route::patch('/service-categories/{serviceCategory}/active', [ServiceCategoriesController::class, 'setActive'])->name('service-categories.active');
         Route::delete('/service-categories/{serviceCategory}', [ServiceCategoriesController::class, 'destroy'])->name('service-categories.destroy');
 
         // CMS — Service packages
@@ -369,6 +367,7 @@ Route::middleware([
         Route::post('/service-packages', [ServicePackagesController::class, 'store'])->name('service-packages.store');
         Route::get('/service-packages/{servicePackage}', [ServicePackagesController::class, 'show'])->name('service-packages.show');
         Route::put('/service-packages/{servicePackage}', [ServicePackagesController::class, 'update'])->name('service-packages.update');
+        Route::patch('/service-packages/{servicePackage}/active', [ServicePackagesController::class, 'setActive'])->name('service-packages.active');
         Route::delete('/service-packages/{servicePackage}', [ServicePackagesController::class, 'destroy'])->name('service-packages.destroy');
 
         // CMS — Service add-ons (quote builder extras)

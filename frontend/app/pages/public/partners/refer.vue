@@ -1,7 +1,7 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'public' })
-
 import SectionHeader from '~/components/shared/SectionHeader.vue'
+
+definePageMeta({ layout: 'public' })
 
 const siteUrl = 'https://axelnovaventures.com'
 const seoTitle = 'Refer a Business | Axel Nova Ventures'
@@ -118,9 +118,8 @@ const handleSubmit = async () => {
     }).catch(() => {})
 
     submitted.value = true
-  } catch (e: any) {
-    const errs = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
-    error.value = errs || e?.data?.message || 'Something went wrong. Please try again, or email baihaqie@axelnova.tech directly.'
+  } catch (e) {
+    error.value = formErrorMessage(e)
   } finally {
     loading.value = false
   }
@@ -198,7 +197,7 @@ useScrollReveal('.reveal')
                 required
                 class="contact-input"
                 :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-              />
+              >
             </div>
 
             <div class="grid sm:grid-cols-2 gap-5">
@@ -213,7 +212,7 @@ useScrollReveal('.reveal')
                   required
                   class="contact-input"
                   :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-                />
+                >
               </div>
               <div class="space-y-1.5">
                 <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
@@ -226,7 +225,7 @@ useScrollReveal('.reveal')
                   required
                   class="contact-input"
                   :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-                />
+                >
               </div>
             </div>
           </div>
@@ -251,7 +250,7 @@ useScrollReveal('.reveal')
                 required
                 class="contact-input"
                 :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-              />
+              >
             </div>
 
             <div class="grid sm:grid-cols-2 gap-5">
@@ -266,7 +265,7 @@ useScrollReveal('.reveal')
                   required
                   class="contact-input"
                   :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-                />
+                >
               </div>
               <div class="space-y-1.5">
                 <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">
@@ -279,7 +278,7 @@ useScrollReveal('.reveal')
                   required
                   class="contact-input"
                   :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-                />
+                >
               </div>
             </div>
 
@@ -353,7 +352,7 @@ useScrollReveal('.reveal')
               required
               class="mt-0.5 size-4 shrink-0 rounded"
               style="accent-color: var(--color-accent);"
-            />
+            >
             <span class="text-[13px] leading-relaxed" style="color: var(--color-text-secondary);">
               I confirm I have a genuine connection to this business and agree to the Axel Nova
               Partner Program Terms &amp; Conditions. Full terms are shared when a referral progresses

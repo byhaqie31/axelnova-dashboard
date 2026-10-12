@@ -118,7 +118,6 @@ All routes prefixed with `/api`:
 
 ```
 GET  /v1/quote-builder/config        Public, cached 1h
-POST /v1/quote-requests              Public, 3/hr/IP
 GET  /v1/admin/leads                 Sanctum + admin role
 GET  /v1/admin/leads/{id}            Sanctum + admin role
 POST /v1/admin/leads/{id}/status     Sanctum + admin role
@@ -471,14 +470,10 @@ Issues an invoice/receipt for an order: assigns a derived atomic number (`INV-`/
 ## Queued job flow
 
 ```
-POST /api/v1/quote-requests
-  └─ QuoteRequestController::store()
-       ├─ PricingEngine::calculate()
-       ├─ ReferenceCodeGenerator::generate()
-       ├─ QuoteRequest::create()
-       ├─ QuoteRequestAddon::create() (for each addon)
-       ├─ SendClientQuoteEmail::dispatch()  → ClientEstimateMail: the customer's estimate (HTML, no attachment)
-       └─ NotifyAdminJob::dispatchForNewLead() → AdminNotificationMail to the owner (10s delay outside production)
+POST /api/v1/inquiries                (the /quote, /contact, partner and collaboration forms)
+  ├─ Inquiry::create()
+  ├─ InquiryReceivedMail → the inquirer (queued)
+  └─ InquiryAdminNotificationMail → the owner (queued, 10s later)
 
 POST /api/v1/admin/quotations/{id}/send
   └─ SendClientQuoteEmail::dispatch($id, $revisionId) → ClientQuotationMail: the formal quotation
@@ -486,7 +481,7 @@ POST /api/v1/admin/quotations/{id}/send
 Every send → email_logs row (MessageSent listener); final failure → failed row + owner alert.
 ```
 
-The customer's estimate is rendered **inline** in the email body (reference code, package, modifiers, add-ons, breakdown, valid-until date). No PDF, no attachments, no external object storage — admin handles the full conversation via the leads portal.
+The public priced quote funnel (`POST /v1/quote-requests` → instant estimate email + new-lead alert) was **retired on 2026-10-12**: `/quote` is the inquiry form and the admin builds every priced quote. Quotations it created (`source_meta.created_via = quote_funnel`) remain and normalize on read.
 
 ## Environment variables
 

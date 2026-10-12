@@ -141,7 +141,7 @@ class DemoDataSeeder extends Seeder
         return $inquiry;
     }
 
-    /** Mirrors QuoteRequestController::store — the canonical funnel writer. */
+    /** Mirrors the retired public quote funnel's write (source_meta quote_funnel) — such rows still exist and normalize on read. */
     private function makeQuotation(PricingEngine $engine, array $p): Quotation
     {
         $input = new QuoteRequestInput(

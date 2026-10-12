@@ -1,11 +1,11 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'public' })
-
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import CollabPartnerCard from '~/components/public/CollabPartnerCard.vue'
 import CollabModes from '~/components/public/CollabModes.vue'
 import CollabInquiryForm from '~/components/public/CollabInquiryForm.vue'
 import type { CollaborationPartner } from '~/data/collaborations'
+
+definePageMeta({ layout: 'public' })
 
 // The studios Axel Nova builds with — NOT the referral programme (/partners).
 // Each partner card (CollabPartnerCard, shared with the homepage section)

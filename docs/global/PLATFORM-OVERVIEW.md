@@ -34,7 +34,7 @@ A **monorepo with two apps deployed independently**, sharing one MySQL database:
 
 - **`frontend/`** — Nuxt 4 SSR app. Serves three surfaces from one codebase:
   - the **public storefront** (portfolio + services + marketing) at `axelnovaventures.com`
-  - the **public quote builder** funnel at `/quote`
+  - the **public quote request** (inquiry) form at `/quote`
   - the **admin SPA** at `/admin` (Sanctum token auth)
   - a token-gated **client portal** stub at `/portal/[token]`
 - **`backend/`** — Laravel 11 API (PHP 8.4). Public endpoints feed the storefront/quote builder; a Sanctum-protected `/v1/admin/*` group powers the admin panel (quotations, orders, services CMS, projects CMS).
@@ -43,12 +43,11 @@ A **monorepo with two apps deployed independently**, sharing one MySQL database:
 The core business flow:
 
 ```
-Visitor builds a quote on /quote
-   → POST /api/v1/quote-requests
-   → backend prices it (PricingEngine), generates AXNQ-YYYY-NNNN code,
-     creates a Client + Quotation, queues two emails
-   → customer gets an inline HTML estimate; admin gets a lead notification
-   → admin reviews in /admin/quotations, updates status, and "Accepts"
+Visitor sends a quote request on /quote (or /contact)
+   → POST /api/v1/inquiries → lands in /admin/inquiries; auto-reply + owner alert
+   → admin builds the priced quotation (AXNQ-YYYY-NNNN) in the quote builder
+     — or drafts it through the MCP connector — and sends it
+   → client gets the formal quotation email; the admin "Accepts" when agreed
    → an Order (ORD-YYYY-NNNN) is created and tracked in /admin/orders
 ```
 
@@ -255,7 +254,6 @@ Two middlewares in `app/middleware/`:
 | `useApi.ts` / `useApiBase.ts` | Backend fetch wrappers + runtime base URL |
 | `useAdminAuth.ts` | Bearer token in `localStorage` (`axn_admin_token`), `apiFetch()`, `logout()` |
 | `usePricingEngine.ts` | Cached quote-builder config for the admin builder, over the **TS port of the backend PricingEngine** (`utils/pricing.ts`) |
-| `useQuoteForm.ts` | Shared quote-form state across `/quote`, `/quote/preview`, `/quote/success` |
 | `useScrollReveal.ts` / `useReveal.ts` | Fade-in-on-scroll (GSAP) — the only fade-in API |
 | `useMotion.ts` / `useSplitTextReveal.ts` / `useCountUp.ts` / `useMagnetic.ts` / `useParallaxImage.ts` | Motion primitives |
 
@@ -285,7 +283,7 @@ The public **layout** (`public.vue`) wraps every storefront page:
 | `/projects/[id]` | **Project detail** | Status + featured badges, title, description, "Visit project" / "Source" links, cover image, long description, stack + tags. Fed by `GET /api/v1/projects/{slug}`. |
 | `/blog` | **Blog index** | Published posts, newest first — card grid (cover, format eyebrow, title, excerpt, date · reading time), format pills on the left (`?format=`) and a topic dropdown on the right (`?topic=`, category ∪ tags), pagination. Fed by `GET /api/v1/blog/posts`. |
 | `/blog/[slug]` | **Article** | One shared layout: format eyebrow ("GUIDE · date · read time"), title, introduction, byline, cover; then a sticky left pane of section links beside the text column — anchored sections with optional image / pull quote, closing call-to-action card, share row (LinkedIn / X / WhatsApp / copy) — and 3 related posts below. `BlogPosting` + `BreadcrumbList` JSON-LD; drafts 404. Fed by `GET /api/v1/blog/posts/{slug}`. See [BLOG.md](./BLOG.md). |
-| `/quote`, `/quote/preview`, `/quote/success` | **Quote builder** | The lead funnel — see [section 9](#9-the-quote-builder-funnel). |
+| `/quote`, `/quote/success` | **Quote request** | The inquiry form + thank-you page — see [section 9](#9-the-quote-request-quote). |
 | `/partners` | **Partner program** | Referral program landing — audience cards, 3-step "how it works", **commission tiers** (5% cold / 10% warm / up to 15% closed, capped at RM1,500 per referral), terms snapshot, 8-item FAQ, CTA to `/partners/refer`. |
 | `/partners/refer` | **Refer a business** | Referral **form** (your details + business details + relationship tier + agree-to-terms) → **Web3Forms**. Success state + tier reference cards. |
 | `/proposals/[slug]` | **Proposal viewer** | Confidential, `noindex`. Custom layout (no public chrome). Renders a proposal: scope, timeline, pricing, sign section. (`demo` slug = sample; others 404.) |
@@ -296,23 +294,11 @@ The public **layout** (`public.vue`) wraps every storefront page:
 
 ---
 
-## 9. The quote builder funnel
+## 9. The quote request (`/quote`)
 
-Three pages backed by `useQuoteForm()` shared state and the cached config endpoint.
+`/quote` is the **inquiry form** (name, contact, project type, budget / timeline hints, message) → `POST /v1/inquiries` with `origin: quote` → lands in `/admin/inquiries`, where the admin builds the priced quotation in the quote builder and sends it. `/quote/success` is the thank-you page. Service-page CTAs deep-link as `/quote?category=…` / `?service=…` to pre-fill the project type.
 
-**Step 1 — `/quote`** (collect + live estimate)
-- **About you:** full name*, company/project, email*, phone/WhatsApp*, "how did you find me?" (Google/LinkedIn/Referral/GitHub/Other).
-- **Project type:** category cards + package cards, **loaded dynamically** from `GET /api/v1/quote-builder/config`. Deep-linkable via `?category=X&package=Y` from service-page CTAs.
-- **Scope details** (conditional per category): e.g. Web — pages slider, CMS toggle, booking toggle, languages; Dashboard — modules slider, real-time toggle, charts complexity; Design — screens, design-system/prototype toggles; Frontend — components/pages, state/testing toggles; SaaS — features, auth methods, payment, admin portal.
-- **Add-ons** (read dynamically from config) and a **rush** toggle (+20% price, −30% timeline for week/month projects).
-- A **live breakdown sidebar** recomputes cost + timeline on every change via `usePricingEngine.ts` (over `utils/pricing.ts`, the TS port of the backend engine — no API round-trip).
-- "Continue to preview" enabled once name/email/phone/package are set.
-
-**Step 2 — `/quote/preview`** (`noindex`) — formatted quote: client header, reference placeholder, valid-until, human-readable scope summary, pricing breakdown line items, timeline. **Submit → `POST /api/v1/quote-requests`** → redirects to success with `?ref=&until=`. Guards back to `/quote` if minimum data is missing.
-
-**Step 3 — `/quote/success`** (`noindex`) — green checkmark, **reference code** (copy button), valid-until, "what happens next" 4-step list, "Book a discovery call →" (Calendly) and "Back to home".
-
-The **server** is the source of truth: on submit it re-prices with `PricingEngine`, generates the real `AXNQ-YYYY-NNNN` code, upserts the Client, stores the Quotation + add-ons, and queues the two emails.
+The old self-serve **priced funnel** (package cards + live estimate → `/quote/preview` → `POST /v1/quote-requests`, an instant estimate email and a new-lead alert) was **retired on 2026-10-12** — nothing linked to it any more. Quotations it created (`source_meta.created_via = quote_funnel`) remain and normalize on read. Live estimates now live on `/services` (the data-driven estimator, display only).
 
 ---
 
@@ -351,15 +337,16 @@ Overview with four **stat tiles**: Total quotations · New (unactioned) · Activ
 ### Services — catalog & pricing manager
 `/admin/services` (hub) + `/admin/services/categories/[id]` + `/admin/services/packages/[id]` (both also handle `/new`).
 
-**Hub:** stat tiles (categories / total packages / featured). "New category" button. Each category renders collapsibly with: icon + name, "Default tab" / "Inactive" badges, description, and actions **+ Package · Edit · Delete**. Each package row shows name (+featured/inactive badges), tagline, price (`RM X – RM Y` or `RM X+`), duration + ETA, and Edit/Delete.
+**Hub:** stat tiles (categories / total packages / featured). "New category" button. Each category renders collapsibly with: icon + name, "Default tab" badge, description, and actions **Active switch · Edit (pencil icon)**; its package list ends with a transparent **+ New package** row. Each package row shows name (+ Featured / "Hidden via service" badges), tagline, price (`RM X – RM Y` or `RM X+`), duration + ETA, and **Active switch · Edit (pencil icon)**. The switch flips visibility in place (`PATCH …/{id}/active`); a category asks first, since its active packages go public / come off with it. **Delete is not on the hub** — it sits at the foot of each editor (confirm dialog; founder-only `hard-delete` gate).
 
 **Category editor — every field:**
 - Slug* (unique) · Name*
 - **Icon*** — grid picker from `serviceIcons`
-- Description* (textarea)
+- Description* — rich editor (bold, italic, bullet / numbered lists), stored as Markdown; the public API adds `description_html` (safe, `CatalogMarkdown`) and `description_text` (plain, for SEO / previews). `/services` shows it full width above the packages.
 - **Sort order** — visual pill UI (move left/right, click a position to insert, "+" auto-appends)
 - Toggles: **Active** (visible on public services page) · **Default tab** (the one highlighted by default — only one allowed)
-- Calls `GET/POST/PUT /v1/admin/service-categories[/{id}]`.
+- **Delete category** card at the foot (removes its packages + scope fields too; quotes keep their stored copy).
+- Calls `GET/POST/PUT/DELETE /v1/admin/service-categories[/{id}]`.
 
 **Package editor — every field:**
 - **Category*** (select) · Slug* (unique within category) · Name*
@@ -367,12 +354,13 @@ Overview with four **stat tiles**: Total quotations · New (unactioned) · Activ
 - **Price min (MYR)*** · Price max (MYR) (blank = open-ended `RM X+`) · **Unit*** (e.g. "per project") · **Duration label*** (e.g. "5–6 weeks") · Revisions (e.g. "2 rounds")
 - **ETA value*** (1–999) · **ETA unit*** (hour / day / week / month) — *used by the quote builder for math + rush logic*
 - **Features*** (textarea, one per line)
-- **CTA label** (default "Get a quote") + **"Wire CTA to the quote builder"** checkbox → reveals **quote category key** + **quote package key** (these are what make a package appear in `/quote` and deep-link as `/quote?category=…&package=…`)
+- **CTA label** (default "Get a quote") + **"Wire CTA to the quote builder"** checkbox → reveals **quote category key** + **quote package key** (these make the package priceable by the quote builder, the MCP connector and the `/services` estimator)
 - **Sort order** (same pill UI as categories)
 - Toggles: **Featured** · **Active**
-- Calls `GET/POST/PUT /v1/admin/service-packages[/{id}]`.
+- **Delete package** card at the foot.
+- Calls `GET/POST/PUT/DELETE /v1/admin/service-packages[/{id}]`.
 
-> A package is "quotable" only if it has **both** a `quote_key` and a `price_max_myr`. Custom-quote / retainer rows (null `quote_key`) show on the public services page but never in the quote builder. Saving any category/package auto-clears the quote-builder config cache (observers).
+> A package is "quotable" only if it has **both** a `quote_key` and a `price_max_myr`. Custom-quote / retainer rows (null `quote_key`) show on the public services page but never in the quote builder. Saving any category/package auto-clears the quote-builder config cache (observers), and a change to one that is or was Live also purges the cached public pages ([DEPLOY.md § Page caching](./DEPLOY.md#page-caching)).
 
 ### Projects — `/admin/projects` (list) + `/admin/projects/[id]` (editor)
 **List:** stat tiles (total / featured / live), debounced search (name/slug), **status filter** (All / Live / In progress / Soon / Planning), "New project" button. Cards show name+slug, status badge, description (clamped), first 4 tags, featured/inactive badges, Edit + Delete (confirm).
@@ -398,7 +386,7 @@ List with status / search filters and per-post page views. The editor (`new` or 
 - `QuoteBuilderConfigController@show` — returns the active pricing config (cached 1h).
 - `PublicServicesController@index` — active categories + active packages, ordered.
 - `PublicProjectsController@index` / `@show` — active projects / single by slug.
-- `QuoteRequestController@store` — the funnel: prices via `PricingEngine`, generates the ref code, upserts the Client by email, creates the Quotation + add-ons, dispatches `SendClientQuoteEmail` (the estimate) and `NotifyAdminJob::dispatchForNewLead()` (delayed 10s outside production only, for Mailtrap's rate limit).
+- `InquiryController@store` — the `/quote`, `/contact`, partner and collaboration forms: stores the Inquiry, queues the auto-reply and the owner alert. (The priced funnel, `QuoteRequestController`, was retired 2026-10-12.)
 
 **Admin (`Admin/`):** `AuthController` (login/logout/me), `QuotationsController` (index/show/updateStatus/accept), `OrdersController` (index/show/updateStatus), `ServiceCategoriesController` + `ServicePackagesController` (full CRUD with `SortOrder` placement), `ProjectsController` (full CRUD).
 
@@ -454,7 +442,7 @@ All routes are under `/api`.
 | GET | `/v1/services` | Active categories + packages |
 | GET | `/v1/projects` | Active projects |
 | GET | `/v1/projects/{slug}` | Single project |
-| POST | `/v1/quote-requests` · `/v1/referrals` | Submit a quote / referral (throttle **8/hr/IP in prod**, 1000/min in dev) |
+| POST | `/v1/referrals` | Submit a referral (throttle **8/hr/IP in prod**, 1000/min in dev). (`/v1/quote-requests` retired 2026-10-12.) |
 | POST | `/v1/inquiries` | Submit an inquiry from `/quote` or `/contact` (`origin` = `quote`\|`contact`, optional `subject`). Queues an auto-reply to the sender + an admin notification to `services.admin.email` (needs the queue worker). **No client row** until the inquiry is quoted — the quotation's client is stamped back onto it. Throttle **20/hr/IP in prod**, 1000/min in dev |
 | POST | `/v1/admin/login` | Login (throttle 10/min prod) → bearer token |
 
@@ -469,6 +457,7 @@ All routes are under `/api`.
 | POST | `/v1/admin/orders/{id}/status` | Update status (auto-stamps timestamps) |
 | GET/POST/PUT/DELETE | `/v1/admin/service-categories[/{id}]` | Categories CRUD |
 | GET/POST/PUT/DELETE | `/v1/admin/service-packages[/{id}]` | Packages CRUD |
+| PATCH | `/v1/admin/service-categories/{id}/active` · `/v1/admin/service-packages/{id}/active` | Listing Active switch — `{active}` only |
 | GET/POST/PUT/DELETE | `/v1/admin/projects[/{id}]` | Projects CRUD |
 
 Health check: `GET /up`.
@@ -493,10 +482,9 @@ To change prices: edit packages in the admin UI (cache auto-clears), or insert a
 
 ## 15. Background jobs & email
 
-`POST /v1/quote-requests` dispatches two **database-queue** jobs (so the **queue worker must be running** or emails silently never send):
+Every email goes through the **database queue** (so the **queue worker must be running** or emails silently never send) — the full catalog is in [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md). The quote email:
 
-- **`SendClientQuoteEmail`** → `ClientEstimateMail` (quote-builder submit, no revision id) or `ClientQuotationMail` (admin Send, names the revision) — subject "Your quote {ref} from Axel Nova Ventures"; HTML templates `emails.quotation.estimate` / `emails.quotation.sent` from the design kit ([EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md)). The estimate shows the range, package features and add-ons; the quotation mirrors the PDF's line items and totals, with a PDF link. (`ShouldBeUnique`, unique 1h per revision, 5 tries; a final failure is logged and alerts the owner.)
-- **`NotifyAdminJob`** → `AdminNotificationMail` — subject "New lead: {ref} — RM …–RM …"; template `emails.admin.new-lead` (internal layout); deep-links to `/admin/quotations/{id}`. `dispatchForNewLead()` adds a **10s delay outside production only** so the customer email clears Mailtrap's 1-email/sec free-tier cap first.
+- **`SendClientQuoteEmail`** (admin Send on a quotation, names the revision) → `ClientQuotationMail` — subject "Your quote {ref} from Axel Nova Ventures"; template `emails.quotation.sent` from the design kit; mirrors the PDF's line items and totals, with a PDF link. (`ShouldBeUnique`, unique 1h per revision, 5 tries; a final failure is logged and alerts the owner.) The instant estimate email and the `NotifyAdminJob` new-lead alert went with the retired public funnel (2026-10-12).
 
 ---
 

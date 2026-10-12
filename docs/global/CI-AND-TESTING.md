@@ -80,6 +80,12 @@ Lint policy ([eslint.config.mjs](../../frontend/eslint.config.mjs)): errors gate
 `@typescript-eslint/no-explicit-any` is demoted to a warning (~80 pre-existing `any`s
 to burn down), and `vue/no-mutating-props` runs with `shallowOnly` because the quote
 builder deliberately shares one reactive `state` object with `QuoteScopeFields`.
+`@nuxt/eslint-config` ignores every folder named `public` (`**/public`, meant for the
+static dir), which silently hid `app/pages/public/` and `app/components/public/` — the
+whole public site — until 2026-10-12; an `onResolved` hook narrows it to the root
+`public/` only. A `v-html` must carry
+`<!-- eslint-disable-next-line vue/no-v-html -- <where it is sanitised> -->` on the line
+above (keep the element on one line so the directive reaches the attribute).
 
 Gotcha: `docker-compose.dev.yml` bind-mounts `package.json` / `eslint.config.mjs` as
 single files — after editing them on the host, `docker compose up -d --force-recreate frontend`

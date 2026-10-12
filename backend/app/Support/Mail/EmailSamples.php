@@ -38,23 +38,6 @@ final class EmailSamples
     private static function samples(): array
     {
         return [
-            // Kit: 01a-estimate.html
-            'quotation.estimate' => fn () => [
-                'name' => 'Aisyah',
-                'reference' => 'AXNQ-2026-0042',
-                'packageName' => 'Business Site',
-                'timeline' => '3 weeks',
-                'validUntil' => '10 Nov 2026',
-                'range' => 'RM 5,000 to RM 8,000',
-                'included' => ['5 pages', 'CMS ready', 'Enquiry forms', 'Booking ready'],
-                'addons' => [
-                    ['label' => 'SEO setup', 'amount' => 'RM 300'],
-                    ['label' => 'Copywriting', 'amount' => 'RM 800'],
-                ],
-                'pdfUrl' => 'https://example.com/',
-                'whatsappUrl' => 'https://wa.me/',
-            ],
-
             // Kit: 01b-quotation.html
             'quotation.sent' => fn () => [
                 'name' => 'Aisyah',
@@ -167,20 +150,6 @@ final class EmailSamples
                 'name' => 'Danial',
                 'resetUrl' => 'https://example.com/',
                 'expiresIn' => '60 minutes',
-            ],
-
-            'quotation.new_lead_alert' => fn () => [
-                'reference' => 'AXNQ-2026-0042',
-                'name' => 'Aisyah Rahman',
-                'email' => 'aisyah@example.com',
-                'phone' => '012-345 6789',
-                'company' => 'Studio Aisyah',
-                'packageName' => 'Business Site',
-                'estimate' => 'RM 5,000 to RM 8,000',
-                'timeline' => '3 weeks',
-                'submitted' => '11 Oct 2026, 8:46 am',
-                'adminUrl' => 'https://example.com/',
-                'subjectRange' => 'RM 5,000.00–RM 8,000.00',
             ],
 
             'inquiry.new_alert' => fn () => [

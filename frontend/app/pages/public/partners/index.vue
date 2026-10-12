@@ -1,7 +1,7 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'public' })
-
 import SectionHeader from '~/components/shared/SectionHeader.vue'
+
+definePageMeta({ layout: 'public' })
 
 const siteUrl = 'https://axelnovaventures.com'
 const seoTitle = 'Refer a Business | Axel Nova Partner Program'

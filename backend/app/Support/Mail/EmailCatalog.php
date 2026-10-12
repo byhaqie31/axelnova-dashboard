@@ -6,8 +6,9 @@ use Closure;
 use InvalidArgumentException;
 
 /**
- * Every email the dashboard can send, keyed by its stable type (spec §5.13:
- * 33 templates — email 1 is split into estimate + quotation). The single
+ * Every email the dashboard can send, keyed by its stable type (spec §5.13's
+ * 33 templates, less the instant estimate and the new-lead alert — both went
+ * with the retired public quote funnel on 2026-10-12; 31 now). The single
  * source for each email's label, audience, template and subject line:
  * mailables, `mail:preview`, the email log and the admin history panel all
  * read from here. Admin-audience emails use the internal layout; everything
@@ -71,8 +72,6 @@ final class EmailCatalog
 
         return [
             // ── Clients ────────────────────────────────────────────────────
-            'quotation.estimate' => $d('Estimate', 'client', 'emails.quotation.estimate',
-                fn (array $v) => "Your quote {$v['reference']} from Axel Nova Ventures"),
             'quotation.sent' => $d('Quotation', 'client', 'emails.quotation.sent',
                 fn (array $v) => "Your quote {$v['reference']} from Axel Nova Ventures"),
             'inquiry.received' => $d('Inquiry received', 'client', 'emails.inquiry.received',
@@ -125,8 +124,6 @@ final class EmailCatalog
                 fn (array $v) => "Your payslip for {$v['period']}"),
 
             // ── Owner (internal layout) ────────────────────────────────────
-            'quotation.new_lead_alert' => $d('New lead alert', 'admin', 'emails.admin.new-lead',
-                fn (array $v) => "New lead: {$v['reference']} — {$v['subjectRange']}"),
             'inquiry.new_alert' => $d('New inquiry alert', 'admin', 'emails.admin.new-inquiry',
                 fn (array $v) => "New inquiry: {$v['subjectLabel']} — {$v['name']}"),
             'partner.reset_alert' => $d('Partner passcode changed', 'admin', 'emails.admin.partner-reset',

@@ -90,6 +90,26 @@ class ServicePackagesController extends Controller
         return new ServicePackageResource($servicePackage);
     }
 
+    /**
+     * The listing's Active switch — flips visibility alone, without resending the
+     * whole form. A package is public only while its category is active too.
+     */
+    public function setActive(Request $request, ServicePackage $servicePackage): ServicePackageResource
+    {
+        $data = $request->validate(['active' => ['required', 'boolean']]);
+
+        $servicePackage->update($data);
+
+        if ($servicePackage->wasChanged('active')) {
+            $servicePackage->logActivity('service_package.updated', [
+                'name' => $servicePackage->name,
+                'visibility' => $servicePackage->active ? 'live' : 'hidden',
+            ]);
+        }
+
+        return new ServicePackageResource($servicePackage);
+    }
+
     public function destroy(ServicePackage $servicePackage): JsonResponse
     {
         Gate::authorize('hard-delete');

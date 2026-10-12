@@ -102,9 +102,31 @@ Public marketing routes carry `swr` route rules in [frontend/nuxt.config.ts](./f
 
 **Production only.** The rules go through a `swr()` helper that is a no-op under `nuxt dev`: Nitro persists the cached HTML on disk (`.nuxt/cache/nitro/routes`) and keeps serving it across dev-server restarts, which hid template edits for up to five minutes. In dev every request renders fresh; verify caching against a build, never the dev server.
 
-The cache lives in the Nuxt server process (Nitro storage), **not** at Cloudflare: the emitted `Cache-Control: s-maxage=…, stale-while-revalidate` would allow edge caching, but without a Cache Rule Cloudflare doesn't cache HTML — the live site answers `cf-cache-status: DYNAMIC` (checked 2026-09-29). Adding one would need its own purge (see below).
+The cache lives in the Nuxt server process (Nitro storage), **not** at Cloudflare: the emitted `Cache-Control: s-maxage=…, stale-while-revalidate` would allow edge caching, but without a Cache Rule Cloudflare doesn't cache HTML — the live site answers `cf-cache-status: DYNAMIC` (checked 2026-09-29 and again 2026-10-12). Adding one would need its own purge (see below).
 
-**On-demand purge (blog).** A published blog change must not wait out the 300s window, so `App\Observers\BlogPostObserver` → `App\Support\SiteCache` calls `POST /_cache/purge` on the frontend container ([server/routes/_cache/purge.post.ts](../../frontend/server/routes/_cache/purge.post.ts)) after the response — on publish, unpublish, and any edit/delete/restore of a live post (draft edits don't). It drops **every** cached page (the homepage lists the latest posts; the rest just re-render on their next visit). Guarded by a shared secret — a missing or wrong token gets a 404. If either side is unconfigured it's a no-op, and a failed call is only logged: the page catches up within the normal 300s. One-time VPS setup (secrets never go in git) — **set up in production on 2026-09-29**. Run from `~/axelnova-dashboard`; the token is generated on the server and written to both files without being printed:
+**Every cache between the database and a public page** (audited 2026-10-12, after hidden services kept showing on `/services`):
+
+| Layer | What it holds | Lifetime | Invalidated by |
+|---|---|---|---|
+| **Nitro route cache** (frontend process, storage keys `cache:nitro:routes:*`) | The rendered HTML **and** the `_payload.json` of every `swr` route. The payload carries the SSR data: `/services` holds `public-services` + `quote-builder-config` (the estimator), and **every** public page holds `footer-services` — the footer lists the Live services | `swr` 300s (`/legal/**` 3600s) — see below | `POST /_cache/purge` (drops every entry) |
+| Laravel `quote_builder_config_v1` (`database` cache store) | The merged quote-builder config: `GET /v1/quote-builder/config`, the quote validators, the MCP catalogue | 1h | `Cache::forget` in the catalogue observers on every save / delete |
+| Laravel `pricing_config_active_v1` | The active `pricing_configs` row | 1h | `PricingConfigObserver` |
+| `GET /v1/services` | **Not cached** — a query per call, `Cache-Control: no-cache, private` | — | — |
+| Cloudflare | Nothing for HTML, `_payload.json` or `/api/*` — all `cf-cache-status: DYNAMIC` (no Cache Rule). Static assets only | — | — |
+| nginx (VPS) | Reverse proxy only — a response changes on the very next request, so nothing is cached there (vhost not re-inspected) | — | — |
+| Browser | Pages and payloads send `s-maxage` (shared caches only) plus `Last-Modified` and no `max-age`, so a browser may reuse a `_payload.json` heuristically for ~10% of its age on in-site navigation | seconds–minutes | a reload |
+
+`/quote` is deliberately **not** cached (it's the inquiry form). No public endpoint prices a package any more (`POST /v1/quote-requests` was retired), so a stale page can't quote a hidden one; the admin builder and the MCP validate against the live merged config ([QUOTE_BUILDER.md](./QUOTE_BUILDER.md)).
+
+**How `swr` really behaves** (Nitro 2.13, `runtime/internal/cache.mjs`): an entry older than its window is still served **once more** — to the first visitor after it expired — while the page re-renders behind that request; the next visitor gets the fresh copy. There is no upper bound: on a quiet site that first visitor can get a page hours old. A cache-busting query string does render fresh (the query is part of the key), but in-site navigation loads `/<path>/_payload.json?_b=<build>` without it, and the footer on every other cached page still lists the old services. So changes rely on the purge below, not on the window.
+
+**On-demand purge (blog + catalogue).** A visible change must not wait on swr, so `App\Support\SiteCache` calls `POST /_cache/purge` on the frontend container ([server/routes/_cache/purge.post.ts](../../frontend/server/routes/_cache/purge.post.ts)) once, after the response. Callers:
+
+- `BlogPostObserver` — publish, unpublish, and any edit/delete/restore of a live post (draft edits don't).
+- `ServiceCategoryObserver` / `ServicePackageObserver` — any create, edit, hide, make-live, move or delete of a service or package that **is or was Live** (a package counts as Live only while its service is), from the admin or the MCP. Edits to Hidden drafts — everything the MCP connector does — change nothing public and don't purge.
+- `ServiceAddonObserver` / `ServiceScopeFieldObserver` / `PricingConfigObserver` — any change (the `/services` estimator prices from them).
+
+It drops **every** cached page and payload (the homepage lists the latest posts, every footer lists the services; the rest just re-render on their next visit). Guarded by a shared secret — a missing or wrong token gets a 404. If either side is unconfigured it's a no-op, and a failed call is only logged (`Site cache purge failed …` in the Laravel log): the page then catches up through swr — current from the second visit after the 300s window. One-time VPS setup (secrets never go in git) — **set up in production on 2026-09-29**. Run from `~/axelnova-dashboard`; the token is generated on the server and written to both files without being printed:
 
 ```bash
 cp backend/.env.production backend/.env.production.bak.$(date +%F)

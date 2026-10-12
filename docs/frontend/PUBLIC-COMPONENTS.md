@@ -122,10 +122,15 @@ The storefront footer, mounted once by `layouts/public.vue` (which passes its na
 
 - **Directory** — Explore · Services · Support · Legal. Explore is the header nav (`links` from `layouts/public.vue`). Below `md` each section is a 44px accordion row (chevron right, hairline between rows) that toggles independently — closing a row above the one just tapped would shift it out from under the finger. From `md` up the same markup shows four always-open columns (12px semibold heading, 12px links). The panel animates `grid-template-rows: 0fr → 1fr` (no height measuring); `visibility` keeps a collapsed row's links out of the tab order. Open rows reset on route change.
 - **Every link is in the SSR markup at every width** — a collapsed row is hidden, not unrendered — so crawlers still reach every `/services/{slug}` page (see [SEO.md](SEO.md)). The Services section reads `GET /v1/services` (`key: 'footer-services'`) and falls back to a single "All services" link if the API is down.
-- **Company identity** — below the directory, three plain lines, no card: "Axel Nova Ventures" set like the section titles (14px → 12px from `md`, semibold, `--color-text`), then Registration No. / Kuala Lumpur, Malaysia in the copyright line's type (12px, `--color-text-secondary`). No tagline or availability badge.
-- **Back to top:** right of the company identity at every width, flush with the bottom bar's right edge on desktop. It shows the brand mark floating inside a slowly turning ring of the `--grad-aurora-*` stops, with a "Back to top" caption.
-  - On hover/focus the badge lifts, the ring speeds up, the mark flies up and an arrow rises in its place. The float runs on a wrapper so the hover transform never fights the animation.
-  - On click it scrolls through Lenis when Lenis owns scrolling (native smooth scroll would fight it), then focuses the header's brand link.
-  - Reduced motion: no float or spin, and an instant jump.
-- **Bottom bar** — copyright left, socials + the discreet `/admin` gear right (centred and stacked on phones). The owner wants this bar kept as is; restyle the sections above it, not this.
+- **Company identity** — from `lg` the **first column of the directory row**, in line with Explore / Services / Support / Legal (`lg:grid-cols-[1.5fr_4fr]`, name with the headings' 12px semibold + `mb-3`); below `lg` it drops under the directory (`order-last`). Three plain lines, no card: "Axel Nova Ventures" set like the section titles (14px → 12px from `md`, semibold, `--color-text`), then Registration No. / Kuala Lumpur, Malaysia in the copyright line's type (12px, `--color-text-secondary`). No tagline or availability badge.
+- **Back to top** is no longer in the footer — it floats on every public page (`ScrollTopButton`, below).
+- **Bottom bar** — copyright left, socials right (centred and stacked on phones; the `/admin` gear was removed in #64). The owner wants this bar kept as is; restyle the sections above it, not this.
 - Honours `definePageMeta({ footerGap: false })` (drops the `mt-32` above it) for pages that end on their own band.
+
+### `ScrollTopButton`
+The floating **Back to top**, mounted once by `layouts/public.vue` (every public page). A 44px round button, bottom-right (16px in, 24px from `md`, plus the iPhone safe-area inset), `--color-bg-elevated` with `--shadow-md`, an `i-lucide-arrow-up` in `--color-text`. `aria-label` / `title` "Back to top" — no visible caption.
+
+- **Shows only while scrolling up** past ~60% of the first screen — the moment a visitor is heading back — and hides as they scroll down or reach the top, like the header's reveal (8px up / 6px down accumulators so jitter doesn't flicker it). Hidden = faded, nudged down, slightly small, click-through and out of the tab order.
+- **Progress ring** — an SVG circle round the button: a `--color-border` track and an aurora stroke (`--grad-aurora-*` stops) that fills clockwise from 12 o'clock as the page scrolls down and drains on the way up (`stroke-dashoffset` over the scrollable height, rAF-throttled).
+- **Click** scrolls through Lenis when it owns scrolling (native smooth scroll would fight it), then focuses the header's brand link.
+- `z-index: 30` — under the header (z-50) and the cookie banner (z-60). Reduced motion: fades only, no movement, instant jump.

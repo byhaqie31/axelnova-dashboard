@@ -80,7 +80,7 @@ class AdminEmailLogsTest extends TestCase
 
     public function test_it_lists_everything_sent_to_an_address(): void
     {
-        $this->log(['to_email' => 'aisyah@example.com', 'related_type' => 'quotation', 'related_id' => 1, 'type' => 'quotation.estimate']);
+        $this->log(['to_email' => 'aisyah@example.com', 'related_type' => 'quotation', 'related_id' => 1, 'type' => 'quotation.sent']);
         $this->log(['to_email' => 'aisyah@example.com']);
         $this->log(['to_email' => 'someone@example.com']);
 

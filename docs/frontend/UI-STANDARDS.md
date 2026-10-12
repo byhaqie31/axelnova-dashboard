@@ -296,6 +296,7 @@ When Nuxt fixes the `(group)` route-group syntax in a future release, this hook 
 - `eyebrow` (uppercase gradient)
 - `title` (h2; `as="h1"` when it is the page's main heading — one per page, see [SEO.md](./SEO.md))
 - `subtitle` (optional)
+- `subtitleHtml` (optional) — server-sanitised HTML used instead of `subtitle`, rendered in a `<div class="rich-intro">` (block markup can't sit inside the `<p>`). Today: a service description on the `/services/{slug}` hero when the page has no hand-written `heroSubtitle`.
 - `action` (link with chevron, gap grows on hover)
 - `wide` (optional) — the title runs the full container width instead of `max-w-2xl`; the subtitle keeps a `max-w-3xl` measure. Used by the `/services` and `/about` page titles.
 
@@ -338,7 +339,7 @@ Pages and cards for a studio partner (see [COLLABORATIONS.md](../global/COLLABOR
 Fills an icon glyph with `--grad-text-accent`, so an icon paired with `.text-gradient` text reads as one lockup (the hero pill's "Axel Nova" chevron). Do **not** reach for `.text-gradient` on an icon — it clips a gradient to *text*, and an icon has none, so it renders as nothing. `UIcon` draws the glyph as a mask over `background-color: currentColor`, which is why replacing the background paints the glyph itself.
 
 ### Blog prose (`.blog-prose`, `.blog-toc`)
-Article bodies arrive as backend-sanitised HTML (see [BLOG.md](../global/BLOG.md)) and are styled by element in `main.css` under `.blog-prose` — 17px / 1.75 body in `--color-text-secondary`, `strong` and headings in `--color-text`, links in `--color-accent`, blockquote with an accent left rule, `code` on `--color-bg-secondary`, `pre` on `--color-bg-sunken`, rounded images. The body starts at `h3` (the layout owns `h2` section headings, which carry `.blog-section-anchor` for a 6rem scroll margin under the fixed header). `.blog-toc` links go secondary → text on hover / `.is-active`. Reading width is `max-w-[68ch]`. The article introduction uses `.blog-intro` (19px / 1.6 in `--color-text-secondary`, `strong` lifted to `--color-text` at 600, `em` italic, `p + p` 0.75em apart) — inline emphasis only, no underline (reads as a link). The admin Tiptap surface is `.blog-editor`; add `.is-compact` for short fields like the introduction. The post format (Guide / Article / …) before the date renders as `.blog-format-pill` — an uppercase accent label on `--color-accent-soft`, fully rounded; the caller sets the font size (10px on `BlogCard`, 11px in the `BlogArticle` header). Tokens only; verified light + dark.
+Article bodies arrive as backend-sanitised HTML (see [BLOG.md](../global/BLOG.md)) and are styled by element in `main.css` under `.blog-prose` — 17px / 1.75 body in `--color-text-secondary`, `strong` and headings in `--color-text`, links in `--color-accent`, blockquote with an accent left rule, `code` on `--color-bg-secondary`, `pre` on `--color-bg-sunken`, rounded images. The body starts at `h3` (the layout owns `h2` section headings, which carry `.blog-section-anchor` for a 6rem scroll margin under the fixed header). `.blog-toc` links go secondary → text on hover / `.is-active`. Reading width is `max-w-[68ch]`. The article introduction uses `.blog-intro` (19px / 1.6 in `--color-text-secondary`, `strong` lifted to `--color-text` at 600, `em` italic, `p + p` 0.75em apart) — inline emphasis only, no underline (reads as a link). The admin Tiptap surface is `.blog-editor`; add `.is-compact` for short fields like the introduction (and a service description). A **service description** (`CatalogMarkdown::descriptionHtml` — bold, italic, paragraphs, bullet / numbered lists) renders in `.rich-intro`: `strong` lifted to `--color-text` at 600, `em` italic, blocks 0.75em apart, list styles restored (disc / decimal, `--color-text-tertiary` markers). On `/services` it runs the **full content width** above the packages (no `max-w`); the caller sets size and colour. The post format (Guide / Article / …) before the date renders as `.blog-format-pill` — an uppercase accent label on `--color-accent-soft`, fully rounded; the caller sets the font size (10px on `BlogCard`, 11px in the `BlogArticle` header). Tokens only; verified light + dark.
 
 ### Filter pills
 - 28px tall, 16px horizontal padding, hairline border.
@@ -498,7 +499,7 @@ For grouped lists (e.g. service categories on `/admin/services` each containing 
 **Rules:**
 - Header background: `--color-accent-soft` (the existing token, do not invent a new pastel).
 - Title text: `--color-text`. Description: `--color-text-secondary`. Both stay legible on the pastel without inversion.
-- Action buttons (Edit / Add / Delete) sit on `rgba(255,255,255,0.5)` so they pop without competing with the pastel; the **Delete** button keeps `--color-danger` for the text — never invert destructive actions to white-on-coloured.
+- Header actions are **Active switch · Edit icon** (§12.18), both borderless on the pastel. Adding a child is **not** a header action — it is the list's closing **+ New package** row (§12.18). **No Delete on the listing**: it lives at the foot of the record's edit page (see §12.18).
 - The list of children below the header sits on the standard `--color-bg`, so each group reads as a card with a tinted cap.
 
 **Do not** use full `--color-accent` (saturated brand) for these strips — that competes with primary CTAs and reads as too aggressive for content-grouping. Reserve solid accent for one primary CTA per screen (Section 6).
@@ -660,7 +661,7 @@ The desktop table still gets `<div class="overflow-x-auto">` inside the outer ro
 
 **Don't use `display: table` media-query swaps** — duplicating the markup keeps the desktop and mobile layouts independent (different copy, different ordering) without shoehorning a table cell into a stacked card via CSS gymnastics. Yes, the data appears twice in the DOM. That's the trade.
 
-**Action button rows.** Right-aligned action groups (Edit / Delete / + Package etc.) must wrap to a new row at narrow widths instead of crowding the title. Use `w-full sm:w-auto sm:shrink-0 justify-end` on the button container, and `flex flex-wrap items-center gap-3` on the parent row. Mobile gets buttons on row 2 right-aligned; desktop keeps them inline.
+**Action button rows.** Right-aligned action groups (Active switch / Edit icon etc.) must wrap to a new row at narrow widths instead of crowding the title. Use `w-full sm:w-auto sm:shrink-0 justify-end` on the button container, and `flex flex-wrap items-center gap-3` on the parent row. Mobile gets buttons on row 2 right-aligned; desktop keeps them inline.
 
 **Detail-page sidebars.** Use `grid lg:grid-cols-[1fr_300px] gap-8 items-start` — `grid` alone (no `grid-cols-X`) renders a single column, so children stack naturally below `lg`. Don't add `sm:grid-cols-1` (redundant).
 
@@ -771,6 +772,21 @@ Row action buttons in the admin data tables (§12.9) use `.btn-table-action` (in
 ### 12.17 Revision tabs
 
 A record with numbered versions (a quotation's R1 · R2 · …, [QUOTATION-REVISIONS.md](../global/QUOTATION-REVISIONS.md)) shows one tab per version above the page body — `AdminQuotationRevisionTabs`: a row of small bordered pills, each the mono label + its `AdminStatusPill`. The **current** version (the one the record presents / the order runs on) is **bold**; the **selected** one takes `--color-accent` border + `--color-accent-soft` fill. Hidden while there is only one version. Overflow scrolls horizontally (`data-lenis-prevent`) rather than wrapping; mobile taps are `py-2`. Selecting a tab re-fetches that version (`?revision=N`) in place — the URL deep-links it. Version-changing actions (Revise / Discard) live in the page's own action area, never on the tabs.
+
+### 12.18 Listing Active switch + delete on the detail page
+
+Grouped admin listings (today `/admin/services`) show visibility as a **borderless switch** in the row's action group, not an "Inactive" badge — `AdminActiveSwitch` ([components/admin/ActiveSwitch.vue](../../frontend/app/components/admin/ActiveSwitch.vue)). It is the §12.2 switch (`2.25rem × 1.25rem` track, white `size-4` knob) plus the word **Active**, with no box around it. On: `--color-success` track, `--color-text` label. Off: `--color-switch-off-track` track, `--color-text-tertiary` label — never opacity-dimmed. `role="switch"` + `aria-checked`, and the `label` prop names what it shows ("Websites on the public services page").
+
+**Edit is a pencil icon** on these listings (`i-lucide-pencil` `size-4` in a borderless `size-8` / `max-md:size-9` square, hover tint only) with `aria-label` + `title` "Edit {name}". This is the one exception to §12.16's no-icon-only rule: the row has a single icon action next to a labelled switch, so it can't be misread.
+
+**Add a child from the list's last row.** Each group ends with a full-width **+ New package** row (`i-lucide-plus` + label, `--color-accent` text, `12px font-medium`) on a **transparent** background — a `border-t` separates it from the last package, hover/press tints `--color-bg-secondary`. It shows on empty groups too (under "No packages yet."), and it pre-selects the group (`/admin/services/packages/new?category={id}`).
+
+**Behaviour contract:**
+- The switch only emits `toggle`; the page owns the request (`PATCH /v1/admin/service-{categories,packages}/{id}/active` — `active` alone, never a full-form PUT), the optimistic flip, the revert + error toast on failure, and `busy` (disables the switch until the request settles).
+- Confirm (via `useConfirm` + `AdminConfirmDialog`) when the flip **cascades** — a service category takes its active packages with it, both ways. A single row with no cascade (a package) flips straight away and the toast says where it landed ("goes public when *Websites* does" when its category is hidden).
+- Keep any badge the switch can't express — a package that is Active but in a hidden category still shows **Hidden via service**.
+
+**Delete lives on the detail page, not the listing.** The listing's actions are the Active switch and the Edit icon only. The edit page ends with a bordered **Delete {entity}** card below everything else (`--color-bg-elevated`, title + one line on what goes with it and "switch Active off instead" as the reversible alternative) and a `btn-pill-danger` with `i-lucide-trash-2`, behind a `danger` `AdminConfirmDialog`. Hidden on `/new`. After deleting, return to the listing with a success toast.
 
 ---
 

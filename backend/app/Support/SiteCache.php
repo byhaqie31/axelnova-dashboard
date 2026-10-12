@@ -15,7 +15,11 @@ use Throwable;
  * purge() only SCHEDULES the call: it runs once, after the response has been
  * sent (so the admin never waits on it), no matter how many changes the request
  * made. Unconfigured (dev, CI) → no-op. A failure is logged, never thrown — the
- * 5-minute swr window is the fallback.
+ * swr window is the fallback: a page older than 5 minutes is served stale ONCE
+ * more and re-rendered behind that visit, so it is current from the next one.
+ *
+ * Callers: BlogPostObserver (live posts) and the catalogue observers — service
+ * categories / packages that are or were Live, add-ons, scope fields, pricing.
  */
 class SiteCache
 {
@@ -40,7 +44,7 @@ class SiteCache
         try {
             Http::timeout(3)->withToken($this->token())->post($this->url())->throw();
         } catch (Throwable $e) {
-            Log::warning('Site cache purge failed — public pages refresh within 5 minutes instead.', [
+            Log::warning('Site cache purge failed — public pages stay cached until swr re-renders them (5+ minutes, on a visit).', [
                 'error' => $e->getMessage(),
             ]);
         }

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Mail;
 
-use App\Jobs\NotifyAdminJob;
 use App\Mail\PartnerPasscodeChangedMail;
 use App\Mail\PartnerPasscodeMail;
 use App\Mail\ReferralCommissionMail;
@@ -48,19 +47,5 @@ class QueueConsistencyTest extends TestCase
 
         Mail::assertQueued(ReferralCommissionMail::class, fn ($m) => $m->hasTo('ref@example.com'));
         $this->assertNotNull($referral->fresh()->commission_email_sent_at);
-    }
-
-    public function test_the_new_lead_alert_waits_only_outside_production(): void
-    {
-        Queue::fake();
-
-        NotifyAdminJob::dispatchForNewLead(1);
-        Queue::assertPushed(NotifyAdminJob::class, fn (NotifyAdminJob $job) => $job->delay !== null);
-
-        Queue::fake();
-        $this->app['env'] = 'production';
-
-        NotifyAdminJob::dispatchForNewLead(2);
-        Queue::assertPushed(NotifyAdminJob::class, fn (NotifyAdminJob $job) => $job->delay === null);
     }
 }

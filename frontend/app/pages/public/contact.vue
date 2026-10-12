@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import SectionHeader from '~/components/shared/SectionHeader.vue'
+
 definePageMeta({ layout: 'public' })
 
 usePublicSeo({
@@ -11,8 +13,6 @@ usePublicSeo({
     subline: 'WhatsApp, email or a short brief.',
   },
 })
-
-import SectionHeader from '~/components/shared/SectionHeader.vue'
 
 const form = reactive({
   name: '',
@@ -94,9 +94,8 @@ const handleSubmit = async () => {
     })
     submitted.value = true
   }
-  catch (e: any) {
-    const errs = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
-    error.value = errs || e?.data?.message || 'Something went wrong. Please try again, or email baihaqie@axelnova.tech directly.'
+  catch (e) {
+    error.value = formErrorMessage(e)
   }
   finally {
     loading.value = false
@@ -155,7 +154,7 @@ useScrollReveal('.reveal')
           @submit.prevent="handleSubmit"
         >
           <!-- Honeypot — bots fill it, the API rejects any value -->
-          <input v-model="honeypot" type="text" name="website_url" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <input v-model="honeypot" type="text" name="website_url" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" >
 
           <div class="grid sm:grid-cols-2 gap-5">
             <div class="space-y-1.5">
@@ -167,7 +166,7 @@ useScrollReveal('.reveal')
                 required
                 class="contact-input"
                 :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-              />
+              >
             </div>
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email</label>
@@ -178,7 +177,7 @@ useScrollReveal('.reveal')
                 required
                 class="contact-input"
                 :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }"
-              />
+              >
             </div>
           </div>
 

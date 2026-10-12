@@ -1,17 +1,4 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'public' })
-
-usePublicSeo({
-  title: 'Web Design & Development Services in Malaysia | Axel Nova',
-  description: 'Explore website design, booking portals and custom business systems for Malaysian businesses. See packages in RM and get a project estimate online.',
-  path: '/services',
-  card: {
-    label: 'SERVICES',
-    headline: 'Web design and development, with clear pricing.',
-    subline: 'Packages in ringgit. Estimate in minutes.',
-  },
-})
-
 import { useApiBase } from '~/composables/useApiBase'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import PriceTag from '~/components/shared/primitives/PriceTag.vue'
@@ -26,6 +13,19 @@ import {
 } from '~/utils/serviceEstimator'
 import { formatEta, type ModifierValue, type PricingConfig } from '~/utils/pricing'
 import { formatPriceTag } from '~/utils/priceTag'
+
+definePageMeta({ layout: 'public' })
+
+usePublicSeo({
+  title: 'Web Design & Development Services in Malaysia | Axel Nova',
+  description: 'Explore website design, booking portals and custom business systems for Malaysian businesses. See packages in RM and get a project estimate online.',
+  path: '/services',
+  card: {
+    label: 'SERVICES',
+    headline: 'Web design and development, with clear pricing.',
+    subline: 'Packages in ringgit. Estimate in minutes.',
+  },
+})
 
 interface ApiPackage {
   id: number
@@ -49,6 +49,8 @@ interface ApiCategory {
   name: string
   icon: string
   description: string
+  /** Safe HTML of the Markdown description — bold, italic, paragraphs, lists (CatalogMarkdown). */
+  description_html: string
   is_default: boolean
   packages: ApiPackage[]
 }
@@ -65,7 +67,7 @@ const serviceCategories = computed(() => {
     id: c.slug,
     label: c.name,
     icon: c.icon,
-    description: c.description,
+    descriptionHtml: c.description_html,
     isDefault: c.is_default,
     packages: c.packages.map(p => ({
       id: p.slug,
@@ -301,10 +303,9 @@ useScrollReveal('.reveal')
     <Transition name="tab" mode="out-in">
       <div v-if="currentCategory" :key="activeCat" class="mb-32">
 
-        <!-- Category description -->
-        <p class="text-[15px] leading-relaxed mb-3 max-w-2xl" style="color: var(--color-text-secondary);">
-          {{ currentCategory.description }}
-        </p>
+        <!-- Category description — full width, admin-formatted (bold, italic, paragraphs, lists). -->
+        <!-- eslint-disable-next-line vue/no-v-html -- backend-sanitised: p / strong / em / br / lists only (CatalogMarkdown::descriptionHtml) -->
+        <div class="rich-intro text-[15px] leading-relaxed mb-3" style="color: var(--color-text-secondary);" v-html="currentCategory.descriptionHtml" />
 
         <NuxtLink
           :to="`/services/${currentCategory.id}`"
@@ -544,7 +545,7 @@ useScrollReveal('.reveal')
                 step="1"
                 class="w-full accent-cyan-500"
                 @input="setControl(c.key, Number(($event.target as HTMLInputElement).value))"
-              />
+              >
               <p v-if="c.amount > 0" class="text-[12px] mt-1.5 tabular-nums" style="color: var(--color-text-tertiary);">
                 {{ c.included }} included · {{ plusRm(c.amount) }} per {{ c.unit }} after that
               </p>

@@ -1211,6 +1211,18 @@ input[type="number"] {
 .blog-intro strong { font-weight: 600; color: var(--color-text); }
 .blog-intro em { font-style: italic; }
 
+/* A service description (CatalogMarkdown::descriptionHtml) — bold, italic,
+   paragraphs and bullet / numbered lists, on /services and the /services/{slug}
+   hero fallback. Bold lifts to full text colour like .blog-intro; Tailwind's
+   preflight strips list styles, so they're restored here. */
+.rich-intro > * + * { margin-top: 0.75em; }
+.rich-intro strong { font-weight: 600; color: var(--color-text); }
+.rich-intro em { font-style: italic; }
+.rich-intro ul { list-style: disc; padding-left: 1.25em; }
+.rich-intro ol { list-style: decimal; padding-left: 1.4em; }
+.rich-intro li + li { margin-top: 0.3em; }
+.rich-intro li::marker { color: var(--color-text-tertiary); }
+
 /* The post format (Guide / Article / …) on blog cards and the article header —
    an accent-tinted pill. --color-accent-soft already swaps for dark mode. */
 .blog-format-pill {

@@ -16,3 +16,13 @@ export default withNuxt({
     'vue/no-mutating-props': ['error', { shallowOnly: true }],
   },
 })
+  // @nuxt/eslint-config ignores every folder named `public` ("**/public"),
+  // meant for the static dir — which also hid app/pages/public and
+  // app/components/public, the whole public site, from lint. Ignore only the
+  // static root `public/`.
+  .onResolved((configs) => {
+    for (const config of configs) {
+      if (config.ignores?.includes('**/public'))
+        config.ignores = config.ignores.map(p => (p === '**/public' ? 'public' : p))
+    }
+  })

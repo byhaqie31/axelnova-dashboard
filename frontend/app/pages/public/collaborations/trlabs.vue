@@ -1,6 +1,4 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'public' })
-
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import ProjectCard from '~/components/shared/ProjectCard.vue'
 import CollabLockup from '~/components/public/CollabLockup.vue'
@@ -9,6 +7,8 @@ import CollabInquiryForm from '~/components/public/CollabInquiryForm.vue'
 import { collaborationModeLabels, type CollaborationPartner } from '~/data/collaborations'
 import type { Project } from '~/data/projects'
 import { MOTION } from '~/utils/motion'
+
+definePageMeta({ layout: 'public' })
 
 // Axel Nova × TRLabs — the first studio collaboration, hand-built rather than
 // templated. The page sits in the .collab-trlabs scope (main.css), which swaps

@@ -3,7 +3,7 @@
 Portfolio + client platform for Ahmad Baihaqie / Axel Nova Ventures.
 
 - **Frontend**: Nuxt 4 (TypeScript, Tailwind v4, @nuxt/ui v4) — `axelnovaventures.com` and `admin.axelnovaventures.com`
-- **Backend**: Laravel 11 API (Phase 3: public quote builder funnel)
+- **Backend**: Laravel 11 API (public catalogue + inquiry intake, Sanctum admin)
 - **Database**: shared MySQL 8 from [axelnova-infra](../../../axelnova-infra/)
 
 For full architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md). For pricing config / quote builder details, see [QUOTE_BUILDER.md](./QUOTE_BUILDER.md). For the quotation/invoice/receipt PDF pipeline, see [DOCUMENT-GENERATION.md](./DOCUMENT-GENERATION.md). All other docs live under [docs/](../).
@@ -166,6 +166,6 @@ Production backend deploy isn't wired yet. Plan: PHP-FPM + Nginx, port 8003, que
 
 ### Mailtrap
 
-- **`550 5.7.0 Too many emails per second`.** Mailtrap free caps at 1 email/sec, and a quote submission fires two emails (customer + admin). The admin email is intentionally delayed by 10s **outside production** (`NotifyAdminJob::dispatchForNewLead()`) to dodge this; production (Resend) sends it immediately. To eyeball every template without triggering real flows, run `php artisan mail:preview --all` (it paces itself for Mailtrap) — see [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md).
+- **`550 5.7.0 Too many emails per second`.** Mailtrap free caps at 1 email/sec, and an inquiry fires two emails (auto-reply + owner alert). The owner alert is queued 10s later (`InquiryController`) to dodge this; production (Resend) sends it immediately. To eyeball every template without triggering real flows, run `php artisan mail:preview --all` (it paces itself for Mailtrap) — see [EMAIL-SYSTEM.md](./EMAIL-SYSTEM.md).
 
 - **Email body never lands but worker shows DONE.** Check `MAIL_USERNAME` / `MAIL_PASSWORD` in [backend/.env](./backend/.env) are filled in. With empty creds, Mailtrap silently swallows the message. Fastest sanity check is to switch `MAIL_MAILER=log` temporarily and tail `backend/storage/logs/laravel.log` — the rendered email body dumps there.

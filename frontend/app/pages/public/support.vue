@@ -1,9 +1,9 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'public' })
-
 import { useClipboard } from '@vueuse/core'
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import { DUITNOW_QR_SRC, STUDIO_BANK } from '~/data/studioPayment'
+
+definePageMeta({ layout: 'public' })
 
 // "Support Our Work" (footer → Support). The studio's DuitNow QR and OCBC
 // account for anyone who wants to chip in — it replaced the old Ko-fi link.

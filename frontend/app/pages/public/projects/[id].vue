@@ -148,7 +148,7 @@ useScrollReveal('.reveal')
           <UIcon name="i-fluent-code-24-regular" class="size-4" />
           Source
         </a>
-        <LikeButton type="project" :id="project.id" :count="project.likes_count" size="md" />
+        <LikeButton :id="project.id" type="project" :count="project.likes_count" size="md" />
       </div>
 
       <!-- Cover image -->
@@ -162,7 +162,7 @@ useScrollReveal('.reveal')
           :alt="`${project.name} cover image`"
           class="w-full h-auto object-cover"
           loading="lazy"
-        />
+        >
       </div>
 
       <!-- Long description -->

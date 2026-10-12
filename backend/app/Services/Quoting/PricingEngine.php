@@ -372,6 +372,11 @@ final class PricingEngine
             ];
         }
 
+        // A DB row claims its key, Live or Hidden (like buildAddons): a legacy JSON
+        // entry for a key some row holds is dropped, so hiding that row can't leave
+        // it priced at the old JSON numbers. JSON keys no row holds still resolve.
+        $merged = array_diff_key($merged, $this->buildPackageMeta());
+
         // Only effectively Live packages (it AND its service on) are priced, so a
         // package under a Hidden service can't be quoted — not even by key.
         $packages = ServicePackage::effectivelyLive()

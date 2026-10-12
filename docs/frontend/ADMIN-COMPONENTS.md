@@ -190,6 +190,9 @@ when the current route lives in an unpinned group. Works from both expanded
 and collapsed rail states. The mobile drawer is unaffected — it scrolls and
 always lists every group.
 
+### `components/admin/ActiveSwitch.vue`
+Borderless on/off switch (+ "Active" label) for listing rows — the Active switch on `/admin/services` category headers and package rows (UI-STANDARDS §12.18). Props: `on` (the record's `active`), `label` (accessible name — what it shows, e.g. "Websites on the public services page"), `busy` (disables it while a request runs). Emits `toggle` only — the page owns the `PATCH …/active` call, any confirm, the optimistic flip and the revert on failure. Form pages keep the full toggle row-card (§12.2).
+
 ### `components/admin/CreatableSelect.vue`
 Searchable dropdown over a list of existing names that can also add a new one — the blog editor's **category** (single: `v-model` is a string, `''` = none) and **topics** (`multiple`: `v-model` is a `string[]`, checkbox rows, picked names as removable chips, `max` caps the count and greys out unticked rows). Props: `items` (the existing names), `maxLength` (the search/add input — match the backend field max), `noun` ("topic" → `Add "…"`, `3 / 10 topics`), `placeholder`. Names match **case-insensitively**: typing `cloudflare` when `Cloudflare` exists highlights the existing one instead of offering a duplicate, and a just-added name stays in the list via the model until the post is saved. Keyboard: ↑/↓ move, Enter picks (the exact match, else the Add row), Esc closes, Backspace on an empty search removes the last chip. Same token-styled popover as `AdminSelect`.
 

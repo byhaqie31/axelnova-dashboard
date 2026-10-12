@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\CatalogMarkdown;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,7 +15,11 @@ class ServiceCategoryResource extends JsonResource
             'slug' => $this->slug,
             'name' => $this->name,
             'icon' => $this->icon,
+            // Markdown as written (the admin editor round-trips it), plus the two
+            // public renderings — see CatalogMarkdown.
             'description' => $this->description,
+            'description_html' => CatalogMarkdown::descriptionHtml((string) $this->description),
+            'description_text' => CatalogMarkdown::plainText((string) $this->description),
             'sort_order' => $this->sort_order,
             'active' => $this->active,
             'is_default' => (bool) $this->is_default,

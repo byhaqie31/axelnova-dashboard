@@ -4,6 +4,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { apiFetch } = useAdminAuth()
 const toast = useAdminToast()
+const { confirmOpen, confirmConfig, confirm, resolveConfirm } = useConfirm()
 
 interface Pkg {
   id: number
@@ -25,6 +26,8 @@ interface Category {
   name: string
   icon: string
   description: string
+  /** The Markdown description without markers — the header's one-line preview. */
+  description_text: string
   sort_order: number
   active: boolean
   is_default: boolean
@@ -50,28 +53,63 @@ async function load() {
   }
 }
 
-async function deleteCategory(c: Category) {
-  if (!confirm(`Delete category "${c.name}" and all ${c.packages.length} package(s)?`)) return
+// Listing Active switches — flip `active` alone via PATCH …/active.
+// Keys of rows mid-request (`c{id}` / `p{id}`); their switch disables until it settles.
+const busy = reactive(new Set<string>())
+
+async function setActive(key: string, url: string, row: { active: boolean, name: string }, active: boolean): Promise<boolean> {
+  busy.add(key)
+  row.active = active // optimistic — the switch moves at once, reverts on failure
   try {
-    await apiFetch(`/api/v1/admin/service-categories/${c.id}`, { method: 'DELETE' })
-    await load()
-    toast.success('Category deleted', `“${c.name}” was removed.`)
+    await apiFetch(url, { method: 'PATCH', body: { active } })
+    return true
   }
   catch {
-    toast.error('Couldn’t delete category', `Failed to delete “${c.name}”.`)
+    row.active = !active
+    toast.error('Couldn’t change visibility', `“${row.name}” is unchanged.`)
+    return false
+  }
+  finally {
+    busy.delete(key)
   }
 }
 
-async function deletePackage(p: Pkg) {
-  if (!confirm(`Delete package "${p.name}"?`)) return
-  try {
-    await apiFetch(`/api/v1/admin/service-packages/${p.id}`, { method: 'DELETE' })
-    await load()
-    toast.success('Package deleted', `“${p.name}” was removed.`)
-  }
-  catch {
-    toast.error('Couldn’t delete package', `Failed to delete “${p.name}”.`)
-  }
+// Showing a category also publishes its active packages (a package is public only
+// while it AND its category are active), so both directions confirm first.
+async function toggleCategory(c: Category) {
+  const key = `c${c.id}`
+  if (busy.has(key)) return
+  const goingLive = !c.active
+  const live = c.packages.filter(p => p.active).length
+  const pkgs = `${live} active package${live === 1 ? '' : 's'}`
+  const ok = await confirm(goingLive
+    ? {
+        title: `Show “${c.name}” on the public site?`,
+        message: live
+          ? `It goes on the public services page with its ${pkgs}.`
+          : 'It goes on the public services page, but none of its packages will — they are all inactive.',
+        confirmLabel: 'Make active',
+      }
+    : {
+        title: `Hide “${c.name}”?`,
+        message: `It comes off the public services page${live ? ` along with its ${pkgs}` : ''}. Nothing is deleted — switch it back on any time.`,
+        confirmLabel: 'Hide category',
+        variant: 'danger',
+      })
+  if (!ok) return
+  if (await setActive(key, `/api/v1/admin/service-categories/${c.id}/active`, c, goingLive))
+    toast.success(goingLive ? 'Category is live' : 'Category hidden', `“${c.name}” is ${goingLive ? 'on' : 'off'} the public services page.`)
+}
+
+// A single package flips straight away — it's one card, and the toast says where it landed.
+async function togglePackage(cat: Category, p: Pkg) {
+  const key = `p${p.id}`
+  if (busy.has(key)) return
+  const goingLive = !p.active
+  if (!(await setActive(key, `/api/v1/admin/service-packages/${p.id}/active`, p, goingLive))) return
+  if (!goingLive) toast.success('Package hidden', `“${p.name}” is off the public services page.`)
+  else if (cat.active) toast.success('Package is live', `“${p.name}” is on the public services page.`)
+  else toast.success('Package active', `“${p.name}” goes public when “${cat.name}” does.`)
 }
 
 onMounted(load)
@@ -146,31 +184,20 @@ v-if="cat.is_default" class="text-[10px] font-semibold uppercase tracking-wider 
                 <UIcon name="i-lucide-star" class="size-3" />
                 Default tab
               </span>
-              <span
-v-if="!cat.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg)' }">Inactive</span>
             </div>
-            <p class="text-[12px] truncate max-md:whitespace-normal max-md:line-clamp-2" :style="{ color: 'var(--color-text-secondary)' }">{{ cat.description }}</p>
+            <p class="text-[12px] truncate max-md:whitespace-normal max-md:line-clamp-2" :style="{ color: 'var(--color-text-secondary)' }">{{ cat.description_text }}</p>
           </div>
           <div class="flex items-center gap-2 w-full sm:w-auto sm:shrink-0 justify-end flex-wrap">
+            <AdminActiveSwitch
+              :on="cat.active" :busy="busy.has(`c${cat.id}`)"
+              :label="`${cat.name} on the public services page`"
+              @toggle="toggleCategory(cat)" />
             <NuxtLink
-:to="`/admin/services/packages/new?category=${cat.id}`"
-              class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
-              :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
-              + Package
+:to="`/admin/services/categories/${cat.id}`" :aria-label="`Edit ${cat.name}`" :title="`Edit ${cat.name}`"
+              class="size-8 max-md:size-9 rounded-md inline-flex items-center justify-center transition-colors hover:bg-(--color-bg) active:bg-(--color-bg)"
+              :style="{ color: 'var(--color-text-secondary)' }">
+              <UIcon name="i-lucide-pencil" class="size-4" />
             </NuxtLink>
-            <NuxtLink
-:to="`/admin/services/categories/${cat.id}`"
-              class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
-              :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }">
-              Edit
-            </NuxtLink>
-            <button
-class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
-              :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-danger)' }"
-              @click="deleteCategory(cat)">
-              Delete
-            </button>
           </div>
         </header>
 
@@ -188,10 +215,7 @@ v-for="pkg in cat.packages" :key="pkg.id"
 v-if="pkg.featured" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                     :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">Featured</span>
                   <span
-v-if="!pkg.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                    :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
-                  <span
-v-else-if="!cat.active" :title="HIDDEN_VIA_SERVICE_HINT" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+v-if="pkg.active && !cat.active" :title="HIDDEN_VIA_SERVICE_HINT" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1"
                     :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">
                     <UIcon name="i-lucide-eye-off" class="size-3" />
                     Hidden via service
@@ -203,19 +227,17 @@ v-else-if="!cat.active" :title="HIDDEN_VIA_SERVICE_HINT" class="text-[10px] font
                 <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ fmtPrice(pkg.price_min_myr, pkg.price_max_myr) }}</p>
                 <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ pkg.duration_text }}</p>
               </div>
-              <div class="flex items-center gap-1 shrink-0">
+              <div class="flex items-center gap-2 shrink-0">
+                <AdminActiveSwitch
+                  :on="pkg.active" :busy="busy.has(`p${pkg.id}`)"
+                  :label="`${pkg.name} on the public services page`"
+                  @toggle="togglePackage(cat, pkg)" />
                 <NuxtLink
-:to="`/admin/services/packages/${pkg.id}`"
-                  class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
-                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
-                  Edit
+:to="`/admin/services/packages/${pkg.id}`" :aria-label="`Edit ${pkg.name}`" :title="`Edit ${pkg.name}`"
+                  class="size-8 max-md:size-9 rounded-md inline-flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
+                  :style="{ color: 'var(--color-text-secondary)' }">
+                  <UIcon name="i-lucide-pencil" class="size-4" />
                 </NuxtLink>
-                <button
-class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
-                  :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
-                  @click="deletePackage(pkg)">
-                  Delete
-                </button>
               </div>
             </div>
 
@@ -227,10 +249,7 @@ class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md 
 v-if="pkg.featured" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                   :style="{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }">Featured</span>
                 <span
-v-if="!pkg.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                  :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
-                <span
-v-else-if="!cat.active" :title="HIDDEN_VIA_SERVICE_HINT" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+v-if="pkg.active && !cat.active" :title="HIDDEN_VIA_SERVICE_HINT" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1"
                   :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">
                   <UIcon name="i-lucide-eye-off" class="size-3" />
                   Hidden via service
@@ -242,28 +261,36 @@ v-else-if="!cat.active" :title="HIDDEN_VIA_SERVICE_HINT" class="text-[10px] font
                   <p class="text-[13px] font-semibold" :style="{ color: 'var(--color-text)' }">{{ fmtPrice(pkg.price_min_myr, pkg.price_max_myr) }}</p>
                   <p class="text-[11px]" :style="{ color: 'var(--color-text-tertiary)' }">{{ pkg.duration_text }}</p>
                 </div>
-                <div class="flex items-center gap-1 shrink-0">
+                <div class="flex items-center gap-2 shrink-0">
+                  <AdminActiveSwitch
+                    :on="pkg.active" :busy="busy.has(`p${pkg.id}`)"
+                    :label="`${pkg.name} on the public services page`"
+                    @toggle="togglePackage(cat, pkg)" />
                   <NuxtLink
-:to="`/admin/services/packages/${pkg.id}`"
-                    class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
-                    :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }">
-                    Edit
+:to="`/admin/services/packages/${pkg.id}`" :aria-label="`Edit ${pkg.name}`" :title="`Edit ${pkg.name}`"
+                    class="size-8 max-md:size-9 rounded-md inline-flex items-center justify-center transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
+                    :style="{ color: 'var(--color-text-secondary)' }">
+                    <UIcon name="i-lucide-pencil" class="size-4" />
                   </NuxtLink>
-                  <button
-class="text-[11px] font-medium px-2.5 py-1 max-md:px-3.5 max-md:py-2 rounded-md border transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
-                    :style="{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }"
-                    @click="deletePackage(pkg)">
-                    Delete
-                  </button>
                 </div>
               </div>
             </div>
           </li>
         </ul>
         <p v-else class="px-5 py-6 text-center text-[12px]" :style="{ color: 'var(--color-text-tertiary)' }">
-          No packages yet. <NuxtLink :to="`/admin/services/packages/new?category=${cat.id}`" class="underline" :style="{ color: 'var(--color-accent)' }">Add the first one</NuxtLink>.
+          No packages yet.
         </p>
+        <!-- Closing row of the list — transparent, adds a package to this category. -->
+        <NuxtLink
+:to="`/admin/services/packages/new?category=${cat.id}`"
+          class="flex items-center gap-2 px-4 md:px-5 py-3 max-md:py-3.5 border-t text-[12px] font-medium transition-colors hover:bg-(--color-bg-secondary) active:bg-(--color-bg-secondary)"
+          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }">
+          <UIcon name="i-lucide-plus" class="size-3.5" />
+          New package
+        </NuxtLink>
       </section>
     </div>
+
+    <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
   </div>
 </template>

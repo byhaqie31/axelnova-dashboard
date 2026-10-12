@@ -4,6 +4,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
 const toast = useAdminToast()
+const { confirmOpen, confirmConfig, confirm, resolveConfirm } = useConfirm()
 
 const isNew = computed(() => route.params.id === 'new')
 
@@ -168,6 +169,33 @@ async function save() {
   }
   finally {
     saving.value = false
+  }
+}
+
+// Delete lives here, not on the listing. Quotes that used the package keep their
+// own stored copy (their link to it is cleared). Founder-only (hard-delete).
+const deleting = ref(false)
+
+async function deletePackage() {
+  const ok = await confirm({
+    title: `Delete “${form.name}”?`,
+    message: 'This permanently removes the package. To take it off the site and keep it, switch Active off instead.',
+    confirmLabel: 'Delete package',
+    variant: 'danger',
+  })
+  if (!ok) return
+  deleting.value = true
+  try {
+    await apiFetch(`/api/v1/admin/service-packages/${route.params.id}`, { method: 'DELETE' })
+    toast.success('Package deleted', `“${form.name}” was removed.`)
+    await navigateTo('/admin/services')
+  }
+  catch (e) {
+    const reason = (e as { data?: { message?: string } })?.data?.message
+    toast.error('Couldn’t delete package', reason ?? `Failed to delete “${form.name}”.`)
+  }
+  finally {
+    deleting.value = false
   }
 }
 
@@ -481,6 +509,25 @@ class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all"
     </form>
 
     <div v-else class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
+
+    <!-- Delete — kept off the listing, at the foot of the edit page. -->
+    <section
+v-if="!loading && !isNew" class="mt-6 rounded-2xl border p-4 md:p-6 flex flex-wrap items-center gap-4"
+      :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+      <div class="min-w-0 flex-1 basis-64">
+        <h2 class="text-[15px] font-semibold" :style="{ color: 'var(--color-text)' }">Delete package</h2>
+        <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
+          Removes it for good. To only take it off the site, switch Active off.
+        </p>
+      </div>
+      <button
+type="button" :disabled="deleting" class="btn-pill btn-pill-danger text-[13px] inline-flex items-center justify-center gap-1.5 max-md:w-full"
+        @click="deletePackage">
+        <UIcon name="i-lucide-trash-2" class="size-4" /> {{ deleting ? 'Deleting…' : 'Delete package' }}
+      </button>
+    </section>
+
+    <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
   </div>
 </template>
 

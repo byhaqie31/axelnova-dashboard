@@ -96,9 +96,8 @@ async function handleSubmit() {
 
     await navigateTo('/quote/success')
   }
-  catch (e: any) {
-    const errs = e?.data?.errors ? Object.values(e.data.errors).flat().join(' ') : ''
-    error.value = errs || e?.data?.message || 'Something went wrong. Please try again, or email baihaqie@axelnova.tech directly.'
+  catch (e) {
+    error.value = formErrorMessage(e)
   }
   finally {
     loading.value = false
@@ -134,23 +133,27 @@ useScrollReveal('.reveal')
           <div class="grid sm:grid-cols-2 gap-5">
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Full name <span style="color: var(--color-danger);">*</span></label>
-              <input v-model="form.name" type="text" placeholder="John Doe" required class="contact-input"
-                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+              <input
+v-model="form.name" type="text" placeholder="John Doe" required class="contact-input"
+                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
             </div>
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Company / project</label>
-              <input v-model="form.company" type="text" placeholder="Acme Sdn Bhd" class="contact-input"
-                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+              <input
+v-model="form.company" type="text" placeholder="Acme Sdn Bhd" class="contact-input"
+                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
             </div>
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Email <span style="color: var(--color-danger);">*</span></label>
-              <input v-model="form.email" type="email" placeholder="you@company.com" required class="contact-input"
-                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+              <input
+v-model="form.email" type="email" placeholder="you@company.com" required class="contact-input"
+                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
             </div>
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Phone / WhatsApp</label>
-              <input v-model="form.phone" type="tel" placeholder="+60 12-345 6789" class="contact-input"
-                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
+              <input
+v-model="form.phone" type="tel" placeholder="+60 12-345 6789" class="contact-input"
+                :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" >
             </div>
           </div>
         </div>
@@ -164,7 +167,8 @@ useScrollReveal('.reveal')
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">What are you building?</label>
             <div class="flex flex-wrap gap-2">
-              <button v-for="t in projectTypes" :key="t" type="button"
+              <button
+v-for="t in projectTypes" :key="t" type="button"
                 class="text-[12px] px-3.5 py-1.5 rounded-full border transition-all"
                 :style="{
                   borderColor: form.projectType === t ? 'var(--color-accent)' : 'var(--color-border)',
@@ -181,7 +185,8 @@ useScrollReveal('.reveal')
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Budget range</label>
               <div class="flex flex-wrap gap-2">
-                <button v-for="b in budgets" :key="b" type="button"
+                <button
+v-for="b in budgets" :key="b" type="button"
                   class="text-[12px] px-3 py-1.5 rounded-full border transition-all"
                   :style="{
                     borderColor: form.budgetHint === b ? 'var(--color-accent)' : 'var(--color-border)',
@@ -194,7 +199,8 @@ useScrollReveal('.reveal')
             <div class="space-y-1.5">
               <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Timeline</label>
               <div class="flex flex-wrap gap-2">
-                <button v-for="tl in timelines" :key="tl" type="button"
+                <button
+v-for="tl in timelines" :key="tl" type="button"
                   class="text-[12px] px-3 py-1.5 rounded-full border transition-all"
                   :style="{
                     borderColor: form.timelineHint === tl ? 'var(--color-accent)' : 'var(--color-border)',
@@ -208,7 +214,8 @@ useScrollReveal('.reveal')
 
           <div class="space-y-1.5">
             <label class="text-[12px] font-medium" style="color: var(--color-text-secondary);">Project details <span style="color: var(--color-danger);">*</span></label>
-            <textarea v-model="form.message" rows="6" required
+            <textarea
+v-model="form.message" rows="6" required
               placeholder="Goals, key features, any references or constraints, and anything else that'll help me scope it…"
               class="contact-input resize-none w-full"
               :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg-elevated)' }" />
@@ -216,9 +223,10 @@ useScrollReveal('.reveal')
         </div>
 
         <!-- Honeypot -->
-        <input v-model="honeypot" type="text" name="website_url" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <input v-model="honeypot" type="text" name="website_url" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" >
 
-        <button type="submit" class="btn-pill btn-pill-accent w-full justify-center"
+        <button
+type="submit" class="btn-pill btn-pill-accent w-full justify-center"
           :disabled="!canSubmit || loading"
           :style="{ opacity: (!canSubmit || loading) ? '0.6' : '1', cursor: (!canSubmit || loading) ? 'not-allowed' : 'pointer' }">
           {{ loading ? 'Sending…' : 'Send inquiry →' }}

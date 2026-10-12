@@ -1,9 +1,9 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'public' })
-
 import SectionHeader from '~/components/shared/SectionHeader.vue'
 import PriceTag from '~/components/shared/primitives/PriceTag.vue'
 import { useApiBase } from '~/composables/useApiBase'
+
+definePageMeta({ layout: 'public' })
 
 interface ApiPackage {
   id: number
@@ -23,6 +23,10 @@ interface ApiCategory {
   slug: string
   name: string
   description: string
+  /** Safe HTML of the Markdown description (CatalogMarkdown) — the hero fallback. */
+  description_html: string
+  /** The description without formatting — SEO / OG fallbacks. */
+  description_text: string
   icon: string
   packages: ApiPackage[]
 }
@@ -253,7 +257,7 @@ const seoTitle = computed(
 // Admin-written category descriptions can run past the ~155 characters search
 // results show, so the fallback is clipped at a word boundary.
 const seoDescription = computed(
-  () => enrichment.value.seoDescription ?? clipText(category.value!.description, 155),
+  () => enrichment.value.seoDescription ?? clipText(category.value!.description_text, 155),
 )
 
 useSeoMeta({
@@ -271,7 +275,7 @@ useSeoMeta({
 defineOgImage('SiteCard', {
   label: 'SERVICES',
   headline: category.value.name,
-  subline: clipText(category.value.description, 90),
+  subline: clipText(category.value.description_text, 90),
   footer: ogFooter(`/services/${slug.value}`),
 }, { alt: category.value.name })
 
@@ -353,7 +357,8 @@ useScrollReveal('.reveal')
       as="h1"
       :eyebrow="category.name"
       :title="enrichment.h1 ?? `${category.name}.`"
-      :subtitle="enrichment.heroSubtitle ?? category.description"
+      :subtitle="enrichment.heroSubtitle"
+      :subtitle-html="enrichment.heroSubtitle ? undefined : category.description_html"
     />
 
     <section v-if="enrichment.deliverables?.length" class="reveal mb-24">

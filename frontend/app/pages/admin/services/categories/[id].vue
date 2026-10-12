@@ -8,6 +8,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 const route = useRoute()
 const { apiFetch } = useAdminAuth()
 const toast = useAdminToast()
+const { confirmOpen, confirmConfig, confirm: ask, resolveConfirm } = useConfirm()
 
 const isNew = computed(() => route.params.id === 'new')
 
@@ -21,6 +22,18 @@ const form = reactive({
   active: true,
   is_default: false,
 })
+
+// The description editor's toolbar — what CatalogMarkdown keeps on the public page.
+const descriptionToolbar = [
+  [
+    { kind: 'mark' as const, mark: 'bold' as const, icon: 'i-lucide-bold', label: 'Bold' },
+    { kind: 'mark' as const, mark: 'italic' as const, icon: 'i-lucide-italic', label: 'Italic' },
+  ],
+  [
+    { kind: 'bulletList' as const, icon: 'i-lucide-list', label: 'Bullet list' },
+    { kind: 'orderedList' as const, icon: 'i-lucide-list-ordered', label: 'Numbered list' },
+  ],
+]
 
 const loading = ref(!isNew.value)
 const saving = ref(false)
@@ -132,6 +145,7 @@ function openEditField(f: ScopeFieldRow) { editingField.value = f; modalOpen.val
 // public only while it AND its category are active) — save() confirms how many.
 const savedActive = ref(true)
 const activePackageCount = ref(0)
+const packageCount = ref(0)
 
 function confirmPublish(): boolean {
   const n = activePackageCount.value
@@ -149,6 +163,7 @@ async function fetchCategory() {
     Object.assign(form, res.data)
     savedActive.value = res.data.active
     activePackageCount.value = (res.data.packages ?? []).filter(p => p.active).length
+    packageCount.value = (res.data.packages ?? []).length
   }
   catch {
     message.value = 'Failed to load category.'
@@ -180,6 +195,34 @@ async function save() {
   }
   finally {
     saving.value = false
+  }
+}
+
+// Delete lives here, not on the listing. Packages + scope fields cascade with the
+// category; quotes that used them keep their own stored copy. Founder-only (hard-delete).
+const deleting = ref(false)
+
+async function deleteCategory() {
+  const n = packageCount.value
+  const ok = await ask({
+    title: `Delete “${form.name}”?`,
+    message: `This permanently removes the category${n ? `, its ${n} package${n === 1 ? '' : 's'}` : ''} and its scope fields. To take it off the site and keep everything, switch Active off instead.`,
+    confirmLabel: 'Delete category',
+    variant: 'danger',
+  })
+  if (!ok) return
+  deleting.value = true
+  try {
+    await apiFetch(`/api/v1/admin/service-categories/${route.params.id}`, { method: 'DELETE' })
+    toast.success('Category deleted', `“${form.name}” was removed.`)
+    await navigateTo('/admin/services')
+  }
+  catch (e) {
+    const reason = (e as { data?: { message?: string } })?.data?.message
+    toast.error('Couldn’t delete category', reason ?? `Failed to delete “${form.name}”.`)
+  }
+  finally {
+    deleting.value = false
   }
 }
 
@@ -257,9 +300,24 @@ v-for="ic in serviceIcons" :key="ic.name" type="button"
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Description *</label>
-        <textarea
-v-model="form.description" required rows="3" class="contact-input w-full"
-          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+        <!-- Markdown-backed (CatalogMarkdown): bold, italic, paragraphs, lists. -->
+        <UEditor
+          v-slot="{ editor }"
+          v-model="form.description"
+          content-type="markdown"
+          placeholder="What this service covers — shown above its packages on /services."
+          class="blog-editor is-compact rounded-xl border overflow-hidden"
+          :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+        >
+          <UEditorToolbar
+            :editor="editor"
+            :items="descriptionToolbar"
+            layout="fixed"
+            class="border-b px-2 py-1"
+            :style="{ borderColor: 'var(--color-border)' }"
+          />
+        </UEditor>
+        <p v-if="errors.description?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.description[0] }}</p>
       </div>
 
       <div>
@@ -437,6 +495,25 @@ type="button" class="btn-pill btn-pill-ghost text-[12px] inline-flex items-cente
     </section>
 
     <div v-else-if="loading" class="text-center py-16" style="color: var(--color-text-secondary);">Loading…</div>
+
+    <!-- Delete — kept off the listing, at the foot of the edit page. -->
+    <section
+v-if="!loading && !isNew" class="mt-6 rounded-2xl border p-4 md:p-6 flex flex-wrap items-center gap-4"
+      :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+      <div class="min-w-0 flex-1 basis-64">
+        <h2 class="text-[15px] font-semibold" :style="{ color: 'var(--color-text)' }">Delete category</h2>
+        <p class="text-[12px]" :style="{ color: 'var(--color-text-secondary)' }">
+          Removes it with its packages and scope fields for good. To only take it off the site, switch Active off.
+        </p>
+      </div>
+      <button
+type="button" :disabled="deleting" class="btn-pill btn-pill-danger text-[13px] inline-flex items-center justify-center gap-1.5 max-md:w-full"
+        @click="deleteCategory">
+        <UIcon name="i-lucide-trash-2" class="size-4" /> {{ deleting ? 'Deleting…' : 'Delete category' }}
+      </button>
+    </section>
+
+    <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />
 
     <ScopeFieldModal
 :open="modalOpen" :field="editingField" :category-id="Number(route.params.id)"
