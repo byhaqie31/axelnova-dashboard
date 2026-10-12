@@ -52,6 +52,24 @@ class AdminEmailLogsTest extends TestCase
             ->assertJsonPath('data.1.resend_url', null);
     }
 
+    public function test_it_counts_problems_across_every_page(): void
+    {
+        $this->log(['status' => 'bounced']);
+        $this->log(['status' => 'complained']);
+        $this->log(['status' => 'failed', 'sent_at' => now()->subYear(), 'created_at' => now()->subYear()]);
+        $this->log(['status' => 'bounced', 'related_id' => 8]);
+        foreach (range(1, 25) as $i) {
+            $this->log(['status' => 'delivered']);
+        }
+
+        // The oldest failure is off the first page, but the sidebar card still warns about it.
+        $this->getJson('/api/v1/admin/emails?related_type=invoice&related_id=7', $this->founder())
+            ->assertOk()
+            ->assertJsonCount(25, 'data')
+            ->assertJsonPath('meta.total', 28)
+            ->assertJsonPath('meta.problems', 3);
+    }
+
     public function test_only_resend_routed_rows_link_to_resend(): void
     {
         $this->log(['route' => 'hostinger', 'provider_id' => 'queued']);

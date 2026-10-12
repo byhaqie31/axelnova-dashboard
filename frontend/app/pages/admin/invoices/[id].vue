@@ -215,35 +215,40 @@ class="h-full rounded-full transition-[width] duration-500"
           </div>
         </div>
 
-        <!-- Client & order -->
-        <div
+        <!-- Right column: client & order, then the Emails summary -->
+        <div class="space-y-5 max-md:min-w-0">
+          <!-- Client & order -->
+          <div
 class="rounded-2xl border p-6 max-md:p-5 max-md:min-w-0"
-          :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Client &amp; order</p>
-          <p class="text-[14px] font-medium" style="color: var(--color-text);">{{ invoice.name ?? '—' }}</p>
-          <p class="text-[12px] mb-4 max-md:break-all" style="color: var(--color-text-tertiary);">{{ invoice.email ?? '' }}</p>
-          <div class="space-y-2 pt-4 border-t" style="border-color: var(--color-border);">
-            <NuxtLink
-v-if="invoice.order_number" :to="`/admin/orders/${invoice.order_id}`"
-              class="flex items-center justify-between gap-2 text-[13px]" :style="{ color: 'var(--color-accent)' }">
-              <span style="color: var(--color-text-secondary);">Order</span>
-              <span class="font-mono">{{ invoice.order_number }}</span>
-            </NuxtLink>
-            <NuxtLink
-              v-if="invoice.reference_code && invoice.quotation_id" :to="`/admin/quotations/${invoice.quotation_id}`"
-              class="flex items-center justify-between gap-2 text-[13px]" :style="{ color: 'var(--color-accent)' }">
-              <span style="color: var(--color-text-secondary);">Quotation</span>
-              <span class="font-mono">{{ invoice.reference_code }}</span>
-            </NuxtLink>
-            <div v-else-if="invoice.reference_code" class="flex items-center justify-between gap-2 text-[13px]">
-              <span style="color: var(--color-text-secondary);">Quotation</span>
-              <span class="font-mono" style="color: var(--color-text);">{{ invoice.reference_code }}</span>
-            </div>
-            <div v-if="invoice.emailed_at" class="flex items-center justify-between gap-2 text-[13px]">
-              <span style="color: var(--color-text-secondary);">Emailed</span>
-              <span style="color: var(--color-text);" :title="invoice.emailed_to ?? ''">{{ fmtDate(invoice.emailed_at) }}</span>
+            :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <p class="text-[11px] font-semibold uppercase tracking-widest mb-5" style="color: var(--color-text-tertiary);">Client &amp; order</p>
+            <p class="text-[14px] font-medium" style="color: var(--color-text);">{{ invoice.name ?? '—' }}</p>
+            <p class="text-[12px] mb-4 max-md:break-all" style="color: var(--color-text-tertiary);">{{ invoice.email ?? '' }}</p>
+            <div class="space-y-2 pt-4 border-t" style="border-color: var(--color-border);">
+              <NuxtLink
+  v-if="invoice.order_number" :to="`/admin/orders/${invoice.order_id}`"
+                class="flex items-center justify-between gap-2 text-[13px]" :style="{ color: 'var(--color-accent)' }">
+                <span style="color: var(--color-text-secondary);">Order</span>
+                <span class="font-mono">{{ invoice.order_number }}</span>
+              </NuxtLink>
+              <NuxtLink
+                v-if="invoice.reference_code && invoice.quotation_id" :to="`/admin/quotations/${invoice.quotation_id}`"
+                class="flex items-center justify-between gap-2 text-[13px]" :style="{ color: 'var(--color-accent)' }">
+                <span style="color: var(--color-text-secondary);">Quotation</span>
+                <span class="font-mono">{{ invoice.reference_code }}</span>
+              </NuxtLink>
+              <div v-else-if="invoice.reference_code" class="flex items-center justify-between gap-2 text-[13px]">
+                <span style="color: var(--color-text-secondary);">Quotation</span>
+                <span class="font-mono" style="color: var(--color-text);">{{ invoice.reference_code }}</span>
+              </div>
+              <div v-if="invoice.emailed_at" class="flex items-center justify-between gap-2 text-[13px]">
+                <span style="color: var(--color-text-secondary);">Emailed</span>
+                <span style="color: var(--color-text);" :title="invoice.emailed_to ?? ''">{{ fmtDate(invoice.emailed_at) }}</span>
+              </div>
             </div>
           </div>
+
+          <AdminEmailHistory related-type="invoice" :related-id="invoice.id" />
         </div>
       </div>
 
@@ -272,8 +277,6 @@ class="text-[13px] font-semibold shrink-0"
         </div>
         <p v-else class="text-[13px]" style="color: var(--color-text-tertiary);">No payments recorded against this invoice yet.</p>
       </div>
-
-      <AdminEmailHistory related-type="invoice" :related-id="invoice.id" />
 
       <AdminInvoiceEmailModal
         :open="emailOpen"

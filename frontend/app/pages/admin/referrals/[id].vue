@@ -516,10 +516,10 @@ class="rounded-xl border px-4 py-3.5 space-y-2"
             <span class="text-[11px]" style="color: var(--color-text-secondary);">{{ referral.agreed_terms ? 'Yes' : 'No' }}</span>
           </div>
         </div>
+
+        <AdminEmailHistory v-if="referral.referrer_email" :email="referral.referrer_email" title="Emails to the referrer" />
       </div>
     </div>
-
-    <AdminEmailHistory v-if="referral?.referrer_email" :email="referral.referrer_email" title="Emails to the referrer" />
 
     <!-- Quotation picker drawer -->
     <Teleport to="body">

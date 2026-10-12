@@ -301,43 +301,46 @@ const addressBlock = computed(() => {
           </section>
         </div>
 
-        <!-- RIGHT: teammate-owned (read-only) -->
-        <section class="rounded-2xl border p-6 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
-          <div class="flex items-center justify-between gap-3 mb-1">
-            <h2 class="text-[13px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Personal details</h2>
-            <span
-              class="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-medium"
-              :style="profile.profile_complete
-                ? { color: 'var(--color-success)', background: 'var(--status-succeeded-bg)' }
-                : { color: 'var(--color-warning)', background: 'var(--status-refunded-bg)' }">
-              <span class="size-1.5 rounded-full" :style="{ background: profile.profile_complete ? 'var(--color-success)' : 'var(--color-warning)' }" />
-              {{ profile.profile_complete ? 'Complete' : `${profile.profile_missing.length} missing` }}
-            </span>
-          </div>
-          <p class="text-[12px] mb-5" style="color: var(--color-text-tertiary);">Filled by {{ profile.name.split(' ')[0] }} on their team profile — read-only here.</p>
+        <!-- RIGHT: teammate-owned (read-only), then the Emails summary -->
+        <div class="space-y-6 max-md:space-y-4 max-md:min-w-0">
+          <section class="rounded-2xl border p-6 max-md:p-4" :style="{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)' }">
+            <div class="flex items-center justify-between gap-3 mb-1">
+              <h2 class="text-[13px] font-semibold uppercase tracking-widest" style="color: var(--color-text-tertiary);">Personal details</h2>
+              <span
+                class="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-medium"
+                :style="profile.profile_complete
+                  ? { color: 'var(--color-success)', background: 'var(--status-succeeded-bg)' }
+                  : { color: 'var(--color-warning)', background: 'var(--status-refunded-bg)' }">
+                <span class="size-1.5 rounded-full" :style="{ background: profile.profile_complete ? 'var(--color-success)' : 'var(--color-warning)' }" />
+                {{ profile.profile_complete ? 'Complete' : `${profile.profile_missing.length} missing` }}
+              </span>
+            </div>
+            <p class="text-[12px] mb-5" style="color: var(--color-text-tertiary);">Filled by {{ profile.name.split(' ')[0] }} on their team profile — read-only here.</p>
 
-          <dl class="space-y-4">
-            <div>
-              <dt class="text-[11px] font-medium uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Phone</dt>
-              <dd class="text-[13px]" :style="{ color: profile.phone ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">{{ orNone(profile.phone) }}</dd>
-            </div>
-            <div class="pt-4 border-t" :style="{ borderColor: 'var(--color-border)' }">
-              <dt class="text-[11px] font-medium uppercase tracking-wider mb-1.5" style="color: var(--color-text-tertiary);">Bank</dt>
-              <dd class="space-y-1">
-                <p class="text-[13px]" :style="{ color: profile.bank_name ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">{{ orNone(profile.bank_name) }}</p>
-                <p class="text-[13px] tabular-nums" :style="{ color: profile.bank_account_number ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">{{ orNone(profile.bank_account_number) }}</p>
-                <p class="text-[12px]" style="color: var(--color-text-secondary);">{{ profile.bank_account_holder ? `Holder: ${profile.bank_account_holder}` : '' }}</p>
-              </dd>
-            </div>
-            <div class="pt-4 border-t" :style="{ borderColor: 'var(--color-border)' }">
-              <dt class="text-[11px] font-medium uppercase tracking-wider mb-1.5" style="color: var(--color-text-tertiary);">Address</dt>
-              <dd v-if="addressBlock" class="text-[13px] whitespace-pre-line leading-relaxed" style="color: var(--color-text);">{{ addressBlock }}</dd>
-              <dd v-else class="text-[13px]" style="color: var(--color-text-tertiary);">Not provided</dd>
-            </div>
-          </dl>
-        </section>
+            <dl class="space-y-4">
+              <div>
+                <dt class="text-[11px] font-medium uppercase tracking-wider mb-0.5" style="color: var(--color-text-tertiary);">Phone</dt>
+                <dd class="text-[13px]" :style="{ color: profile.phone ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">{{ orNone(profile.phone) }}</dd>
+              </div>
+              <div class="pt-4 border-t" :style="{ borderColor: 'var(--color-border)' }">
+                <dt class="text-[11px] font-medium uppercase tracking-wider mb-1.5" style="color: var(--color-text-tertiary);">Bank</dt>
+                <dd class="space-y-1">
+                  <p class="text-[13px]" :style="{ color: profile.bank_name ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">{{ orNone(profile.bank_name) }}</p>
+                  <p class="text-[13px] tabular-nums" :style="{ color: profile.bank_account_number ? 'var(--color-text)' : 'var(--color-text-tertiary)' }">{{ orNone(profile.bank_account_number) }}</p>
+                  <p class="text-[12px]" style="color: var(--color-text-secondary);">{{ profile.bank_account_holder ? `Holder: ${profile.bank_account_holder}` : '' }}</p>
+                </dd>
+              </div>
+              <div class="pt-4 border-t" :style="{ borderColor: 'var(--color-border)' }">
+                <dt class="text-[11px] font-medium uppercase tracking-wider mb-1.5" style="color: var(--color-text-tertiary);">Address</dt>
+                <dd v-if="addressBlock" class="text-[13px] whitespace-pre-line leading-relaxed" style="color: var(--color-text);">{{ addressBlock }}</dd>
+                <dd v-else class="text-[13px]" style="color: var(--color-text-tertiary);">Not provided</dd>
+              </div>
+            </dl>
+          </section>
+
+          <AdminEmailHistory related-type="user" :related-id="profile.id" />
+        </div>
       </div>
-      <AdminEmailHistory related-type="user" :related-id="profile.id" />
     </template>
 
     <!-- Deactivate / reactivate / send-link confirm -->

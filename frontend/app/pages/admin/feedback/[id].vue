@@ -902,6 +902,8 @@ onMounted(() => {
           </dl>
         </section>
 
+        <AdminEmailHistory related-type="feedback" :related-id="record.id" />
+
         <button
           type="button"
           class="btn-table-action is-danger max-md:w-full max-md:h-10! max-md:mt-2 max-md:text-[13px]!"
@@ -911,7 +913,6 @@ onMounted(() => {
         </button>
       </aside>
       </div>
-      <AdminEmailHistory related-type="feedback" :related-id="record.id" />
     </template>
 
     <AdminConfirmDialog :open="confirmOpen" :config="confirmConfig" @resolve="resolveConfirm" />

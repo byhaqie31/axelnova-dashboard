@@ -48,9 +48,13 @@ The admin surfaces of [QUOTATION-REVISIONS.md](../global/QUOTATION-REVISIONS.md)
 
 `AdminInvoiceForm` gained the `phase`, `care_plan` (a month picker bounded by the separate Care Plan period) and — edit only — `adjustment` types, and greys out anything the netting already settled.
 
-### `components/admin/EmailHistory.vue` — the "Emails" panel
+### `components/admin/EmailHistory.vue` — the "Emails" card
 
-Every email the dashboard sent about a record, newest first, with Resend's delivery status — feed `GET /api/v1/admin/emails` (see [EMAIL-SYSTEM.md](../global/EMAIL-SYSTEM.md)). Props: `related-type` + `related-id` (an `EmailLog::RELATED` alias — `quotation`, `invoice`, `inquiry`, `feedback`, `user`, …) **or** `email` (everything sent to an address), plus an optional `title`. Rows: type label, `AdminStatusPill` (keys from `utils/emailStatus.ts`), recipient · time · who triggered it · "via Hostinger backup" when the backup route carried it, the bounce/failure reason, and a "View in Resend" link once Resend's id is known. Bounced / spam / failed rows get a danger border. Placed full-width below the main content on the quotation, invoice, inquiry, feedback and team-user pages (by record) and on the client and referral pages (by address — the referral page lists everything sent to the referrer). Order and payment pages get it in Phase 3, when order and receipt emails exist.
+Every email the dashboard sent about a record, newest first, with Resend's delivery status — feed `GET /api/v1/admin/emails` (see [EMAIL-SYSTEM.md](../global/EMAIL-SYSTEM.md)). Props: `related-type` + `related-id` (an `EmailLog::RELATED` alias — `quotation`, `invoice`, `inquiry`, `feedback`, `user`, …) **or** `email` (everything sent to an address), plus an optional `title`.
+
+**A compact summary card for the right sidebar**, never a full-width section: the eyebrow + "N sent", a danger line ("1 email needs attention") whenever any send bounced / was marked spam / failed — counted across **every** page by the feed's `meta.problems`, so an old failure still shows — and the **latest 3** rows (type label in danger colour when it's a problem, `AdminStatusPill` from `utils/emailStatus.ts`, the time). Kept to 3 rows on purpose: the sidebars are sticky, and a long list would push the actions out of reach. **"View all N" / "View details"** opens a dialog (the `confirm-overlay` pattern, 560px, scrolls inside; a bottom sheet below `md`) with the full rows: recipient · time · who triggered it · "via Hostinger backup", the bounce/failure reason, a danger border on problems, and "View in Resend" once Resend's id is known.
+
+Placed **last in the page's right column**: the quotation sidebar (read view) and, for a draft, the `AdminQuotationBuilder` sidebar via its `#sidebar` slot; the inquiry, client (by address), referral (by address — everything sent to the referrer) and feedback sidebars (above Delete); the invoice page's right column under "Client & order"; and the team-user page's right column under "Personal details". Order and payment pages get it in Phase 3, when order and receipt emails exist.
 
 ### `components/admin/ClientPicker.vue`
 

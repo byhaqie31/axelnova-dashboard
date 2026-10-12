@@ -1247,6 +1247,9 @@ id="qb-commission-pct" v-model.number="commissionPct" type="number" min="5" max=
 
       <p v-if="error" class="text-[12px] text-center px-3" style="color: var(--color-danger);">{{ error }}</p>
       <p v-else-if="!isEdit" class="text-[11px] text-center px-3" style="color: var(--color-text-tertiary);">Save the draft to enable PDF preview and sending.</p>
+
+      <!-- Extra sidebar cards from the page (e.g. the Emails summary). -->
+      <slot name="sidebar" />
     </div>
 
     <!-- Confirm gate for send / create-order. -->

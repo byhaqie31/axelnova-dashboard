@@ -365,7 +365,11 @@ to="/admin/quotations" class="inline-flex items-center gap-2 text-[13px] mb-8 ma
           @sent="applyQuotation"
           @accepted="(orderId) => navigateTo(`/admin/orders/${orderId}`)"
           @delete="openDelete(quotation)"
-        />
+        >
+          <template #sidebar>
+            <AdminEmailHistory related-type="quotation" :related-id="quotation.id" />
+          </template>
+        </QuotationBuilder>
       </template>
 
       <!-- Non-draft → read view -->
@@ -600,9 +604,10 @@ v-if="quotation.phone" :href="`https://wa.me/${quotation.phone.replace(/\D/g, ''
               </button>
             </div>
           </div>
+
+          <AdminEmailHistory related-type="quotation" :related-id="quotation.id" />
         </div>
       </div>
-      <AdminEmailHistory related-type="quotation" :related-id="quotation.id" />
     </template>
 
     <!-- Delete confirmation — shared dialog (soft delete, or the order-attached block). -->
