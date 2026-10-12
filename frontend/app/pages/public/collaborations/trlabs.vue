@@ -217,14 +217,22 @@ useScrollReveal('.reveal')
 </script>
 
 <template>
-  <div class="collab-trlabs">
+  <!-- overflow-x-clip lives on the full-width root, not the hero: it keeps the
+       entrance's off-screen cards and the full-bleed glow from adding a
+       horizontal scrollbar, while letting the glow reach the screen edges.
+       `clip` (not `hidden`) is no scroll container, so the sticky panel below
+       still sticks. -->
+  <div class="collab-trlabs overflow-x-clip">
     <div v-if="partner" class="max-w-7xl mx-auto px-6 pt-24 pb-32">
       <!-- Hero -->
       <section
         ref="heroEl"
-        class="relative min-h-[64vh] flex flex-col items-center justify-center text-center mb-32 overflow-x-clip"
+        class="relative min-h-[64vh] flex flex-col items-center justify-center text-center mb-32"
       >
-        <span aria-hidden="true" class="collab-hero-glow" />
+        <span aria-hidden="true" class="collab-hero-glow">
+          <span class="collab-hero-glow-blob collab-hero-glow-left" />
+          <span class="collab-hero-glow-blob collab-hero-glow-right" />
+        </span>
         <!-- The two named cards ARE the page heading (h1 text: "Axel Nova
              Ventures × TRLabs") — no second headline repeating the pair. -->
         <CollabLockup
@@ -472,15 +480,51 @@ html[data-collab-intro] .collab-hero-hold {
 }
 
 /* Co-brand glow behind the lockup — its own absolutely positioned child
-   (UI-STANDARDS hard rule 8). Colours come from the scope's tokens. */
+   (UI-STANDARDS hard rule 8). It breaks out of the max-w-7xl container to the
+   full screen width, so wide screens have no bare sides; the page root clips
+   the overflow. Colours come from the scope's tokens. Vertical extent is a
+   share of the hero (not px) so it stays centred on the lockup at any
+   viewport height. */
 .collab-hero-glow {
   position: absolute;
-  inset: 4% 8% auto;
-  height: 340px;
+  top: -8%;
+  left: 50%;
+  width: 100vw;
+  height: 92%;
+  transform: translateX(-50%);
   pointer-events: none;
-  background:
-    radial-gradient(40% 60% at 32% 40%, color-mix(in srgb, var(--grad-aurora-blue) 22%, transparent) 0%, transparent 70%),
-    radial-gradient(40% 60% at 68% 40%, color-mix(in srgb, var(--collab-trlabs-dot) 22%, transparent) 0%, transparent 70%);
+}
+
+/* Axel Nova blue from the left, TRLabs orange from the right. They drift
+   toward the middle and back, swelling and brightening as they meet — the two
+   studios coming together. Transform + opacity only, and the blur sits on each
+   blob (not the wrapper) so the compositor moves it without re-blurring. */
+.collab-hero-glow-blob {
+  position: absolute;
+  top: 0;
+  width: 62%;
+  height: 100%;
+  opacity: 0.7;
   filter: blur(24px);
+  animation: collab-glow-meet 9s ease-in-out infinite alternate;
+}
+.collab-hero-glow-left {
+  left: -4%;
+  --glow-drift: 6vw;
+  background: radial-gradient(50% 50% at 50% 50%, color-mix(in srgb, var(--grad-aurora-blue) 24%, transparent) 0%, transparent 100%);
+}
+.collab-hero-glow-right {
+  right: -4%;
+  --glow-drift: -6vw;
+  background: radial-gradient(50% 50% at 50% 50%, color-mix(in srgb, var(--collab-trlabs-dot) 24%, transparent) 0%, transparent 100%);
+}
+@keyframes collab-glow-meet {
+  to {
+    transform: translateX(var(--glow-drift)) scale(1.1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .collab-hero-glow-blob { animation: none; }
 }
 </style>

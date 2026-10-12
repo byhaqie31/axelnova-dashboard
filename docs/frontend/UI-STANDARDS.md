@@ -357,6 +357,7 @@ Highlights:
 - **Aurora drift:** 24s `ease-in-out` infinite alternate (background mesh, `.bg-aurora` — a top-anchored band for page sections).
 - **Loader grid:** `.loader-grid` — the homepage loading screen's backdrop. 64px cells drawn from `--color-border` panning one full cell per 6s (linear, so the loop is seamless), radially masked so it fades toward the edges, over a 4.5s `--color-accent-soft` bloom. It is **its own absolutely-positioned child element**, not a `::before` on a wrapper — see hard rule 8.
 - **Aurora line shift:** 14s ease-in-out infinite (navbar gradient hairline).
+- **Collab glow meet:** 9s `ease-in-out` infinite alternate (`/collaborations/trlabs` hero). Two full-screen-width co-brand glows (Axel Nova blue from the left, the partner colour from the right) drift `6vw` toward the middle and scale to 1.1 while fading from 0.7 to 1 opacity, then ease back. Transform and opacity only, blur on each glow (not the wrapper), still under reduced motion.
 - **Page transition:** GSAP JS hooks on `<NuxtPage>` (`out-in`): leave 0.3s, enter 0.45s.
 - **Reduced motion:** entrances are no-ops (content instantly visible), Lenis disabled; essential state transitions kept.
 
