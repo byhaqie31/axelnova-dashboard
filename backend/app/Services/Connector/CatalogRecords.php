@@ -12,7 +12,10 @@ use App\Models\ServicePackage;
  * How the MCP connector presents the public catalogue — projects, services
  * (service_categories) and packages — to Claude (connector v6). Every record
  * says its `visibility` (live | hidden: whether the public site shows it), an
- * `admin_url` for the founder, and a `public_url` only while it is Live.
+ * `admin_url` for the founder, and a `public_url` only while it is Live. A
+ * package's `visibility` is its OWN flag; its `effective_visibility` folds in its
+ * service's (ServicePackage::isEffectivelyLive) and is what public_url, quotable
+ * and the connector's edit guard follow.
  */
 final class CatalogRecords
 {
@@ -101,6 +104,7 @@ final class CatalogRecords
             'price_max_myr' => $package->price_max_myr,
             'unit' => $package->unit,
             'visibility' => self::visibility($package->active),
+            'effective_visibility' => $package->effective_visibility,
             'featured' => $package->featured,
             ...self::quoteState($package),
             'admin_url' => self::url("/admin/services/packages/{$package->id}"),
@@ -122,19 +126,19 @@ final class CatalogRecords
                 'visibility' => self::visibility($service->active),
             ],
             'visibility' => self::visibility($package->active),
+            'effective_visibility' => $package->effective_visibility,
             ...self::quoteState($package),
             'admin_url' => self::url("/admin/services/packages/{$package->id}"),
-            // The package card is public only while both it and its service are Live.
-            'public_url' => $package->active && $service->active ? self::url('/services') : null,
+            'public_url' => $package->isEffectivelyLive() ? self::url('/services') : null,
         ];
     }
 
     /**
      * The package's quote-builder wiring: its quote package key (null = a plain
      * card, e.g. a custom-quote or retainer row) and whether it is quotable RIGHT
-     * NOW — wired, with a max price, and both it and its service Live (so it
-     * appears in list_catalog). A wired Hidden package becomes quotable once the
-     * founder makes it Live.
+     * NOW — wired, with a max price, and effectively Live (both it and its service
+     * Live, so it appears in list_catalog). A wired Hidden package becomes
+     * quotable once the founder makes it — and its service — Live.
      *
      * @return array{quote_package_key: string|null, quotable: bool}
      */
@@ -144,7 +148,7 @@ final class CatalogRecords
 
         return [
             'quote_package_key' => $key,
-            'quotable' => $key !== null && $package->price_max_myr !== null && $package->active && (bool) $package->category?->active,
+            'quotable' => $key !== null && $package->price_max_myr !== null && $package->isEffectivelyLive(),
         ];
     }
 }

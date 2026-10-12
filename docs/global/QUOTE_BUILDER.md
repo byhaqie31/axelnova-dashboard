@@ -212,7 +212,7 @@ The fastest path uses the admin UI — no code or SQL.
    - `quote package key` — a new stable key like `web_landing` (no spaces, snake_case)
 5. Save. The quote builder picks it up immediately (cache auto-clears). The package key must not already belong to another package (Live or Hidden) — the form refuses it and names the holder.
 
-Claude can draft the same package through the MCP connector (`create_package_draft` with a new `quote_package_key`) — it lands **Hidden**, so it only joins the quote builder once you make it Live. See [MCP-CONNECTOR.md](./MCP-CONNECTOR.md#services--packages).
+Claude can draft the same package through the MCP connector (`create_package_draft` with a new `quote_package_key`) — it lands **Hidden**, so it only joins the quote builder once you make it — and its service — Live. See [MCP-CONNECTOR.md](./MCP-CONNECTOR.md#services--packages).
 
 If your new package needs **custom modifier inputs** in the quote builder (e.g. a checkbox specific to this package), that still requires editing `pricing_configs` JSON and `frontend/app/pages/public/quote/index.vue` — modifiers are engineered config, not yet admin-managed.
 

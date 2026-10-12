@@ -389,6 +389,119 @@ class ConnectorServiceTest extends TestCase
         $this->assertSame('3500.00', $package->fresh()->price_min_myr);
     }
 
+    // ── Effective visibility (the package's flag × its service's) ───────────
+
+    public function test_a_live_package_in_a_hidden_service_is_editable_and_stays_off_the_site(): void
+    {
+        $dash = $this->category(['slug' => 'dash']);
+        $package = $this->package(['service_category_id' => $dash->id, 'slug' => 'starter', 'quote_key' => ['category' => 'dash', 'package' => 'dash_starter']]);
+
+        $this->putJson("/api/v1/connector/packages/{$package->id}", ['tagline' => 'Sharper.'], $this->tokenHeader())
+            ->assertOk()
+            ->assertJsonPath('data.visibility', 'live')
+            ->assertJsonPath('data.effective_visibility', 'hidden')
+            ->assertJsonPath('data.public_url', null)
+            ->assertJsonPath('data.quotable', false);
+
+        $package->refresh();
+        $this->assertSame('Sharper.', $package->tagline);
+        $this->assertTrue($package->active, 'the package flag is never changed by an edit');
+    }
+
+    public function test_a_hidden_package_in_a_live_service_is_editable(): void
+    {
+        $package = $this->package(['slug' => 'draft', 'active' => false]);
+
+        $this->putJson("/api/v1/connector/packages/{$package->id}", ['tagline' => 'Sharper.'], $this->tokenHeader())
+            ->assertOk()
+            ->assertJsonPath('data.visibility', 'hidden')
+            ->assertJsonPath('data.effective_visibility', 'hidden');
+
+        $this->assertSame('Sharper.', $package->fresh()->tagline);
+    }
+
+    public function test_moving_a_live_flagged_package_into_a_live_service_is_refused(): void
+    {
+        $dash = $this->category(['slug' => 'dash']);
+        $package = $this->package(['service_category_id' => $dash->id, 'slug' => 'starter']);
+
+        $this->putJson("/api/v1/connector/packages/{$package->id}", ['service_id' => $this->web->id, 'tagline' => 'Sharper.'], $this->tokenHeader())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('service_id')
+            ->assertJsonPath('errors.service_id.0', 'Moving this package into a Live service would publish it. Ask the founder to hide the package in the admin first.');
+
+        $package->refresh();
+        $this->assertSame($dash->id, $package->service_category_id);
+        $this->assertSame('A clean starter site.', $package->tagline);
+    }
+
+    public function test_a_hidden_package_can_move_into_a_live_service(): void
+    {
+        $dash = $this->category(['slug' => 'dash']);
+        $package = $this->package(['service_category_id' => $dash->id, 'slug' => 'starter', 'active' => false]);
+
+        $this->putJson("/api/v1/connector/packages/{$package->id}", ['service_id' => $this->web->id], $this->tokenHeader())
+            ->assertOk()
+            ->assertJsonPath('data.service.id', $this->web->id)
+            ->assertJsonPath('data.effective_visibility', 'hidden');
+
+        $this->assertSame($this->web->id, $package->fresh()->service_category_id);
+    }
+
+    public function test_packages_under_a_hidden_service_stay_out_of_the_catalogue_and_quote_builder(): void
+    {
+        $dash = $this->category(['slug' => 'dash']);
+        $this->package(['service_category_id' => $dash->id, 'slug' => 'starter', 'quote_key' => ['category' => 'dash', 'package' => 'dash_starter']]);
+
+        $public = collect($this->getJson('/api/v1/services')->assertOk()->json('data'));
+        $this->assertSame(['web'], $public->pluck('slug')->all());
+        $this->assertNotContains('starter', $public->flatMap(fn ($s) => collect($s['packages'])->pluck('slug'))->all());
+
+        $builder = collect($this->getJson('/api/v1/quote-builder/config')->assertOk()->json('data.categories'));
+        $this->assertNotContains('dash', $builder->pluck('key')->all());
+        $this->assertNotContains('dash_starter', $builder->flatMap(fn ($c) => collect($c['packages'])->pluck('key'))->all());
+
+        $catalog = $this->getJson('/api/v1/connector/catalog', $this->tokenHeader())->assertOk();
+        $this->assertNotContains('dash_starter', collect($catalog->json('packages'))->pluck('key')->all());
+        $this->assertContains('web_business', collect($catalog->json('packages'))->pluck('key')->all());
+    }
+
+    public function test_effective_visibility_covers_every_flag_combination(): void
+    {
+        $dash = $this->category(['slug' => 'dash']);
+        $this->package(['slug' => 'web-hidden', 'active' => false]);
+        $this->package(['service_category_id' => $dash->id, 'slug' => 'dash-live']);
+        $this->package(['service_category_id' => $dash->id, 'slug' => 'dash-hidden', 'active' => false]);
+
+        $expected = [
+            'business' => ['live', 'live'],       // package Live, service Live
+            'web-hidden' => ['hidden', 'hidden'], // package Hidden, service Live
+            'dash-live' => ['live', 'hidden'],    // package Live, service Hidden
+            'dash-hidden' => ['hidden', 'hidden'], // package Hidden, service Hidden
+        ];
+
+        $rows = collect($this->getJson('/api/v1/connector/services', $this->tokenHeader())->assertOk()->json('data'))
+            ->flatMap(fn ($service) => $service['packages'])
+            ->keyBy('slug');
+
+        foreach ($expected as $slug => [$own, $effective]) {
+            $this->assertSame($own, $rows[$slug]['visibility'], "{$slug}: visibility");
+            $this->assertSame($effective, $rows[$slug]['effective_visibility'], "{$slug}: effective_visibility (list_services)");
+
+            $package = ServicePackage::where('slug', $slug)->with('category')->firstOrFail();
+            $this->assertSame($effective, $package->effective_visibility, "{$slug}: model accessor");
+            $this->assertSame($effective === 'live', $package->isEffectivelyLive(), "{$slug}: isEffectivelyLive()");
+            $this->getJson("/api/v1/connector/packages/{$package->id}", $this->tokenHeader())
+                ->assertOk()
+                ->assertJsonPath('data.effective_visibility', $effective)
+                ->assertJsonPath('data.public_url', $effective === 'live' ? rtrim((string) config('services.frontend.url'), '/').'/services' : null);
+        }
+
+        $this->getJson("/api/v1/connector/services/{$dash->id}", $this->tokenHeader())
+            ->assertOk()
+            ->assertJsonPath('data.packages.0.effective_visibility', 'hidden');
+    }
+
     public function test_package_slug_is_unique_within_its_service(): void
     {
         $this->postJson('/api/v1/connector/packages', $this->packagePayload(['slug' => 'business']), $this->tokenHeader())

@@ -79,6 +79,10 @@ onMounted(load)
 const totalPackages = computed(() => categories.value.reduce((s, c) => s + c.packages.length, 0))
 const featuredPackages = computed(() => categories.value.reduce((s, c) => s + c.packages.filter(p => p.featured).length, 0))
 
+// A package is public only while it AND its category are active
+// (ServicePackage::isEffectivelyLive) — an active package in a hidden category is badged.
+const HIDDEN_VIA_SERVICE_HINT = 'Active, but its category is hidden — it goes public when the category does.'
+
 function fmtPrice(min: string | number, max: string | number | null) {
   if (max === null) return `${formatMyr(min)}+`
   return `${formatMyr(min)} – ${formatMyr(max)}`
@@ -186,6 +190,12 @@ v-if="pkg.featured" class="text-[10px] font-semibold uppercase tracking-wider px
                   <span
 v-if="!pkg.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                     :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
+                  <span
+v-else-if="!cat.active" :title="HIDDEN_VIA_SERVICE_HINT" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                    :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">
+                    <UIcon name="i-lucide-eye-off" class="size-3" />
+                    Hidden via service
+                  </span>
                 </div>
                 <p class="text-[12px] mt-0.5 truncate" :style="{ color: 'var(--color-text-secondary)' }">{{ pkg.tagline }}</p>
               </div>
@@ -219,6 +229,12 @@ v-if="pkg.featured" class="text-[10px] font-semibold uppercase tracking-wider px
                 <span
 v-if="!pkg.active" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
                   :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">Inactive</span>
+                <span
+v-else-if="!cat.active" :title="HIDDEN_VIA_SERVICE_HINT" class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                  :style="{ color: 'var(--color-text-tertiary)', background: 'var(--color-bg-secondary)' }">
+                  <UIcon name="i-lucide-eye-off" class="size-3" />
+                  Hidden via service
+                </span>
               </div>
               <p class="text-[12px] break-words" :style="{ color: 'var(--color-text-secondary)' }">{{ pkg.tagline }}</p>
               <div class="flex items-center justify-between gap-3 pt-1">

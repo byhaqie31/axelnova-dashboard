@@ -20,7 +20,8 @@
  *     "Revise" in the admin); create_blog_draft, update_blog_draft (a post
  *     while it is a DRAFT; refused once published); create_/update_project_draft,
  *     create_/update_service_draft, create_/update_package_draft (created
- *     HIDDEN, edited only while Hidden; refused once Live).
+ *     HIDDEN, edited only while Hidden; refused once Live — a package counts as
+ *     Live only while it AND its service are Live: `effective_visibility`).
  *   • NEVER             — there is NO revise, send, accept, delete or publish
  *     tool, and nothing can make a catalogue row Live; those are portal-only,
  *     by hand.
@@ -58,8 +59,12 @@ import { authApp } from "./auth";
  * list / read anything, create HIDDEN, partially update while still Hidden
  * (refused once Live). A package may be wired to the quote builder with a NEW
  * quote_package_key. Nothing can make a row Live, feature, reorder or delete it.
+ * v6.1: packages carry `effective_visibility` (live only while the package AND its
+ * service are Live — what public_url and quotable follow). update_package_draft
+ * edits any package that is effectively hidden (it OR its service Hidden), and
+ * refuses a move that would publish it. No flag is ever changed by an edit.
  */
-const CONNECTOR_VERSION = "6.0.0";
+const CONNECTOR_VERSION = "6.1.0";
 
 const CATALOG_PATH = "/api/v1/connector/catalog";
 const QUOTATIONS_PATH = "/api/v1/connector/quotations";
@@ -390,6 +395,13 @@ const CATALOG_DRAFT_RULES = [
   "You can never make anything Live, feature it, reorder it or delete it: give the founder the returned admin_url to review it and switch it Live.",
 ].join(" ");
 
+/** How a PACKAGE's Live / Hidden works — it also depends on its service's. */
+const PACKAGE_VISIBILITY_RULES = [
+  "A package's `visibility` is its own flag; its `effective_visibility` is what the public sees — live only while BOTH the package and its service are Live (public_url and quotable follow it).",
+  "So you can edit a package while it OR its service is hidden (effective_visibility = hidden), e.g. a Live-flagged package inside a Hidden service; an effectively Live one is refused (422).",
+  "Moving a Live-flagged package into a Live service is refused (422 on service_id) — it would publish it. Your edits never change either flag.",
+].join(" ");
+
 const kebabSlug = (max: number) =>
   z
     .string()
@@ -468,7 +480,7 @@ const packageFieldsShape = {
     .nullable()
     .optional()
     .describe(
-      "Wires the package to the quote builder under this snake_case key (e.g. web_landing_sprint), so it becomes quotable — in list_catalog and the admin builder — once the founder makes it Live. It must be a NEW key: one already used by any package (Live or Hidden) or by the legacy pricing config is refused, and the error names who holds it. Needs price_max_myr. null unwires it. Omit for a plain card (custom-quote / retainer).",
+      "Wires the package to the quote builder under this snake_case key (e.g. web_landing_sprint), so it becomes quotable — in list_catalog and the admin builder — once the founder makes it and its service Live (effective_visibility = live). It must be a NEW key: one already used by any package (Live or Hidden) or by the legacy pricing config is refused, and the error names who holds it. Needs price_max_myr. null unwires it. Omit for a plain card (custom-quote / retainer).",
     ),
 } as const;
 
@@ -765,7 +777,8 @@ export class AxelNovaMCP extends McpAgent<Env> {
       "list_services",
       [
         "READ-ONLY. Every service on /services (Live and Hidden), in order, each with its packages. A SERVICE is a category (Web, Dashboard …); its PACKAGES are the priced cards inside it.",
-        "Package rows carry their price range, unit, visibility, quote_package_key (null = a plain card) and quotable (in the quote builder right now: wired, with a max price, and both it and its service Live).",
+        "Package rows carry their price range, unit, visibility (the package's own flag), effective_visibility, quote_package_key (null = a plain card) and quotable (in the quote builder right now: wired, with a max price, and effectively Live).",
+        PACKAGE_VISIBILITY_RULES,
         "Use it to find ids and to see which quote package keys are taken before wiring a new package. Call get_service or get_package for full records.",
       ].join(" "),
       {},
@@ -774,7 +787,10 @@ export class AxelNovaMCP extends McpAgent<Env> {
 
     this.server.tool(
       "get_service",
-      "Read back ANY service (category, Live or Hidden) by id — name, slug, icon, description, visibility, admin_url — with the FULL record of each of its packages.",
+      [
+        "Read back ANY service (category, Live or Hidden) by id — name, slug, icon, description, visibility, admin_url — with the FULL record of each of its packages (each with visibility and effective_visibility).",
+        PACKAGE_VISIBILITY_RULES,
+      ].join(" "),
       {
         id: z.number().int().min(1).describe("The service id (from list_services)."),
       },
@@ -812,7 +828,10 @@ export class AxelNovaMCP extends McpAgent<Env> {
 
     this.server.tool(
       "get_package",
-      "Read back ANY package (Live or Hidden) by id — the full card (prices, unit, timeline, ETA, revisions, features, CTA), its service, visibility, quote_package_key, quotable, admin_url and public_url. Read a package before updating it.",
+      [
+        "Read back ANY package (Live or Hidden) by id — the full card (prices, unit, timeline, ETA, revisions, features, CTA), its service (with the service's visibility), visibility, effective_visibility, quote_package_key, quotable, admin_url and public_url. Read a package before updating it.",
+        PACKAGE_VISIBILITY_RULES,
+      ].join(" "),
       {
         id: z.number().int().min(1).describe("The package id (from list_services or create_package_draft)."),
       },
@@ -846,9 +865,10 @@ export class AxelNovaMCP extends McpAgent<Env> {
     this.server.tool(
       "update_package_draft",
       [
-        "Update a HIDDEN package by id. PARTIAL: send only the fields that change (features, when sent, replaces the list). Sending another service_id moves it to the end of that service.",
+        "Update an effectively HIDDEN package by id — the package or its service is hidden. PARTIAL: send only the fields that change (features, when sent, replaces the list). Sending another service_id moves it to the end of that service.",
         "quote_package_key: send a new key to wire it, null to unwire it, or omit to keep the current one.",
         CATALOG_DRAFT_RULES,
+        PACKAGE_VISIBILITY_RULES,
       ].join(" "),
       {
         id: z.number().int().min(1).describe("The package id (from list_services or get_package)."),

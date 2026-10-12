@@ -274,7 +274,7 @@ POST /v1/connector/services               connector:draft — create a service (
 PUT  /v1/connector/services/{id}          connector:draft — partial update of a HIDDEN service (Live → 422)
 GET  /v1/connector/packages/{id}          connector:read  — full package record (+ quote_package_key / quotable)
 POST /v1/connector/packages               connector:draft — create a package (always Hidden; optional NEW quote_package_key)
-PUT  /v1/connector/packages/{id}          connector:draft — partial update of a HIDDEN package (Live → 422)
+PUT  /v1/connector/packages/{id}          connector:draft — partial update of an effectively HIDDEN package (it or its service Hidden; effectively Live → 422)
 
 # Quotation revisions (see QUOTATION-REVISIONS.md) — cockpit
 GET  /v1/admin/quotations/{id}?revision=N           Sanctum — one family, shown through revision N (default: open, else current)

@@ -128,12 +128,27 @@ const editingField = ref<ScopeFieldRow | null>(null)
 function openNewField() { editingField.value = null; modalOpen.value = true }
 function openEditField(f: ScopeFieldRow) { editingField.value = f; modalOpen.value = true }
 
+// Switching a hidden category on also publishes its active packages (a package is
+// public only while it AND its category are active) — save() confirms how many.
+const savedActive = ref(true)
+const activePackageCount = ref(0)
+
+function confirmPublish(): boolean {
+  const n = activePackageCount.value
+  const effect = n === 0
+    ? 'None of its packages will go public — they are all inactive.'
+    : `This will publish ${n} package${n === 1 ? '' : 's'}.`
+  return confirm(`Make “${form.name}” visible on the public services page? ${effect}`)
+}
+
 async function fetchCategory() {
   if (isNew.value) return
   loading.value = true
   try {
-    const res = await apiFetch<{ data: typeof form }>(`/api/v1/admin/service-categories/${route.params.id}`)
+    const res = await apiFetch<{ data: typeof form & { packages?: { active: boolean }[] } }>(`/api/v1/admin/service-categories/${route.params.id}`)
     Object.assign(form, res.data)
+    savedActive.value = res.data.active
+    activePackageCount.value = (res.data.packages ?? []).filter(p => p.active).length
   }
   catch {
     message.value = 'Failed to load category.'
@@ -144,6 +159,7 @@ async function fetchCategory() {
 }
 
 async function save() {
+  if (!isNew.value && !savedActive.value && form.active && !confirmPublish()) return
   saving.value = true
   errors.value = {}
   message.value = ''

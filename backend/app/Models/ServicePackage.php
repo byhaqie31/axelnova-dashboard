@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Observers\ServicePackageObserver;
 use App\Support\RecordsActivity;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -56,5 +57,23 @@ class ServicePackage extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ServiceCategory::class, 'service_category_id');
+    }
+
+    /**
+     * The ONE rule for whether a package is public: it is effectively Live — on
+     * /services, and quotable if wired — only while BOTH its own `active` flag and
+     * its service's are on. Pass `$in` to ask about another service (a move). The
+     * connector's edit guard, `public_url` and `quotable` all read this, so they
+     * can't drift apart. It never changes the package's own flag.
+     */
+    public function isEffectivelyLive(?ServiceCategory $in = null): bool
+    {
+        return $this->active && (bool) ($in ?? $this->category)?->active;
+    }
+
+    /** `live` | `hidden` — isEffectivelyLive() as a label (the package's own flag stays `active`). */
+    protected function effectiveVisibility(): Attribute
+    {
+        return Attribute::get(fn () => $this->isEffectivelyLive() ? 'live' : 'hidden');
     }
 }

@@ -17,15 +17,20 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The MCP connector's PACKAGES surface (connector v6) — the cards inside a
  * service (ServiceController). Same rule as projects and services:
  *   • READ any package (Live or Hidden).
  *   • WRITE hidden only — create lands Hidden, unfeatured, at the end of its
- *     service; update is PARTIAL and refused while the package is Live (a Live
- *     wired package also prices quotes, so an edit could re-price them).
- *   • NEVER go Live, feature, reorder, or delete — admin only.
+ *     service; update is PARTIAL and refused while the package is EFFECTIVELY
+ *     Live (its own flag AND its service Live — ServicePackage::isEffectivelyLive;
+ *     a Live wired package also prices quotes, so an edit could re-price them).
+ *     A Live-flagged package inside a Hidden service is editable, but can't be
+ *     moved into a Live service (that would publish it).
+ *   • NEVER go Live, feature, reorder, or delete — admin only; nor flip the
+ *     package's own flag.
  *
  * `quote_package_key` wires the package to the quote builder (quote_key.package;
  * quote_key.category is always its service's slug). The key must be NEW — not
@@ -67,18 +72,29 @@ class ServicePackageController extends Controller
     }
 
     /**
-     * Partial update of a HIDDEN package. The slug only changes when a slug is
-     * sent; a move to another service appends it there (re-suffixing its slug
-     * only if it would collide) and re-points its quote_key.category.
+     * Partial update of an effectively HIDDEN package (it, or its service, is
+     * Hidden). The slug only changes when a slug is sent; a move to another
+     * service appends it there (re-suffixing its slug only if it would collide)
+     * and re-points its quote_key.category — refused when the move itself would
+     * make the package effectively Live.
      */
     public function update(Request $request, int $id): JsonResponse
     {
         $package = $this->find($id);
-        $this->assertHidden($package->active, 'package', 'go public on /services (and re-price quotes, if it is wired to the quote builder)');
+        $this->assertHidden($package->isEffectivelyLive(), 'package', 'go public on /services (and re-price quotes, if it is wired to the quote builder)');
 
         $data = $this->validated($request, $package);
 
-        DB::transaction(function () use ($package, $data) {
+        $target = isset($data['service_id']) && (int) $data['service_id'] !== (int) $package->service_category_id
+            ? ServiceCategory::findOrFail($data['service_id'])
+            : null;
+        if ($target && $package->isEffectivelyLive(in: $target)) {
+            throw ValidationException::withMessages([
+                'service_id' => ['Moving this package into a Live service would publish it. Ask the founder to hide the package in the admin first.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($package, $data, $target) {
             $attrs = $this->columns($data);
             $service = $package->category;
 
@@ -86,8 +102,8 @@ class ServicePackageController extends Controller
                 $attrs['slug'] = $data['slug'];
             }
 
-            if (isset($data['service_id']) && (int) $data['service_id'] !== (int) $package->service_category_id) {
-                $service = ServiceCategory::findOrFail($data['service_id']);
+            if ($target) {
+                $service = $target;
                 $attrs['sort_order'] = SortOrder::placeNew(ServicePackage::class, ['service_category_id' => $service->id], 0);
                 SortOrder::removeFromScope(ServicePackage::class, ['service_category_id' => $package->service_category_id], (int) $package->sort_order);
                 $attrs['service_category_id'] = $service->id;
