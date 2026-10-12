@@ -49,6 +49,8 @@ interface ApiCategory {
   name: string
   icon: string
   description: string
+  /** Safe HTML of the Markdown description — bold, italic, paragraphs, lists (CatalogMarkdown). */
+  description_html: string
   is_default: boolean
   packages: ApiPackage[]
 }
@@ -65,7 +67,7 @@ const serviceCategories = computed(() => {
     id: c.slug,
     label: c.name,
     icon: c.icon,
-    description: c.description,
+    descriptionHtml: c.description_html,
     isDefault: c.is_default,
     packages: c.packages.map(p => ({
       id: p.slug,
@@ -301,10 +303,9 @@ useScrollReveal('.reveal')
     <Transition name="tab" mode="out-in">
       <div v-if="currentCategory" :key="activeCat" class="mb-32">
 
-        <!-- Category description -->
-        <p class="text-[15px] leading-relaxed mb-3 max-w-2xl" style="color: var(--color-text-secondary);">
-          {{ currentCategory.description }}
-        </p>
+        <!-- Category description — full width, admin-formatted (bold, italic,
+             paragraphs, lists). Server-sanitised HTML: CatalogMarkdown. -->
+        <div class="rich-intro text-[15px] leading-relaxed mb-3" style="color: var(--color-text-secondary);" v-html="currentCategory.descriptionHtml" />
 
         <NuxtLink
           :to="`/services/${currentCategory.id}`"

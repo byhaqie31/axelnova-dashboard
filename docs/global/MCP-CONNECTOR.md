@@ -103,7 +103,7 @@ A **move** (`service_id`) is refused when it would publish the package — a Liv
 | `update_project_draft` | `PUT /projects/{id}` | write · **gate: Hidden** | Partial patch. |
 | `list_services` | `GET /services` | read (any) | Every service with its packages — ids, prices, `visibility`, `effective_visibility`, `quote_package_key`, `quotable`. |
 | `get_service` | `GET /services/{id}` | read (any) | A service + its packages' full records. |
-| `create_service_draft` | `POST /services` | write | Hidden, last, never the default. `name`, `icon` (Lucide), `description`. |
+| `create_service_draft` | `POST /services` | write | Hidden, last, never the default. `name`, `icon` (Lucide), `description` (Markdown: **bold**, *italic*, paragraphs, `- ` / `1. ` lists — `/services` renders it formatted; links, headings and code show as plain text). |
 | `update_service_draft` | `PUT /services/{id}` | write · **gate: Hidden** | Partial patch. |
 | `get_package` | `GET /packages/{id}` | read (any) | Full card + its service + quote wiring + `effective_visibility`. |
 | `create_package_draft` | `POST /packages` | write | Hidden, unfeatured, last in its service (which may itself be Hidden). Optional `quote_package_key`. |

@@ -26,6 +26,8 @@ interface Category {
   name: string
   icon: string
   description: string
+  /** The Markdown description without markers — the header's one-line preview. */
+  description_text: string
   sort_order: number
   active: boolean
   is_default: boolean
@@ -183,7 +185,7 @@ v-if="cat.is_default" class="text-[10px] font-semibold uppercase tracking-wider 
                 Default tab
               </span>
             </div>
-            <p class="text-[12px] truncate max-md:whitespace-normal max-md:line-clamp-2" :style="{ color: 'var(--color-text-secondary)' }">{{ cat.description }}</p>
+            <p class="text-[12px] truncate max-md:whitespace-normal max-md:line-clamp-2" :style="{ color: 'var(--color-text-secondary)' }">{{ cat.description_text }}</p>
           </div>
           <div class="flex items-center gap-2 w-full sm:w-auto sm:shrink-0 justify-end flex-wrap">
             <AdminActiveSwitch

@@ -23,6 +23,18 @@ const form = reactive({
   is_default: false,
 })
 
+// The description editor's toolbar — what CatalogMarkdown keeps on the public page.
+const descriptionToolbar = [
+  [
+    { kind: 'mark' as const, mark: 'bold' as const, icon: 'i-lucide-bold', label: 'Bold' },
+    { kind: 'mark' as const, mark: 'italic' as const, icon: 'i-lucide-italic', label: 'Italic' },
+  ],
+  [
+    { kind: 'bulletList' as const, icon: 'i-lucide-list', label: 'Bullet list' },
+    { kind: 'orderedList' as const, icon: 'i-lucide-list-ordered', label: 'Numbered list' },
+  ],
+]
+
 const loading = ref(!isNew.value)
 const saving = ref(false)
 const errors = ref<Record<string, string[]>>({})
@@ -288,9 +300,24 @@ v-for="ic in serviceIcons" :key="ic.name" type="button"
 
       <div>
         <label class="text-[12px] font-medium block mb-1.5" :style="{ color: 'var(--color-text-secondary)' }">Description *</label>
-        <textarea
-v-model="form.description" required rows="3" class="contact-input w-full"
-          :style="{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }" />
+        <!-- Markdown-backed (CatalogMarkdown): bold, italic, paragraphs, lists. -->
+        <UEditor
+          v-slot="{ editor }"
+          v-model="form.description"
+          content-type="markdown"
+          placeholder="What this service covers — shown above its packages on /services."
+          class="blog-editor is-compact rounded-xl border overflow-hidden"
+          :style="{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }"
+        >
+          <UEditorToolbar
+            :editor="editor"
+            :items="descriptionToolbar"
+            layout="fixed"
+            class="border-b px-2 py-1"
+            :style="{ borderColor: 'var(--color-border)' }"
+          />
+        </UEditor>
+        <p v-if="errors.description?.length" class="mt-1 text-[11px]" :style="{ color: 'var(--color-danger)' }">{{ errors.description[0] }}</p>
       </div>
 
       <div>

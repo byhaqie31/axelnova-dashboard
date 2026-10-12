@@ -445,7 +445,7 @@ const serviceFieldsShape = {
     .regex(/^i-lucide-[a-z0-9]+(?:-[a-z0-9]+)*$/)
     .optional()
     .describe("A Lucide icon name, e.g. i-lucide-bot, i-lucide-globe, i-lucide-layout-dashboard. Never an emoji."),
-  description: z.string().min(1).max(2000).optional().describe("What the service covers — the intro above its packages on /services."),
+  description: z.string().min(1).max(2000).optional().describe("What the service covers — the intro above its packages on /services. Markdown: **bold**, *italic*, a blank line for a new paragraph, and `- ` / `1. ` lists. Links, headings and code show as plain text."),
 } as const;
 
 /** Every writable package field. */

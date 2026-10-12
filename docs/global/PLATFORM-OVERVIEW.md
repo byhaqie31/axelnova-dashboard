@@ -356,7 +356,7 @@ Overview with four **stat tiles**: Total quotations · New (unactioned) · Activ
 **Category editor — every field:**
 - Slug* (unique) · Name*
 - **Icon*** — grid picker from `serviceIcons`
-- Description* (textarea)
+- Description* — rich editor (bold, italic, bullet / numbered lists), stored as Markdown; the public API adds `description_html` (safe, `CatalogMarkdown`) and `description_text` (plain, for SEO / previews). `/services` shows it full width above the packages.
 - **Sort order** — visual pill UI (move left/right, click a position to insert, "+" auto-appends)
 - Toggles: **Active** (visible on public services page) · **Default tab** (the one highlighted by default — only one allowed)
 - **Delete category** card at the foot (removes its packages + scope fields too; quotes keep their stored copy).

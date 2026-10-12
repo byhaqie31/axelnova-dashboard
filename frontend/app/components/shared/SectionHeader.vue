@@ -5,12 +5,14 @@ withDefaults(defineProps<{
   eyebrow?: string
   title: string
   subtitle?: string
+  /** Server-sanitised HTML subtitle (paragraphs, bold, italic, lists) — used instead of `subtitle`. */
+  subtitleHtml?: string
   action?: { label: string, to: string, target?: '_blank' }
   /** 'h1' when this is the page's main heading (one per page, for SEO). Looks identical either way. */
   as?: 'h1' | 'h2'
   /** Let the title run the full container width (the subtitle keeps a readable measure). */
   wide?: boolean
-}>(), { eyebrow: undefined, subtitle: undefined, action: undefined, as: 'h2', wide: false })
+}>(), { eyebrow: undefined, subtitle: undefined, subtitleHtml: undefined, action: undefined, as: 'h2', wide: false })
 
 const ruleEl = ref<HTMLElement | null>(null)
 const motion = useMotion()
@@ -58,8 +60,16 @@ onUnmounted(() => {
       </component>
       <!-- Slot variant for callers whose subtitle differs by viewport
            (e.g. "hover a card" on desktop vs "swipe left" on touch). -->
+      <!-- Block markup (it can hold <p> / <ul>), so a div, never inside the <p>. -->
+      <div
+        v-if="subtitleHtml"
+        class="rich-intro mt-4 text-[17px] leading-relaxed"
+        :class="wide && 'max-w-3xl'"
+        style="color: var(--color-text-secondary);"
+        v-html="subtitleHtml"
+      />
       <p
-        v-if="subtitle || $slots.subtitle"
+        v-else-if="subtitle || $slots.subtitle"
         class="mt-4 text-[17px] leading-relaxed"
         :class="wide && 'max-w-3xl'"
         style="color: var(--color-text-secondary);"
