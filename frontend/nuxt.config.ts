@@ -213,12 +213,15 @@ export default defineNuxtConfig({
       // repeat visits this session, and reduced motion. `main.css` hides
       // `.hero-loader` on that attribute, and HeroEpoch's fullscreen
       // `.hero-boot` pose is gated on it too, so a same-session reload paints
-      // the settled home view. Private mode throws on
-      // sessionStorage — treat that as "seen", matching HeroEpoch's default.
+      // the settled home view. The intro only belongs to a session that
+      // STARTS on `/`: landing on any other page marks it seen right here, so
+      // a later "Home" click (or reload of `/`) is the settled view, not a
+      // first visit. Private mode throws on sessionStorage — treat that as
+      // "seen", matching HeroEpoch's default.
       script: [
         {
           tagPosition: 'head',
-          innerHTML: `(function(){try{if(sessionStorage.getItem('axn-hero-intro-seen')||matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.setAttribute('data-intro-seen','')}catch(e){document.documentElement.setAttribute('data-intro-seen','')}})()`,
+          innerHTML: `(function(){var d=document.documentElement,k='axn-hero-intro-seen';try{if(location.pathname!=='/')sessionStorage.setItem(k,'1');if(sessionStorage.getItem(k)||matchMedia('(prefers-reduced-motion: reduce)').matches)d.setAttribute('data-intro-seen','')}catch(e){d.setAttribute('data-intro-seen','')}})()`,
         },
       ],
       // Without JS the overlay would never be torn down — never show it.

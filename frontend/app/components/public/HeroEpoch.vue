@@ -116,8 +116,10 @@ let loaderCap: number | undefined
 let loaderMin: number | undefined
 
 // The whole intro — loader, fullscreen boot pose, pinned zoom-out, entrance —
-// plays once per browser session. Every later visit to `/` (header "Home"
-// link, back button, reload) lands straight on the settled home view.
+// plays once per browser session, and only when the session STARTS on `/`
+// (the pre-paint script in nuxt.config sets this flag when the first page is
+// anything else). Every later visit to `/` (header "Home" link, back button,
+// reload) lands straight on the settled home view.
 const INTRO_FLAG = 'axn-hero-intro-seen'
 // Branding moment: the loader stays up at least this long even when assets
 // beat it; asset waiting itself is still capped at LOADER_CAP_MS.
@@ -211,8 +213,15 @@ onMounted(() => {
     navFlight.launchFrom({ top: r.top, centerX: r.left + r.width / 2, width: r.width })
   })
 
-  let introSeen = true
-  try { introSeen = !!sessionStorage.getItem(INTRO_FLAG) } catch { /* private mode — treat as seen */ }
+  // The fullscreen intro follows the loader. The loader is hidden by the
+  // `data-intro-seen` attribute (CSS), so that attribute wins here too: if it
+  // is set but the session flag is missing (a write that failed, storage
+  // cleared mid-session), the full intro would otherwise run under an
+  // invisible loader — edge-to-edge hero, no loader, scroll frozen for the hold.
+  let introSeen = document.documentElement.hasAttribute('data-intro-seen')
+  if (!introSeen) {
+    try { introSeen = !!sessionStorage.getItem(INTRO_FLAG) } catch { introSeen = true /* private mode — treat as seen */ }
+  }
 
   if (introSeen) {
     // Already played this session — render the settled home view: the
