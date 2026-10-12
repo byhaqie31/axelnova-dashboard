@@ -25,7 +25,7 @@ class InquiryResource extends JsonResource
             'origin' => $this->origin,
             // origin 'partner': the studio partner the client asked to hire through Axel Nova.
             'collaboration_partner' => $this->whenLoaded('collaborationPartner', fn () => $this->collaborationPartner
-                ? ['slug' => $this->collaborationPartner->slug, 'name' => $this->collaborationPartner->name]
+                ? ['id' => $this->collaborationPartner->id, 'slug' => $this->collaborationPartner->slug, 'name' => $this->collaborationPartner->name]
                 : null),
             'subject' => $this->subject,
             'status' => $this->status,

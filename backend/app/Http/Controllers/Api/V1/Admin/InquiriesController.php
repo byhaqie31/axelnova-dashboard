@@ -22,8 +22,16 @@ class InquiriesController extends Controller
             $query->where('status', $request->status);
         }
 
+        // No origin = the sales list (quote + contact). Collab leads are asked for
+        // by origin from Partners › Collaborations.
         if ($request->filled('origin')) {
             $query->where('origin', $request->origin);
+        } else {
+            $query->whereNotIn('origin', Inquiry::COLLAB_ORIGINS);
+        }
+
+        if ($request->filled('collaboration_partner_id')) {
+            $query->where('collaboration_partner_id', (int) $request->collaboration_partner_id);
         }
 
         if ($request->filled('search')) {

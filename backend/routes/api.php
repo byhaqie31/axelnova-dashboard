@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Admin\AnnouncementsController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\BlogPostsController;
 use App\Http\Controllers\Api\V1\Admin\ClientsController;
+use App\Http\Controllers\Api\V1\Admin\CollaborationPartnersController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\EmailLogsController;
 use App\Http\Controllers\Api\V1\Admin\ExpensesController;
@@ -380,6 +381,15 @@ Route::middleware([
         Route::get('/service-scope-fields/{serviceScopeField}', [ServiceScopeFieldsController::class, 'show'])->name('service-scope-fields.show');
         Route::put('/service-scope-fields/{serviceScopeField}', [ServiceScopeFieldsController::class, 'update'])->name('service-scope-fields.update');
         Route::delete('/service-scope-fields/{serviceScopeField}', [ServiceScopeFieldsController::class, 'destroy'])->name('service-scope-fields.destroy');
+
+        // Partners › Collaborations — studio partners, profile edits and shared-project
+        // links (COLLABORATIONS.md §Admin). Their leads come from /inquiries?origin=….
+        Route::get('/collaboration-partners', [CollaborationPartnersController::class, 'index'])->name('collaboration-partners.index');
+        Route::get('/collaboration-partners/{collaborationPartner}', [CollaborationPartnersController::class, 'show'])->name('collaboration-partners.show');
+        Route::patch('/collaboration-partners/{collaborationPartner}', [CollaborationPartnersController::class, 'update'])->name('collaboration-partners.update');
+        Route::post('/collaboration-partners/{collaborationPartner}/projects', [CollaborationPartnersController::class, 'linkProject'])->name('collaboration-partners.projects.link');
+        Route::patch('/collaboration-partners/{collaborationPartner}/projects/{project}', [CollaborationPartnersController::class, 'updateProject'])->name('collaboration-partners.projects.update');
+        Route::delete('/collaboration-partners/{collaborationPartner}/projects/{project}', [CollaborationPartnersController::class, 'unlinkProject'])->name('collaboration-partners.projects.unlink');
 
         // CMS — Projects
         Route::get('/projects', [ProjectsController::class, 'index'])->name('projects.index');

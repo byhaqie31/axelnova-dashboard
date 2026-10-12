@@ -101,7 +101,7 @@ axelnova-dashboard/
 
 | Table | Purpose |
 |-------|---------|
-| `collaboration_partners` | Studio partners on `/collaborations`, e.g. TRLabs. **Not** `referral_partners` (the `/partners` commission programme). Profile scalars (unique `slug`, name, tagline, summary, story, `logo_url`/`symbol_url` paths under `frontend/public/logos/`, website, founder, location), `services` json, `partner_since`, `active` (DB default false), `sort_order`. Soft-deletes. Seeded by data migration (TRLabs); no admin editor yet |
+| `collaboration_partners` | Studio partners on `/collaborations`, e.g. TRLabs. **Not** `referral_partners` (the `/partners` commission programme). Profile scalars (unique `slug`, name, tagline, summary, story, `logo_url`/`symbol_url` paths under `frontend/public/logos/`, website, founder, location), `services` json, `partner_since`, `active` (DB default false), `sort_order`, `updated_by`. Soft-deletes. Seeded by data migration (TRLabs); profile, Live/Hidden and project links are edited in the admin (Partners › Collaborations) — the slug never changes there, and adding a new partner is still a migration |
 | `collaboration_partner_project` | A project built with a partner: unique (partner, project), both FKs cascadeOnDelete, `mode` `co_build`\|`subcontract`\|`referral`, `role_note`, `credit_public`. Public only when partner active + `credit_public` + project active. `CollaborationPartner::linkProject()` defaults credit ON only for co-builds |
 
 ### Partner portal (portal restructure, Task 9 — type-aware referrer + investor)
@@ -319,6 +319,20 @@ GET  /v1/collaborations/{slug}       Public  — profile + publicly credited, ac
 # POST /v1/inquiries also takes origin=partner (+ partner slug → collaboration_partner_id) and
 # origin=collaboration (+ portfolio_url, folded into the message) from the /collaborations pages.
 
+# Partners › Collaborations (cockpit) — COLLABORATIONS.md §Admin
+GET    /v1/admin/collaboration-partners                 Partners (any state) + counts: projects_total/public,
+                                                        enquiries_open/new; + applications_new
+GET    /v1/admin/collaboration-partners/{p}             Profile + linked projects (public + hidden_reason)
+PATCH  /v1/admin/collaboration-partners/{p}             Profile fields, active, sort_order — `slug` prohibited;
+                                                        logo/symbol must be site paths. Logged (RecordsActivity)
+POST   /v1/admin/collaboration-partners/{p}/projects    Link {project_id, mode, role_note?, credit_public?} via
+                                                        linkProject(); already linked → 422
+PATCH  /v1/admin/collaboration-partners/{p}/projects/{project}   mode / role_note / credit_public; not linked → 404
+DELETE /v1/admin/collaboration-partners/{p}/projects/{project}   Unlink (the project stays)
+GET    /v1/admin/inquiries                              No `origin` → sales leads only (quote + contact);
+                                                        collab leads by origin=partner|collaboration
+                                                        (+ collaboration_partner_id)
+
 # Analytics (see ANALYTICS.md)
 POST /v1/track/page-view             Public  — page-view beacon (hashed IP, bots dropped)
 POST /v1/likes/{type}/{id}           Public  — toggle an anonymous like
@@ -347,6 +361,11 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
                       the three ways of working, "Partner with us" → POST /v1/inquiries (origin=collaboration)
 /collaborations/trlabs  Axel Nova × TRLabs — hand-built co-branded page (.collab-trlabs scope); enquiry form
                       → POST /v1/inquiries (origin=partner, partner=trlabs). See COLLABORATIONS.md
+/admin/collaborations Partners › Collaborations — tabs Partners | Applications (origin=collaboration leads)
+/admin/collaborations/[id]  One partner: Live/Hidden, public profile form, shared projects (link / edit /
+                      "Show publicly" / unlink), its enquiries (origin=partner)
+/admin/collaborations/enquiries/[id]  A collab lead — the same AdminInquiryDetail as /admin/inquiries/[id];
+                      each route redirects a lead of the other kind to the right one
 /quote                Project inquiry form → POST /v1/inquiries (origin=quote)
 /quote/success        Post-submission confirmation
 /admin/login          Admin auth (+ "Forgot password?" → /admin/forgot)

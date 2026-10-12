@@ -74,6 +74,8 @@ export const adminNav: NavGroup[] = [
     defaultPinned: false,
     items: [
       { to: '/admin/referrals', label: 'Referrals', icon: 'i-lucide-share-2', matchPrefix: '/admin/referrals' },
+      // Studio partners (/collaborations): profile, shared projects, their leads.
+      { to: '/admin/collaborations', label: 'Collaborations', icon: 'i-lucide-combine', matchPrefix: '/admin/collaborations' },
       { to: '/admin/investors', label: 'Investors', icon: 'i-lucide-handshake', matchPrefix: '/admin/investors', roles: ['founder'] },
     ],
   },
