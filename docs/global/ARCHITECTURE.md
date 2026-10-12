@@ -249,7 +249,8 @@ PATCH  /v1/admin/announcements/{id}  Edit title/body/audience and/or toggle `pub
 
 # MCP connector (/v1/connector/*, auth:sanctum + abilities:connector:*) — see MCP-CONNECTOR.md.
 # A fourth, isolated surface for the remote MCP server (mcp.axelnova.tech) that lets
-# Claude draft quotations and blog posts. Draft-only: tokens carry the UNIVERSAL
+# Claude draft quotations, blog posts and the public catalogue (projects, services,
+# packages — created Hidden, edited only while Hidden). Draft-only: tokens carry the UNIVERSAL
 # connector:read/connector:draft abilities (every module), never cockpit — so a connector
 # token is rejected by every /v1/admin route, and each endpoint opens exactly its own ability.
 GET  /v1/connector/catalog                connector:read  — merged quote catalog (packages/modifiers/addons/rush)
@@ -263,6 +264,17 @@ GET  /v1/connector/blog/posts             connector:read  — slim list of any n
 GET  /v1/connector/blog/posts/{id}        connector:read  — full Markdown record
 POST /v1/connector/blog/posts             connector:draft — create a post (always draft)
 PUT  /v1/connector/blog/posts/{id}        connector:draft — partial update of a DRAFT (published → 422)
+GET  /v1/connector/projects               connector:read  — slim list of every project (Live + Hidden; visibility, q, page)
+GET  /v1/connector/projects/{id}          connector:read  — full project record + admin / public URL
+POST /v1/connector/projects               connector:draft — create a project (always Hidden, unfeatured, appended)
+PUT  /v1/connector/projects/{id}          connector:draft — partial update of a HIDDEN project (Live → 422)
+GET  /v1/connector/services               connector:read  — every service (category) with its packages
+GET  /v1/connector/services/{id}          connector:read  — one service + its packages' full records
+POST /v1/connector/services               connector:draft — create a service (always Hidden, never default)
+PUT  /v1/connector/services/{id}          connector:draft — partial update of a HIDDEN service (Live → 422)
+GET  /v1/connector/packages/{id}          connector:read  — full package record (+ quote_package_key / quotable)
+POST /v1/connector/packages               connector:draft — create a package (always Hidden; optional NEW quote_package_key)
+PUT  /v1/connector/packages/{id}          connector:draft — partial update of a HIDDEN package (Live → 422)
 
 # Quotation revisions (see QUOTATION-REVISIONS.md) — cockpit
 GET  /v1/admin/quotations/{id}?revision=N           Sanctum — one family, shown through revision N (default: open, else current)

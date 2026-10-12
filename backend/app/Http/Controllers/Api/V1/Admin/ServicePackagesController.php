@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ServicePackageResource;
 use App\Models\ServicePackage;
+use App\Services\Quoting\QuotePackageKey;
 use App\Support\SortOrder;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -133,7 +135,14 @@ class ServicePackagesController extends Controller
             'cta' => ['nullable', 'string', 'max:100'],
             'quote_key' => ['nullable', 'array'],
             'quote_key.category' => ['required_with:quote_key', 'string', 'max:60'],
-            'quote_key.package' => ['required_with:quote_key', 'string', 'max:80'],
+            // One package per key: the engine resolves a key on hidden rows too, so a
+            // second row holding it would silently re-point quotes. (Taking over a
+            // legacy pricing-JSON key stays allowed — see QuotePackageKey.)
+            'quote_key.package' => ['required_with:quote_key', 'string', 'max:80', function (string $attribute, mixed $value, Closure $fail) use ($existing) {
+                if (is_string($value) && ($holder = QuotePackageKey::heldBy($value, $existing?->id))) {
+                    $fail(QuotePackageKey::takenMessage($value, $holder));
+                }
+            }],
             'sort_order' => ['integer', 'min:0'],
             'active' => ['boolean'],
         ];

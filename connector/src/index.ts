@@ -6,19 +6,24 @@
  * bearer token (CONNECTOR_TOKEN) and adds it to every upstream call — Claude
  * never sees it. Access is gated by workers-oauth-provider (see auth.ts).
  *
- * Access model (v5), enforced by the Laravel token abilities (connector:read +
+ * Access model (v6), enforced by the Laravel token abilities (connector:read +
  * connector:draft, never cockpit). The two abilities are UNIVERSAL — they cover
  * every module's read / draft-write routes; there is no per-module ability.
  *   • READ everything  — list_catalog, list_quotations, get_quotation (ANY
  *     non-deleted quotation, whatever created it, any revision), get_order (an
  *     order's money view — read-only; invoices are issued / edited by hand);
- *     get_blog_guide, list_blog_posts, get_blog_post (ANY non-deleted post).
+ *     get_blog_guide, list_blog_posts, get_blog_post (ANY non-deleted post);
+ *     list_projects, get_project, list_services, get_service, get_package (the
+ *     public catalogue, Live or Hidden).
  *   • WRITE drafts only — create_draft_quotation, update_draft_quotation (the
  *     quotation's DRAFT revision only — revisions are opened by the founder,
  *     "Revise" in the admin); create_blog_draft, update_blog_draft (a post
- *     while it is a DRAFT; refused once published).
+ *     while it is a DRAFT; refused once published); create_/update_project_draft,
+ *     create_/update_service_draft, create_/update_package_draft (created
+ *     HIDDEN, edited only while Hidden; refused once Live).
  *   • NEVER             — there is NO revise, send, accept, delete or publish
- *     tool; those are portal-only, by hand.
+ *     tool, and nothing can make a catalogue row Live; those are portal-only,
+ *     by hand.
  */
 
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
@@ -49,8 +54,12 @@ import { authApp } from "./auth";
  * with its status / void reason, payments, Care Plan periods, revisions).
  * v5.2: create_revision REMOVED — opening a revision is the founder's call
  * (Revise in the admin); the connector only edits the draft revision.
+ * v6: the public catalogue — projects, services (categories) and packages:
+ * list / read anything, create HIDDEN, partially update while still Hidden
+ * (refused once Live). A package may be wired to the quote builder with a NEW
+ * quote_package_key. Nothing can make a row Live, feature, reorder or delete it.
  */
-const CONNECTOR_VERSION = "5.2.0";
+const CONNECTOR_VERSION = "6.0.0";
 
 const CATALOG_PATH = "/api/v1/connector/catalog";
 const QUOTATIONS_PATH = "/api/v1/connector/quotations";
@@ -58,9 +67,18 @@ const DRAFT_PATH = "/api/v1/connector/quotations/draft";
 const ORDERS_PATH = "/api/v1/connector/orders";
 const BLOG_GUIDE_PATH = "/api/v1/connector/blog/guide";
 const BLOG_POSTS_PATH = "/api/v1/connector/blog/posts";
+const PROJECTS_PATH = "/api/v1/connector/projects";
+const SERVICES_PATH = "/api/v1/connector/services";
+const PACKAGES_PATH = "/api/v1/connector/packages";
 
 /** Editorial formats (mirrors BlogPost::FORMATS). */
 const BLOG_FORMATS = ["article", "guide", "tutorial", "case_study", "opinion", "news"] as const;
+
+/** A project's BUILD STAGE (mirrors the projects.status enum) — not its visibility. */
+const PROJECT_STAGES = ["live", "soon", "wip", "planning"] as const;
+
+/** Package ETA units (mirrors PricingEngine::ETA_UNITS). */
+const ETA_UNITS = ["hour", "day", "week", "month"] as const;
 
 /** Every lifecycle status (mirrors Quotation::STATUSES). */
 const QUOTATION_STATUSES = ["draft", "sent", "accepted", "rejected", "expired"] as const;
@@ -365,6 +383,95 @@ const BLOG_WRITING_RULES = [
   "Either way: never repeat the closing call to action inside a section (the post ends with its own CTA card); use ONLY image URLs the user supplied, and always write alt text for them.",
 ].join(" ");
 
+/** The Live / Hidden rule every catalogue write tool shares (projects, services, packages). */
+const CATALOG_DRAFT_RULES = [
+  "Live / Hidden: every record has a `visibility` — live (shown on the public site) or hidden (admin only).",
+  "Everything you create is HIDDEN, and you can edit a record only while it is still hidden; a Live one is refused (422) — then ask the founder to hide it in the admin first, or to edit it there.",
+  "You can never make anything Live, feature it, reorder it or delete it: give the founder the returned admin_url to review it and switch it Live.",
+].join(" ");
+
+const kebabSlug = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .nullable()
+    .optional()
+    .describe("URL slug, lower-kebab-case. Omit to generate it from the name (on create). On update, the slug only changes if you send it.");
+
+/** Every writable project field. All optional here — update is a partial patch; create overrides the required ones. */
+const projectFieldsShape = {
+  name: z.string().min(1).max(100).optional().describe("Project name, e.g. 'Klinik Booking Portal'."),
+  slug: kebabSlug(80),
+  description: z.string().min(1).max(500).optional().describe("The one-line summary on the project card (≤ 500)."),
+  long_description: z.string().min(1).max(20000).optional().describe("The full write-up on the project's own page."),
+  status: z
+    .enum(PROJECT_STAGES)
+    .optional()
+    .describe(
+      "BUILD STAGE, shown as a badge: live (launched), soon, wip (in progress) or planning. This is NOT whether the public site shows the project — that is `visibility`, which only the founder changes.",
+    ),
+  url: z.string().max(500).nullable().optional().describe("The live site's URL (https://…), if public."),
+  repo: z.string().max(500).nullable().optional().describe("Public repository URL, if any."),
+  tags: z.array(z.string().max(50)).max(12).optional().describe("Industry / type tags, e.g. Healthcare, Booking. On update this replaces the list."),
+  stack: z.array(z.string().max(50)).max(20).optional().describe("Tech stack, e.g. Laravel, Nuxt, MySQL. On update this replaces the list."),
+  cover_image_url: z
+    .string()
+    .max(500)
+    .nullable()
+    .optional()
+    .describe("Cover image. ONLY a URL the founder supplied, or /previews/<slug>.webp for a self-hosted capture — never search for or invent one."),
+} as const;
+
+/** Every writable service (category) field. */
+const serviceFieldsShape = {
+  name: z.string().min(1).max(100).optional().describe("Service name, e.g. 'AI Automation'."),
+  slug: kebabSlug(60),
+  icon: z
+    .string()
+    .max(80)
+    .regex(/^i-lucide-[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional()
+    .describe("A Lucide icon name, e.g. i-lucide-bot, i-lucide-globe, i-lucide-layout-dashboard. Never an emoji."),
+  description: z.string().min(1).max(2000).optional().describe("What the service covers — the intro above its packages on /services."),
+} as const;
+
+/** Every writable package field. */
+const packageFieldsShape = {
+  service_id: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe("The service (category) this package sits in — an id from list_services (Live or Hidden). On update, sending another id moves the package there."),
+  name: z.string().min(1).max(100).optional().describe("Package name, e.g. 'Business'."),
+  slug: kebabSlug(80),
+  tagline: z.string().min(1).max(200).optional().describe("One line under the name on the card."),
+  price_min_myr: z.number().nonnegative().optional().describe("Price (bottom of the range) in ringgit."),
+  price_max_myr: z
+    .number()
+    .nonnegative()
+    .nullable()
+    .optional()
+    .describe("Top of the price range. null = a 'from' price (custom-quote / retainer cards). Must be ≥ price_min_myr, and is REQUIRED while quote_package_key is set."),
+  unit: z.string().min(1).max(50).optional().describe("Price unit, e.g. 'per project', 'per month'."),
+  duration_text: z.string().min(1).max(50).optional().describe("Timeline shown on the card, e.g. '2 weeks', 'Up to 8 hrs / mo'."),
+  eta_value: z.number().int().min(1).max(999).optional().describe("Delivery time the quote builder uses, with eta_unit — e.g. 2 + week."),
+  eta_unit: z.enum(ETA_UNITS).optional(),
+  revisions: z.string().max(50).nullable().optional().describe("e.g. '2 rounds'."),
+  features: z.array(z.string().min(1).max(300)).min(1).max(20).optional().describe("The card's bullet list (1–20). On update this replaces the list."),
+  cta: z.string().max(100).nullable().optional().describe("Button label, e.g. 'Get a quote'."),
+  quote_package_key: z
+    .string()
+    .max(80)
+    .regex(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/)
+    .nullable()
+    .optional()
+    .describe(
+      "Wires the package to the quote builder under this snake_case key (e.g. web_landing_sprint), so it becomes quotable — in list_catalog and the admin builder — once the founder makes it Live. It must be a NEW key: one already used by any package (Live or Hidden) or by the legacy pricing config is refused, and the error names who holds it. Needs price_max_myr. null unwires it. Omit for a plain card (custom-quote / retainer).",
+    ),
+} as const;
+
 export class AxelNovaMCP extends McpAgent<Env> {
   server = new McpServer({
     name: "axelnova-quotations",
@@ -580,6 +687,176 @@ export class AxelNovaMCP extends McpAgent<Env> {
       async ({ id, ...body }) =>
         this.passthrough(
           await apiFetch(this.env, `${BLOG_POSTS_PATH}/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+        ),
+    );
+
+    // ── Portfolio projects (v6) ─────────────────────────────────────────────
+
+    this.server.tool(
+      "list_projects",
+      [
+        "READ-ONLY. Browse the portfolio projects (/projects), Live and Hidden, in their public order — use this to find a project's id.",
+        "Filter by visibility (live | hidden) and q (matches name or slug). Paginated: per_page defaults to 10, max 25.",
+        "Returns SLIM rows (id, name, slug, status = build stage, visibility, featured, one-line description, tags, admin_url, public_url when Live). Call get_project for the full write-up.",
+      ].join(" "),
+      {
+        visibility: z.enum(["live", "hidden"]).optional().describe("Omit for both."),
+        q: z.string().max(120).optional().describe("Search term matched against the name and slug."),
+        page: z.number().int().min(1).optional().describe("1-based page number (default 1)."),
+        per_page: z.number().int().min(1).max(25).optional().describe("Rows per page (default 10, max 25)."),
+      },
+      async (args) => {
+        const params = new URLSearchParams();
+        if (args.visibility) params.set("visibility", args.visibility);
+        if (args.q) params.set("q", args.q);
+        if (args.page) params.set("page", String(args.page));
+        if (args.per_page) params.set("per_page", String(args.per_page));
+        const qs = params.toString();
+        return this.passthrough(await apiFetch(this.env, qs ? `${PROJECTS_PATH}?${qs}` : PROJECTS_PATH));
+      },
+    );
+
+    this.server.tool(
+      "get_project",
+      "Read back ANY portfolio project (Live or Hidden) by id — the full record (name, slug, build-stage status, description, long_description, url, repo, tags, stack, cover, featured, visibility) plus admin_url and public_url. Read a project before updating it.",
+      {
+        id: z.number().int().min(1).describe("The project id (from list_projects or create_project_draft)."),
+      },
+      async ({ id }) => this.passthrough(await apiFetch(this.env, `${PROJECTS_PATH}/${id}`)),
+    );
+
+    this.server.tool(
+      "create_project_draft",
+      [
+        "Add a portfolio project to /projects — created HIDDEN, unfeatured, at the end of the list. The founder reviews it in the admin and switches it Live.",
+        CATALOG_DRAFT_RULES,
+        "Write from what the founder tells you about the build; keep claims factual (no invented metrics or client quotes). On a validation error, read the message (it names the field) and retry.",
+      ].join(" "),
+      {
+        ...projectFieldsShape,
+        name: projectFieldsShape.name.unwrap().describe("Project name. Required."),
+        description: projectFieldsShape.description.unwrap().describe("The one-line summary on the project card (≤ 500). Required."),
+        long_description: projectFieldsShape.long_description.unwrap().describe("The full write-up on the project's own page. Required."),
+        status: projectFieldsShape.status.unwrap().describe("BUILD STAGE badge: live (launched), soon, wip or planning — NOT visibility. Required."),
+      },
+      async (args) =>
+        this.passthrough(await apiFetch(this.env, PROJECTS_PATH, { method: "POST", body: JSON.stringify(args) })),
+    );
+
+    this.server.tool(
+      "update_project_draft",
+      [
+        "Update a HIDDEN portfolio project by id. PARTIAL: send only the fields that change — everything else is kept (tags / stack, when sent, replace their list).",
+        CATALOG_DRAFT_RULES,
+      ].join(" "),
+      {
+        id: z.number().int().min(1).describe("The project id (from list_projects or get_project)."),
+        ...projectFieldsShape,
+      },
+      async ({ id, ...body }) =>
+        this.passthrough(
+          await apiFetch(this.env, `${PROJECTS_PATH}/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+        ),
+    );
+
+    // ── Services + packages (v6) ────────────────────────────────────────────
+
+    this.server.tool(
+      "list_services",
+      [
+        "READ-ONLY. Every service on /services (Live and Hidden), in order, each with its packages. A SERVICE is a category (Web, Dashboard …); its PACKAGES are the priced cards inside it.",
+        "Package rows carry their price range, unit, visibility, quote_package_key (null = a plain card) and quotable (in the quote builder right now: wired, with a max price, and both it and its service Live).",
+        "Use it to find ids and to see which quote package keys are taken before wiring a new package. Call get_service or get_package for full records.",
+      ].join(" "),
+      {},
+      async () => this.passthrough(await apiFetch(this.env, SERVICES_PATH)),
+    );
+
+    this.server.tool(
+      "get_service",
+      "Read back ANY service (category, Live or Hidden) by id — name, slug, icon, description, visibility, admin_url — with the FULL record of each of its packages.",
+      {
+        id: z.number().int().min(1).describe("The service id (from list_services)."),
+      },
+      async ({ id }) => this.passthrough(await apiFetch(this.env, `${SERVICES_PATH}/${id}`)),
+    );
+
+    this.server.tool(
+      "create_service_draft",
+      [
+        "Add a new service (category) to /services — created HIDDEN, at the end of the order, never the default. Add its packages with create_package_draft (service_id = the returned id).",
+        CATALOG_DRAFT_RULES,
+      ].join(" "),
+      {
+        ...serviceFieldsShape,
+        name: serviceFieldsShape.name.unwrap().describe("Service name. Required."),
+        icon: serviceFieldsShape.icon.unwrap().describe("A Lucide icon name, e.g. i-lucide-bot. Never an emoji. Required."),
+        description: serviceFieldsShape.description.unwrap().describe("What the service covers. Required."),
+      },
+      async (args) =>
+        this.passthrough(await apiFetch(this.env, SERVICES_PATH, { method: "POST", body: JSON.stringify(args) })),
+    );
+
+    this.server.tool(
+      "update_service_draft",
+      ["Update a HIDDEN service (category) by id. PARTIAL: send only the fields that change.", CATALOG_DRAFT_RULES].join(" "),
+      {
+        id: z.number().int().min(1).describe("The service id (from list_services)."),
+        ...serviceFieldsShape,
+      },
+      async ({ id, ...body }) =>
+        this.passthrough(
+          await apiFetch(this.env, `${SERVICES_PATH}/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+        ),
+    );
+
+    this.server.tool(
+      "get_package",
+      "Read back ANY package (Live or Hidden) by id — the full card (prices, unit, timeline, ETA, revisions, features, CTA), its service, visibility, quote_package_key, quotable, admin_url and public_url. Read a package before updating it.",
+      {
+        id: z.number().int().min(1).describe("The package id (from list_services or create_package_draft)."),
+      },
+      async ({ id }) => this.passthrough(await apiFetch(this.env, `${PACKAGES_PATH}/${id}`)),
+    );
+
+    this.server.tool(
+      "create_package_draft",
+      [
+        "Add a priced package card to a service on /services — created HIDDEN, unfeatured, at the end of its service. The service may itself be Hidden (e.g. one you just created).",
+        "To make it quotable, set quote_package_key (a NEW snake_case key) and price_max_myr; it then joins the quote builder once the founder makes it Live, picking up the service's scope fields that apply to all packages.",
+        CATALOG_DRAFT_RULES,
+        "On a validation error, read the message (it names the field — and, for a taken key, which package holds it) and retry.",
+      ].join(" "),
+      {
+        ...packageFieldsShape,
+        service_id: packageFieldsShape.service_id.unwrap().describe("The service (category) id from list_services. Required."),
+        name: packageFieldsShape.name.unwrap().describe("Package name. Required."),
+        tagline: packageFieldsShape.tagline.unwrap().describe("One line under the name. Required."),
+        price_min_myr: packageFieldsShape.price_min_myr.unwrap().describe("Price (bottom of the range) in ringgit. Required."),
+        unit: packageFieldsShape.unit.unwrap().describe("Price unit, e.g. 'per project'. Required."),
+        duration_text: packageFieldsShape.duration_text.unwrap().describe("Timeline on the card, e.g. '2 weeks'. Required."),
+        eta_value: packageFieldsShape.eta_value.unwrap().describe("Delivery time, with eta_unit. Required."),
+        eta_unit: packageFieldsShape.eta_unit.unwrap(),
+        features: packageFieldsShape.features.unwrap().describe("The card's bullet list (1–20). Required."),
+      },
+      async (args) =>
+        this.passthrough(await apiFetch(this.env, PACKAGES_PATH, { method: "POST", body: JSON.stringify(args) })),
+    );
+
+    this.server.tool(
+      "update_package_draft",
+      [
+        "Update a HIDDEN package by id. PARTIAL: send only the fields that change (features, when sent, replaces the list). Sending another service_id moves it to the end of that service.",
+        "quote_package_key: send a new key to wire it, null to unwire it, or omit to keep the current one.",
+        CATALOG_DRAFT_RULES,
+      ].join(" "),
+      {
+        id: z.number().int().min(1).describe("The package id (from list_services or get_package)."),
+        ...packageFieldsShape,
+      },
+      async ({ id, ...body }) =>
+        this.passthrough(
+          await apiFetch(this.env, `${PACKAGES_PATH}/${id}`, { method: "PUT", body: JSON.stringify(body) }),
         ),
     );
   }

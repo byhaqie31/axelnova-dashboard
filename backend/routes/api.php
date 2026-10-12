@@ -31,7 +31,10 @@ use App\Http\Controllers\Api\V1\Auth\AccessLinkController;
 use App\Http\Controllers\Api\V1\Connector\BlogPostController as ConnectorBlogPostController;
 use App\Http\Controllers\Api\V1\Connector\CatalogController as ConnectorCatalogController;
 use App\Http\Controllers\Api\V1\Connector\OrderController as ConnectorOrderController;
+use App\Http\Controllers\Api\V1\Connector\ProjectController as ConnectorProjectController;
 use App\Http\Controllers\Api\V1\Connector\QuotationDraftController as ConnectorQuotationDraftController;
+use App\Http\Controllers\Api\V1\Connector\ServiceController as ConnectorServiceController;
+use App\Http\Controllers\Api\V1\Connector\ServicePackageController as ConnectorServicePackageController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\FeedbackController;
 use App\Http\Controllers\Api\V1\InquiryController;
@@ -482,18 +485,20 @@ Route::middleware(['auth:external', 'abilities:partner'])
 
 // MCP connector — a fourth, deliberately NARROW surface for the remote MCP server
 // (mcp.axelnova.tech), which lets Claude drive the quotation pipeline from a client
-// brief and draft blog posts. Pure Sanctum bearer tokens minted with connector
+// brief, draft blog posts, and draft the public catalogue (projects, services,
+// packages). Pure Sanctum bearer tokens minted with connector
 // abilities ONLY (connector:read / connector:draft) — never `cockpit`, so a
 // connector token is rejected by every /v1/admin route (abilities:cockpit), and an
 // admin cockpit token is rejected here. The two abilities are UNIVERSAL: they open
-// the read / draft-write routes of every module (quotations, blog, …) — there is
-// no per-module ability. Access model (v5): READ everything (any non-deleted
-// quotation or post, and an order's money view), WRITE drafts only (create a DRAFT;
-// update a quotation's DRAFT revision — opened by the founder — or a DRAFT post), DESTROY never
-// (delete is portal-only, by hand). It
-// still CANNOT change status, open a revision, send/accept a quote, publish/unpublish a post, or
-// touch orders/clients/payments. Routes deny by default; each ability opens
-// exactly its own endpoints, throttled (authenticated, but never unbounded).
+// the read / draft-write routes of every module (quotations, blog, catalogue …) —
+// there is no per-module ability. Access model (v6): READ everything (any non-deleted
+// quotation or post, an order's money view, any project / service / package),
+// WRITE drafts only (create a DRAFT; update a quotation's DRAFT revision — opened by
+// the founder — or a DRAFT post; create catalogue rows HIDDEN and update them only
+// while Hidden), DESTROY never (delete is portal-only, by hand). It
+// still CANNOT change status, open a revision, send/accept a quote, publish/unpublish a post,
+// make a catalogue row Live, or touch orders/clients/payments. Routes deny by default;
+// each ability opens exactly its own endpoints, throttled (authenticated, but never unbounded).
 Route::middleware('auth:sanctum')
     ->prefix('v1/connector')
     ->name('connector.')
@@ -512,6 +517,13 @@ Route::middleware('auth:sanctum')
             Route::get('/blog/guide', [ConnectorBlogPostController::class, 'guide'])->name('blog.guide');
             Route::get('/blog/posts', [ConnectorBlogPostController::class, 'index'])->name('blog.index');
             Route::get('/blog/posts/{id}', [ConnectorBlogPostController::class, 'show'])->whereNumber('id')->name('blog.show');
+            // v6 — the public catalogue: portfolio projects, services (categories)
+            // and their packages, Live or Hidden.
+            Route::get('/projects', [ConnectorProjectController::class, 'index'])->name('projects.index');
+            Route::get('/projects/{id}', [ConnectorProjectController::class, 'show'])->whereNumber('id')->name('projects.show');
+            Route::get('/services', [ConnectorServiceController::class, 'index'])->name('services.index');
+            Route::get('/services/{id}', [ConnectorServiceController::class, 'show'])->whereNumber('id')->name('services.show');
+            Route::get('/packages/{id}', [ConnectorServicePackageController::class, 'show'])->whereNumber('id')->name('packages.show');
         });
 
         // Write surface — create a DRAFT, or update a PRE-SEND quotation / a DRAFT
@@ -522,5 +534,12 @@ Route::middleware('auth:sanctum')
             Route::put('/quotations/{reference_code}', [ConnectorQuotationDraftController::class, 'update'])->name('quotations.update');
             Route::post('/blog/posts', [ConnectorBlogPostController::class, 'store'])->name('blog.store');
             Route::put('/blog/posts/{id}', [ConnectorBlogPostController::class, 'update'])->whereNumber('id')->name('blog.update');
+            // v6 — create HIDDEN, partially update while still Hidden (never go Live).
+            Route::post('/projects', [ConnectorProjectController::class, 'store'])->name('projects.store');
+            Route::put('/projects/{id}', [ConnectorProjectController::class, 'update'])->whereNumber('id')->name('projects.update');
+            Route::post('/services', [ConnectorServiceController::class, 'store'])->name('services.store');
+            Route::put('/services/{id}', [ConnectorServiceController::class, 'update'])->whereNumber('id')->name('services.update');
+            Route::post('/packages', [ConnectorServicePackageController::class, 'store'])->name('packages.store');
+            Route::put('/packages/{id}', [ConnectorServicePackageController::class, 'update'])->whereNumber('id')->name('packages.update');
         });
     });
