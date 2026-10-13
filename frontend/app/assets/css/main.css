@@ -365,8 +365,8 @@ html.lenis {
 /* Homepage intro loader (HeroLoader). It is SSR-rendered so it covers the page
    from the first paint — mounting it client-side let the hero paint first and
    then flashed the loader over it. The inline head script in nuxt.config
-   stamps [data-intro-seen] BEFORE paint for repeat visits and reduced motion,
-   so those never see it; HeroEpoch also stamps it when it writes the session
+   stamps [data-intro-seen] BEFORE paint for repeat visits, sessions that
+   started on another page, and reduced motion, so those never see it; HeroEpoch also stamps it when it writes the session
    flag, which keeps client-side navs back to `/` from flashing the overlay for
    one frame. Attribute selector, not a colorMode binding — FOUC rule. */
 html[data-intro-seen] .hero-loader {

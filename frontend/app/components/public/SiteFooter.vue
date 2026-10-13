@@ -87,7 +87,7 @@ watch(() => route.fullPath, () => { open.value = {} })
                copyright line. (Back to top floats now — ScrollTopButton.) -->
           <div class="order-last lg:order-first mt-6 md:mt-10 lg:mt-0 mb-8 md:mb-10 lg:mb-0 text-[12px] leading-relaxed" style="color: var(--color-text-secondary);">
             <p class="mb-1 lg:mb-3 text-[14px] md:text-[12px] font-semibold tracking-tight" style="color: var(--color-text);">Axel Nova Ventures</p>
-            <p>Registration No.: 202603119899 (CA0420977-U)</p>
+            <p>Registration No : 202603119899 (CA0420977-U)</p>
             <p>Kuala Lumpur, Malaysia</p>
           </div>
 

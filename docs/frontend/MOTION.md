@@ -42,6 +42,24 @@ No parallax, no magnetic, no SplitText on dashboards.
 - On `page:finish` it resets scroll **through Lenis** (`scrollTo(0, { immediate:
   true })` — native resets desync Lenis's internal position) and refreshes
   ScrollTrigger.
+- **Arriving at another page's `#hash`** (a brief package card's "+N more
+  features" → `/services/{slug}#{package}`) lands 64px above the target, with
+  no scroll animation (`utils/hashScroll.ts` → `jumpToHashOrTop`):
+  - **Client-side nav:** in the page transition's `onEnter` (`app.vue`),
+    before the fade-in, so the page appears already there. **Not in
+    `page:finish`:** with the out-in transition it fires while the OLD page is
+    still on screen (Suspense resolves before the leave ends), so the hash
+    resolved against the old page — measured: the visitor landed ~640px short
+    and watched the packages fade in. `page:finish` skips hash navigations
+    after the first load, and `router.options.ts` returns `false` for a
+    cross-page hash, so the old page holds still while it fades out.
+  - **Full load:** the first `page:finish` (the page is already in the DOM,
+    and resetting to 0 there would undo the browser's own jump).
+  - The position is summed `offsetTop`s (the page is mid enter-slide, `y: 24`)
+    after `lenis.resize()` (or Lenis clamps to the old page's height).
+  - `useScrollReveal` skips the `.reveal` section holding the target — the
+    arrival point shows at once instead of fading in under the visitor.
+  - `router.options.ts` still smooth-scrolls a hash on the **same** page.
 - Same-page anchor clicks (`a[href^="#"]`) are routed through
   `lenis.scrollTo(target, { duration: 1.1 })` — native anchor jumps bypass Lenis.
 - `main.css` sets `html.lenis { scroll-behavior: auto }` — global

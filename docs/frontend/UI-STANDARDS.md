@@ -316,6 +316,9 @@ Preview source, in priority order:
 
 A cover that 404s falls through to step 2 rather than leaving a broken image in the frame.
 
+### `ServicePackageCard`
+The one package card for `/services` (brief: first 5 features + "+N more features →") and `/services/{slug}` (full, anchored by package slug) — see [PUBLIC-COMPONENTS.md](./PUBLIC-COMPONENTS.md#servicepackagecard). 32px padding, 16px radius, `bg-secondary` + hairline; `featured` = 2px `--color-accent` border + "Most popular" pill. **A card that renders at different widths sizes its type with a container query** (`@container` on the card, `@sm:` on the price), not viewport breakpoints — the same card is 3-up in the listing's `max-w-7xl` and the service page's `max-w-5xl`.
+
 ### Domain primitives
 
 - **`PriceTag`** — the one format for catalog prices and estimate ranges (services index + detail cards, the /services estimator, the admin quote builder's guide estimate): `RM 2,500 – 4,000` (currency once, en dash, no decimals on whole ringgit), `From RM 20,000` when there is no max (never "From" with a range), one figure when min = max; cents only when an end has them, then on both. Props: `min`, `max?` (null = open-ended), `unit?` (the package's unit from data, rendered small and muted after the price), `symbol?` (default `RM`; amounts arrive pre-converted for the services currency switcher), `stacked?` (unit on its own line). The amount inherits the parent's font size. Formatting lives in `utils/priceTag.ts` (unit-tested). Document money — invoices, line items, totals — keeps the house 2-decimal `formatMyr` (`utils/money.ts`).
@@ -367,6 +370,7 @@ Highlights:
 - Add `class="reveal"` to elements that should fade in.
 - Page must call `useScrollReveal('.reveal')` once.
 - The composable handles `prefers-reduced-motion`, ScrollTrigger refresh, and unmount cleanup.
+- The section holding the URL's `#hash` target is never hidden — a visitor arriving by a hash link sees it at once ([MOTION.md](./MOTION.md#plumbing)).
 - **Do not add `opacity-0` Tailwind classes** — let GSAP set the initial state, so content stays visible if JS fails.
 
 ---
