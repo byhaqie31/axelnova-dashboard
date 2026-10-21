@@ -11,8 +11,8 @@ use App\Services\Blog\BlogTaxonomy;
  * and Claude (MCP connector) both read, so the voice rules can't drift between
  * them. forEditor() is base() plus the categories/topics in use (the editor's
  * pickers); forConnector() adds what Claude needs to write a valid draft without
- * guessing (the same in-use lists, the section shape, image rules, and the two
- * drafting modes).
+ * guessing (the same in-use lists, the section shape, FAQ and image rules, and
+ * the two drafting modes).
  */
 class BlogGuide
 {
@@ -52,10 +52,19 @@ class BlogGuide
                 'quote' => 'Optional pull quote, ≤ 500 characters.',
                 'quote_by' => 'Optional quote attribution, ≤ 80 characters.',
             ],
+            'faq_rules' => [
+                'faqs: 0–'.BlogPost::FAQ_MAX.' {question, answer} pairs, rendered as a "Frequently asked questions" block after the last section and emitted as FAQPage schema (search engines and AI assistants quote it).',
+                'Write 3–6 REAL questions a reader would type into Google or ask an assistant, phrased as questions — not section headings restated.',
+                'Answer each directly in 1–3 sentences, plain text (no Markdown, links or HTML) and no marketing fluff: the reader should get the answer without opening the article.',
+                'Skip the field when the topic has nothing genuinely asked. On update, `faqs` replaces the whole list; omit it to keep the existing FAQs, send [] to clear them.',
+            ],
             'limits' => [
                 'title' => 160,
                 'excerpt' => 500,
                 'sections' => 40,
+                'faqs' => BlogPost::FAQ_MAX,
+                'faq_question' => 200,
+                'faq_answer' => 1200,
                 'tags' => 10,
                 'tag_length' => 40,
                 'category' => 60,

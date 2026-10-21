@@ -207,9 +207,12 @@ useScrollReveal('.reveal')
 
     <!-- Pagination -->
     <div v-if="meta && meta.last_page > 1" class="flex items-center justify-center gap-3 mt-12">
-      <NuxtLink v-if="page > 1" :to="{ path: '/blog', query: queryFor(format, topic, page - 1) }" class="btn-pill btn-pill-ghost text-[12px]">← Newer</NuxtLink>
+      <!-- Borderless pills: the page counter between them is the frame; a hairline
+           on each side read as three boxes. Inline so the shared .btn-pill-ghost
+           (137 uses) keeps its border, and so the hover rule can't bring it back. -->
+      <NuxtLink v-if="page > 1" :to="{ path: '/blog', query: queryFor(format, topic, page - 1) }" class="btn-pill btn-pill-ghost text-[12px]" :style="{ borderColor: 'transparent' }">← Newer</NuxtLink>
       <span class="text-[13px]" :style="{ color: 'var(--color-text-secondary)' }">{{ page }} / {{ meta.last_page }}</span>
-      <NuxtLink v-if="page < meta.last_page" :to="{ path: '/blog', query: queryFor(format, topic, page + 1) }" class="btn-pill btn-pill-ghost text-[12px]">Older →</NuxtLink>
+      <NuxtLink v-if="page < meta.last_page" :to="{ path: '/blog', query: queryFor(format, topic, page + 1) }" class="btn-pill btn-pill-ghost text-[12px]" :style="{ borderColor: 'transparent' }">Older →</NuxtLink>
     </div>
   </div>
 </template>

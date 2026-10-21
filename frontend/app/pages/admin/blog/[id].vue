@@ -1,17 +1,19 @@
 <script setup lang="ts">
 // Catalog › Blog › Editor — one route for New (`/admin/blog/new`) and Edit.
 // Everything the founder needs to write a post without touching code: title,
-// introduction, ordered sections (Markdown-backed rich text), cover / category
-// / tags / CTA / SEO in a side rail, Start-from-template and Import-Markdown
-// helpers, a preview rendered by the backend (so it matches the public page
-// exactly), and a Publish gate. See docs/global/BLOG.md.
+// introduction, ordered sections (Markdown-backed rich text), the FAQ repeater
+// below them, cover / category / tags / CTA / SEO in a side rail,
+// Start-from-template and Import-Markdown helpers, a preview rendered by the
+// backend (so it matches the public page exactly), and a Publish gate. See
+// docs/global/BLOG.md.
 import { onKeyStroke } from '@vueuse/core'
 import PublicBlogArticle from '~/components/public/BlogArticle.vue'
+import AdminBlogFaqEditor from '~/components/admin/BlogFaqEditor.vue'
 import AdminBlogSectionEditor from '~/components/admin/BlogSectionEditor.vue'
 import AdminSelect from '~/components/admin/Select.vue'
 import {
   blogFormatOptions, newSection, parseMarkdownImport, readingMinutes, slugify, templateSections,
-  type BlogFormat, type BlogGuide, type BlogPostAdmin, type BlogPostPublic, type BlogRenderedSection, type BlogSection, type BlogTocItem,
+  type BlogFaq, type BlogFormat, type BlogGuide, type BlogPostAdmin, type BlogPostPublic, type BlogRenderedSection, type BlogSection, type BlogTocItem,
 } from '~/data/blog'
 
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
@@ -41,6 +43,7 @@ const form = reactive({
   slug: '',
   excerpt: '',
   sections: [] as BlogSection[],
+  faqs: [] as BlogFaq[],
   cover_image_url: '',
   cover_image_alt: '',
   category: '',
@@ -82,6 +85,7 @@ function hydrate(p: BlogPostAdmin) {
     slug: p.slug,
     excerpt: p.excerpt ?? '',
     sections: p.sections.map(s => ({ ...s })),
+    faqs: p.faqs.map(f => ({ ...f })),
     cover_image_url: p.cover_image_url ?? '',
     cover_image_alt: p.cover_image_alt ?? '',
     category: p.category ?? '',
@@ -140,6 +144,7 @@ function payload() {
     slug: nullable(form.slug),
     excerpt: form.excerpt.trim(),
     sections: form.sections,
+    faqs: form.faqs,
     cover_image_url: nullable(form.cover_image_url),
     cover_image_alt: nullable(form.cover_image_alt),
     category: nullable(form.category),
@@ -280,9 +285,14 @@ async function openPreview() {
   if (previewing.value) return
   previewing.value = true
   try {
-    const res = await apiFetch<{ excerpt_html: string, sections: BlogRenderedSection[], toc: BlogTocItem[], reading_minutes: number }>('/api/v1/admin/blog/render', {
+    const res = await apiFetch<{ excerpt_html: string, sections: BlogRenderedSection[], faqs: BlogFaq[], toc: BlogTocItem[], reading_minutes: number }>('/api/v1/admin/blog/render', {
       method: 'POST',
-      body: { excerpt: form.excerpt, sections: form.sections.map(s => ({ ...s, heading: s.heading || 'Untitled section' })) },
+      body: {
+        excerpt: form.excerpt,
+        sections: form.sections.map(s => ({ ...s, heading: s.heading || 'Untitled section' })),
+        // Only complete pairs — a half-filled row is a save-time field error, not a preview blocker.
+        faqs: form.faqs.filter(f => f.question.trim() && f.answer.trim()),
+      },
     })
     previewPost.value = {
       slug: form.slug || 'preview',
@@ -297,6 +307,7 @@ async function openPreview() {
       reading_minutes: res.reading_minutes,
       published_at: post.value?.published_at ?? new Date().toISOString(),
       sections: res.sections,
+      faqs: res.faqs,
       toc: res.toc,
       // Empty fields show the shared defaults, as the public API serves them.
       cta_heading: nullable(form.cta_heading) ?? ctaDefaults.value?.heading ?? null,
@@ -433,6 +444,9 @@ const statusStyle = computed(() => post.value?.status === 'published'
           <button type="button" class="btn-pill btn-pill-ghost text-[13px] w-full justify-center" @click="addSection">
             <UIcon name="i-lucide-plus" class="size-4" /> Add section
           </button>
+
+          <!-- FAQs — rendered after the last section on the article, so they sit after the sections here too -->
+          <AdminBlogFaqEditor v-model="form.faqs" />
         </div>
 
         <!-- Side rail -->

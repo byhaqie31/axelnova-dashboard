@@ -176,6 +176,11 @@ export default defineNuxtConfig({
     '/blog/**': swr(300),
     // Legal copy changes on the order of never.
     '/legal/**': swr(3600),
+    // Discovery files built from backend data (server/routes/feed.xml.ts and
+    // llms.txt.ts). Cached like the pages; POST /_cache/purge drops every
+    // cached route, so a publish or a service going Live refreshes these too.
+    '/feed.xml': swr(300),
+    '/llms.txt': swr(300),
   },
 
   app: {
@@ -189,6 +194,11 @@ export default defineNuxtConfig({
       meta: [
         { name: 'description', content: 'Axel Nova Ventures designs and builds websites, booking portals and custom business systems in Kuala Lumpur for businesses across Malaysia.' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        // Site-wide default: index, and let Google show large image previews
+        // (a Discover requirement) and unclipped snippets. unhead dedupes
+        // `robots` to a single tag, so a page's useSeoMeta({ robots: 'noindex,
+        // nofollow' }) (admin, portals, /quote/success …) replaces this one.
+        { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' },
         { property: 'og:title', content: 'Axel Nova Ventures' },
         { property: 'og:description', content: 'Axel Nova Ventures designs and builds websites, booking portals and custom business systems in Kuala Lumpur for businesses across Malaysia.' },
         { property: 'og:type', content: 'website' },
@@ -205,6 +215,8 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/x-icon', href: '/favicon/favicon.ico' },
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/favicon/apple-touch-icon.png' },
         { rel: 'manifest', href: '/favicon/site.webmanifest' },
+        // RSS autodiscovery — readers and aggregators find the feed from any page.
+        { rel: 'alternate', type: 'application/rss+xml', title: 'Axel Nova Ventures — Blog', href: `${SITE_URL}/feed.xml` },
       ],
       // The homepage intro loader is rendered during SSR so it covers the page
       // from the very first paint — a client-only overlay lets the hero paint

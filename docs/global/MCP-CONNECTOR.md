@@ -32,11 +32,11 @@ A connector token is rejected by every `/v1/admin/*` route (they demand `abiliti
 | POST | `/v1/connector/quotations/draft` | `connector:draft` | 30/min | Create a draft quotation (contract below) |
 | PUT | `/v1/connector/quotations/{reference_code}` | `connector:draft` | 30/min | Update the quotation's DRAFT revision (same body as draft + `reseed_document`); 422 asking the founder to revise it when there is none |
 | GET | `/v1/connector/orders/{reference}` | `connector:read` | 60/min | `get_order` — read-only money view of an order, by AXNO or the AXNQ it came from (404 with a hint before acceptance) |
-| GET | `/v1/connector/blog/guide` | `connector:read` | 60/min | The writing guide: voice + structure + CTA defaults (from `config/blog.php`), the two drafting modes, formats, categories/tags in use (case-deduped; a draft's category/tags are snapped to these spellings on save — `BlogTaxonomy::snap()`), section shape, limits, image rules |
+| GET | `/v1/connector/blog/guide` | `connector:read` | 60/min | The writing guide: voice + structure + CTA defaults (from `config/blog.php`), the two drafting modes, formats, categories/tags in use (case-deduped; a draft's category/tags are snapped to these spellings on save — `BlogTaxonomy::snap()`), section shape, FAQ rules (`faq_rules`), limits, image rules |
 | GET | `/v1/connector/blog/posts` | `connector:read` | 60/min | Slim list of non-deleted posts — `status`, `q` (title), `page`/`per_page` (default 10, capped 25), newest updated first; `admin_url` + `public_url` (published only) |
 | GET | `/v1/connector/blog/posts/{id}` | `connector:read` | 60/min | Full editable record (Markdown sections with ids) + URLs |
-| POST | `/v1/connector/blog/posts` | `connector:draft` | 30/min | Create — always `draft` (`status`/`published_at` in the body are ignored). Image alt text required |
-| PUT | `/v1/connector/blog/posts/{id}` | `connector:draft` | 30/min | **Partial** update of a DRAFT — only sent fields change; slug only if `slug` is sent; `sections` replaces the list (ids kept). Published → 422 (`errors.status`) |
+| POST | `/v1/connector/blog/posts` | `connector:draft` | 30/min | Create — always `draft` (`status`/`published_at` in the body are ignored). Image alt text required. Optional `faqs[]` — 0–8 plain-text `{question, answer}` pairs (≤ 200 / ≤ 1200) |
+| PUT | `/v1/connector/blog/posts/{id}` | `connector:draft` | 30/min | **Partial** update of a DRAFT — only sent fields change; slug only if `slug` is sent; `sections` replaces the list (ids kept); `faqs` replaces the FAQ list (omitted → kept, `[]` → cleared). Published → 422 (`errors.status`) |
 | GET | `/v1/connector/projects` | `connector:read` | 60/min | Slim list of every project, Live + Hidden, in public order — `visibility` (live \| hidden), `q` (name / slug), `page`/`per_page` (default 10, capped 25) |
 | GET | `/v1/connector/projects/{id}` | `connector:read` | 60/min | Full project record + `visibility`, `admin_url`, `public_url` (Live only) |
 | POST | `/v1/connector/projects` | `connector:draft` | 30/min | Create — always **Hidden**, unfeatured, appended to the order (`active`/`featured`/`sort_order` in the body are ignored). Slug derived from the name (suffixed `-2` …) unless sent |
@@ -74,11 +74,11 @@ There is deliberately **no delete tool** — deletion is portal-only (`DELETE /v
 
 | Tool | Maps to | Scope / gate | Notes |
 |---|---|---|---|
-| `get_blog_guide` | `GET /blog/guide` | read | **Call first** before writing or revising. |
+| `get_blog_guide` | `GET /blog/guide` | read | **Call first** before writing or revising — voice, structure, modes, formats, taxonomy, section shape, `faq_rules`, limits, image rules. |
 | `list_blog_posts` | `GET /blog/posts` | read (any) | Find a post's id. Slim rows. |
-| `get_blog_post` | `GET /blog/posts/{id}` | read (any) | Full Markdown record — read before updating. |
-| `create_blog_draft` | `POST /blog/posts` | write | Always a DRAFT. Returns `admin_url` for the founder to preview + publish. |
-| `update_blog_draft` | `PUT /blog/posts/{id}` | write · **gate: draft** | Partial patch. Refused 422 once published. |
+| `get_blog_post` | `GET /blog/posts/{id}` | read (any) | Full Markdown record (sections, `faqs`, …) — read before updating. |
+| `create_blog_draft` | `POST /blog/posts` | write | Always a DRAFT. Optional `faqs` (0–8 plain-text pairs → the article's FAQ block + `FAQPage` schema; 3–6 real questions, answered directly). Returns `admin_url` for the founder to preview + publish. |
+| `update_blog_draft` | `PUT /blog/posts/{id}` | write · **gate: draft** | Partial patch; `sections` and `faqs` each replace their list when sent (`faqs` omitted = kept, `[]` = cleared). Refused 422 once published. |
 
 ### Projects, services & packages (v6)
 
@@ -264,6 +264,7 @@ Still no revise/send/accept/order tools (a revision is opened, sent and accepted
 
 ## Version history
 
+- **v6.3** — blog FAQs: `faqs` (0–8 plain-text `{question, answer}` pairs, question ≤ 200 / answer ≤ 1200) on `create_blog_draft` / `update_blog_draft` (replace-when-sent: omitted = kept, `[]` = cleared) and in `get_blog_post`; `get_blog_guide` adds `faq_rules` + the FAQ limits. Rendered as the article's "Frequently asked questions" block and `FAQPage` JSON-LD ([BLOG.md](./BLOG.md)). Same universal abilities — no token rotation; the Worker reports `6.3.0` once deployed (then **reconnect** to pick up the new field).
 - **v6.2** — `public_url` (projects, services, packages, blog posts) is built from the public site (`services.frontend.public_url` / `PUBLIC_SITE_URL`), never the internal admin host; `admin_url` stays on `FRONTEND_URL`. Package records (`get_package`, `get_service`, write results) no longer carry `likes_count`. `list_catalog` prices legacy modifiers per package (`amount_by_package` — `extra_page` RM500 on `web_business`, RM800 on `web_premium`) and the payment modifiers no longer apply to the creative, audit and design-system packages (see [QUOTE_BUILDER.md § Legacy modifiers](./QUOTE_BUILDER.md#legacy-modifiers--the-live-catalogs-modifiers)). Backend-only — no Worker change or deploy (the Worker still reports `6.1.0`).
 - **v6.1** — packages: `effective_visibility` (live only while the package **and** its service are Live) on every package payload (`list_services`, `get_service`, `get_package`, write results); `visibility` stays the package's own flag. `update_package_draft` edits any effectively Hidden package — including a Live-flagged one inside a Hidden service — and refuses a move into a Live service that would publish it (422 `errors.service_id`). `public_url`, `quotable` and the guard share `ServicePackage::isEffectivelyLive()`, and the engine's price map its query twin `effectivelyLive()` (a package under a hidden service is no longer priceable by key). Description-only change on the Worker (no new tools).
 - **v6** — the public catalogue: `list_projects` / `get_project` / `create_project_draft` / `update_project_draft`, `list_services` / `get_service` / `create_service_draft` / `update_service_draft`, `get_package` / `create_package_draft` / `update_package_draft`. Created Hidden, partially edited only while Hidden (Live → 422). A package can be wired to the quote builder with a NEW `quote_package_key` (unique across every package row, Live or Hidden, and not a legacy pricing-JSON key — the same uniqueness now guards the admin form). Reuses the universal abilities — no token rotation; the Worker ships on merge (`deploy-connector.yml`), then **reconnect** the connector to see the new tools.

@@ -175,6 +175,69 @@ class AdminBlogPostsTest extends TestCase
         $this->assertSame(0, BlogPost::count());
     }
 
+    public function test_faqs_are_saved_and_returned_on_create_and_update(): void
+    {
+        $headers = $this->adminHeaders();
+        $faqs = [
+            ['question' => 'How long does a portal take?', 'answer' => 'Four to eight weeks for a first version.'],
+            ['question' => 'Do I need an app?', 'answer' => 'Usually not — a web portal works on every phone.'],
+        ];
+
+        $id = $this->postJson('/api/v1/admin/blog/posts', $this->payload(['faqs' => $faqs]), $headers)
+            ->assertCreated()
+            ->assertJsonPath('data.faqs', $faqs)
+            ->json('data.id');
+        // MySQL re-orders JSON object keys on store, so compare through faqList() (the shape the resources serve).
+        $this->assertSame($faqs, BlogPost::findOrFail($id)->faqList());
+
+        // A full save replaces the list; blank rows are dropped and text trimmed.
+        $this->putJson("/api/v1/admin/blog/posts/{$id}", $this->payload(['faqs' => [
+            ['question' => ' Is hosting included? ', 'answer' => 'Yes, for the first year.'],
+            ['question' => '', 'answer' => ''],
+        ]]), $headers)
+            ->assertOk()
+            ->assertJsonPath('data.faqs', [['question' => 'Is hosting included?', 'answer' => 'Yes, for the first year.']]);
+
+        // The editor always sends the whole post — no `faqs` means none.
+        $this->putJson("/api/v1/admin/blog/posts/{$id}", $this->payload(), $headers)
+            ->assertOk()
+            ->assertJsonPath('data.faqs', []);
+    }
+
+    public function test_faq_validation_limits(): void
+    {
+        $headers = $this->adminHeaders();
+        $faq = ['question' => 'Q?', 'answer' => 'A.'];
+
+        $this->postJson('/api/v1/admin/blog/posts', $this->payload(['faqs' => array_fill(0, 9, $faq)]), $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['faqs']);
+
+        $res = $this->postJson('/api/v1/admin/blog/posts', $this->payload(['faqs' => [
+            ['question' => 'Only a question', 'answer' => ''],
+            ['question' => '', 'answer' => 'Only an answer'],
+            ['question' => str_repeat('q', 201), 'answer' => str_repeat('a', 1201)],
+        ]]), $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['faqs.0.answer', 'faqs.1.question', 'faqs.2.question', 'faqs.2.answer']);
+        // Readable field names in the editor's error list, not "faqs.0.answer".
+        $this->assertStringContainsString('FAQ answer', $res->json('errors')['faqs.0.answer'][0]);
+
+        $this->assertSame(0, BlogPost::count());
+    }
+
+    public function test_render_previews_faqs_and_their_toc_entry(): void
+    {
+        $res = $this->postJson('/api/v1/admin/blog/render', [
+            'sections' => [['heading' => 'One', 'body_md' => 'x']],
+            'faqs' => [['question' => ' Q? ', 'answer' => 'A.'], ['question' => '', 'answer' => '']],
+        ], $this->adminHeaders())->assertOk();
+
+        $this->assertSame([['question' => 'Q?', 'answer' => 'A.']], $res->json('faqs'));
+        $this->assertSame([['id' => 'one', 'heading' => 'One'], ['id' => BlogPost::FAQ_ANCHOR, 'heading' => BlogPost::FAQ_HEADING]], $res->json('toc'));
+        $this->assertSame(0, BlogPost::count());
+    }
+
     public function test_admin_blog_rejects_a_workspace_token(): void
     {
         $token = User::factory()->marketer()->create()->createToken('team-spa', ['workspace'])->plainTextToken;

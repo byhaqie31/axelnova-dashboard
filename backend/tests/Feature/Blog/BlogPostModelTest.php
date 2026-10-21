@@ -63,6 +63,26 @@ class BlogPostModelTest extends TestCase
         $this->assertSame('customer-portal', BlogPost::uniqueSlug('customer portal', $first->id));
     }
 
+    public function test_toc_appends_the_faq_heading_and_keeps_its_anchor_for_itself(): void
+    {
+        $post = BlogPost::factory()->create([
+            'sections' => BlogPost::normaliseSections([['heading' => 'Frequently asked questions', 'body_md' => 'a']]),
+            'faqs' => [['question' => 'Q?', 'answer' => 'A.']],
+        ]);
+
+        // The FAQ block is last and owns its anchor; a section with the same heading moves to -2.
+        $this->assertSame([
+            ['id' => 'frequently-asked-questions-2', 'heading' => 'Frequently asked questions'],
+            ['id' => BlogPost::FAQ_ANCHOR, 'heading' => BlogPost::FAQ_HEADING],
+        ], $post->toc());
+        $this->assertSame('frequently-asked-questions-2', $post->renderedSections()[0]['anchor']);
+
+        // Without FAQs nothing is appended or reserved, and a null column reads as none.
+        $post->faqs = null;
+        $this->assertSame([['id' => 'frequently-asked-questions', 'heading' => 'Frequently asked questions']], $post->toc());
+        $this->assertSame([], $post->faqList());
+    }
+
     public function test_toc_ids_are_unique_within_a_post(): void
     {
         $post = BlogPost::factory()->create(['sections' => BlogPost::normaliseSections([

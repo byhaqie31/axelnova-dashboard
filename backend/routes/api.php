@@ -75,6 +75,7 @@ Route::get('/v1/collaborations/{slug}', [PublicCollaborationsController::class, 
 // 404. `/slugs` is the unpaginated feed the frontend sitemap reads.
 Route::get('/v1/blog/posts', [PublicBlogController::class, 'index'])->name('blog.index');
 Route::get('/v1/blog/slugs', [PublicBlogController::class, 'slugs'])->name('blog.slugs');
+Route::get('/v1/blog/feed', [PublicBlogController::class, 'feed'])->name('blog.feed');
 Route::get('/v1/blog/posts/{slug}', [PublicBlogController::class, 'show'])->name('blog.show');
 
 // Public — token-gated quotation document data for the PDF renderer (unguessable token).

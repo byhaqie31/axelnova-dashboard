@@ -8,9 +8,11 @@ use Illuminate\Support\Collection;
 
 /**
  * The full article for /blog/{slug}: card fields + sections rendered to safe
- * HTML (App\Support\BlogMarkdown via BlogPost::renderedSections) + toc + the
- * closing CTA (empty fields filled from config/blog.php) + SEO overrides + up to 3 related cards (set by the controller
- * through withRelated()). Raw Markdown never leaves the admin API.
+ * HTML (App\Support\BlogMarkdown via BlogPost::renderedSections) + the FAQ
+ * pairs (plain text, always a list — the FAQ block + FAQPage schema) + toc +
+ * the closing CTA (empty fields filled from config/blog.php) + SEO overrides +
+ * up to 3 related cards (set by the controller through withRelated()). Raw
+ * Markdown never leaves the admin API.
  */
 class PublicBlogPostResource extends BlogPostCardResource
 {
@@ -39,6 +41,7 @@ class PublicBlogPostResource extends BlogPostCardResource
                 'quote' => $s['quote'],
                 'quote_by' => $s['quote_by'],
             ], $this->renderedSections()),
+            'faqs' => $this->faqList(),
             'toc' => $this->toc(),
             // Empty fields fall back to the shared defaults (config/blog.php), one by one.
             'cta_heading' => $this->cta_heading ?: config('blog.cta_defaults.heading'),

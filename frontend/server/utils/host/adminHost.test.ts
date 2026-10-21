@@ -20,6 +20,8 @@ describe('admin host', () => {
     expect(on(ADMIN, '/quote').redirectTo).toBe(`${SITE}/quote`)
     expect(on(ADMIN, '/partners/refer').redirectTo).toBe(`${SITE}/partners/refer`)
     expect(on(ADMIN, '/sitemap.xml').redirectTo).toBe(`${SITE}/sitemap.xml`)
+    expect(on(ADMIN, '/feed.xml').redirectTo).toBe(`${SITE}/feed.xml`)
+    expect(on(ADMIN, '/llms.txt').redirectTo).toBe(`${SITE}/llms.txt`)
     expect(on(ADMIN, '/blog/why-ux-audits-matter', 'HEAD').redirectTo).toBe(`${SITE}/blog/why-ux-audits-matter`)
   })
 

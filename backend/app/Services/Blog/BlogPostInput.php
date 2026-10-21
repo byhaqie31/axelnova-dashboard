@@ -10,8 +10,8 @@ use Illuminate\Validation\Rule;
  * The ONE blog write shape, shared by both writers — the admin editor
  * (Admin\BlogPostsController, full replace) and the MCP connector
  * (Connector\BlogPostController, partial update). rules() validates, derive()
- * turns validated input into columns (slug, normalised sections, tags, format,
- * reading time).
+ * turns validated input into columns (slug, normalised sections, FAQs, tags,
+ * format, reading time).
  *
  * Partial mode only touches the keys that were sent: the slug is recomputed
  * only when `slug` itself is sent (a title edit never moves a URL), and the
@@ -33,6 +33,7 @@ class BlogPostInput
             'slug' => ['nullable', 'string', 'max:120'],
             'excerpt' => ['nullable', 'string', 'max:500'],
             ...self::sectionRules($requireAlt),
+            ...self::faqRules(),
             'cover_image_url' => ['nullable', 'string', 'max:500', self::URL_RULE],
             'cover_image_alt' => ['nullable', 'string', 'max:160'],
             'category' => ['nullable', 'string', 'max:60'],
@@ -76,6 +77,30 @@ class BlogPostInput
     }
 
     /**
+     * 0–8 plain-text {question, answer} pairs. A row needs BOTH halves — one on
+     * its own is a mistake worth a field error — while a fully blank row (an
+     * unfilled editor row) passes and derive() drops it.
+     */
+    public static function faqRules(): array
+    {
+        return [
+            'faqs' => ['nullable', 'array', 'max:'.BlogPost::FAQ_MAX],
+            'faqs.*' => ['array'],
+            'faqs.*.question' => ['required_with:faqs.*.answer', 'nullable', 'string', 'max:200'],
+            'faqs.*.answer' => ['required_with:faqs.*.question', 'nullable', 'string', 'max:1200'],
+        ];
+    }
+
+    /** Field names for validation messages — "The FAQ answer field is required when FAQ question is present.", not "faqs.0.answer". */
+    public static function attributes(): array
+    {
+        return [
+            'faqs.*.question' => 'FAQ question',
+            'faqs.*.answer' => 'FAQ answer',
+        ];
+    }
+
+    /**
      * Validated input → columns. Full mode (the editor) always derives every
      * field; partial mode (the connector) derives only what was sent, merging
      * with `$existing` where a derived value depends on unsent fields.
@@ -88,6 +113,10 @@ class BlogPostInput
         if ($has('sections')) {
             $out['sections'] = BlogPost::normaliseSections($data['sections'] ?? []);
         }
+        if ($has('faqs')) {
+            $out['faqs'] = BlogPost::normaliseFaqs($data['faqs'] ?? []);
+        }
+
         if ($has('excerpt')) {
             $out['excerpt'] = trim((string) ($data['excerpt'] ?? ''));
         }

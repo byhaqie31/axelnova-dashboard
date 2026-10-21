@@ -313,6 +313,8 @@ GET  /v1/admin/revenue/monthly/{YYYY-MM}  Sanctum — one month broken down: ord
 GET  /v1/blog/posts                  Public  — published cards, newest first, ?format= & ?topic=, 12/page + formats/topics sets
 GET  /v1/blog/posts/{slug}           Public  — full article (rendered sections + toc + related); draft → 404
 GET  /v1/blog/slugs                  Public  — unpaginated slug feed for the frontend sitemap
+GET  /v1/blog/feed                   Public  — latest 20 published articles (rendered sections + cover, no related)
+                                     for the Nuxt /feed.xml and /llms.txt routes — see SEO-AND-DISCOVERY.md
 GET    /v1/admin/blog/posts          Cockpit — all posts (?status, ?q) + page-view counts
 POST   /v1/admin/blog/posts          Cockpit — create (draft)
 GET    /v1/admin/blog/posts/{id}     Cockpit — editable record (Markdown)
@@ -354,7 +356,7 @@ GET  /v1/team/analytics/overview     Sanctum workspace + role:founder,marketer �
 
 ## Frontend routes
 
-Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/collaborations{,/**}`, `/support`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. A live blog change purges the cache on demand (`BlogPostObserver` → `SiteCache` → Nuxt `POST /_cache/purge`). See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching).
+Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}`, `/projects{,/**}`, `/collaborations{,/**}`, `/support`, `/blog{,/**}`, `/legal/**`) are cached with `swr` route rules in [frontend/nuxt.config.ts](../../frontend/nuxt.config.ts). Everything authenticated or per-recipient — `/admin`, `/portal`, `/team`, `/partners`, `/quote/**`, `/feedback/**`, `/proposals/**` — is deliberately excluded and must stay that way, since caching those would serve one visitor's page to another. A live blog change purges the cache on demand (`BlogPostObserver` → `SiteCache` → Nuxt `POST /_cache/purge`). The discovery files `/feed.xml` and `/llms.txt` carry the same `swr` rule and are dropped by the same purge. See [DEPLOY.md § Page caching](./DEPLOY.md#page-caching) and [SEO-AND-DISCOVERY.md](./SEO-AND-DISCOVERY.md).
 
 
 ```
@@ -364,6 +366,11 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
 /blog                 Blog index — published posts, format pills (?format=) + topic dropdown (?topic=), pagination
 /blog/[slug]          Article — one shared layout (BlogArticle): format eyebrow + byline header, left pane
                       (section links), text column right, closing CTA, share row, related
+/feed.xml             RSS 2.0 of the latest 20 posts, full text + Media RSS covers (Nitro route
+                      server/routes/feed.xml.ts over GET /v1/blog/feed) — SEO-AND-DISCOVERY.md
+/llms.txt             llmstxt.org index — studio facts + Live services, projects, posts, pages
+                      (server/routes/llms.txt.ts; each backend source independent)
+/sitemap.xml          @nuxtjs/sitemap — static pages + server/api/__sitemap__/urls.ts (posts, services, projects)
 /services             Services & pricing
 /about                About page
 /contact              Contact form → POST /v1/inquiries (origin=contact) — same pipeline as /quote

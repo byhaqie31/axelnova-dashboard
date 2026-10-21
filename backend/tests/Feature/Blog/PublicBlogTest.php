@@ -81,6 +81,22 @@ class PublicBlogTest extends TestCase
         $this->assertSame([$same->slug, $other->slug], array_column($res->json('data.related'), 'slug'));
     }
 
+    public function test_show_exposes_faqs_and_their_toc_entry(): void
+    {
+        $faqs = [['question' => 'How long does it take?', 'answer' => 'Four to eight weeks.']];
+        $with = BlogPost::factory()->published()->create(['faqs' => $faqs]);
+        $without = BlogPost::factory()->published()->create(['faqs' => null]); // a row from before the column
+
+        $res = $this->getJson("/api/v1/blog/posts/{$with->slug}")->assertOk()->assertJsonPath('data.faqs', $faqs);
+        $this->assertSame(['id' => BlogPost::FAQ_ANCHOR, 'heading' => BlogPost::FAQ_HEADING], collect($res->json('data.toc'))->last());
+
+        // Always an array, never null — and no TOC entry when there is nothing to jump to.
+        $res = $this->getJson("/api/v1/blog/posts/{$without->slug}")->assertOk()->assertJsonPath('data.faqs', []);
+        $this->assertCount(2, $res->json('data.toc'));
+        // Cards stay slim.
+        $this->assertArrayNotHasKey('faqs', $this->getJson('/api/v1/blog/posts')->json('data.0'));
+    }
+
     public function test_a_draft_or_deleted_post_is_404(): void
     {
         $draft = BlogPost::factory()->create();
