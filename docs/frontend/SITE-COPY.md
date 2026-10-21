@@ -134,6 +134,16 @@ The current copy for the public site, written and adopted 29 September 2026 from
 
 **Closing:** This is a young studio with a long view. Client work today shapes the products and team Axel Nova Ventures hopes to build next.
 
+**Added with the 2026-10-22 page refinement (pending owner review):** the page now tells the pillars as a three-step "How we work" and the vision as a Now / Next / Later horizon. New lines, all process-level (no claims about results or client counts):
+
+- **How we work H2:** Three habits behind every project. Subtitle reuses the Vision body's last sentence.
+- **Start with the user — what that looks like:** Who uses it, and in what moment of their day. / Where the current way of working slows people down. / What a good result looks like to them, not just to us.
+- **Build for real use — what that looks like:** The simplest stack that does the job well. / Features people will actually use, nothing for show. / Room to grow without starting over.
+- **Make it maintainable — what that looks like:** Clear handover notes and documentation. / Admin tools your own team can run. / A system that keeps working long after launch.
+- **Horizon:** Now · Client work: Websites and custom systems for businesses across Malaysia. / Next · Products: Useful tools that grow out of the problems client work keeps surfacing. / Later · Ventures: New ventures under the Axel Nova name, built on what the studio has learned.
+- **Origin lead line:** the dangling "Axel Nova Ventures exists to bridge that gap." was replaced with the Origin body's own sentence pair ("A project begins by understanding the people, process and constraints involved. The design and technology choices follow from there.").
+- **Hero eyebrow:** Axel Nova Ventures · Kuala Lumpur. **Quote attribution:** Qie, founder of Axel Nova Ventures.
+
 ## Services `/services`
 
 **SEO title:** Web Design & Development Services in Malaysia | Axel Nova

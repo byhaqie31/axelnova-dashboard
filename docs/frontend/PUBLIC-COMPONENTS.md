@@ -144,3 +144,22 @@ The floating **Back to top**, mounted once by `layouts/public.vue` (every public
 - **Progress ring** — an SVG circle round the button: a `--color-border` track and an aurora stroke (`--grad-aurora-*` stops) that fills clockwise from 12 o'clock as the page scrolls down and drains on the way up (`stroke-dashoffset` over the scrollable height, rAF-throttled).
 - **Click** scrolls through Lenis when it owns scrolling (native smooth scroll would fight it), then focuses the header's brand link.
 - `z-index: 30` — under the header (z-50) and the cookie banner (z-60). Reduced motion: fades only, no movement, instant jump.
+
+### `CompanyHeroCard`
+The `/company` hero's square box: the Axel Nova mark sitting directly in one named card ("Axel Nova Ventures" under it, no logo tile) — the `CollabLockup` card on its own, no partner and no ×, with the same card geometry and hover. The mark carries a soft brand drop-shadow (`color-mix()` from `--grad-aurora-blue` / `--grad-aurora-violet`) for depth. It replaced the old hero's circular aurora halo around the mark; the box is the frame and the page title sits beside it (left box / right title from `lg`, stacked and centred below).
+
+- **Decorative only** — `aria-hidden`, no heading level; the page's `h1` beside it carries the words.
+- **Entrance hooks:** `data-hero-card="card|chrome|plate|name"` (the chrome is the card surface, its own layer; the "plate" is the mark's own footprint — clipped to it, the chrome is the small box the mark first arrives in, which then expands into the card). The page owns the timeline (hero animations are page-specific); an entrance must not resize the card — grow the chrome with `clip-path`, move the plate with a transform, suspend the hover transitions inline while animating (MOTION rule 10). Choreography in [MOTION.md](MOTION.md#choreography-as-built).
+- **Hover** (pointer devices, motion allowed; CSS only): the card lifts 6px on `--shadow-lg`, the mark scales 1.06.
+- Square by `aspect-ratio: 1`: `min(15rem, 100vw − 3rem)` on phones, `clamp(17rem, 26vw, 21.25rem)` from `sm`.
+
+### The `/company` page (`pages/public/company.vue`)
+Not a component, but the page's devices live in it and are easy to lose in a rewrite. The story runs hero → company card → Origin → The name → How we work → Philosophy → Looking ahead, alternating the page surface with the story bands ([UI-STANDARDS § Story bands](UI-STANDARDS.md#story-bands)): the company card and The name on `.band-soft`, Philosophy on the one `.band-ink`.
+
+- **Company card** — the registry facts as a `<dl>` of `.band-tile` boxes on the first band (five across from `lg`; the Focus tile spans two columns at `sm`).
+- **Origin** — `SectionHeader` as a sticky chapter marker (`lg:sticky lg:top-28`) beside the prose; the prose carries the reading focus ([MOTION.md](MOTION.md#choreography-as-built)). The closing lead line is the SITE-COPY Origin sentence pair, not the old "bridge that gap" line.
+- **The name** — two `.band-tile` articles (ghost initial, `h3` eyebrow "Axel" / "Nova", lead + body) and a "together" tile with the mark. Hover brightens and lifts the ghost initial.
+- **How we work** — the three pillars as a self-advancing tablist (`role="tablist"`, roving `tabindex`, Arrow / Home / End keys, `aria-controls` ↔ `aria-labelledby`), one box, a raised segment that slides to the active tab, one continuous progress line under the row, panels in a shared grid cell. Timing and the reduced-motion rule in MOTION.md.
+- **Philosophy** — the ink band: `SectionHeader` + two paragraphs left, the pull quote right under a 38px accent rule, a faint `--band-ink-glow` radial top-right as its own absolutely positioned child.
+- **Looking ahead** — the horizon: an `<ol>` of three stops (Now · Client work / Next · Products / Later · Ventures) on one hairline that fades out past the last stop; vertical down the left on phones, horizontal from `md`. The Now dot pulses in accent (off under reduced motion). The closing statement and the page's one primary CTA (`/services`, accent) + "Meet Qie" (ghost) follow on the page surface — no closing card.
+- Copy follows [SITE-COPY.md § Company](SITE-COPY.md#company-company); the stepper's "What that looks like" points and the horizon descriptions were added with the 2026-10-22 refinement and are flagged there for the owner's review.

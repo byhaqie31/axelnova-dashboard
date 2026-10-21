@@ -48,6 +48,23 @@
      pops off the band in both modes. */
   --band-cta-bg: #ffffff;
   --band-cta-fg: #1D4ED8;
+  /* Story bands (/company — UI-STANDARDS "Story bands"). `.band-soft` is the
+     grey full-bleed chapter on the page surface; a box sitting ON it uses
+     --band-tile-bg so it still lifts off the band in both modes. `.band-ink` is
+     the one inverted chapter per page: it re-points the text / border / accent
+     tokens at the dark palette, so everything inside (SectionHeader, eyebrows,
+     hairlines, pills) reads on navy without naming a colour. */
+  --band-tile-bg: #FFFFFF;
+  --band-ink-bg: #0A0F1F;
+  --band-ink-fg: #F5F5F7;
+  --band-ink-fg-secondary: #A1A1A6;
+  --band-ink-fg-tertiary: #86868B;
+  --band-ink-border: rgba(255, 255, 255, 0.10);
+  --band-ink-border-strong: rgba(255, 255, 255, 0.16);
+  --band-ink-accent: #2997FF;
+  --band-ink-accent-soft: rgba(41, 151, 255, 0.14);
+  --band-ink-glow: rgba(41, 151, 255, 0.22);
+  --band-ink-grad-text: linear-gradient(135deg, #2997FF 0%, #C77DFF 100%);
   --color-success-soft: rgba(48, 209, 88, 0.12);
   --color-warning-soft: rgba(255, 159, 10, 0.16);
   --color-danger-soft: rgba(255, 59, 48, 0.14);
@@ -234,6 +251,8 @@
   --stat-band-fg: #0A0F1F;
   --stat-band-fg-muted: rgba(10, 15, 31, 0.78);
   --stat-band-divider: rgba(10, 15, 31, 0.20);
+  --band-tile-bg: #141B33;
+  --band-ink-bg: #060A16;
   --color-success-soft: rgba(48, 209, 88, 0.18);
   --color-warning: #FFB340;
   --color-warning-soft: rgba(255, 179, 64, 0.22);
@@ -1266,4 +1285,36 @@ input[type="number"] {
   background: var(--collab-logo-plate);
   border: 1px solid var(--collab-logo-plate-border);
   box-shadow: var(--shadow-sm);
+}
+
+/* Story bands (UI-STANDARDS "Story bands"; first used on /company).
+   Both classes set ONLY colour and custom properties — never `position` — so
+   a Tailwind `relative` / `overflow-hidden` on the same section keeps working
+   (hard rule 8). Decorative glows inside a band are their own absolutely
+   positioned children. */
+.band-soft {
+  background: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+/* A box resting on a band: white on the grey band in light mode, the elevated
+   tone in dark mode, where the band is already the lighter surface. */
+.band-tile {
+  background: var(--band-tile-bg);
+  border: 1px solid var(--color-border);
+}
+.band-ink {
+  background: var(--band-ink-bg);
+  --color-bg: var(--band-ink-bg);
+  --color-bg-elevated: var(--band-ink-bg);
+  --color-text: var(--band-ink-fg);
+  --color-text-secondary: var(--band-ink-fg-secondary);
+  --color-text-tertiary: var(--band-ink-fg-tertiary);
+  --color-border: var(--band-ink-border);
+  --color-border-strong: var(--band-ink-border-strong);
+  --color-accent: var(--band-ink-accent);
+  --color-accent-hover: var(--band-ink-accent);
+  --color-accent-soft: var(--band-ink-accent-soft);
+  --grad-text-accent: var(--band-ink-grad-text);
+  --shadow-glow: 0 0 0 4px var(--band-ink-accent-soft);
 }

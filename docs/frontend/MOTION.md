@@ -133,6 +133,46 @@ All are client-guarded, kill their tweens/triggers on unmount, and no-op
   The bar tweens **`width`** as well as transform (the two bars differ by up
   to ~100px): scaling would squash its text, and it's one fixed element —
   the same exception the hero pill's own width scrub already takes.
+- **Company hero** (`pages/public/company.vue` + `CompanyHeroCard`): the
+  trlabs card entrance on one box. The mark arrives from the left inside a
+  small box — the card's chrome, visible from the first frame but clipped to
+  the mark's footprint (`x −56`, `dur.hero`, `ease.hero`); it holds a beat,
+  then at 0.9s the box expands into the card (`clip-path: inset()` fromTo,
+  rule 11) while the mark glides up into place (`dur.hero`, `ease.inout`);
+  the eyebrow / h1 / intro beside it rise from 1.2s (`dur.slow`, stagger
+  `base`) while the box is still expanding, and the studio name rises under
+  the mark at 1.5s (`dur.base`). `clearProps` on complete. Pre-paint hold on
+  `html[data-company-intro]` with the 4s CSS failsafe (rule 12); reduced motion
+  skips hold and entrance. Hover (CSS, pointer only): the card lifts 6px, the
+  mark scales 1.06.
+- **Company glow meet**: the collab glow's 9s `ease-in-out` infinite alternate
+  drift, in the two ends of the brand gradient (`--grad-aurora-blue` left,
+  `--grad-aurora-violet` right) behind the hero — blue behind the box, violet
+  behind the title. Off under reduced motion.
+- **Company reading focus** (Origin chapter): the paragraph crossing the middle
+  24% of the viewport carries `.is-focus` (`--color-text`); the rest sit in
+  `--color-text-secondary`, 0.4s colour transition. An `IntersectionObserver`
+  (`rootMargin: -38% 0 -38% 0`), not ScrollTrigger — it is state, not motion,
+  and runs on top of Lenis. The SSR HTML marks the first paragraph so JS-off
+  keeps an emphasis; reduced motion skips the observer and shows every
+  paragraph in full colour.
+- **Company stepper** (How we work): a real tablist that tells itself. The
+  active step sits in a raised box (`.step-highlight`, one element behind the
+  tabs) that slides from 01 to 02 to 03: the three tabs are equal thirds, so
+  it is `translateX(var(--i) × 100%)` of its own width with the filter tabs'
+  0.45s / `power3.out` CSS transition — no measuring, resize-proof. One
+  continuous 2px line runs under the whole row (the track doubles as the
+  divider); each step owns a third of it. Once 40% of the box is in view a
+  GSAP tween creeps the accent fill through the active step's third over 7s
+  (`ease: 'none'`) and its `onComplete` advances the step, which carries on
+  from where the line stopped; hover or focus inside the box pauses the tween
+  (`pause()` / `resume()`); the first click or arrow key kills it for good and
+  the fill settles at the end of the chosen step's third (`dur.fast`,
+  `ease.out`) as a plain position marker. Panels stack in one grid cell (no
+  height jump) and crossfade: leave 0.2s `ease-in`, enter 0.35s `ease-out` at
+  0.1s. The CSS `--fill` default (the active third's end) is what SSR, JS-off
+  and reduced motion show — autoplay never starts under reduced motion, and a
+  click there sets the fill instantly.
 - **ProjectCard**: CSS-only hover — −4px lift + glow (existing) + diagonal sheen
   sweep (`--sheen-color`, theme-aware).
 - **Admin dashboard**: tiles stagger in on mount (y 16, 0.4s, stagger 0.08, once
