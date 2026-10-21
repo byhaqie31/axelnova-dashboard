@@ -393,8 +393,8 @@ Public marketing routes (`/`, `/about`, `/company`, `/contact`, `/services{,/**}
                       detail carries pay/duration/payment status + Mark paid/Delete, and is read-only once
                       the task is in progress or beyond
 /admin/revenue        Revenue — monthly booked-vs-collected reporting (6/12/24-month window).
-/admin/revenue/[month]  One month's breakdown (e.g. /admin/revenue/2026-07) — opened by clicking a month row or chart bar; prev/next stepper.
-                      Totals row (booked / collected / net of fees / fees), a grouped bar chart
+/admin/revenue/[month]  One month's breakdown (e.g. /admin/revenue/2026-07) — opened by clicking a month row or a month on the chart; prev/next stepper.
+                      Totals row (booked / collected / net of fees / fees), a smooth area chart (SVG, `utils/areaChart.ts`)
                       (one shared MYR axis — never a second scale), and a table of exact figures.
                       Read-only and fully derived from `payments` + `orders`; adds no table
 /admin/announcements  Announcements — post/edit (slideover), publish toggle (§12.2). No delete

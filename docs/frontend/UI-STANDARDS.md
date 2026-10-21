@@ -76,7 +76,7 @@ All colors are semantic CSS variables defined in `:root` (light) and `.dark` (da
 ### Chart series
 
 For two-series charts (currently `/admin/revenue`). **Never reuse the status colors
-for a data series** — green/orange/red are reserved for state, and a bar in warning
+for a data series** — green/orange/red are reserved for state, and a line in warning
 orange reads as an alert rather than a number.
 
 | Token | Light | Dark | Use |
@@ -102,6 +102,29 @@ Rules that go with them:
   color alone. Pair every chart with a table of exact figures.
 - **Values on hover, not on every mark.** Text uses text tokens; the colored swatch
   beside it carries identity.
+
+**Area chart marks** (`/admin/revenue`, hand-drawn SVG, geometry in
+[`app/utils/areaChart.ts`](../../frontend/app/utils/areaChart.ts) — no chart library):
+
+- **Lines are 2px, round joins, monotone-smoothed** (Fritsch–Carlson, as d3's
+  `curveMonotoneX`): a curve never overshoots a month, so RM 0 stays on the baseline
+  and a spike never implies a value the data doesn't have. Never a Catmull-Rom /
+  basis spline for money.
+- **Fills are a wash, not a block** — the series hue in a vertical gradient from
+  26% at the line to 2% at the baseline. The comparison series (booked) is drawn
+  first, the headline (collected) on top.
+- **Grid is solid hairlines in `--color-border`** (`--color-border-strong` for the
+  baseline) with compact ticks in 1 / 2 / 5 steps (`RM 20k`, `RM 40k`) from
+  `yTicks()` / `formatCompactMyr()` — ticks label a scale and are the only place an
+  amount may abbreviate.
+- **Markers wear a 2px ring in the surface colour** (`--color-bg-elevated`) so they
+  stay legible where the lines cross: a resting 8px dot on the latest month per
+  series, 10px dots on the hovered month.
+- **A crosshair snaps to the nearest month** (readers aim at a date, not a 2px line);
+  one tooltip lists every series, value first with a short line key. Month labels
+  thin out by width (`labelStep`) so ticks never collide.
+- **A refetch keeps the frame** — on a range switch the previous chart stays on
+  screen at reduced opacity until the new data lands.
 
 ### Iridescent gradient stops
 
