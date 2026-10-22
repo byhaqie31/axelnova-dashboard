@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\BlogFeedPostResource;
 use App\Http\Resources\BlogPostCardResource;
 use App\Http\Resources\PublicBlogPostResource;
 use App\Models\BlogPost;
@@ -18,6 +19,9 @@ use Illuminate\Validation\Rule;
  */
 class PublicBlogController extends Controller
 {
+    /** How many posts the feed carries — RSS readers and aggregators only ever want the newest few. */
+    public const FEED_LIMIT = 20;
+
     /**
      * Paginated cards, newest first. Two optional filters — ?format= (one of
      * BlogPost::FORMATS) and ?topic= (matches the category OR a tag,
@@ -94,6 +98,25 @@ class PublicBlogController extends Controller
             ->get();
 
         return (new PublicBlogPostResource($post))->withRelated($related);
+    }
+
+    /**
+     * The latest 20 published posts as full articles — the show() shape
+     * (rendered section HTML, cover, tags, category, plain excerpt, dates,
+     * reading time) minus `related`. Read by the Nuxt /feed.xml (RSS 2.0) and
+     * /llms.txt routes, which are swr-cached for 300s and purged with every
+     * other public page by SiteCache, so one unpaginated call is all they
+     * make. Drafts and soft-deleted rows never appear (published() scope).
+     */
+    public function feed(): AnonymousResourceCollection
+    {
+        $posts = BlogPost::published()
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->limit(self::FEED_LIMIT)
+            ->get();
+
+        return BlogFeedPostResource::collection($posts);
     }
 
     /** Sitemap feed — every published slug with timestamps, unpaginated. */

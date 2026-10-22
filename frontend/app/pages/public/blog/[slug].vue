@@ -57,6 +57,16 @@ useSeoMeta({
   articleTag: post.value.tags.length ? post.value.tags : undefined,
 })
 
+// Structured-data extras that help Discover and AI answer engines judge the
+// piece: an absolute ImageObject (Discover wants large images it can attribute),
+// the word count and reading time, and the language. The cover is absolutized
+// because a root-relative URL is meaningless to a crawler reading JSON-LD.
+const coverUrl = post.value.cover_image_url
+  ? (post.value.cover_image_url.startsWith('http') ? post.value.cover_image_url : `${siteUrl}${post.value.cover_image_url}`)
+  : null
+const countWords = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').split(/\s+/).filter(Boolean).length
+const wordCount = [post.value.excerpt, ...post.value.sections.map(s => s.body_html)].reduce((n, html) => n + countWords(html), 0)
+
 useHead({
   script: [
     {
@@ -66,7 +76,18 @@ useHead({
         '@type': 'BlogPosting',
         'headline': post.value.title,
         'description': seoDescription,
-        ...(post.value.cover_image_url && { image: post.value.cover_image_url }),
+        'url': pageUrl,
+        'inLanguage': 'en-MY',
+        'isAccessibleForFree': true,
+        'wordCount': wordCount,
+        'timeRequired': `PT${post.value.reading_minutes}M`,
+        ...(coverUrl && {
+          image: {
+            '@type': 'ImageObject',
+            'url': coverUrl,
+            ...(post.value.cover_image_alt && { caption: post.value.cover_image_alt }),
+          },
+        }),
         'datePublished': post.value.published_at,
         'dateModified': post.value.updated_at ?? post.value.published_at,
         // Same @ids as the Person on /about and the business on the homepage,

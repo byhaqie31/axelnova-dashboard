@@ -8,8 +8,11 @@
 // Laravel), /documents (the invoice-PDF fetch), /_cache/purge, OG images, and
 // the signed-in team / partner / client workspaces.
 
-/** Public pages that are a single path. /partners/* (besides refer) is the partner portal. */
-const PUBLIC_EXACT = new Set(['/', '/partners', '/partners/refer', '/sitemap.xml'])
+/** Public pages that are a single path. /partners/* (besides refer) is the partner portal.
+ *  The crawler / reader files ride along: the admin host noindexes everything it
+ *  serves, so a sitemap, RSS feed or llms.txt fetched there must 301 to the
+ *  public host rather than answer with the same content under a noindex. */
+const PUBLIC_EXACT = new Set(['/', '/partners', '/partners/refer', '/sitemap.xml', '/feed.xml', '/llms.txt'])
 
 /** Public page trees: the path itself and everything under it. */
 const PUBLIC_PREFIXES = [

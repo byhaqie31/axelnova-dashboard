@@ -13,6 +13,11 @@ use Tests\TestCase;
  * /v1/feedback/{token}) and the authenticated writes on /v1/partner, /v1/team
  * and /v1/admin had no ceiling at all — a free unauthenticated loop against
  * the database. The tight per-route throttles still run on top of this.
+ *
+ * "Public" addresses here are real routable anycast ones (8.8.8.8, 1.1.1.1),
+ * not the RFC 5737 documentation ranges: since symfony/http-foundation 7.4.21
+ * IpUtils::isPrivateIp() counts TEST-NET-2/3 (198.51.100.0/24, 203.0.113.0/24)
+ * as non-public, which would route them to the internal ceiling.
  */
 class ApiRateLimitTest extends TestCase
 {
@@ -29,17 +34,17 @@ class ApiRateLimitTest extends TestCase
 
     public function test_public_traffic_is_capped_per_ip(): void
     {
-        $limit = $this->limitFor('203.0.113.7');
+        $limit = $this->limitFor('8.8.8.8');
 
         $this->assertSame(300, $limit->maxAttempts);
-        $this->assertSame('api:ip:203.0.113.7', $limit->key);
+        $this->assertSame('api:ip:8.8.8.8', $limit->key);
     }
 
     public function test_two_public_ips_get_separate_buckets(): void
     {
         $this->assertNotSame(
-            $this->limitFor('203.0.113.7')->key,
-            $this->limitFor('198.51.100.5')->key,
+            $this->limitFor('8.8.8.8')->key,
+            $this->limitFor('1.1.1.1')->key,
             'One visitor must never be able to exhaust another visitor\'s allowance.',
         );
     }

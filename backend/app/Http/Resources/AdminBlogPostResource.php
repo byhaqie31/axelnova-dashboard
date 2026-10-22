@@ -20,6 +20,7 @@ class AdminBlogPostResource extends JsonResource
             'title' => $this->title,
             'excerpt' => $this->excerpt,
             'sections' => $this->sections ?? [],
+            'faqs' => $this->faqList(),
             'cover_image_url' => $this->cover_image_url,
             'cover_image_alt' => $this->cover_image_alt,
             'category' => $this->category,

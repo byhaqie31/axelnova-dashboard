@@ -15,7 +15,9 @@ use Illuminate\Support\Str;
  * A blog article (see docs/global/BLOG.md). `sections` is the ordered list of
  * {id, heading, body_md, image_url, image_alt, quote, quote_by}; Markdown is
  * the storage format and BlogMarkdown renders it to safe HTML on read
- * (renderedSections()). `status` is the public gate — only `published` rows
+ * (renderedSections()). `faqs` is 0–8 plain-text {question, answer} pairs —
+ * the "Frequently asked questions" block after the last section, also emitted
+ * as FAQPage JSON-LD. `status` is the public gate — only `published` rows
  * with a `published_at` are served; drafts may be incomplete. Slugs are unique
  * across ALL rows including soft-deleted ones (the DB index is absolute).
  */
@@ -30,11 +32,24 @@ class BlogPost extends Model
     /** Editorial formats — the accent eyebrow on the article page. Validated at the controller. */
     public const FORMATS = ['article', 'guide', 'tutorial', 'case_study', 'opinion', 'news'];
 
+    /** At most this many FAQ pairs per post — mirrored by the editor (data/blog.ts) and the connector schema. */
+    public const FAQ_MAX = 8;
+
+    /**
+     * The FAQ block's heading and TOC anchor. The frontend renders the block's
+     * <h2 id> from the same constant (BLOG_FAQ_ANCHOR), so toc() reserves the
+     * id for it — a section titled the same way gets `-2`.
+     */
+    public const FAQ_HEADING = 'Frequently asked questions';
+
+    public const FAQ_ANCHOR = 'frequently-asked-questions';
+
     protected $fillable = [
         'slug',
         'title',
         'excerpt',
         'sections',
+        'faqs',
         'cover_image_url',
         'cover_image_alt',
         'category',
@@ -55,6 +70,7 @@ class BlogPost extends Model
 
     protected $casts = [
         'sections' => 'array',
+        'faqs' => 'array',
         'tags' => 'array',
         'reading_minutes' => 'integer',
         'published_at' => 'datetime',
@@ -65,6 +81,7 @@ class BlogPost extends Model
         'format' => 'article',
         'tags' => '[]',
         'sections' => '[]',
+        'faqs' => '[]',
     ];
 
     public function creator(): BelongsTo
@@ -118,14 +135,60 @@ class BlogPost extends Model
     }
 
     /**
+     * FAQ rows as plain text. Tags are stripped — the same posture as the body's
+     * `html_input => 'strip'`, so nothing scriptable reaches the page or the
+     * FAQPage JSON-LD — then trimmed. A row is kept only with BOTH halves
+     * (BlogPostInput::rules() already rejects half-filled rows; a fully blank
+     * one from an unfilled editor row is simply dropped).
+     *
+     * @return list<array{question: string, answer: string}>
+     */
+    public static function normaliseFaqs(array $raw): array
+    {
+        $text = fn ($v) => is_string($v) ? trim(strip_tags($v)) : '';
+        $out = [];
+
+        foreach ($raw as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $question = $text($row['question'] ?? null);
+            $answer = $text($row['answer'] ?? null);
+            if ($question !== '' && $answer !== '') {
+                $out[] = ['question' => $question, 'answer' => $answer];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The FAQ pairs, always a list — rows from before the column (null) read as
+     * none, and every row is exactly {question, answer}.
+     *
+     * @return list<array{question: string, answer: string}>
+     */
+    public function faqList(): array
+    {
+        return array_values(array_map(
+            fn (array $f) => ['question' => (string) ($f['question'] ?? ''), 'answer' => (string) ($f['answer'] ?? '')],
+            array_filter($this->faqs ?? [], 'is_array'),
+        ));
+    }
+
+    /**
      * Table-of-contents anchors from the section headings, de-duplicated within
-     * the post so two identical headings never point at the same element.
+     * the post so two identical headings never point at the same element, plus
+     * the FAQ block's entry LAST when the post has FAQs (renderedSections()
+     * indexes sections first, so appending keeps them aligned).
      *
      * @return array<int, array{id: string, heading: string}>
      */
     public function toc(): array
     {
-        $seen = [];
+        $faqs = $this->faqList();
+        // The FAQ block owns its anchor; a section titled the same way gets `-2`.
+        $seen = $faqs ? [self::FAQ_ANCHOR => true] : [];
         $out = [];
 
         foreach ($this->sections ?? [] as $section) {
@@ -136,6 +199,10 @@ class BlogPost extends Model
             }
             $seen[$id] = true;
             $out[] = ['id' => $id, 'heading' => $section['heading'] ?? ''];
+        }
+
+        if ($faqs) {
+            $out[] = ['id' => self::FAQ_ANCHOR, 'heading' => self::FAQ_HEADING];
         }
 
         return $out;

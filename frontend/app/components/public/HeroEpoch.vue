@@ -120,6 +120,10 @@ let loaderMin: number | undefined
 // (the pre-paint script in nuxt.config sets this flag when the first page is
 // anything else). Every later visit to `/` (header "Home" link, back button,
 // reload) lands straight on the settled home view.
+//
+// Phones (below md) only ever get the loader: the fullscreen pose, pinned
+// zoom and staggered entrance are desktop-only, so the loader fades straight
+// onto the settled view. The session flag still gates the loader itself.
 const INTRO_FLAG = 'axn-hero-intro-seen'
 // Branding moment: the loader stays up at least this long even when assets
 // beat it; asset waiting itself is still capped at LOADER_CAP_MS.
@@ -143,7 +147,11 @@ onMounted(() => {
   // Mount the ambient video only where it earns its 2.6 MB: desktop, motion on.
   // Phones get the 16 KiB poster still, which is the whole background there.
   // Reduced motion never wants ambient footage, so it skips the download too.
-  showVideo.value = !reduced && window.matchMedia('(min-width: 768px)').matches
+  // md and up is also where the intro's fullscreen pose, pinned zoom and
+  // staggered entrance live. Phones get the loader, then the finished,
+  // settled view directly — the loader's fade-out is the whole transition.
+  const desktop = window.matchMedia('(min-width: 768px)').matches
+  showVideo.value = !reduced && desktop
   if (showVideo.value) {
     // Wait for the v-if to render before touching the element.
     nextTick(() => {
@@ -272,16 +280,20 @@ onMounted(() => {
   // card scrubs from fullscreen (painted by the scoped CSS below) to its
   // designed box. Function-based values + invalidateOnRefresh keep the end
   // state exact across resizes/breakpoints.
-  if (heroShell.value && heroCard.value) {
-    // The natural (CSS) layout is the designed card — the `.hero-boot` class
-    // only exists so SSR paints the fullscreen state before hydration. Drop it
-    // now, then let `.from()` tweens recreate that fullscreen state as inline
-    // styles in the same tick (no paint happens in between). This is what
-    // keeps the pin spacer honest: ScrollTrigger measures the reverted
-    // (natural = end) state, so there's no dead gap after the marquee, and the
-    // dock trigger measures true post-zoom positions.
-    heroShell.value.classList.remove('hero-boot')
+  // The natural (CSS) layout is the designed card — the `.hero-boot` class
+  // only exists so SSR paints the fullscreen state before hydration (desktop
+  // only; on phones the class is inert and this is a no-op). Drop it now,
+  // then let `.from()` tweens recreate that fullscreen state as inline styles
+  // in the same tick (no paint happens in between). This is what keeps the
+  // pin spacer honest: ScrollTrigger measures the reverted (natural = end)
+  // state, so there's no dead gap after the marquee, and the dock trigger
+  // measures true post-zoom positions.
+  heroShell.value?.classList.remove('hero-boot')
 
+  // Phones skip the pin entirely: the settled card IS the first thing they
+  // see when the loader lifts, and the pinned scrub was the most expensive
+  // thing on the page for them.
+  if (desktop && heroShell.value && heroCard.value) {
     zoomTl = gsap.timeline({
       defaults: { ease: 'none' },
       scrollTrigger: {
@@ -365,8 +377,9 @@ onMounted(() => {
         0,
       )
     }
-    // Anchor matches the copy's alignment: top-centre on phones (centred
-    // column), top-left from md. Mirrored in the .hero-boot CSS below.
+    // Anchor matches the copy's alignment: top-left from md (the only width
+    // the zoom runs at — the phone branch only matters if a desktop window
+    // is resized below md mid-session). The .hero-boot CSS mirrors the md pose.
     const copyOrigin = () => (window.innerWidth >= 768 ? '0% 0%' : '50% 0%')
     if (heroBadge.value) {
       zoomTl.from(heroBadge.value, { scale: 1.15, transformOrigin: copyOrigin }, 0)
@@ -378,12 +391,16 @@ onMounted(() => {
     // mid-zoom, already sitting in their final spots.
     if (heroSub.value) zoomTl.from(heroSub.value, { autoAlpha: 0, duration: 0.2 }, 0.22)
     if (heroCtaWrap.value) zoomTl.from(heroCtaWrap.value, { autoAlpha: 0, duration: 0.2 }, 0.28)
-
-    createDock()
   }
 
-  // Hide immediately so there's no flash while we wait for the font.
-  gsap.set(els, { opacity: 0 })
+  // Every device gets the dock handoff. With no pin (phones) the zoom
+  // contributes no scroll distance, and `dockSt.start` falls back to `?? 0`.
+  createDock()
+
+  // Hide immediately so there's no flash while we wait for the font. Desktop
+  // only — on phones nothing is hidden, so the loader's fade reveals the
+  // finished view in one move.
+  if (desktop) gsap.set(els, { opacity: 0 })
 
   const start = () => {
     if (heroTl) return // the loader reveal and the safety net can race
@@ -392,6 +409,12 @@ onMounted(() => {
     // measured width — re-evaluate the scrub's function-based values (fill
     // scale, dock position) against the final metrics before revealing.
     motion.ScrollTrigger.refresh()
+
+    // Phones: no staggered entrance. The loader's own fade-out is the whole
+    // transition onto the settled view (nothing above was hidden), so there
+    // is no timeline to build — `heroTl` stays null and the safety net's
+    // clearProps is a harmless no-op.
+    if (!desktop) return
 
     // SplitText measures word geometry now, so it must run AFTER the webfont
     // (Outfit) loads — splitting against the fallback then swapping reflows.
@@ -694,15 +717,12 @@ onUnmounted(() => {
   visibility: hidden;
 }
 
-/* Fullscreen boot state, painted by SSR before GSAP hydrates (unlayered, so it
-   beats the Tailwind utility classes on the same elements). onMounted removes
-   .hero-boot and the `.from()` tweens recreate this exact state inline in the
-   same tick — no flash. Under reduced motion the class stays on the element
-   but this media query keeps it inert, so the plain card renders.
-   Every boot rule is also gated on `html:not([data-intro-seen])`: once the
-   intro has played this session the pre-paint script in nuxt.config stamps
-   that attribute, so a reload paints the settled card straight from SSR
-   instead of flashing the fullscreen pose. */
+/* Motion-on layout shared by every width: the constant stage height and the
+   marquee tuck. The fullscreen boot pose itself is painted by SSR before GSAP
+   hydrates but is DESKTOP ONLY — it lives in the md block further down.
+   onMounted removes .hero-boot and the `.from()` tweens recreate that state
+   inline in the same tick — no flash. Under reduced motion the class stays on
+   the element but the media queries keep it inert, so the plain card renders. */
 @media (prefers-reduced-motion: no-preference) {
   /* Constant stage height — pinned elements must never change layout height
      (ScrollTrigger freezes the box at pin time). Boot and settled state alike. */
@@ -717,53 +737,6 @@ onUnmounted(() => {
      this. min() keeps short viewports sane. */
   .hero-marquee-wrap {
     margin-top: min(0px, calc(39rem - 100svh));
-  }
-  html:not([data-intro-seen]) .hero-boot.hero-shell {
-    padding-left: 0;
-    padding-right: 0;
-    padding-top: 0;
-  }
-  html:not([data-intro-seen]) .hero-boot .hero-card {
-    height: 100svh;
-    max-width: none;
-    border-radius: 0;
-  }
-  html:not([data-intro-seen]) .hero-boot .hero-pill {
-    width: 12rem;
-  }
-  html:not([data-intro-seen]) .hero-boot .hero-pill-collapsed {
-    opacity: 1;
-    visibility: visible;
-  }
-  html:not([data-intro-seen]) .hero-boot .hero-pill-expanded {
-    opacity: 0;
-    visibility: hidden;
-  }
-  /* Boot copy pose: eyebrow + headline big, sat low toward the optical centre
-     of the fullscreen card, no description, no CTA, no navbar — the
-     pre-hydration mirror of the scrub's from() values. Scaling from the
-     copy's own anchor (top-centre on phones, top-left from md) keeps the text
-     in place; the block's drop is a separate transform
-     on the wrapper. svh to match the card's own height unit. */
-  html:not([data-intro-seen]) .hero-boot .hero-content {
-    transform: translateY(12svh);
-  }
-  html:not([data-intro-seen]) .hero-boot .hero-badge {
-    transform-origin: 50% 0;
-    transform: scale(1.15);
-  }
-  html:not([data-intro-seen]) .hero-boot .epoch-headline {
-    transform-origin: 50% 0;
-    transform: scale(1.15);
-  }
-  html:not([data-intro-seen]) .hero-boot .hero-sub,
-  html:not([data-intro-seen]) .hero-boot .hero-cta {
-    opacity: 0;
-    visibility: hidden;
-  }
-  html:not([data-intro-seen]) .hero-boot .hero-pill {
-    opacity: 0;
-    visibility: hidden;
   }
   /* Hover invitation on the compact "Axel Nova" chip. Width is scrub-owned
      (inline), so the grow is a transform — it never fights GSAP. */
@@ -782,20 +755,59 @@ onUnmounted(() => {
   .hero-marquee-wrap {
     margin-top: min(0px, calc(40rem - 100svh));
   }
-  /* Static approximation of the scrub's width-filling headlineScale() for the
-     pre-hydration paint (phones stay at the base 1.15 so the lines fit). */
+  /* Fullscreen boot pose — DESKTOP ONLY (md and up). Phones never paint it:
+     they get the loader and then the settled card, so every boot rule lives
+     in this block and the base block above has none. Mirrors the zoom
+     timeline's `.from()` values in onMounted — change one, change the other.
+     Every rule is also gated on `html:not([data-intro-seen])`: once the intro
+     has played this session the pre-paint script stamps that attribute, so a
+     reload paints the settled card straight from SSR. */
+  html:not([data-intro-seen]) .hero-boot.hero-shell {
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+  }
+  html:not([data-intro-seen]) .hero-boot .hero-card {
+    height: 100svh;
+    max-width: none;
+    border-radius: 0;
+  }
+  html:not([data-intro-seen]) .hero-boot .hero-pill {
+    width: 12rem;
+    opacity: 0;
+    visibility: hidden;
+  }
+  html:not([data-intro-seen]) .hero-boot .hero-pill-collapsed {
+    opacity: 1;
+    visibility: visible;
+  }
+  html:not([data-intro-seen]) .hero-boot .hero-pill-expanded {
+    opacity: 0;
+    visibility: hidden;
+  }
+  /* Boot copy pose: eyebrow + headline big, sat low toward the optical centre
+     of the fullscreen card, no description, no CTA, no navbar — the
+     pre-hydration mirror of the scrub's from() values. Scaling from the
+     copy's own top-left anchor keeps the text in place; the block's drop is
+     a separate transform on the wrapper. The headline scale is a static
+     approximation of the scrub's width-filling headlineScale(). */
+  html:not([data-intro-seen]) .hero-boot .hero-content {
+    transform: translateY(22svh);
+  }
   html:not([data-intro-seen]) .hero-boot .hero-badge {
     transform-origin: 0 0;
+    transform: scale(1.15);
   }
   html:not([data-intro-seen]) .hero-boot .epoch-headline {
     transform-origin: 0 0;
     transform: scale(1.9);
   }
-  html:not([data-intro-seen]) .hero-boot .hero-content {
-    transform: translateY(22svh);
+  html:not([data-intro-seen]) .hero-boot .hero-sub,
+  html:not([data-intro-seen]) .hero-boot .hero-cta {
+    opacity: 0;
+    visibility: hidden;
   }
 }
-
 @keyframes hero-cue-bob {
   0%, 100% { transform: translateY(-1px); }
   50%      { transform: translateY(3px); }

@@ -1,4 +1,127 @@
+# axelnovaventures.com — crawler policy. See docs/global/SEO-AND-DISCOVERY.md.
+#
+# The AI crawler groups below are a deliberate choice: the studio WANTS to be
+# retrievable and citable by AI answer engines (ChatGPT search, Claude,
+# Perplexity, Google AI Overviews), so each one gets the same Allow/Disallow
+# set as every other crawler. Two of them also permit TRAINING use —
+# Google-Extended (Gemini) and CCBot (Common Crawl, which feeds many training
+# sets). To keep search/answer bots but opt out of training, delete just those
+# two groups (or change their Allow to a Disallow: /). The private surfaces
+# (admin, portals, proposals, the inquiry confirmation) are disallowed for
+# everyone and are noindex besides.
+
 User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+# OpenAI — search index (OAI-SearchBot), user-initiated fetches (ChatGPT-User),
+# and GPTBot (crawling for models and search).
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+# Anthropic — ClaudeBot (crawling), Claude-SearchBot (search index), Claude-User
+# (user-initiated fetches).
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+User-agent: Claude-User
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+# Perplexity — index crawler and user-initiated fetches.
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+# Google-Extended controls Gemini TRAINING and grounding only — Googlebot (search,
+# Discover, AI Overviews) is covered by the `*` group above. Remove this group to
+# opt out of training while keeping search.
+User-agent: Google-Extended
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+# Applebot-Extended controls use of Applebot's crawl for Apple's models only;
+# Applebot itself (Siri / Spotlight search) is covered by `*`.
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /proposals
+Disallow: /investor
+Disallow: /quote/preview
+Disallow: /quote/success
+
+# Common Crawl — an open crawl that many model TRAINING sets are built from.
+# Remove this group to opt out of training while keeping search.
+User-agent: CCBot
 Allow: /
 Disallow: /admin
 Disallow: /portal

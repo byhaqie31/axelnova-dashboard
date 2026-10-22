@@ -89,7 +89,7 @@ class BlogPostController extends Controller
     /** Always a DRAFT — status / published_at aren't in the rule set, so a sent value is ignored. */
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate(BlogPostInput::rules(requireAlt: true));
+        $data = $request->validate(BlogPostInput::rules(requireAlt: true), [], BlogPostInput::attributes());
         $this->assertCoverAlt($data);
 
         $post = BlogPost::create([
@@ -104,7 +104,7 @@ class BlogPostController extends Controller
         return response()->json(['data' => $this->record($post->fresh())], 201);
     }
 
-    /** Partial update of a DRAFT. `sections`, when sent, replaces the whole list (ids kept). */
+    /** Partial update of a DRAFT. `sections` / `faqs`, when sent, replace the whole list (section ids kept; `faqs: []` clears). */
     public function update(Request $request, int $id): JsonResponse
     {
         $post = $this->find($id);
@@ -115,7 +115,7 @@ class BlogPostController extends Controller
             ]);
         }
 
-        $data = $request->validate(BlogPostInput::rules(partial: true, requireAlt: true));
+        $data = $request->validate(BlogPostInput::rules(partial: true, requireAlt: true), [], BlogPostInput::attributes());
         $this->assertCoverAlt($data, $post);
 
         $post->update([...BlogPostInput::derive(BlogTaxonomy::snap($data, $post->id), $post, partial: true), 'updated_by' => $request->user()->id]);

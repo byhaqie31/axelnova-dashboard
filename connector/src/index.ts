@@ -63,8 +63,13 @@ import { authApp } from "./auth";
  * service are Live — what public_url and quotable follow). update_package_draft
  * edits any package that is effectively hidden (it OR its service Hidden), and
  * refuses a move that would publish it. No flag is ever changed by an edit.
+ * (v6.2 was backend-only — public_url from the public site — no Worker bump.)
+ * v6.3: blog FAQs — `faqs` (0–8 plain-text {question, answer} pairs) on
+ * create_blog_draft / update_blog_draft, rendered after the article and emitted
+ * as FAQPage schema; get_blog_guide returns `faq_rules`. On update `faqs`
+ * replaces the list (omit = keep, [] = clear).
  */
-const CONNECTOR_VERSION = "6.1.0";
+const CONNECTOR_VERSION = "6.3.0";
 
 const CATALOG_PATH = "/api/v1/connector/catalog";
 const QUOTATIONS_PATH = "/api/v1/connector/quotations";
@@ -78,6 +83,8 @@ const PACKAGES_PATH = "/api/v1/connector/packages";
 
 /** Editorial formats (mirrors BlogPost::FORMATS). */
 const BLOG_FORMATS = ["article", "guide", "tutorial", "case_study", "opinion", "news"] as const;
+/** At most this many FAQ pairs per post (mirrors BlogPost::FAQ_MAX). */
+const BLOG_FAQ_MAX = 8;
 
 /** A project's BUILD STAGE (mirrors the projects.status enum) — not its visibility. */
 const PROJECT_STAGES = ["live", "soon", "wip", "planning"] as const;
@@ -353,6 +360,22 @@ const blogFieldsShape = {
     .describe(
       "The ordered body sections. On update this REPLACES the whole list — read the post first and send the full edited list, keeping each existing section's id.",
     ),
+  faqs: z
+    .array(
+      z.object({
+        question: z.string().min(1).max(200).describe("A real question a reader would ask, phrased as a question (≤ 200)."),
+        answer: z
+          .string()
+          .min(1)
+          .max(1200)
+          .describe("The direct answer in 1–3 sentences of plain text (≤ 1200) — no Markdown, links or HTML."),
+      }),
+    )
+    .max(BLOG_FAQ_MAX)
+    .optional()
+    .describe(
+      "0–8 FAQ pairs, shown as a 'Frequently asked questions' block after the last section and emitted as FAQPage schema (search engines and AI answers quote it). Add 3–6 REAL questions readers ask, answered directly, no marketing fluff; omit the field when nothing is genuinely asked. On update this REPLACES the list: omit it to keep the existing FAQs, send [] to clear them.",
+    ),
   cover_image_url: z
     .string()
     .max(500)
@@ -386,6 +409,7 @@ const BLOG_WRITING_RULES = [
   "Two modes. (1) Asked to WRITE about a topic or brief: write in the founder's voice from get_blog_guide, following its structure — the excerpt is the hook, then 2–4 practical sections and a key takeaway.",
   "(2) Given the user's OWN text (pasted or from a file): KEEP THEIR WORDING VERBATIM — only arrange it (first heading or line → title, text before the first section heading → excerpt, each heading → a section) and fill what is missing (image alt text, format, category, tags, SEO). Rewrite only when asked, and list any change you made in your reply.",
   "Either way: never repeat the closing call to action inside a section (the post ends with its own CTA card); use ONLY image URLs the user supplied, and always write alt text for them.",
+  "FAQs: when the topic has questions readers genuinely ask, add 3–6 of them in `faqs`, each answered directly in 1–3 plain-text sentences (get_blog_guide.faq_rules).",
 ].join(" ");
 
 /** The Live / Hidden rule every catalogue write tool shares (projects, services, packages). */
@@ -630,7 +654,7 @@ export class AxelNovaMCP extends McpAgent<Env> {
 
     this.server.tool(
       "get_blog_guide",
-      "Always call this FIRST before writing or revising a blog post. Returns the founder's voice and structure rules, the two drafting modes, the valid formats, the categories and tags already in use, the default closing call to action, the section shape, field limits, and the image rules.",
+      "Always call this FIRST before writing or revising a blog post. Returns the founder's voice and structure rules, the two drafting modes, the valid formats, the categories and tags already in use, the default closing call to action, the section shape, the FAQ rules, field limits, and the image rules.",
       {},
       async () => this.passthrough(await apiFetch(this.env, BLOG_GUIDE_PATH)),
     );
@@ -661,7 +685,7 @@ export class AxelNovaMCP extends McpAgent<Env> {
 
     this.server.tool(
       "get_blog_post",
-      "Read back ANY blog post (draft or published) by its id — the full editable record in Markdown (sections with their ids, cover, format, category, tags, CTA, SEO, status) plus admin_url and public_url. Always read a post before updating it.",
+      "Read back ANY blog post (draft or published) by its id — the full editable record in Markdown (sections with their ids, faqs, cover, format, category, tags, CTA, SEO, status) plus admin_url and public_url. Always read a post before updating it.",
       {
         id: z.number().int().min(1).describe("The post id (from list_blog_posts or create_blog_draft)."),
       },
@@ -687,7 +711,7 @@ export class AxelNovaMCP extends McpAgent<Env> {
       "update_blog_draft",
       [
         "Update a blog post that is still a DRAFT, by id. PARTIAL: send only the fields that change — everything else is kept. The slug only changes if you send slug.",
-        "sections, if sent, replaces the whole list: call get_blog_post first and send the full edited list, keeping each existing section's id.",
+        "sections, if sent, replaces the whole list: call get_blog_post first and send the full edited list, keeping each existing section's id. faqs likewise replaces the FAQ list (omit to keep, [] to clear).",
         "Refused (422) once the post is published — its edits would go live without the founder's preview. Then tell the founder to unpublish it in the admin first, or offer to create a new draft instead.",
         BLOG_WRITING_RULES,
         "Never publishes anything.",

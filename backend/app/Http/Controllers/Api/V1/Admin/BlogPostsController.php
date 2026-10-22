@@ -138,19 +138,24 @@ class BlogPostsController extends Controller
         return response()->json(['data' => BlogGuide::forEditor()]);
     }
 
-    /** Preview helper — the public renderer over unsaved form state. Saves nothing. */
+    /** Preview helper — the public renderer over unsaved form state (sections + FAQs). Saves nothing. */
     public function render(Request $request): JsonResponse
     {
         $data = $request->validate([
             'excerpt' => ['nullable', 'string', 'max:500'],
             ...BlogPostInput::sectionRules(),
-        ]);
+            ...BlogPostInput::faqRules(),
+        ], [], BlogPostInput::attributes());
 
-        $post = new BlogPost(['sections' => BlogPost::normaliseSections($data['sections'] ?? [])]);
+        $post = new BlogPost([
+            'sections' => BlogPost::normaliseSections($data['sections'] ?? []),
+            'faqs' => BlogPost::normaliseFaqs($data['faqs'] ?? []),
+        ]);
 
         return response()->json([
             'excerpt_html' => BlogMarkdown::introHtml((string) ($data['excerpt'] ?? '')),
             'sections' => $post->renderedSections(),
+            'faqs' => $post->faqList(),
             'toc' => $post->toc(),
             'reading_minutes' => BlogMarkdown::readingMinutes((string) ($data['excerpt'] ?? ''), $post->sections),
         ]);
@@ -159,6 +164,6 @@ class BlogPostsController extends Controller
     /** Shared create/update validation + derived fields — the same BlogPostInput the MCP connector saves through. */
     private function validated(Request $request, ?BlogPost $existing = null): array
     {
-        return BlogPostInput::derive($request->validate(BlogPostInput::rules()), $existing);
+        return BlogPostInput::derive($request->validate(BlogPostInput::rules(), [], BlogPostInput::attributes()), $existing);
     }
 }

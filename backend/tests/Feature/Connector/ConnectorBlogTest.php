@@ -289,6 +289,46 @@ class ConnectorBlogTest extends TestCase
         $this->assertGreaterThanOrEqual(3, $res->json('data.reading_minutes'));
     }
 
+    public function test_create_saves_faqs_and_partial_update_keeps_or_clears_them(): void
+    {
+        $faqs = [['question' => 'How long does it take?', 'answer' => 'Four to eight weeks.']];
+        $headers = $this->tokenHeader();
+
+        $id = $this->postJson('/api/v1/connector/blog/posts', $this->payload(['faqs' => $faqs]), $headers)
+            ->assertCreated()
+            ->assertJsonPath('data.faqs', $faqs)
+            ->json('data.id');
+        $this->getJson("/api/v1/connector/blog/posts/{$id}", $headers)->assertOk()->assertJsonPath('data.faqs', $faqs);
+
+        // Absent → untouched; sent → replaced; [] → cleared.
+        $this->putJson("/api/v1/connector/blog/posts/{$id}", ['title' => 'Sharper'], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.faqs', $faqs);
+        $this->putJson("/api/v1/connector/blog/posts/{$id}", ['faqs' => [['question' => 'Q2?', 'answer' => 'A2.']]], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.faqs', [['question' => 'Q2?', 'answer' => 'A2.']]);
+        $this->putJson("/api/v1/connector/blog/posts/{$id}", ['faqs' => []], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.faqs', []);
+
+        $this->putJson("/api/v1/connector/blog/posts/{$id}", ['faqs' => array_fill(0, 9, $faqs[0])], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['faqs']);
+        $this->putJson("/api/v1/connector/blog/posts/{$id}", ['faqs' => [['question' => 'No answer?']]], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['faqs.0.answer']);
+    }
+
+    public function test_guide_carries_the_faq_rules_and_limits(): void
+    {
+        $this->getJson('/api/v1/connector/blog/guide', $this->tokenHeader(['connector:read']))
+            ->assertOk()
+            ->assertJsonPath('limits.faqs', BlogPost::FAQ_MAX)
+            ->assertJsonPath('limits.faq_question', 200)
+            ->assertJsonPath('limits.faq_answer', 1200)
+            ->assertJsonStructure(['faq_rules']);
+    }
+
     public function test_update_of_a_published_post_is_refused_and_leaves_it_untouched(): void
     {
         $post = BlogPost::factory()->published()->create(['title' => 'Live post']);

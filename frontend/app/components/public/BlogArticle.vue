@@ -3,8 +3,10 @@
 // (`preview` hides the share row + related posts and makes the CTA inert, so a
 // preview can't navigate away from unsaved work). Section bodies are
 // backend-rendered, sanitised HTML (App\Support\BlogMarkdown) — never raw
-// Markdown and never user HTML — which is what makes the v-html safe.
-import { blogFormatLabel, fmtBlogDate, type BlogPostPublic } from '~/data/blog'
+// Markdown and never user HTML — which is what makes the v-html safe. The FAQ
+// block (plain-text pairs after the last section) and its FAQPage JSON-LD
+// live here too, so the page and the preview can't drift.
+import { BLOG_FAQ_ANCHOR, BLOG_FAQ_HEADING, blogFormatLabel, fmtBlogDate, type BlogPostPublic } from '~/data/blog'
 import PublicBlogToc from '~/components/public/BlogToc.vue'
 import PublicBlogCard from '~/components/public/BlogCard.vue'
 
@@ -29,6 +31,27 @@ const updatedLabel = computed(() => {
   const upd = new Date(props.post.updated_at)
   return upd.toDateString() !== pub.toDateString() && upd > pub ? fmtBlogDate(props.post.updated_at) : ''
 })
+
+// FAQPage schema, injected from the one component that renders the pairs.
+// Skipped in the editor preview (no crawler reads the admin) and when there
+// is nothing to list. unhead escapes `<` inside JSON scripts, so founder-typed
+// text can't break out of the tag.
+const faqSchema = computed(() => props.post.faqs.length && !props.preview
+  ? [{
+      key: 'blog-faq-schema',
+      type: 'application/ld+json' as const,
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: props.post.faqs.map(f => ({
+          '@type': 'Question',
+          name: f.question,
+          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+      }),
+    }]
+  : [])
+useHead({ script: faqSchema })
 
 const pageUrl = computed(() => `https://axelnovaventures.com/blog/${props.post.slug}`)
 const shareLinks = computed(() => [
@@ -109,6 +132,15 @@ async function copyLink() {
           “{{ s.quote }}”
           <footer v-if="s.quote_by" class="text-[13px] not-italic mt-2" :style="{ color: 'var(--color-text-tertiary)' }">— {{ s.quote_by }}</footer>
         </blockquote>
+      </section>
+
+      <!-- FAQs — static question / answer pairs (never collapsed), so readers and crawlers both get the text. Schema: faqSchema above. -->
+      <section v-if="post.faqs.length" class="mb-12">
+        <h2 :id="BLOG_FAQ_ANCHOR" class="blog-section-anchor text-[26px] font-semibold tracking-tight leading-tight mb-2" :style="{ color: 'var(--color-text)' }">{{ BLOG_FAQ_HEADING }}</h2>
+        <div v-for="(f, i) in post.faqs" :key="i" class="border-t pt-5 mt-5" :style="{ borderColor: 'var(--color-border)' }">
+          <h3 class="text-[19px] font-semibold tracking-tight leading-snug mb-2" :style="{ color: 'var(--color-text)' }">{{ f.question }}</h3>
+          <p class="text-[17px] leading-[1.75] whitespace-pre-line" :style="{ color: 'var(--color-text-secondary)' }">{{ f.answer }}</p>
+        </div>
       </section>
 
       <!-- Share — closes the text column, below a rule -->

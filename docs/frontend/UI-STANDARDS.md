@@ -28,6 +28,8 @@ All colors are semantic CSS variables defined in `:root` (light) and `.dark` (da
 | `--color-bg-secondary` | `#F5F5F7` | `#1D1D1F` | Section/banner background |
 | `--color-bg-sunken` | `#EEEEF2` | `#0A0A0B` | Recessed inputs / wells |
 | `--footer-bg` | `#F2F2F7` | `#0A0E1D` | Site footer — a soft grounding tone just under the page surface |
+| `--band-tile-bg` | `#FFFFFF` | `#141B33` | A box resting on a `.band-soft` grey band (`.band-tile`) — see §7 "Story bands" |
+| `--band-ink-bg` | `#0A0F1F` | `#060A16` | The one inverted `.band-ink` chapter per page — navy on the light page, sunken below the dark one |
 
 ### Text
 
@@ -76,7 +78,7 @@ All colors are semantic CSS variables defined in `:root` (light) and `.dark` (da
 ### Chart series
 
 For two-series charts (currently `/admin/revenue`). **Never reuse the status colors
-for a data series** — green/orange/red are reserved for state, and a bar in warning
+for a data series** — green/orange/red are reserved for state, and a line in warning
 orange reads as an alert rather than a number.
 
 | Token | Light | Dark | Use |
@@ -102,6 +104,29 @@ Rules that go with them:
   color alone. Pair every chart with a table of exact figures.
 - **Values on hover, not on every mark.** Text uses text tokens; the colored swatch
   beside it carries identity.
+
+**Area chart marks** (`/admin/revenue`, hand-drawn SVG, geometry in
+[`app/utils/areaChart.ts`](../../frontend/app/utils/areaChart.ts) — no chart library):
+
+- **Lines are 2px, round joins, monotone-smoothed** (Fritsch–Carlson, as d3's
+  `curveMonotoneX`): a curve never overshoots a month, so RM 0 stays on the baseline
+  and a spike never implies a value the data doesn't have. Never a Catmull-Rom /
+  basis spline for money.
+- **Fills are a wash, not a block** — the series hue in a vertical gradient from
+  26% at the line to 2% at the baseline. The comparison series (booked) is drawn
+  first, the headline (collected) on top.
+- **Grid is solid hairlines in `--color-border`** (`--color-border-strong` for the
+  baseline) with compact ticks in 1 / 2 / 5 steps (`RM 20k`, `RM 40k`) from
+  `yTicks()` / `formatCompactMyr()` — ticks label a scale and are the only place an
+  amount may abbreviate.
+- **Markers wear a 2px ring in the surface colour** (`--color-bg-elevated`) so they
+  stay legible where the lines cross: a resting 8px dot on the latest month per
+  series, 10px dots on the hovered month.
+- **A crosshair snaps to the nearest month** (readers aim at a date, not a 2px line);
+  one tooltip lists every series, value first with a short line key. Month labels
+  thin out by width (`labelStep`) so ticks never collide.
+- **A refetch keeps the frame** — on a range switch the previous chart stays on
+  screen at reduced opacity until the new data lands.
 
 ### Iridescent gradient stops
 
@@ -143,6 +168,7 @@ Larger component families get their own prefixed token group in `main.css` (ligh
 - `--kanban-*` — team kanban board surfaces (§12.14)
 - `--calendar-*` — team calendar grid + day chips (§12.15)
 - `--collab-*` — studio-partner co-branding: the logo plate + each partner's brand colours (§7 "Partner co-branding")
+- `--band-ink-*` / `--band-tile-bg` — the story bands: the inverted chapter's text / border / accent palette and the tile that sits on the grey band (§7 "Story bands")
 
 ---
 
@@ -338,6 +364,15 @@ Pages and cards for a studio partner (see [COLLABORATIONS.md](../global/COLLABOR
 - **Logo plates.** Every partner mark, and the Axel Nova mark it is paired with, sits on `.collab-logo-plate`: `--collab-logo-plate` is white in light mode and `#F5F5F7` in dark mode, with a hairline border and `--shadow-sm`. A dark-ink logo therefore stays legible in both themes without a second logo file.
 - **A new partner** gets its own `--collab-{slug}-*` tokens (light + `.dark`) and its own `.collab-{slug}` scope block. An unknown slug simply falls back to the house accent.
 
+### Story bands
+
+Long-form "about" pages (`/company`) tell their story in chapters that alternate between the page surface and solid full-bleed bands. Two band classes in `main.css`, both setting **only colour and custom properties, never `position`** (hard rule 8 — a Tailwind `relative` / `overflow-hidden` on the same section keeps working; decorative glows are their own absolutely positioned children):
+
+- **`.band-soft`** — the grey chapter: `--color-bg-secondary` with a hairline top and bottom. A box resting on it uses **`.band-tile`** (`--band-tile-bg` + hairline): white on the grey band in light mode, the elevated tone in dark mode, where the band is already the lighter surface.
+- **`.band-ink`** — the one inverted chapter per page. It re-points `--color-bg`, `--color-bg-elevated`, the three text tokens, both border tokens, `--color-accent(-hover/-soft)`, `--grad-text-accent` and `--shadow-glow` at the `--band-ink-*` palette, so `SectionHeader`, `.eyebrow`, hairlines, pills and focus rings inside it read on navy without naming a colour (the same mechanism as the partner scope above). Light mode paints it `#0A0F1F` (the brand navy); dark mode sinks it to `#060A16`, below the page, so it still reads as the deeper chapter.
+- **Rhythm.** Page surface between bands, generous `py-32` inside them, and one ink band per page — it is the chapter's emphasis, not a wallpaper. Each band carries its own `max-w-7xl mx-auto px-6` container; the page root is full-width.
+- Both bands take `class="reveal"` like any section.
+
 ### `.icon-gradient`
 Fills an icon glyph with `--grad-text-accent`, so an icon paired with `.text-gradient` text reads as one lockup (the hero pill's "Axel Nova" chevron). Do **not** reach for `.text-gradient` on an icon — it clips a gradient to *text*, and an icon has none, so it renders as nothing. `UIcon` draws the glyph as a mask over `background-color: currentColor`, which is why replacing the background paints the glyph itself.
 
@@ -362,6 +397,7 @@ Highlights:
 - **Loader grid:** `.loader-grid` — the homepage loading screen's backdrop. 64px cells drawn from `--color-border` panning one full cell per 6s (linear, so the loop is seamless), radially masked so it fades toward the edges, over a 4.5s `--color-accent-soft` bloom. It is **its own absolutely-positioned child element**, not a `::before` on a wrapper — see hard rule 8.
 - **Aurora line shift:** 14s ease-in-out infinite (navbar gradient hairline).
 - **Collab glow meet:** 9s `ease-in-out` infinite alternate (`/collaborations/trlabs` hero). Two full-screen-width co-brand glows (Axel Nova blue from the left, the partner colour from the right) drift `6vw` toward the middle and scale to 1.1 while fading from 0.7 to 1 opacity, then ease back. Transform and opacity only, blur on each glow (not the wrapper), still under reduced motion.
+- **Company hero box:** the `/company` hero entrance — the `/collaborations/trlabs` card choreography on one box (`CompanyHeroCard`): the mark arrives from the left inside a small box, which then expands into its named card (clip-path) while the title beside it rises. Pre-paint hold on `data-company-intro`. Behind it the **brand glow meet**: blue from the left, violet from the right, same 9s drift as the collab glow. Details in [MOTION.md](MOTION.md).
 - **Page transition:** GSAP JS hooks on `<NuxtPage>` (`out-in`): leave 0.3s, enter 0.45s.
 - **Reduced motion:** entrances are no-ops (content instantly visible), Lenis disabled; essential state transitions kept.
 

@@ -90,4 +90,51 @@ class BlogPostInputTest extends TestCase
 
         $this->assertSame(['Cloudflare', 'AI'], $out['tags']);
     }
+
+    // ── FAQs ────────────────────────────────────────────────────────────────
+
+    public function test_faqs_are_trimmed_stripped_of_tags_and_blank_rows_dropped(): void
+    {
+        $out = BlogPostInput::derive(['title' => 'T', 'faqs' => [
+            ['question' => '  How long does it take?  ', 'answer' => "Two to <b>four</b> weeks.\n"],
+            ['question' => '', 'answer' => ''],
+            ['question' => null, 'answer' => null],
+        ]]);
+
+        $this->assertSame([['question' => 'How long does it take?', 'answer' => 'Two to four weeks.']], $out['faqs']);
+        // Full mode (the editor) always derives the list — absent means none.
+        $this->assertSame([], BlogPostInput::derive(['title' => 'T'])['faqs']);
+    }
+
+    public function test_partial_derive_leaves_faqs_alone_unless_sent(): void
+    {
+        $post = BlogPost::factory()->create(['faqs' => [['question' => 'Q?', 'answer' => 'A.']]]);
+
+        $this->assertArrayNotHasKey('faqs', BlogPostInput::derive(['title' => 'New'], $post, partial: true));
+        $this->assertSame([], BlogPostInput::derive(['faqs' => []], $post, partial: true)['faqs']);
+        $this->assertSame([], BlogPostInput::derive(['faqs' => null], $post, partial: true)['faqs']);
+        $this->assertSame(
+            [['question' => 'Q2?', 'answer' => 'A2.']],
+            BlogPostInput::derive(['faqs' => [['question' => 'Q2?', 'answer' => 'A2.']]], $post, partial: true)['faqs'],
+        );
+    }
+
+    public function test_faq_rules_cap_the_count_and_lengths_and_need_both_halves(): void
+    {
+        $rules = BlogPostInput::rules();
+        $faq = fn (array $o = []) => array_merge(['question' => 'Q?', 'answer' => 'A.'], $o);
+        $passes = fn (array $faqs) => Validator::make(['title' => 'T', 'faqs' => $faqs], $rules)->passes();
+
+        $this->assertTrue($passes(array_fill(0, 8, $faq())));
+        $this->assertFalse($passes(array_fill(0, 9, $faq())));
+        $this->assertFalse($passes([$faq(['question' => str_repeat('q', 201)])]));
+        $this->assertFalse($passes([$faq(['answer' => str_repeat('a', 1201)])]));
+        // One half on its own is a mistake; a fully blank row is fine (derive drops it).
+        $this->assertFalse($passes([$faq(['answer' => null])]));
+        $this->assertFalse($passes([$faq(['question' => null])]));
+        $this->assertTrue($passes([['question' => null, 'answer' => null]]));
+        // Partial mode: absent is fine, sent is still checked.
+        $this->assertTrue(Validator::make(['title' => 'T'], BlogPostInput::rules(partial: true))->passes());
+        $this->assertTrue(Validator::make(['faqs' => [$faq(['answer' => null])]], BlogPostInput::rules(partial: true))->fails());
+    }
 }

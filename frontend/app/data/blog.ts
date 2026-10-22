@@ -15,6 +15,19 @@ export interface BlogSection {
   quote_by: string | null
 }
 
+/**
+ * One FAQ pair on a post — plain text (the backend strips tags). Rendered as
+ * the "Frequently asked questions" block after the last section and emitted
+ * as FAQPage JSON-LD by BlogArticle.
+ */
+export interface BlogFaq { question: string, answer: string }
+
+/** At most this many FAQ pairs per post — mirrors BlogPost::FAQ_MAX. */
+export const BLOG_FAQ_MAX = 8
+/** The FAQ block's heading + anchor: the backend `toc` ends with this id when a post has FAQs (BlogPost::FAQ_ANCHOR / FAQ_HEADING). */
+export const BLOG_FAQ_HEADING = 'Frequently asked questions'
+export const BLOG_FAQ_ANCHOR = 'frequently-asked-questions'
+
 export type BlogFormat = 'article' | 'guide' | 'tutorial' | 'case_study' | 'opinion' | 'news'
 
 /** The editor's Format dropdown (right rail) — mirrors BlogPost::FORMATS. */
@@ -60,6 +73,8 @@ export interface BlogPostPublic extends BlogPostCard {
   /** The intro as sanitised HTML — <p>/<strong>/<em> only (BlogMarkdown::introHtml). */
   excerpt_html: string
   sections: BlogRenderedSection[]
+  /** Always an array (never null) — empty when the post has no FAQs. */
+  faqs: BlogFaq[]
   toc: BlogTocItem[]
   cta_heading: string | null
   cta_body: string | null
@@ -79,6 +94,7 @@ export interface BlogPostAdmin {
   excerpt: string
   format: BlogFormat
   sections: BlogSection[]
+  faqs: BlogFaq[]
   cover_image_url: string | null
   cover_image_alt: string | null
   category: string | null
@@ -128,6 +144,11 @@ export function newSection(heading = ''): BlogSection {
   let id = 's_'
   for (let i = 0; i < 6; i++) id += ID_CHARS[Math.floor(Math.random() * ID_CHARS.length)]
   return { id, heading, body_md: '', image_url: null, image_alt: null, quote: null, quote_by: null }
+}
+
+/** A fresh, empty FAQ row for the editor's repeater. */
+export function newFaq(): BlogFaq {
+  return { question: '', answer: '' }
 }
 
 /** The default six-part structure as placeholder sections (hook = excerpt, invitation = CTA). */

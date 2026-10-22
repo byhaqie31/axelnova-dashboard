@@ -96,7 +96,12 @@ single files — after editing them on the host, `docker compose up -d --force-r
 - **Backend**: `composer audit` fails CI on any new advisory. Four Laravel 11
   framework advisories that are only fixed in **Laravel 12** are acknowledged in
   `composer.json` → `config.audit.ignore`, each with a re-check note. Remove those
-  entries when the L12 upgrade lands.
+  entries when the L12 upgrade lands. Bump a transitive package on its own
+  (`composer update symfony/http-foundation symfony/yaml`, 2026-10-21) and run the
+  suite afterwards — a patch release can still change behaviour: http-foundation
+  7.4.21 made `IpUtils::isPrivateIp()` treat the RFC 5737 documentation ranges as
+  non-public, which flipped the `api` rate limiter's bucket for the test IPs, so
+  tests now use real routable addresses (8.8.8.8, 1.1.1.1) for "public" traffic.
 - **Frontend**: `npx audit-ci --config audit-ci.jsonc` (a devDependency wrapping
   `npm audit`) — production dependencies only (`skip-dev`), high severity and above.
   npm itself has no way to acknowledge an advisory, so advisories **with no patched
@@ -110,6 +115,18 @@ single files — after editing them on the host, `docker compose up -d --force-r
   (`npm update <pkg>` for a transitive one), as with vue / shell-quote / seroval /
   source-map-js in Oct 2026. Run it locally the same way:
   `docker compose -f docker-compose.dev.yml exec frontend npx audit-ci --config audit-ci.jsonc`.
+  Two gotchas from the vite / launch-editor bump (2026-10-21): (1) npm may pin an
+  advisory to the package that *bundles* the vulnerable one (vite 8.2.0–8.2.2 for
+  the launch-editor advisories), so the bundler is what has to move — `npm audit`
+  names it. (2) npm 10.9's `npm update <pkg> --package-lock-only` can crash with
+  `Cannot read properties of null (reading 'edgesOut')` (an arborist bug in its
+  peer-set loader). Don't reach for `--legacy-peer-deps` — it silently drops
+  peer-installed entries and rewrites flags on dozens of others. Run the same
+  command through `npx -y npm@12` instead, then diff the lock package-by-package:
+  npm 12 prunes nested *optional* peers that npm 10 still expects (it removed
+  `node_modules/devframe/node_modules/crossws`, and `npm ci` on npm 10 — which CI
+  uses — then failed with `Missing: crossws from lock file`). Restore that entry
+  from the previous lock and `npm ci` is clean again.
 
 ### The `nostics` override — do not remove without testing SSR
 
